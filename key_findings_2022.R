@@ -1,0 +1,820 @@
+## RC v4 Automated Findings
+### Created by: AB, DS, LF on 10/18/22 ##
+# Install packages if not already installed
+list.of.packages <- c("usethis","dplyr","data.table", "tidycensus", "sf", "RPostgreSQL",
+                      "stringr", "tidyr", "matrixStats", "tidyverse", "writexl")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
+#Load libraries
+library(usethis)
+library(dplyr)
+library(data.table) 
+library(tidycensus) # not used?
+library(sf)
+library(RPostgreSQL) # not used?
+library(stringr) # not used?
+library(tidyr)
+library(matrixStats) # not used?            rowMaxs()
+library(tidyverse) # not used?              reduce()
+library(writexl) # not used?                to create csv
+options(scipen=999)
+
+# load the PostgreSQL driver & create connection for database
+source("W:\\Project\\RACE COUNTS\\2022_v4\\Key_Findings\\passwords.R")
+
+# Function to clean county/state data -------------------------------------
+clean_data <- function(county, state, issue, indicator) {
+  
+  df_county <- county %>% select(county_id, county_name, ends_with("disparity_z"), values_count) %>%
+    pivot_longer(cols = ends_with("disparity_z"),
+                 names_to = "race",
+                 values_to = "disparity_z_score"
+    ) %>%
+    
+    rename(geoid = county_id,
+           geoname = county_name) %>%
+    
+    mutate(
+      issue = issue,
+      indicator = indicator,
+      geoname = paste0(geoname, " County"),
+      race = (ifelse(race == 'disparity_z', 'total', race)),
+      race = gsub('_disparity_z', '', race)) %>% 
+    
+    full_join(
+      
+      county %>% select(county_id, county_name, ends_with("performance_z"), values_count) %>%
+        pivot_longer(cols = ends_with("performance_z"), 
+                     names_to = "race",
+                     values_to = "performance_z_score") %>%
+        
+        rename(geoid = county_id,
+               geoname = county_name) %>% 
+        
+        mutate(
+          issue = issue,
+          indicator = indicator,
+          geoname = paste0(geoname, " County"),
+          race = (ifelse(race == 'performance_z', 'total', race)),
+          race = gsub('_performance_z', '', race))
+      
+    ) %>% full_join(
+      
+      county %>% select(county_id, county_name, asbest, ends_with("_rate"), values_count) %>%
+        pivot_longer(cols = ends_with("_rate"),
+                     names_to = "race",
+                     values_to = "rate") %>%
+        
+        rename(geoid = county_id,
+               geoname = county_name) %>%
+        
+        mutate(
+          issue = issue,
+          indicator = indicator,
+          geoname = paste0(geoname, " County"),
+          race = (ifelse(race == 'rate', 'total', race)),
+          race = gsub('_rate', '', race)) 
+      
+    )  %>%
+    select(geoid, geoname, issue, indicator, race, asbest, rate, disparity_z_score, performance_z_score, values_count)
+  
+  df_state <- state %>% select(state_id, state_name, ends_with("disparity_z"), values_count) %>%
+    pivot_longer(cols = ends_with("disparity_z"),
+                 names_to = "race",
+                 values_to = "disparity_z_score"
+    ) %>%
+    
+    rename(geoid = state_id,
+           geoname = state_name) %>%
+    
+    mutate(
+      issue = issue,
+      indicator = indicator,
+      race = gsub('_disparity_z', '', race),
+      performance_z_score = NA) %>% select(geoid, geoname, issue, indicator, race, disparity_z_score, performance_z_score, values_count) %>%
+    
+    full_join(
+      
+      state %>% select(state_id, state_name, asbest, ends_with("_rate"), values_count) %>%
+        pivot_longer(cols = ends_with("_rate"),
+                     names_to = "race",
+                     values_to = "rate") %>%
+        
+        rename(geoid = state_id,
+               geoname = state_name) %>%
+        
+        mutate(
+          issue = issue,
+          indicator = indicator,
+          race = (ifelse(race == 'rate', 'total', race)),
+          race = gsub('_rate', '', race))
+      
+    ) 
+  
+  df <- rbind(df_county, df_state) # combine county/state tables for same indicator
+  
+  df <- df %>% mutate(geolevel = ifelse(geoname == "California", "state", "county")) # add geolevel col
+  
+  df$race_generic = gsub('nh_', '', df$race) # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
+  
+ return(df)
+}
+
+# GET CRIME & JUSTICE DATA ---------------------------------------------------
+## Import tables. Copy from v4 index view.
+## county indicator tables
+c_1 <- st_read(con, query = "SELECT * FROM v4.arei_crim_incarceration_county_2022")
+c_2 <- st_read(con, query = "SELECT * FROM v4.arei_crim_perception_of_safety_county_2022")
+c_3 <- st_read(con, query = "SELECT * FROM v4.arei_crim_status_offenses_county_2022")
+c_4 <- st_read(con, query = "SELECT * FROM v4.arei_crim_use_of_force_county_2022")
+
+## state indicator tables - in another window, find/replace county table lines above: 'county' to 'state' and 'c_' to 's_'.
+s_1 <- st_read(con, query = "SELECT * FROM v4.arei_crim_incarceration_state_2022")
+s_2 <- st_read(con, query = "SELECT * FROM v4.arei_crim_perception_of_safety_state_2022")
+s_3 <- st_read(con, query = "SELECT * FROM v4.arei_crim_status_offenses_state_2022")
+s_4 <- st_read(con, query = "SELECT * FROM v4.arei_crim_use_of_force_state_2022")
+
+## update issue value. define variable names for clean_data_z function. Copy from v4 index view.
+issue <- 'crim'
+varname1 <- 'incarceration'
+varname2 <- 'safety'
+varname3 <- 'offenses'
+varname4 <- 'force'
+
+## run clean_data function on each indicator table. adjust for number of indicators in specific issue area.
+df1 <- clean_data(c_1, s_1, issue, varname1)
+df2 <- clean_data(c_2, s_2, issue, varname2)
+df3 <- clean_data(c_3, s_3, issue, varname3)
+df4 <- clean_data(c_4, s_4, issue, varname4)
+
+## combine the cleaned indicator tables, add geolevel field
+crime <- bind_rows(df1, df2, df3, df4) # adjust for number of indicators in specific issue area.
+
+# GET DEMOCRACY DATA ---------------------------------------------------
+## Import tables. Copy from v4 index view.
+## county indicator tables
+c_1 <- st_read(con, query = "SELECT * FROM v4.arei_demo_census_participation_county_2022")
+c_2 <- st_read(con, query = "SELECT * FROM v4.arei_demo_diversity_of_candidates_county_2022")
+c_3 <- st_read(con, query = "SELECT * FROM v4.arei_demo_diversity_of_electeds_county_2022")
+c_4 <- st_read(con, query = "SELECT * FROM v4.arei_demo_registered_voters_county_2022")
+c_5 <- st_read(con, query = "SELECT * FROM v4.arei_demo_voting_midterm_county_2022")
+c_6 <- st_read(con, query = "SELECT * FROM v4.arei_demo_voting_presidential_county_2022")
+
+## state indicator tables - in another window, find/replace 'county' for 'state'.
+s_1 <- st_read(con, query = "SELECT * FROM v4.arei_demo_census_participation_state_2022")
+s_2 <- st_read(con, query = "SELECT * FROM v4.arei_demo_diversity_of_candidates_state_2022")
+s_3 <- st_read(con, query = "SELECT * FROM v4.arei_demo_diversity_of_electeds_state_2022")
+s_4 <- st_read(con, query = "SELECT * FROM v4.arei_demo_registered_voters_state_2022")
+s_5 <- st_read(con, query = "SELECT * FROM v4.arei_demo_voting_midterm_state_2022")
+s_6 <- st_read(con, query = "SELECT * FROM v4.arei_demo_voting_presidential_state_2022")
+
+## update issue value. define variable names for clean_data_z function. Copy from v4 index view.
+issue <- 'demo'
+varname1 <- 'census'
+varname2 <- 'candidate'
+varname3 <- 'elected'
+varname4 <- 'voter'
+varname5 <- 'midterm'
+varname6 <- 'president'
+
+## run clean_data function on each indicator table. adjust for number of indicators in specific issue area.
+df1 <- clean_data(c_1, s_1, issue, varname1)
+df2 <- clean_data(c_2, s_2, issue, varname2)
+df3 <- clean_data(c_3, s_3, issue, varname3)
+df4 <- clean_data(c_4, s_4, issue, varname4)
+df5 <- clean_data(c_5, s_5, issue, varname5)
+df6 <- clean_data(c_6, s_6, issue, varname6)
+
+
+## combine the cleaned indicator tables, add geolevel field
+democracy <- bind_rows(df1, df2, df3, df4, df5, df6) # adjust for number of indicators in specific issue area.
+
+# GET ECONOMIC DATA ---------------------------------------------------
+## Import tables. Copy from v4 index view. NOTE: I added in Living Wage bc it's not included in index.
+## county indicator tables
+c_1 <- st_read(con, query = "SELECT * FROM v4.arei_econ_connected_youth_county_2022")
+c_2 <- st_read(con, query = "SELECT * FROM v4.arei_econ_employment_county_2022")
+c_3 <- st_read(con, query = "SELECT * FROM v4.arei_econ_internet_county_2022")
+c_4 <- st_read(con, query = "SELECT * FROM v4.arei_econ_officials_county_2022")
+c_5 <- st_read(con, query = "SELECT * FROM v4.arei_econ_per_capita_income_county_2022")
+c_6 <- st_read(con, query = "SELECT * FROM v4.arei_econ_real_cost_measure_county_2022")
+c_7 <- st_read(con, query = "SELECT * FROM v4.arei_econ_living_wage_county_2022")
+
+## state indicator tables - in another window, find/replace 'county' for 'state'.
+s_1 <- st_read(con, query = "SELECT * FROM v4.arei_econ_connected_youth_state_2022")
+s_2 <- st_read(con, query = "SELECT * FROM v4.arei_econ_employment_state_2022")
+s_3 <- st_read(con, query = "SELECT * FROM v4.arei_econ_internet_state_2022")
+s_4 <- st_read(con, query = "SELECT * FROM v4.arei_econ_officials_state_2022")
+s_5 <- st_read(con, query = "SELECT * FROM v4.arei_econ_per_capita_income_state_2022")
+s_6 <- st_read(con, query = "SELECT * FROM v4.arei_econ_real_cost_measure_state_2022")
+s_7 <- st_read(con, query = "SELECT * FROM v4.arei_econ_living_wage_state_2022")
+
+## update issue value. define variable names for clean_data_z function. Copy from v4 index view. Note: I added in Liv Wage bc it's not in index.
+issue <- 'econ'
+varname1 <- 'connected'
+varname2 <- 'employ'
+varname3 <- 'internet'
+varname4 <- 'officials'
+varname5 <- 'percap'
+varname6 <- 'realcost'
+varname7 <- 'livwage'
+
+
+## run clean_data function on each indicator table. adjust for number of indicators in specific issue area.
+df1 <- clean_data(c_1, s_1, issue, varname1)
+df2 <- clean_data(c_2, s_2, issue, varname2)
+df3 <- clean_data(c_3, s_3, issue, varname3)
+df4 <- clean_data(c_4, s_4, issue, varname4)
+df5 <- clean_data(c_5, s_5, issue, varname5)
+df6 <- clean_data(c_6, s_6, issue, varname6)
+df7 <- clean_data(c_7, s_7, issue, varname7)
+
+
+## combine the cleaned indicator tables, add geolevel field
+economic <- bind_rows(df1, df2, df3, df4, df5, df6, df7) # adjust for number of indicators in specific issue area.
+
+
+# GET EDUCATION DATA ---------------------------------------------------
+## Import tables. Copy from v4 index view.
+## county indicator tables
+c_1 <- st_read(con, query = "SELECT * FROM v4.arei_educ_chronic_absenteeism_county_2022")
+c_2 <- st_read(con, query = "SELECT * FROM v4.arei_educ_hs_grad_county_2022")
+c_3 <- st_read(con, query = "SELECT * FROM v4.arei_educ_gr3_ela_scores_county_2022")
+c_4 <- st_read(con, query = "SELECT * FROM v4.arei_educ_gr3_math_scores_county_2022")
+c_5 <- st_read(con, query = "SELECT * FROM v4.arei_educ_suspension_county_2022")
+c_6 <- st_read(con, query = "SELECT * FROM v4.arei_educ_ece_access_county_2022")
+c_7 <- st_read(con, query = "SELECT * FROM v4.arei_educ_staff_diversity_county_2022")
+
+## state indicator tables - in another window, find/replace 'county' for 'state'.
+s_1 <- st_read(con, query = "SELECT * FROM v4.arei_educ_chronic_absenteeism_state_2022")
+s_2 <- st_read(con, query = "SELECT * FROM v4.arei_educ_hs_grad_state_2022")
+s_3 <- st_read(con, query = "SELECT * FROM v4.arei_educ_gr3_ela_scores_state_2022")
+s_4 <- st_read(con, query = "SELECT * FROM v4.arei_educ_gr3_math_scores_state_2022")
+s_5 <- st_read(con, query = "SELECT * FROM v4.arei_educ_suspension_state_2022")
+s_6 <- st_read(con, query = "SELECT * FROM v4.arei_educ_ece_access_state_2022")
+s_7 <- st_read(con, query = "SELECT * FROM v4.arei_educ_staff_diversity_state_2022")
+
+## update issue value. define variable names for clean_data_z function. Copy from v4 index view.
+issue <- 'educ'
+varname1 <- 'abst'
+varname2 <- 'grad'
+varname3 <- 'ela'
+varname4 <- 'math'
+varname5 <- 'susp'
+varname6 <- 'ece'
+varname7 <- 'diver'
+
+## run clean_data function on each indicator table. adjust for number of indicators in specific issue area.
+df1 <- clean_data(c_1, s_1, issue, varname1)
+df2 <- clean_data(c_2, s_2, issue, varname2)
+df3 <- clean_data(c_3, s_3, issue, varname3)
+df4 <- clean_data(c_4, s_4, issue, varname4)
+df5 <- clean_data(c_5, s_5, issue, varname5)
+df6 <- clean_data(c_6, s_6, issue, varname6)
+df7 <- clean_data(c_7, s_7, issue, varname7)
+
+
+## combine the cleaned indicator tables, add geolevel field
+education <- bind_rows(df1, df2, df3, df4, df5, df6, df7) # adjust for number of indicators in specific issue area.
+
+
+# GET HBEN DATA ---------------------------------------------------
+## Import tables. Copy from v4 index view.
+## county indicator tables
+c_1 <- st_read(con, query = "SELECT * FROM v4.arei_hben_drinking_water_county_2022")
+c_2 <- st_read(con, query = "SELECT * FROM v4.arei_hben_food_access_county_2022")
+c_3 <- st_read(con, query = "SELECT * FROM v4.arei_hben_haz_weighted_avg_county_2022")
+c_4 <- st_read(con, query = "SELECT * FROM v4.arei_hben_toxic_release_county_2022")
+c_5 <- st_read(con, query = "SELECT * FROM v4.arei_hben_asthma_county_2022")
+c_6 <- st_read(con, query = "SELECT * FROM v4.arei_hben_lack_of_greenspace_county_2022")
+
+## state indicator tables - in another window, find/replace 'county' for 'state'.
+s_1 <- st_read(con, query = "SELECT * FROM v4.arei_hben_drinking_water_state_2022")
+s_2 <- st_read(con, query = "SELECT * FROM v4.arei_hben_food_access_state_2022")
+s_3 <- st_read(con, query = "SELECT * FROM v4.arei_hben_haz_weighted_avg_state_2022")
+s_4 <- st_read(con, query = "SELECT * FROM v4.arei_hben_toxic_release_state_2022")
+s_5 <- st_read(con, query = "SELECT * FROM v4.arei_hben_asthma_state_2022")
+s_6 <- st_read(con, query = "SELECT * FROM v4.arei_hben_lack_of_greenspace_state_2022")
+
+## update issue value. define variable names for clean_data_z function. Copy from v4 index view.
+issue <- 'hben'
+varname1 <- 'water'
+varname2 <- 'food'
+varname3 <- 'hazard'
+varname4 <- 'toxic'
+varname5 <- 'asthma'
+varname6 <- 'green'
+
+## run clean_data function on each indicator table. adjust for number of indicators in specific issue area.
+df1 <- clean_data(c_1, s_1, issue, varname1)
+df2 <- clean_data(c_2, s_2, issue, varname2)
+df3 <- clean_data(c_3, s_3, issue, varname3)
+df4 <- clean_data(c_4, s_4, issue, varname4)
+df5 <- clean_data(c_5, s_5, issue, varname5)
+df6 <- clean_data(c_6, s_6, issue, varname6)
+
+
+## combine the cleaned indicator tables, add geolevel field
+hbe <- bind_rows(df1, df2, df3, df4, df5, df6) # adjust for number of indicators in specific issue area.
+
+☻
+# GET HEALTH DATA ---------------------------------------------------
+## Import tables. Copy from v4 index view.
+## county indicator tables
+c_1 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_got_help_county_2022")
+c_2 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_health_insurance_county_2022")
+c_3 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_life_expectancy_county_2022")
+c_4 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_low_birthweight_county_2022")
+c_5 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_usual_source_of_care_county_2022")
+c_6 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_preventable_hospitalizations_county_2022")
+
+
+## state indicator tables - in another window, find/replace 'county' for 'state'.
+s_1 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_got_help_state_2022")
+s_2 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_health_insurance_state_2022")
+s_3 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_life_expectancy_state_2022")
+s_4 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_low_birthweight_state_2022")
+s_5 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_usual_source_of_care_state_2022")
+s_6 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_preventable_hospitalizations_state_2022")
+
+
+## update issue value. define variable names for clean_data_z function. Copy from v4 index view.
+issue <- 'hlth'
+varname1 <- 'help'
+varname2 <- 'insur'
+varname3 <- 'life'
+varname4 <- 'bwt'
+varname5 <- 'usoc'
+varname6 <- 'hosp'
+
+## run clean_data function on each indicator table. adjust for number of indicators in specific issue area.
+df1 <- clean_data(c_1, s_1, issue, varname1)
+df2 <- clean_data(c_2, s_2, issue, varname2)
+df3 <- clean_data(c_3, s_3, issue, varname3)
+df4 <- clean_data(c_4, s_4, issue, varname4)
+df5 <- clean_data(c_5, s_5, issue, varname5)
+df6 <- clean_data(c_6, s_6, issue, varname6)
+
+
+## combine the cleaned indicator tables, add geolevel field
+health <- bind_rows(df1, df2, df3, df4, df5, df6) # adjust for number of indicators in specific issue area.
+
+
+# GET HOUSING DATA ---------------------------------------------------
+## Import tables. Copy from v4 index view.
+## county indicator tables
+c_1 <- st_read(con, query = "SELECT * FROM v4.arei_hous_cost_burden_owner_county_2022")
+c_2 <- st_read(con, query = "SELECT * FROM v4.arei_hous_cost_burden_renter_county_2022")
+c_3 <- st_read(con, query = "SELECT * FROM v4.arei_hous_denied_mortgages_county_2022")
+c_4 <- st_read(con, query = "SELECT * FROM v4.arei_hous_eviction_filing_rate_county_2022") 
+c_5 <- st_read(con, query = "SELECT * FROM v4.arei_hous_foreclosure_county_2022")
+c_6 <- st_read(con, query = "SELECT * FROM v4.arei_hous_homeownership_county_2022")
+c_7 <- st_read(con, query = "SELECT * FROM v4.arei_hous_overcrowded_county_2022")
+c_8 <- st_read(con, query = "SELECT * FROM v4.arei_hous_housing_quality_county_2022")
+c_9 <- st_read(con, query = "SELECT * FROM v4.arei_hous_student_homelessness_county_2022")
+c_10 <- st_read(con, query = "SELECT * FROM v4.arei_hous_subprime_county_2022")
+
+## state indicator tables - in another window, find/replace 'county' for 'state'.
+s_1 <- st_read(con, query = "SELECT * FROM v4.arei_hous_cost_burden_owner_state_2022")
+s_2 <- st_read(con, query = "SELECT * FROM v4.arei_hous_cost_burden_renter_state_2022")
+s_3 <- st_read(con, query = "SELECT * FROM v4.arei_hous_denied_mortgages_state_2022")
+s_4 <- st_read(con, query = "SELECT * FROM v4.arei_hous_eviction_filing_rate_state_2022")
+s_5 <- st_read(con, query = "SELECT * FROM v4.arei_hous_foreclosure_state_2022")
+s_6 <- st_read(con, query = "SELECT * FROM v4.arei_hous_homeownership_state_2022")
+s_7 <- st_read(con, query = "SELECT * FROM v4.arei_hous_overcrowded_state_2022")
+s_8 <- st_read(con, query = "SELECT * FROM v4.arei_hous_housing_quality_state_2022")
+s_9 <- st_read(con, query = "SELECT * FROM v4.arei_hous_student_homelessness_state_2022")
+s_10 <- st_read(con, query = "SELECT * FROM v4.arei_hous_subprime_state_2022")
+
+## update issue value. define variable names for clean_data_z function. Copy from v4 index view.
+issue <- 'hous'
+varname1 <- 'burden_own'
+varname2 <- 'burden_rent'
+varname3 <- 'denied'
+varname4 <- 'eviction'
+varname5 <- 'forecl'
+varname6 <- 'homeown'
+varname7 <- 'overcrowded'
+varname8 <- 'quality'
+varname9 <- 'homeless'
+varname10 <- 'subprime'
+
+## run clean_data function on each indicator table. adjust for number of indicators in specific issue area.
+df1 <- clean_data(c_1, s_1, issue, varname1)
+df2 <- clean_data(c_2, s_2, issue, varname2)
+df3 <- clean_data(c_3, s_3, issue, varname3)
+df4 <- clean_data(c_4, s_4, issue, varname4)
+df5 <- clean_data(c_5, s_5, issue, varname5)
+df6 <- clean_data(c_6, s_6, issue, varname6)
+df7 <- clean_data(c_7, s_7, issue, varname7)
+df8 <- clean_data(c_8, s_8, issue, varname8)
+df9 <- clean_data(c_9, s_9, issue, varname9)
+df10 <- clean_data(c_10, s_10, issue, varname10)
+
+## combine the cleaned indicator tables, add geolevel field
+housing <- bind_rows(df1, df2, df3, df4, df5, df6, df7, df8, df9, df10) # adjust for number of indicators in specific issue area.
+
+
+## Combine all issue area tables into one ----------------------------------
+
+# NOTE: when you call this df in your code chunk(s), rename it before running code on it bc it takes a LONG time to run again...
+df <- bind_rows(crime, democracy, economic, education, hbe, health, housing)
+# NOTE: when you call this df in your code chunk(s), rename it before running code on it bc it takes a LONG time to run again...
+
+
+# Get long form race names for findings ------------------------------------------------
+race_generic <- unique(df$race_generic)
+long_name <- c("Total", "API", "Black", "Latinx", "American Indian / Alaska Native", "White", "Asian", "Two or More Races", "Native Hawaiian / Pacific Islander", "Other Race", "Filipinx")
+race_names <- data.frame(race_generic, long_name)
+
+# Create indicator long name df -------------------------------------------
+
+indicator <- c("Employment","Living Wage","Per Capita Income","Cost-of-Living Adjusted Poverty","Overcrowded Housing", "Connected Youth","Officials and Managers",
+               "Internet Access","Life Expectancy","Health Insurance","Preventable Hospitalizations","Low Birthweight","Usual Source of Care","Got Help",
+               "High School Graduation","3rd Grade English Proficiency","3rd Grade Math Proficiency","Suspensions","Early Childhood Education Access",
+               "Teacher & Staff Diversity","Chronic Absenteeism","Subprime Mortgages","Housing Quality","Renter Cost Burden","Homeowner Cost Burden","Foreclosures",
+               "Denied Mortgages","Homeownership","Student Homelessness","Evictions","Diversity of Electeds","Diversity of Candidates","Voting in Presidential Elections",
+               "Voting in Midterm Elections","Voter Registration","Census Participation","Arrests for Status Offenses","Use of Force","Incarceration","Perception of Safety",
+               "Drinking Water Contaminants","Food Access","Proximity to Hazards","Toxic Releases from Facilities","Asthma","Lack of Greenspace")             
+
+
+indicator_short <- c("employ","livwage","percap","realcost","overcrowded","connected","officials","internet","life","insur","hosp","bwt","usoc","help","grad","ela","math",     
+                     "susp","ece","diver","abst","subprime","quality","burden_rent","burden_own","forecl","denied","homeown","homeless","eviction","elected","candidate",
+                     "president","midterm","voter","census","offenses","force","incarceration","safety","water","food","hazard","toxic","asthma","green")
+
+indicator <- data.frame(indicator, indicator_short)
+### LF: This section creates findings like: -----------------------------------------------------
+## Race page: "Kern's Latinx residents have the worst rates for 7 of the 42 RACE COUNTS indicators." and Place page: "Across indicators, Contra Costa County Black residents are most impacted by racial disparity."
+  ### Step 1: Get worst raced rate for each indicator and pull in race name grouped by geo + indicator
+  ### Step 2: Count number of times each race has the worst rate grouped by geo
+  ### Step 3: Generate sentences with # indicators with worst rates each race has out of all indicators grouped by geo + race
+  ### Step 4: Generate sentences with # indicators with best rates each race has out of all indicators grouped by geo + race
+  ### Step 5: Generate sentences identifying which race(s) faces the most racial disparity grouped by geo
+  ### Step 6: Decide if we need to suppress/screen out findings for counties with few ID's like Alpine
+
+# copy df before running any code
+  df_lf <- filter(df, race != 'total')    # remove total rates bc all findings in this section are raced
+
+# duplicate API rows, assigning one set race_generic Asian and the other set PacIsl
+  api_asian <- filter(df_lf, race_generic == 'api') %>% mutate(race_generic = 'asian')
+  api_pacisl <- filter(df_lf, race_generic == 'api') %>% mutate(race_generic = 'pacisl')
+  df_lf <- filter(df_lf, race_generic != 'api')       # remove api rows
+  df_lf <- bind_rows(df_lf, api_asian, api_pacisl)    # add back api rows as asian AND pacisl rows
+
+### Table counting number of non-NA rates per race+geo combo, used for screening best/worst counts later ### 
+  bestworst_screen <- #subset(df_lf, !race_generic %in% c('filipino', 'other', 'twoormor')) %>%           # keep only races we have RACE pages for on RC.org
+                      df_lf %>% group_by(geoid, race_generic) %>% summarise(rate_count = sum(!is.na(rate)))
+
+### Table counting number of indicators with ID's (multiple raced disp_z scores) per geo, used for screening most impacted later ### 
+  impact_screen <- df_lf %>% group_by(geoid, geoname, indicator) %>% summarise(count = sum(!is.na(disparity_z_score)))
+  impact_screen <- filter(impact_screen, count > 1) %>% group_by(geoid, geoname) %>% summarise(id_count = n())    
+
+### Worst rates ###
+filter_nonRC <- #df_lf %>% filter(race_generic %in% c('filipino', 'other', 'twoormor') & values_count == "2" & !is.na(rate)) %>%
+                df_lf %>% filter(values_count == "2" & !is.na(rate)) %>%
+                select(geoid, geoname, issue, indicator) %>% mutate(remove = 1) ## create df of observations with non-RC groups as one of the only two rates. There are 2 observations
+
+worst_table  <- df_lf %>% left_join(filter_nonRC) %>%   
+                #filter(is.na(remove) & !race_generic %in% c('filipino', 'other', 'twoormor') & values_count > 1) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate AND where 1 of 2 raced rates is a non-RC Race page group
+                filter(is.na(remove) & values_count > 1) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate AND where 1 of 2 raced rates is a non-RC Race page group
+                group_by(geoid, indicator) %>% top_n(1, disparity_z_score) %>% # get worst raced rate by geo+indicator
+                rename(worst_rate = race_generic) %>% select(-remove)
+
+worst_table2 <- #subset(df_lf, (!race_generic %in% c('filipino', 'other', 'twoormor')) & values_count > 1) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate
+                subset(df_lf, values_count > 1) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate
+                left_join(select(worst_table, geoid, indicator, worst_rate), by = c("geoid", "indicator")) %>%
+                mutate(worst = ifelse((race_generic == worst_rate), 1, 0)) %>%             
+                group_by(geoid, geoname, race_generic) %>% summarise(count = sum(worst, na.rm = TRUE)) %>%
+                left_join(race_names, by = "race_generic") %>%
+                left_join(bestworst_screen, by = c("geoid", "race_generic")) 
+worst_table2 <- worst_table2 %>% mutate(count = ifelse(is.na(count) & rate_count > 0, 0, count)) 
+
+    
+worst_rate_count <- filter(worst_table2, !is.na(rate_count)) %>% mutate(geoname = gsub(' County', '', geoname), finding_type = 'worst count', findings_pos = 2) %>% 
+                    mutate(finding = ifelse(rate_count > 5, paste0(geoname, "'s ", long_name, " residents have the worst rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geoname, " is too limited for this analysis.")))
+  
+### Best rates ###
+#### Note: Code differs from Worst rates to account for when min is best and there is raced rate = 0, so we cannot use disparity_z for min asbest indicators ####
+  best_table <- #subset(df_lf, (!race_generic %in% c('filipino', 'other', 'twoormor')) & values_count > 1 & !is.na(rate)) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate
+                subset(df_lf, values_count > 1 & !is.na(rate)) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate              
+                select(c(geoid, issue, indicator, values_count, geolevel, asbest, rate, race_generic)) %>% 
+                group_by(geoid, issue, indicator, values_count, geolevel, asbest) %>% 
+                mutate(best_rank = ifelse(asbest == 'min', dense_rank(rate), dense_rank(-rate)))  %>% # use dense_rank to give ties the same rank, and all integer ranks
+                mutate(best_rate = ifelse(best_rank == 1, race_generic, ""))    # identify race with best rate using best_rank
+  best_table <- best_table %>% left_join(filter_nonRC) %>% filter(is.na(remove)) %>% select(-geoname, -remove) # remove non-RC best group rates. Total of 2 obs
+  
+  
+  best_table2 <- #subset(df_lf, (!race_generic %in% c('filipino', 'other', 'twoormor')) & values_count > 1) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate 
+                 subset(df_lf, values_count > 1) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate 
+                 left_join(select(best_table, geoid, indicator, best_rate), by = c("geoid", "indicator")) %>%
+                 mutate(best = ifelse((race_generic == best_rate), 1, 0)) %>%             
+                 group_by(geoid, geoname, race_generic) %>% summarise(count = sum(best, na.rm = TRUE)) %>%
+                 left_join(race_names, by = c("race_generic")) %>%
+                 left_join(bestworst_screen, by = c("geoid", "race_generic"))
+  best_table2 <- best_table2 %>% mutate(count = ifelse(is.na(count) & rate_count > 0, 0, count))
+  
+    
+  best_rate_count <- filter(best_table2, !is.na(rate_count)) %>% mutate(geoname = gsub(' County', '', geoname), finding_type = 'best count', findings_pos = 1) %>%
+              mutate(finding = ifelse(rate_count > 5, paste0(geoname, "'s ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geoname, " is too limited for this analysis."))) 
+
+
+### Bind worst and best tables ### ----------------------------------------------
+worst_best_counts <- bind_rows(worst_rate_count, best_rate_count)
+worst_best_counts <- rename(worst_best_counts, geo_name = geoname, race = race_generic) %>% select(-long_name, -rate_count, -count)
+worst_best_counts <- worst_best_counts %>% mutate(geo_level = ifelse(geo_name == 'California', 'state', 'county')) %>% filter(!race %in% c('filipino', 'other', 'twoormor')) # filter out races that don't have RC Race Pages
+
+  
+### Most impacted ### ---------------------------------------------------
+  impact_table <- worst_table2 %>% select(-rate_count) %>% group_by(geoid, geoname) %>% top_n(1, count) %>% # get race most impacted by racial disparity by geo
+  left_join(select(impact_screen, geoid, id_count), by = "geoid")
+  # 5 counties have ties for group with the most worst rates: Amador, Madera, Mono, San Mateo, Tulare
+  ## the next few lines concatenate the names of the tied groups to prep for findings
+  impact_table2 <- impact_table %>% 
+    group_by(geoid, geoname, count) %>% 
+    mutate(long_name2 = paste0(long_name, collapse = " and ")) %>% select(-c(long_name, race_generic)) %>% unique()
+  # updated screen to > 4 from > 5 used in v3 so that Alpine County would get a finding. Alpine finding is consistent with v3, although there is 1 less indicator with an ID in Alpine in v4.
+  most_impacted <- impact_table2 %>% mutate(finding = ifelse(id_count > 4, paste0("Across indicators, ", geoname, " ", long_name2, " residents are most impacted by racial disparity."), paste0("Data for residents of ", geoname, " is too limited for this analysis.")))
+
+
+#save output as a csv
+  #write.csv(most_impacted, file = "W:\\Project\\RACE COUNTS\\2022_v4\\Key_Findings\\RaceCounts\\most_impacted_race_v2.csv", row.names = FALSE)  
+  
+  
+### DS: This section creates findings for Race pages - most disparate indicator by Race & Place. Example:"Denied Mortgages is the most disparate indicator for American Indian/Alaska Native residents of San Francisco." ------------------------------------------------------------------
+
+# Function to prep raced most_disparate tables
+  most_disp_by_race <- function(x, y, d) {
+    # Nested function to pull the column with the maximum value ----------------------
+    find_first_max_index_na <- function(row) {
+      
+      head(which(row== max(row, na.rm=TRUE)), 1)[1]
+    }
+    
+    if(is.null(d)) {       ## For races excluding Asian and PacIsl
+      # filter by race, pivot_wider, select the columns we want, get race long_name
+      z <- x %>% filter(race_generic == y) %>% pivot_wider(names_from = indicator, values_from = disparity_z_score) %>% group_by(geoid, geoname) %>% 
+        fill(incarceration:subprime, .direction = 'updown') %>% 
+        filter (!duplicated(geoname)) %>% select(-race) %>% rename(race = race_generic) %>% select(geoid, geoname, race, incarceration:subprime)
+      z <- z %>% inner_join(race_names, by = c('race' = 'race_generic')) %>% select(geoid, geoname, race, long_name, everything()) 
+      
+      # count indicators
+      indicator_count <- z %>% ungroup %>% select(-geoid:-long_name)
+      indicator_count$indicator_count <- rowSums(!is.na(indicator_count))
+      z$indicator_count <- indicator_count$indicator_count 
+      
+      # select columns we need
+      z <- z %>% select(geoid, geoname, race, long_name, indicator_count, everything())
+      
+      # unique indicators that apply to race
+      indicator_col <- z %>% ungroup %>% select(7:ncol(z))
+      indicator_col <- names(indicator_col)
+      
+      # pull the column name with the maximum value
+      z$max_col <- colnames(z[indicator_col]) [
+        apply(
+          z[indicator_col],
+          MARGIN = 1,
+          find_first_max_index_na )
+      ]
+      
+      ## merge with indicator
+      z <- left_join(z, indicator, by = c("max_col"="indicator_short"))
+      
+      ## add finding
+      z <- z %>% mutate(
+        finding = ifelse(indicator_count <= 5,     ## Suppress finding if race+geo combo has 5 or fewer indicator disparity_z scores
+                         paste0("Data for ", long_name, " residents of ", geoname, " is too limited for this analysis."),
+                         paste0(indicator, " is the most disparate indicator for ", long_name, " residents of ", geoname, "."))
+      ) %>% select(
+        geoid, geoname, race, long_name, indicator_count, finding) %>% arrange(geoname)
+      
+      return(z)
+    }
+    
+    else {       ## For Asian and PacIsl only bc we count Asian+API and PacIsl+API
+      # filter by race, pivot_wider, select the columns we want, get race long_name
+      z <- x %>% filter(race_generic == y | race_generic == d) %>% pivot_wider(names_from = indicator, values_from = disparity_z_score) %>% group_by(geoid, geoname) %>% 
+        fill(incarceration:subprime, .direction = 'updown') %>% 
+        filter (!duplicated(geoname)) %>% select(-race_generic) %>% mutate(race = y) %>% select(geoid, geoname, race, incarceration:subprime)
+      z <- z %>% inner_join(race_names, by = c('race' = 'race_generic')) %>% select(geoid, geoname, race, long_name, everything()) 
+      
+      indicator_count <- z %>% ungroup %>% select(-geoid:-long_name)
+      indicator_count$indicator_count <- rowSums(!is.na(indicator_count))
+      z$indicator_count <- indicator_count$indicator_count 
+      
+      # select columns we need
+      z <- z %>% select(geoid, geoname, race, long_name, indicator_count, everything())
+      
+      # unique indicators that apply to race
+      indicator_col <- z %>% ungroup %>% select(7:ncol(z))
+      indicator_col <- names(indicator_col)
+      
+      # pull the column name with the maximum value
+      z$max_col <- colnames(z[indicator_col]) [
+        apply(
+          z[indicator_col],
+          MARGIN = 1,
+          find_first_max_index_na )
+      ]
+      
+      ## merge with indicator
+      z <- left_join(z, indicator, by = c("max_col"="indicator_short"))
+      
+      ## add finding
+      z <- z %>% mutate(
+        finding = ifelse(indicator_count<=5, ## threshold of equal or less than 5
+                         paste0("Data for ", long_name, " residents of ", geoname, " is too limited for this analysis."),
+                         paste0(indicator, " is the most disparate indicator for ", long_name, " residents of ", geoname, "."))
+      ) %>% select(
+        geoid, geoname, race, long_name, indicator_count, finding) %>% arrange(geoname)
+      
+      return(z)
+    }
+  }
+  
+  # copy df before running any code
+  # raced tables generated using function
+  df_ds <- filter(df, race != 'total')    # remove total rates bc all findings in this section are raced
+  aian_ <- most_disp_by_race(df_ds, 'aian', d = NULL)
+  asian_ <- most_disp_by_race(df_ds, 'asian', 'api')
+  black_ <- most_disp_by_race(df_ds, 'black', d = NULL)
+  latinx_ <- most_disp_by_race(df_ds, 'latino', d = NULL)
+  pacisl_ <- most_disp_by_race(df_ds, 'pacisl', 'api')
+  white_ <- most_disp_by_race(df_ds, 'white', d = NULL)
+  
+  final_findings <- bind_rows(aian_, asian_, black_, latinx_, pacisl_, white_) 
+  final_findings <- rename(final_findings, geo_name = geoname) %>% select(-indicator_count, -long_name)
+  most_disp <- final_findings %>% mutate(geo_level = ifelse(geo_name == 'California', 'state', 'county'),
+                                         finding_type = 'most disparate',
+                                         findings_pos = 3, geo_name = gsub(' County', '', geo_name))
+  
+  
+# Save most_disp, best_rate_counts, worst_rate_counts as 1 csv
+# rda_race_door_findings <- bind_rows(most_disp, worst_best_counts)
+# rda_race_door_findings <- rda_race_door_findings %>% relocate(geo_level, .after = geo_name) %>% relocate(finding_type, .after = race) %>% mutate( src = 'rda', citations = '') %>%
+ #                          mutate(race = ifelse(race == 'latino', 'latinx', ifelse(race == 'pacisl', 'nhpi', race)))  # rename latino to latinx, and pacisl to nhpi to feed API - will change API later so we can use RC standard latino/pacisl
+ 
+ # write.csv(rda_race_door_findings, file = "W:\\Project\\RACE COUNTS\\2022_v4\\Key_Findings\\RaceCounts\\rda_race_door_findings.csv", row.names = FALSE)
+
+## Create postgres table
+ #dbWriteTable(con, c("v4", "arei_racedoor_findings_multigeo"), rda_race_door_findings,
+ #             overwrite = FALSE, row.names = FALSE)
+
+ # comment on table and columns
+ #comment <- paste0("COMMENT ON TABLE v4.arei_racedoor_findings_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2022_v4\\Key_Findings\\RaceCounts\\key_findings_2022.R.';",
+ #                  "COMMENT ON COLUMN v4.arei_racedoor_findings_multigeo.finding_type
+ #                       IS 'Categorizes findings: count of best and worst rates by race/geo combo, race most impacted by inequities in a geo, most disparate indicator in a geo and findings by issue area/race combo';",
+ #                  "COMMENT ON COLUMN v4.arei_racedoor_findings_multigeo.src
+ #                       IS 'Categorizes source of finding as either rda or program area';",
+ #                  "COMMENT ON COLUMN v4.arei_racedoor_findings_multigeo.citations
+ #                       IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
+ #                  "COMMENT ON COLUMN v4.arei_racedoor_findings_multigeo.findings_pos
+ #                       IS 'Used to determine the order a set of findings should appear in on RC.org';")
+ #print(comment)
+ #dbSendQuery(con, comment)
+
+### AB: This section creates findings for Place page - the most disparate and worst performance indicators across counties #####
+# Load Indexes
+  c_1 <- st_read(con, query = "SELECT * FROM v4.arei_crim_index_2022")
+  c_2 <- st_read(con, query = "SELECT * FROM v4.arei_demo_index_2022")
+  c_3 <- st_read(con, query = "SELECT * FROM v4.arei_econ_index_2022")
+  c_4 <- st_read(con, query = "SELECT * FROM v4.arei_educ_index_2022")
+  c_5 <- st_read(con, query = "SELECT * FROM v4.arei_hben_index_2022")
+  c_6 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_index_2022")
+  c_7 <- st_read(con, query = "SELECT * FROM v4.arei_hous_index_2022")
+
+data_list <- list(c_1, c_2, c_3, c_4, c_5, c_6, c_7)
+
+
+## Worst Disparity ----
+
+# Keep only disp_z column
+select_cols <- lapply(data_list, select, 
+                      "county_name",
+                      ends_with(c("disp_z")))
+
+# Merge into 1 matrix, removing duplicative county_id columns
+merged_disp <- reduce(select_cols, inner_join, by = "county_name")
+
+
+# Identify most disparate indicator and lowest performance indicator by county
+
+### Convert table from wide to long format
+disp_long <- melt(merged_disp, id.vars=c("county_name"))
+
+#### Rank indicators by disp_z with worst/highest disp_z = 1
+disp_final <- disp_long %>%
+  group_by(county_name) %>%
+  mutate(rk = min_rank(-value))
+
+##### Select only worst/highest disparity indicator per county
+disp_final <- disp_final %>% filter(rk == 1) %>%
+  arrange(county_name) 
+     
+##### Rename variable and value fields
+names(disp_final)[names(disp_final) == 'value'] <- 'worst_disp_z'
+names(disp_final)[names(disp_final) == 'variable'] <- 'worst_disp_indicator'
+
+# clean names for later merging
+disp_final$worst_disp_indicator <- gsub('_disp_z', '', disp_final$worst_disp_indicator)
+
+# join to get long indicator names for findings
+worst_disp <- select(disp_final, -c(rk, worst_disp_z)) %>%   # drop rank and z-score fields, join to indicator name equivalency table
+  left_join(indicator, by = c("worst_disp_indicator" = "indicator_short")) %>% rename(long_disp_indicator = indicator)
+
+# Adjust for counties with tied indicators
+worst_disp2 <- worst_disp %>% 
+  group_by(county_name) %>% 
+  mutate(disp_ties = n()) %>%
+  mutate(long_disp_indicator = paste0(long_disp_indicator, collapse = " and ")) %>% select(-c(worst_disp_indicator)) %>% unique()
+
+# Write Findings using ifelse statements
+worst_disp2 <- worst_disp2 %>% 
+  mutate(Most_Disp_Indicator = ifelse(disp_ties > 1, 
+                                      paste0(county_name, " County's high racial disparity in ", long_disp_indicator," stand out most compared to other counties."),
+                                      paste0(county_name, " County's high racial disparity in ", long_disp_indicator," stands out most compared to other counties."))) %>% 
+  select(county_name, Most_Disp_Indicator)
+
+
+## Worst Performance ----
+
+# Keep only perf_z columns
+select_cols <- lapply(data_list, select, 
+                      "county_name",
+                      ends_with(c("perf_z")))
+
+# Merge into 1 matrix, removing duplicative county_id columns
+merged_perf <- reduce(select_cols, inner_join, by = "county_name")
+
+### Convert table from wide to long format
+perf_long <- melt(merged_perf, id.vars=c("county_name"))
+
+#### Rank indicators by perf_z with worst/lowest perf_z = 1
+perf_final <- perf_long %>%
+  group_by(county_name) %>%
+  mutate(rk = min_rank(value))
+
+##### Select only worst/lowest performance indicator per county
+perf_final <- perf_final %>% filter(rk == 1) %>%
+  arrange(county_name)
+
+##### Rename variable and value fields
+names(perf_final)[names(perf_final) == 'value'] <- 'worst_perf_z'
+names(perf_final)[names(perf_final) == 'variable'] <- 'worst_perf_indicator'    
+
+# clean names for later merging
+perf_final$worst_perf_indicator <- gsub('_perf_z', '', perf_final$worst_perf_indicator)
+
+# join to get long indicator names for findings
+worst_perf <- select(perf_final, -c(rk, worst_perf_z)) %>%   # drop rank and z-score fields, join to indicator name equivalency table
+              left_join(indicator, by = c("worst_perf_indicator" = "indicator_short")) %>% rename(long_perf_indicator = indicator)
+
+# Adjust for counties with tied indicators
+worst_perf2 <- worst_perf %>% 
+  group_by(county_name) %>% 
+  mutate(perf_ties = n()) %>%
+  mutate(long_perf_indicator = paste0(long_perf_indicator, collapse = " and ")) %>% select(-c(worst_perf_indicator)) %>% unique()
+
+# Write Findings using ifelse statements
+worst_perf2 <- worst_perf2 %>% 
+  mutate(Lowest_Performing_Indicator = ifelse(perf_ties > 1, 
+  paste0(county_name, " County's low overall performance in ", long_perf_indicator, " stand out most compared to other counties."),
+  paste0(county_name, " County's low overall performance in ", long_perf_indicator," stands out most compared to other counties."))) %>% 
+  select(county_name, Lowest_Performing_Indicator)
+
+
+# Combine findings into one final df
+final_df <- worst_disp2 %>% left_join(worst_perf2, by = 'county_name')
+
+#save output as a csv
+ #write.csv(final_df,"W:\\Project\\RACE COUNTS\\2022_v4\\Key_Findings\\RaceCounts\\worst_disp_perf_by_county.csv", row.names = FALSE)
+
+
+
+### AB: This section creates findings for Place page- the summary statements above/below avg disparity/performance across counties ####
+# Indicators
+c_1 <- st_read(con, query = "SELECT * FROM v4.arei_composite_index_2022")
+
+#extracting and creating new variables based on conditions
+sum_statement_df <- c_1 %>% 
+  select(county_id, county_name, urban_type, disparity_z, performance_z) %>%
+  mutate(perf_type = ifelse(performance_z < 0, 'below', 'above'),
+         pop_type = ifelse(urban_type == 'Urban', 'more', 'less'),
+         disp_type = ifelse(disparity_z < 0, 'below', 'above'))
+
+sum_statement_df <- sum_statement_df  %>% 
+  mutate(Perf_Level_Statement = ifelse(is.na(perf_type), NA, paste0(county_name, " County's performance across indicators is ", perf_type, " average for California counties.")),
+                      Disp_Level_Statement = ifelse(is.na(disp_type), NA, paste0(county_name, " County's racial disparity across indicators is ", disp_type, " average for California counties.")),
+                      Pop_Level_Statement = ifelse(is.na(pop_type), NA, paste0(county_name, " County is ", pop_type, " populous compared to other California counties."))) %>% 
+  select(county_name, Perf_Level_Statement, Disp_Level_Statement, Pop_Level_Statement) 
+
+sum_statement_df <- sum_statement_df[order(sum_statement_df$county_name),]
+
+# save output as a csv
+ #write.csv(sum_statement_df,"W:\\Project\\RACE COUNTS\\2022_v4\\Key_Findings\\RaceCounts\\summary_statements_by_county.csv", row.names = FALSE)
+
+# prep df to merge into main findings df
+#sum_statement_df <- sum_statement_df  %>%
+# dplyr::rename("geoname"="county_name") 
+
