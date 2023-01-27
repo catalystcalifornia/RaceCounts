@@ -49,7 +49,7 @@ We completed the data cleaning, analysis, and visualization using the following 
 * [R](https://cran.rstudio.com/)
 * [RStudio](https://posit.co/download/rstudio-desktop)
 
-We used several R packages to analyze data and perform different functions.
+We used several R packages to analyze data and perform different functions, including the following.
 * data.table 
 * dplyr
 * sf
