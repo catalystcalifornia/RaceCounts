@@ -318,7 +318,7 @@ df6 <- clean_data(c_6, s_6, issue, varname6)
 ## combine the cleaned indicator tables, add geolevel field
 hbe <- bind_rows(df1, df2, df3, df4, df5, df6) # adjust for number of indicators in specific issue area.
 
-☻
+
 # GET HEALTH DATA ---------------------------------------------------
 ## Import tables. Copy from v4 index view.
 ## county indicator tables
