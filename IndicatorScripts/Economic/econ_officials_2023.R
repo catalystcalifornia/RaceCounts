@@ -1,0 +1,158 @@
+### Officials & Managers RC v4 ###
+
+#Load libraries
+library(data.table)
+library(stringr)
+library(dplyr)
+library(RPostgreSQL)
+library(dbplyr)
+library(srvyr)
+library(tidycensus)
+library(tidyr)
+library(rpostgis)
+library(tidyr)
+library(here)
+library(sf)
+
+# create connection for rda database
+source("W:\\RDA Team\\R\\credentials_source.R")
+con <- connect_to_db("rda_shared_data")
+
+##### GET PUMA-COUNTYCROSSWALK ######
+crosswalk <- st_read(con, query = "select county_id AS geoid, county_name AS geoname, puma, num_county from crosswalks.puma_county_2020")
+
+
+# Get PUMS Data -----------------------------------------------------------
+# path where my data lives (not pulling pums data from the postgres db, takes too long to run calcs that way) 
+root <- "W:/Data/Demographics/PUMS/"
+
+# Load the people PUMS data
+ppl <- fread(paste0(root, "CA_2017_2021/psam_p06.csv"), header = TRUE, data.table = FALSE, 
+             colClasses = list(character = c("PUMA", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH", "SOCP", "ESR", "AGEP")))
+
+# For this project we only wanted data for people in labor market - ages between 18 and 64
+ppl <- ppl[ppl$AGEP >= 18 & ppl$AGEP <= 64 , ]
+
+# Add state_geoid to ppl, add state_geoid to PUMA id, so it aligns with crosswalks.puma_county_2020
+ppl$state_geoid <- "06"
+ppl$puma_id <- paste0(ppl$state_geoid, ppl$PUMA)
+
+# create list of replicate weights
+repwlist = rep(paste0("PWGTP", 1:80))
+
+# join county crosswalk using left join function
+ppl <- left_join(ppl, crosswalk, by=c("puma_id" = "puma"))    # specify the field join
+
+############## Data Dictionary: W:\Data\Demographics\PUMS\CA_2017_2021\PUMS_Data_Dictionary_2017-2021.pdf ###############
+
+##### Reclassify Race/Ethnicity ########
+        # check how many records there are for RACAIAN (AIAN alone/combo) versus RAC1P (AIAN alone) and same for NHPI
+        #View(subset(ppl, RACAIAN =="1"))
+        #View(subset(ppl, RAC1P >= 3 & ppl$RAC1P <=5))
+        #View(subset(ppl, RACNH =="1" | RACPI =="1"))
+        #View(subset(ppl, RAC1P == 7))
+
+source("W:/RDA Team/R/Functions/PUMS_Functions.R")
+ppl <- race_reclass(ppl)
+
+# review data 
+        # table(ppl$race, useNA = "always")
+        # table(ppl$race, ppl$latino, useNA = "always")
+        # table(ppl$race, ppl$aian, useNA = "always")
+        # table(ppl$race, ppl$pacisl, useNA = "always")
+        # #table(ppl$aian, useNA = "always")
+        # #table(ppl$pacisl, useNA = "always")
+
+##### Define Officials and Managers ###########
+## Tag people who are officials or managers: SOCP value starts with "11" 
+###### See p107 in W:\Data\Demographics\PUMS\CA_2017_2021\PUMS_Data_Dictionary_2017-2021.pdf
+ppl$offmgr <- 
+              case_when(
+                grepl('^11', ppl$SOCP) ~ as.integer(1),
+                TRUE ~ as.integer(0))
+
+# review
+summary(ppl$offmgr)
+
+## Code for labor force status: ESR on p53 of PUMS_Data_Dictionary_2017-2021.pdf
+table(ppl$ESR, useNA = "always")
+
+# NOTE: 'This includes 4-Armed forces, at work' and '5-Armed forces, with a job but not at work'. It excludes '6-Not in labor force'.
+ppl$emply <- as.factor(ifelse(ppl$ESR %in% c(1, 2, 3, 4, 5), "in labor force", "not in labor force")) 
+ppl <- filter(ppl, emply=='in labor force')
+
+## Factor for Officials & Managers
+ppl$indicator <- as.factor(ifelse(ppl$offmgr == 1, "officials", "not official"))
+
+## check race and officials results
+table(ppl$race, useNA ="always")
+table(ppl$indicator, useNA = "always")
+
+############### CALC COUNTY AND STATE ESTIMATES/CVS ETC. ############### 
+# Define indicator and weight variables for function
+  key_indicator <- 'officials'  # update this to the indicator you are working with
+# You must use to WGTP (if you are using psam_h06.csv and want housing units, like for Low Quality Housing) or PWGTP (if you want person units, like for Connected Youth)
+  weight <- 'PWGTP'           
+# You must specify the population base you want to use for the rate calc. Ex. 100 for percents, or 1000 for rate per 1k.
+  pop_base <- 1000
+  
+rc_state <- state_pums(ppl)
+View(rc_state)
+
+rc_county <- county_pums(ppl)
+View(rc_county)
+
+
+############ COMBINE & SCREEN COUNTY/STATE DATA ############# 
+# Define threshold variables for function
+  cv_threshold <- 20          # threshold and CV must be displayed as a percentage (not decimal)
+  raw_rate_threshold <- 0
+  pop_threshold <- 400
+
+screened <- pums_screen(rc_state, rc_county)
+View(screened)
+
+d <- screened
+
+
+############## CALC RACE COUNTS STATS ##############
+#set source for RC Functions script
+source("W:/Project/RACE COUNTS/2022_v4/RaceCounts/RC_Functions.R")
+
+d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
+
+d <- count_values(d) #calculate number of "_rate" values
+d <- calc_best(d) #calculate best rates -- be sure to update previous line of code accordingly before running this function.
+d <- calc_diff(d) #calculate difference from best
+d <- calc_avg_diff(d) #calculate (row wise) mean difference from best
+d <- calc_p_var(d) #calculate (row wise) population or sample variance. be sure to use calc_s_var for sample data or calc_p_var for population data.
+d <- calc_id(d) #calculate index of disparity
+View(d)
+
+#split STATE into separate table and format id, name columns
+state_table <- d[d$geoname == 'California', ]
+
+#calculate STATE z-scores
+state_table <- calc_state_z(state_table)
+state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
+View(state_table)
+
+#remove state from county table
+county_table <- d[d$geoname != 'California', ]
+
+#calculate COUNTY z-scores
+county_table <- calc_z(county_table)
+county_table <- calc_ranks(county_table)
+county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
+View(county_table)
+
+###update info for postgres tables###
+county_table_name <- "arei_econ_officials_county_2022"
+state_table_name <- "arei_econ_officials_state_2022"
+indicator <- "Number of Officials & Managers per 1k People by Race. Only people ages 18-64 who are in the labor force are included. PUMAs contained by 1 county and PUMAs with 60%+ of their area contained by 1 county are included in the calcs, we also screened by pop and CV. White, Black, Asian, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN and NHPI are Latinx-inclusive so they are also included in Latinx counts. AIAN and NHPI include AIAN and NHPI Alone and in Combo, so non-Latinx AIAN and NHPI in combo are also included in Two or More. This data is"
+source <- "ACS PUMS (2017-2021)"
+
+
+#send tables to postgres
+to_postgres()
+
