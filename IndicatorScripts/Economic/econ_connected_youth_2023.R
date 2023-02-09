@@ -1,4 +1,4 @@
-### Connected Youth RC v4 ###
+### Connected Youth RC v5 ###
 
 #Load libraries
 library(data.table)
@@ -29,7 +29,7 @@ crosswalk <- st_read(con, query = "select county_id AS geoid, county_name AS geo
 root <- "W:/Data/Demographics/PUMS/"
 
 # Load the people PUMS data
-ppl <- fread(paste0(root, "CA_2016_2020/psam_p06.csv"), header = TRUE, data.table = FALSE, 
+ppl <- fread(paste0(root, "CA_2017_2021/psam_p06.csv"), header = TRUE, data.table = FALSE, 
              colClasses = list(character = c("PUMA", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH", "ESR", "SCH")))
 
 # Add state_geoid to ppl, add state_geoid to PUMA id, so it aligns with crosswalks.puma_county_2020
@@ -42,7 +42,7 @@ repwlist = rep(paste0("PWGTP", 1:80))
 # join county crosswalk using left join function
 ppl <- left_join(ppl, crosswalk, by=c("puma_id" = "puma"))    # specify the field join
 
-############## Data Dictionary: W:\Data\Demographics\PUMS\CA_2016_2020\PUMS_Data_Dictionary_2016-2020.pdf ###############
+############## Data Dictionary: W:\Data\Demographics\PUMS\CA_2017-2021\PUMS_Data_Dictionary_2017-2021.pdf ###############
 
 ##### Reclassify Race/Ethnicity ########
 # check how many records there are for RACAIAN (AIAN alone/combo) versus RAC1P (AIAN alone) and same for NHPI
@@ -113,7 +113,7 @@ d <- screened
 
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source("W:/Project/RACE COUNTS/2022_v4/RaceCounts/RC_Functions.R")
+source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
 
@@ -143,11 +143,11 @@ county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "count
 View(county_table)
 
 ###update info for postgres tables###
-county_table_name <- "arei_econ_connected_youth_county_2022"
-state_table_name <- "arei_econ_connected_youth_state_2022"
+county_table_name <- "arei_econ_connected_youth_county_2023"
+state_table_name <- "arei_econ_connected_youth_state_2023"
 indicator <- "Connected Youth out of all Youth (%). Connected Youth are those ages 16-24 who are in school and/or employed. PUMAs contained by 1 county and PUMAs with 60%+ of their area contained by 1 county are included in the calcs, we also screened by pop and CV. White, Black, Asian, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN and NHPI are Latinx-inclusive so they are also included in Latinx counts. AIAN and NHPI include AIAN and NHPI Alone and in Combo, so non-Latinx AIAN and NHPI in combo are also included in Two or More. This data is"
-source <- "ACS PUMS (2016-2020)"
-
+source <- "ACS PUMS (2017-2021)"
+rc_schema <- "v5"
 
 #send tables to postgres
 to_postgres()
