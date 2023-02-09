@@ -1,4 +1,4 @@
-## Employment for RC v4 ##
+## Employment for RC v5 ##
 
 library(tidyr)
 library(stringr)
@@ -6,21 +6,22 @@ library(tidycensus)
 library(dplyr)
 library(DBI)
 library(RPostgreSQL)
+library(sf)
 
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
-# API Call Info - Shouldn't need to change until next year
-yr = 2020
+# API Call Info - Change each year
+yr = 2021
 srvy = "acs5"
   
 ############## UPDATE FOR SPECIFIC INDICATOR HERE ##############
 
-table_code = "S2301"     # YOU MUST UPDATE based on Indicator Methodology 2021 or RC 2022 Workflow/Cnty-State Indicator Tracking
+table_code = "S2301"     # YOU MUST UPDATE based on most recent Indicator Methodology or Workflow/Cnty-State Indicator Tracking
 dataset = "acs5/subject"      # YOU MUST UPDATE: "acs5/subject" for subject ("S") tables OR "acs5/profile" for data profile ("DP") tables OR "acs5" for detailed ("B") tables
-cv_threshold = 40         # YOU MUST UPDATE based on Indicator Methodology 2021
-pop_threshold = 150        # YOU MUST UPDATE based on Indicator Methodology 2021 or set to NA B19301
+cv_threshold = 40         # YOU MUST UPDATE based on most recent Indicator Methodology
+pop_threshold = 150        # YOU MUST UPDATE based on most recent Indicator Methodology or set to NA B19301
 asbest = 'max'            # YOU MUST UPDATE based on indicator, set to 'min' if S2701
 
 ############## PRE-CALCULATION DATA PREP ##############
@@ -45,7 +46,14 @@ df <- do.call(rbind.data.frame, list(
   get_acs(geography = "county", state = "CA", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE)
   %>% mutate(geolevel = "county"),
   get_acs(geography = "place", state = "CA", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE)
-  %>% mutate(geolevel = "place"))
+  %>% mutate(geolevel = "place"),
+  get_acs(geography = "puma", state = "CA", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE)
+  %>% mutate(geolevel = "puma"),
+  get_acs(geography = "tract", state = "CA", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE)
+  %>% mutate(geolevel = "tract"),
+  get_acs(geography = "zcta", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE) 
+  %>% mutate(geolevel = "zcta") %>% 
+    filter(GEOID %in% list_ca_zctas)) 
 )
 
 # Rename estimate and moe columns to e and m, respectively
@@ -227,15 +235,42 @@ df_wide_multigeo$name <- gsub(" city", "", df_wide_multigeo$name)
 df_wide_multigeo$name <- gsub(" town", "", df_wide_multigeo$name)
 df_wide_multigeo$name <- gsub(" CDP", "", df_wide_multigeo$name)
 
-############## PRE-CALCULATION POPULATION AND/OR CV CHECKS ##############
+
+############## CV CALCS AND EXPORT TO RDA_SHARED_DATA ##############
 
 df <- df_wide_multigeo
 
-### Do population checks and cv checks
-if (!is.na(pop_threshold) & is.na(cv_threshold)) {
-  # if pop_threshold exists and cv_threshold is NA, do pop check but no CV check (doesn't apply to any at this time)
-  # Apply screen(s) to [race]_rate columns (potential screens: CVs > cv_threshold and _pop < pop_threshold)
+### calc cv's
+## Calculate CV values for all rates - store in columns as cv_[race]_rate
+if (!is.na(cv_threshold)){
+  df$total_rate_cv <- ifelse(df$total_rate==0, NA, df$total_rate_moe/1.645/df$total_rate*100)
+  df$asian_rate_cv <- ifelse(df$asian_rate==0, NA, df$asian_rate_moe/1.645/df$asian_rate*100)
+  df$black_rate_cv <- ifelse(df$black_rate==0, NA, df$black_rate_moe/1.645/df$black_rate*100)
+  df$nh_white_rate_cv <- ifelse(df$nh_white_rate==0, NA, df$nh_white_rate_moe/1.645/df$nh_white_rate*100)
+  df$latino_rate_cv <- ifelse(df$latino_rate==0, NA, df$latino_rate_moe/1.645/df$latino_rate*100)
+  df$other_rate_cv <- ifelse(df$other_rate==0, NA, df$other_rate_moe/1.645/df$other_rate*100)
+  df$pacisl_rate_cv <- ifelse(df$pacisl_rate==0, NA, df$pacisl_rate_moe/1.645/df$pacisl_rate*100)
+  df$twoormor_rate_cv <- ifelse(df$twoormor_rate==0, NA, df$twoormor_rate_moe/1.645/df$twoormor_rate*100)
+  df$aian_rate_cv <- ifelse(df$aian_rate==0, NA, df$aian_rate_moe/1.645/df$aian_rate*100)
   
+} 
+### NOTE: THIS PIECE DOESN'T WORK FOR SUBJECT TABLES YET ###
+## Run function to prep and export rda_shared_data table 
+# source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
+# table_schema <- "economic"
+# table_name <- "acs_5yr_s2301_multigeo_2021"
+# table_comment_source <- "ACS 2017-2021 5-Year Estimate Table S2301 https://data.census.gov/cedsci/. State, county, place, PUMA, tract, and ZCTA"
+# df <- get_acs_data(df, table_schema, table_name, table_comment_source) # function to create and export rda_shared_table to postgres db
+# View(df)
+# 
+# # Run function to add column comments
+# colcomments <- get_acs_metadata(df_metadata, table_schema, table_name)
+# View(colcomments)
+
+
+############## PRE-CALCULATION POPULATION AND/OR CV CHECKS ##############
+if (!is.na(pop_threshold) & is.na(cv_threshold)) {
+  # if pop_threshold exists and cv_threshold is NA, do pop check but no CV check (doesn't apply to any at this time, may need to add _raw screens later.)
   ## Screen out low populations
   df$total_rate <- ifelse(df$total_pop < pop_threshold, NA, df$total_rate)
   df$asian_rate <- ifelse(df$asian_pop < pop_threshold, NA, df$asian_rate)
@@ -248,18 +283,7 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
   df$aian_rate <- ifelse(df$aian_pop < pop_threshold, NA, df$aian_rate)
   
 } else if (is.na(pop_threshold) & !is.na(cv_threshold)){
-  # if pop_threshold is NA and cv_threshold exists, check cv only (i.e. only B19301)
-  ## Calculate CV values for all rates - store in columns as cv_[race]_rate
-  df$total_rate_cv <- ifelse(df$total_rate==0, NA, df$total_rate_moe/1.645/df$total_rate*100)
-  df$asian_rate_cv <- ifelse(df$asian_rate==0, NA, df$asian_rate_moe/1.645/df$asian_rate*100)
-  df$black_rate_cv <- ifelse(df$black_rate==0, NA, df$black_rate_moe/1.645/df$black_rate*100)
-  df$nh_white_rate_cv <- ifelse(df$nh_white_rate==0, NA, df$nh_white_rate_moe/1.645/df$nh_white_rate*100)
-  df$latino_rate_cv <- ifelse(df$latino_rate==0, NA, df$latino_rate_moe/1.645/df$latino_rate*100)
-  df$other_rate_cv <- ifelse(df$other_rate==0, NA, df$other_rate_moe/1.645/df$other_rate*100)
-  df$pacisl_rate_cv <- ifelse(df$pacisl_rate==0, NA, df$pacisl_rate_moe/1.645/df$pacisl_rate*100)
-  df$twoormor_rate_cv <- ifelse(df$twoormor_rate==0, NA, df$twoormor_rate_moe/1.645/df$twoormor_rate*100)
-  df$aian_rate_cv <- ifelse(df$aian_rate==0, NA, df$aian_rate_moe/1.645/df$aian_rate*100)
-  
+  # if pop_threshold is NA and cv_threshold exists, check cv only (i.e. only B19301). As of now, the only table that uses this does not have _raw values, may need to add _raw screens later.
   ## Screen out rates with high CVs
   df$total_rate <- ifelse(df$total_rate_cv > cv_threshold, NA, df$total_rate)
   df$asian_rate <- ifelse(df$asian_rate_cv > cv_threshold, NA, df$asian_rate)
@@ -273,17 +297,6 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
   
 } else if (!is.na(pop_threshold) & !is.na(cv_threshold)){
   # if pop_threshold exists and cv_threshold exists, check population and cv (i.e. B25003, S2301, S2802, S2701, B25014)
-  ## Calculate CV values for all rates - store in columns as cv_[race]_rate
-  df$total_rate_cv <- ifelse(df$total_rate==0, NA, df$total_rate_moe/1.645/df$total_rate*100)
-  df$asian_rate_cv <- ifelse(df$asian_rate==0, NA, df$asian_rate_moe/1.645/df$asian_rate*100)
-  df$black_rate_cv <- ifelse(df$black_rate==0, NA, df$black_rate_moe/1.645/df$black_rate*100)
-  df$nh_white_rate_cv <- ifelse(df$nh_white_rate==0, NA, df$nh_white_rate_moe/1.645/df$nh_white_rate*100)
-  df$latino_rate_cv <- ifelse(df$latino_rate==0, NA, df$latino_rate_moe/1.645/df$latino_rate*100)
-  df$other_rate_cv <- ifelse(df$other_rate==0, NA, df$other_rate_moe/1.645/df$other_rate*100)
-  df$pacisl_rate_cv <- ifelse(df$pacisl_rate==0, NA, df$pacisl_rate_moe/1.645/df$pacisl_rate*100)
-  df$twoormor_rate_cv <- ifelse(df$twoormor_rate==0, NA, df$twoormor_rate_moe/1.645/df$twoormor_rate*100)
-  df$aian_rate_cv <- ifelse(df$aian_rate==0, NA, df$aian_rate_moe/1.645/df$aian_rate*100)
-  
   ## Screen out rates with high CVs and low populations
   df$total_rate <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_rate))
   df$asian_rate <- ifelse(df$asian_rate_cv > cv_threshold, NA, ifelse(df$asian_pop < pop_threshold, NA, df$asian_rate))
@@ -317,8 +330,8 @@ df <- select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), en
 ############## CALC RACE COUNTS STATS ##############
 
 #set source for RC Functions script
-source("W:/Project/RACE COUNTS/2022_v4/RaceCounts/RC_Functions.R")
-d <- df
+source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
+d <- df[df$geolevel %in% c('state', 'county', 'place'), ]
 
 if (table_code != "DP05") {
   
@@ -351,13 +364,13 @@ if (table_code != "DP05") {
   View(county_table)
   
   
-  # #calculate CITY z-scores
-  # city_table <- calc_z(city_table)
-  # 
-  # ## Calc city ranks##
-  # city_table <- calc_ranks(city_table)
-  # View(county_table)
+  #calculate CITY z-scores
+  city_table <- calc_z(city_table)
   
+  ## Calc city ranks##
+  city_table <- calc_ranks(city_table)
+  View(city_table)
+
   #rename geoid to state_id, county_id, city_id
   colnames(state_table)[1:2] <- c("state_id", "state_name")
   colnames(county_table)[1:2] <- c("county_id", "county_name")
@@ -367,23 +380,24 @@ if (table_code != "DP05") {
   # ############## NON-DP05 ----- SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
   
   ###update info for postgres tables###
-  county_table_name <- "arei_econ_employment_county_2022"            # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
-  state_table_name <- "arei_econ_employment_state_2022"              # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
-  #city_table_name <- "arei_econ_employment_city_2022"               # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
-  indicator <- "Employment to Population Rate (%)"                        # See Indicator Methodology 2021 for indicator description
-  source <- "2016-2020 ACS 5-Year Estimates, Table S2301, https://data.census.gov/cedsci/"   # See Indicator Methodology 2021 for source info
-  
+  county_table_name <- "arei_econ_employment_county_2023"            # See most recent RC Workflow SQL Views for table name (remember to update year)
+  state_table_name <- "arei_econ_employment_state_2023"              # See most recent RC Workflow SQL Views for table name (remember to update year)
+  city_table_name <- "arei_econ_employment_city_2023"               # See most recent RC Workflow SQL Views for table name (remember to update year)
+  indicator <- "Employment to Population Rate (%)"                        # See most recent Indicator Methodology for indicator description
+  source <- "2017-2021 ACS 5-Year Estimates, Table S2301, https://data.census.gov/cedsci/"   # See most recent Indicator Methodology for source info
+  rc_schema <- "v5"
   
 } else {
   
   # ############## DPO5 ONLY ----- SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
   county_table <- d
   ###update info for postgres tables###
-  county_table_name <- "arei_race_county_2022"      # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
-  indicator <- "County and State population by race/ethnicity for RC Place page"        # See Indicator Methodology 2021 for indicator description
-  source <- "ACS 2016-2020, Table DP05. All AIAN, All NHPI, All Latinx, all other groups are one race alone and non-Latinx."   # See Indicator Methodology 2021 for source info
-  
+  county_table_name <- "arei_race_county_2023"      # See most recent RC Workflow SQL Views for table name (remember to update year)
+  indicator <- "County and State population by race/ethnicity for RC Place page"        # See most recent Indicator Methodology for indicator description
+  source <- "ACS 2017-2021, Table DP05. All AIAN, All NHPI, All Latinx, all other groups are one race alone and non-Latinx."   # See most recent Indicator Methodology for source info
+  rc_schema <- "v5"
 }
 
 ####### SEND TO POSTGRES #######
-#to_postgres()
+to_postgres(county_table,state_table)
+#city_to_postgres()
