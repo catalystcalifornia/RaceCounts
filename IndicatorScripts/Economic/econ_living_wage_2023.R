@@ -1,4 +1,4 @@
-### Living Wage RC v4###
+### Living Wage RC v5###
 
 #Load libraries
 library(data.table)
@@ -29,9 +29,10 @@ crosswalk <- st_read(con, query = "select county_id AS geoid, county_name AS geo
 root <- "W:/Data/Demographics/PUMS/"
 
 ## Load the people PUMS data
-ppl <- fread(paste0(root, "CA_2016_2020/psam_p06.csv"), header = TRUE, data.table = FALSE, 
+ppl <- fread(paste0(root, "CA_2017_2021/psam_p06.csv"), header = TRUE, data.table = FALSE, 
              colClasses = list(character = c("PUMA", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH", "AGEP", "ADJINC","WAGP","PERNP", "COW", "WKHP","WKW","WKL", "ESR","WRK","WKWN")))
 
+             
 ## Add state_geoid to ppl, add state_geoid to PUMA id, so it aligns with crosswalks.puma_county_2020
 ppl$state_geoid <- "06"
 ppl$puma_id <- paste0(ppl$state_geoid, ppl$PUMA)
@@ -43,7 +44,8 @@ repwlist = rep(paste0("PWGTP", 1:80))
 ## use left join function
 ppl <- left_join(ppl, crosswalk, by=c("puma_id" = "puma"))    # specify the field join
 
-####### Data Dictionary: W:\Data\Demographics\PUMS\CA_2016_2020\PUMS_Data_Dictionary_2016-2020.pdf #######
+
+####### Data Dictionary: W:\Data\Demographics\PUMS\CA_2017_2021\PUMS_Data_Dictionary_2017-2021.pdf #######
 
 ####### Load RC PUMS Functions #######
 source("W:/RDA Team/R/Functions/PUMS_Functions.R")
@@ -59,12 +61,12 @@ ppl <- race_reclass(ppl)
 
 # review data 
 # View(ppl[c("RT","SERIALNO","RAC1P","HISP","latino", "race","RACAIAN", "aian", "RACNH","RACPI","pacisl")])
-  # table(ppl$race, useNA = "always")
-  # table(ppl$race, ppl$latino, useNA = "always")
-  # table(ppl$race, ppl$aian, useNA = "always")
-  # table(ppl$race, ppl$pacisl, useNA = "always")
-  # #table(ppl$aian, useNA = "always")
-  # #table(ppl$pacisl, useNA = "always")
+# table(ppl$race, useNA = "always")
+# table(ppl$race, ppl$latino, useNA = "always")
+# table(ppl$race, ppl$aian, useNA = "always")
+# table(ppl$race, ppl$pacisl, useNA = "always")
+# #table(ppl$aian, useNA = "always")
+# #table(ppl$pacisl, useNA = "always")
 
 # save copy unadultered prior to filtering
 ppl_orig <- ppl
@@ -101,11 +103,11 @@ ppl$wkly_hrs <- as.integer(ppl$WKHP)
 
 ## average number of weeks worked in past 12 months for each value 1-6: WKW pre-2019 data
 ppl$wks_worked_avg <- as.numeric(ifelse(ppl$WKW == 1, 51,
-                                   ifelse(ppl$WKW == 2, 48.5,
-                                          ifelse(ppl$WKW == 3, 43.5,
-                                                 ifelse(ppl$WKW == 4, 33,
-                                                        ifelse(ppl$WKW == 5, 20, 
-                                                               ifelse(ppl$WKW == 6, 7, 0)))))))
+                                        ifelse(ppl$WKW == 2, 48.5,
+                                               ifelse(ppl$WKW == 3, 43.5,
+                                                      ifelse(ppl$WKW == 4, 33,
+                                                             ifelse(ppl$WKW == 5, 20, 
+                                                                    ifelse(ppl$WKW == 6, 7, 0)))))))
 
 ## create final weeks worked variable using WKWN variable for 2019 or later
 ppl$wks_worked <- as.numeric(ifelse(ppl$WKWN>=1, ppl$WKWN, ppl$wks_worked_avg))
@@ -200,10 +202,10 @@ ppl$indicator <- as.factor(ppl$living_wage)
 ############### CALC COUNTY AND STATE ESTIMATES/CVS ETC. ############### 
 # Define indicator and weight variables for function
 # You must use to WGTP (if you are using psam_h06.csv and want housing units, like for Low Quality Housing) or PWGTP (if you want person units, like for Connected Youth)
-  key_indicator <- 'livable'  # update this to the indicator you are working with
-  weight <- 'PWGTP' 
-  # You must specify the population base you want to use for the rate calc. Ex. 100 for percents, or 1000 for rate per 1k.
-  pop_base <- 100
+key_indicator <- 'livable'  # update this to the indicator you are working with
+weight <- 'PWGTP' 
+# You must specify the population base you want to use for the rate calc. Ex. 100 for percents, or 1000 for rate per 1k.
+pop_base <- 100
 rc_state <- state_pums(ppl)
 View(rc_state)
 
@@ -213,9 +215,9 @@ View(rc_county)
 
 ############ COMBINE & SCREEN COUNTY/STATE DATA ############# 
 # Define threshold variables for function
-  cv_threshold <- 30          # threshold and CV must be displayed as a percentage (not decimal)
-  raw_rate_threshold <- 0
-  pop_threshold <- 400
+cv_threshold <- 30          # threshold and CV must be displayed as a percentage (not decimal)
+raw_rate_threshold <- 0
+pop_threshold <- 400
 
 screened <- pums_screen(rc_state, rc_county)
 View(screened)
@@ -225,7 +227,7 @@ d <- screened
 
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source("W:/Project/RACE COUNTS/2022_v4/RaceCounts/RC_Functions.R")
+source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
 
@@ -255,14 +257,13 @@ county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "count
 View(county_table)
 
 ###update info for postgres tables###
-county_table_name <- "arei_econ_living_wage_county_2022"
-state_table_name <- "arei_econ_living_wage_state_2022"
-indicator <- "Percent of workers earning above living wage for 2023 ($15.50). Includes workers ages 18-64 who were at work last week or were employed but not at work. Excludes those with zero earnings and self-employed or unpaid family workers. PUMAs contained by 1 county and PUMAs with 60%+ of their area contained by 1 county are included in the calcs. We also screened by pop (400) and CV (30%). White, Black, Asian, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN and NHPI are Latinx-inclusive so they are also included in Latinx counts. AIAN and NHPI include AIAN and NHPI Alone and in Combo, so non-Latinx AIAN and NHPI in combo are also included in Two or More."
-source <- "ACS PUMS (2016-2020)"
-
+county_table_name <- "arei_econ_living_wage_county_2023"
+state_table_name <- "arei_econ_living_wage_state_2023"
+indicator <- "Percent of workers earning above living wage for 2023 ($15.50). Includes workers ages 18-64 who were at work last week or were employed but not at work.  Excludes those with zero earnings and self-employed or unpaid family workers. PUMAs contained by 1 county and PUMAs with 60%+ of their area contained by 1 county are included in the calcs. We also screened by pop (400) and CV (30%). White, Black, Asian, Other are one race alone and Latinx-exclusive.Two or More is Latinx-exclusive. AIAN and NHPI are Latinx-inclusive so they are also included in Latinx counts. AIAN and NHPI include AIAN and NHPI Alone and in Combo, so non-Latinx AIAN and NHPI in combo are also included in Two or More."
+source <- "ACS PUMS (2017-2021)"
+rc_schema <- "v5"
 
 #send tables to postgres
 to_postgres()
-
 
 
