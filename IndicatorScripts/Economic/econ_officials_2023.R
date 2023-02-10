@@ -151,6 +151,7 @@ county_table_name <- "arei_econ_officials_county_2023"
 state_table_name <- "arei_econ_officials_state_2023"
 indicator <- "Number of Officials & Managers per 1k People by Race. Only people ages 18-64 who are in the labor force are included. PUMAs contained by 1 county and PUMAs with 60%+ of their area contained by 1 county are included in the calcs, we also screened by pop and CV. White, Black, Asian, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN and NHPI are Latinx-inclusive so they are also included in Latinx counts. AIAN and NHPI include AIAN and NHPI Alone and in Combo, so non-Latinx AIAN and NHPI in combo are also included in Two or More. This data is"
 source <- "ACS PUMS (2017-2021)"
+rc_schema <- "v5"
 
 
 #send tables to postgres
