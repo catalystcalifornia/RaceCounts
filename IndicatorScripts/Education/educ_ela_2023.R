@@ -1,41 +1,61 @@
 # #install packages if not already installed ------------------------------
-list.of.packages <- c("readr", "DBI", "tidyr","dplyr","RPostgreSQL","tidycensus")
+list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 
 if(length(new.packages)) install.packages(new.packages)
-library(readr)
-library(DBI)
 library(dplyr)
 library(tidyr)
+library(DBI)
 library(RPostgreSQL)
 library(tidycensus)
-# setwd("W:/Project/RACE COUNTS/2022_v4/Education/R/")
-# metadata: https://caaspp-elpac.cde.ca.gov/caaspp/research_fixfileformatSB21
+library(sf)
+library(tidyverse) # to scrape metadata table from cde website
+#library(rvest) # to scrape metadata table from cde website
+library(stringr) # cleaning up data
 
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
-############### PREP DATA ########################
 
-url = "https://caaspp-elpac.cde.ca.gov/caaspp/researchfiles/sb_ca2021_all_ascii_v2.zip"
-zipfile = "W:\\Data\\Education\\CAASPP\\2020-21\\sb_ca2021_all_ascii_v2.zip"
-file = "W:\\Data\\Education\\CAASPP\\2020-21\\sb_ca2021_all_ascii_v2.txt"
-exdir = "W:\\Data\\Education\\CAASPP\\2020-21"
+############### PREP RDA_SHARED_DATA TABLE ########################
+
+## Manually define test data download site, file names, file location etc.
+url = "https://caaspp-elpac.ets.org/caaspp/researchfiles/sb_ca2022_all_ascii_v2.zip"
+zipfile = "W:\\Data\\Education\\CAASPP\\2021-22\\sb_ca2022_all_ascii_v1.zip"
+file = "W:\\Data\\Education\\CAASPP\\2021-22\\sb_ca2022_all_ascii_v1.txt"
+exdir = "W:\\Data\\Education\\CAASPP\\2021-22"
+
+## Manually define entities data download site, file names, file location etc.
+url2 = "https://caaspp-elpac.ets.org/caaspp/researchfiles/sb_ca2022entities_ascii.zip"
+zipfile2 = "W:\\Data\\Education\\CAASPP\\2021-22\\sb_ca2022entities_ascii.zip"
+file2 = "W:\\Data\\Education\\CAASPP\\2021-22\\sb_ca2022entities_ascii.txt"
+
+## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+fieldtype = c(1:5,8,9,31) # specify which cols should be varchar, the rest will be assigned numeric - this may NOT match metadata table
+table_schema <- "education"
+table_name <- "caaspp_multigeo_school_research_file_reformatted_2021_22"
+table_comment_source <- "Downloaded from https://caaspp-elpac.ets.org/caaspp/ResearchFileListSB?ps=true&lstTestYear=2022&lstTestType=B&lstCounty=00&lstDistrict=00000. File layout: https://caaspp-elpac.cde.ca.gov/caaspp/research_fixfileformat19."
+table_source <- "Wide data format, multigeo table with state, county, district, and school"
+
+source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
+df <- get_caaspp_data(url, zipfile, file, url2, zipfile2, file2, exdir)
+head(df)
 
 
-# #Download and unzip data ------------------------------------------------
-if(!file.exists(zipfile)) { download.file(url=url, destfile=zipfile) } 
-if(!file.exists(file)) { unzip(zipfile, exdir = exdir) } 
+
+############################
+if(!file.exists(file)) { download.file(url=url, destfile=zipfile) } # download file ONLY if it is not already in exdir
+if(!file.exists(file)) { unzip(zipfile, exdir = exdir) }
 
 #Read in data
 all_student_groups <- read_fwf(file, na = c("*", ""),
                                fwf_widths(c(14,4,4,3,1,7,7,2,2,7,7,6,6,6,6,6,6,7,6,6,6,6,6,6,6,6,6,6,6,6,2),
                                           col_names = c("cdscode","filler","test_year","student_grp_id",
-                                                        "test_type","total_tested_at_reporting_level","total_tested_with_scores",	
-                                                        "grade","test_id","students_enrolled","students_tested","mean_scale_score",	
+                                                        "test_type","total_tested_at_reporting_level","total_tested_with_scores",
+                                                        "grade","test_id","students_enrolled","students_tested","mean_scale_score",
                                                         "percentage_standard_exceeded","percentage_standard_met","percentage_standard_met_and_above",
-                                                        "percentage_standard_nearly_met","percentage_standard_not_met","students_with_scores",	
+                                                        "percentage_standard_nearly_met","percentage_standard_not_met","students_with_scores",
                                                         "area_1_percentage_above_standard","area_1_percentage_near_standard","area_1_percentage_below_standard",
                                                         "area_2_percentage_above_standard","area_2_percentage_near_standard","area_2_percentage_below_standard",
                                                         "area_3_percentage_above_standard","area_3_percentage_near_standard","area_3_percentage_below_standard",
@@ -44,12 +64,7 @@ all_student_groups <- read_fwf(file, na = c("*", ""),
 
 all_student_groups <- all_student_groups %>% select(-c(filler))
 
-#Download and unzip school entities
-url = "https://caaspp-elpac.cde.ca.gov/caaspp/researchfiles/sb_ca2021entities_ascii.zip"
-zipfile2 = "W:\\Data\\Education\\CAASPP\\2020-21\\sb_ca2021entities_ascii.zip"
-file2 = "W:\\Data\\Education\\CAASPP\\2020-21\\sb_ca2021entities_ascii.txt"
-
-if(!file.exists(zipfile2)) { download.file(url=url, destfile=zipfile2) } 
+if(!file.exists(file2)) { download.file(url=url2, destfile=zipfile2) } # download file ONLY if it is not already in exdir
 if(!file.exists(file2)) { unzip(zipfile2, exdir = exdir) } 
 
 #Read in entities
@@ -60,11 +75,41 @@ df <-left_join(x=all_student_groups,y=entities,by= c("cdscode", "test_year", "ty
   select(cdscode, everything())
 df <- df %>% dplyr::relocate(geoname, .after = cdscode)
 
+
+## from get_cde_data
+#format column names
+#Encoding(df$schoolname) <- "ISO 8859-1"  # added this piece in 2023 script bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+#Encoding(df$districtname) <- "ISO 8859-1"  # added this piece in 2023 script bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+# 
+#  WRITE TABLE TO POSTGRES DB
+
+#make character vector for field types in postgres table
+charvect = rep('numeric', dim(df)[2])
+charvect[fieldtype] <- "varchar" # specify which cols are varchar, the rest will be numeric
+
+#add names to the character vector
+names(charvect) <- colnames(df)
+
+ dbWriteTable(con, c(table_schema, table_name), df, 
+              overwrite = FALSE, row.names = FALSE,
+              field.types = charvect)
+ 
+ # write comment to table, and the first three fields that won't change.
+ table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
+ 
+ # send table comment to database
+ dbSendQuery(conn = con, table_comment)      			
+
+
+
+##############################
+
+
 # #join data to entities --------------------------------------------------
-df <- rename(df, rate = percentage_standard_met_and_above, pop = students_with_scores, race = student_grp_id)
+df_subset <- df %>% rename(df, rate = percentage_standard_met_and_above, pop = students_with_scores, race = student_grp_id)
 
 # Filter for 3rd grade, Math test, race/ethnicity subgroups, county/state level 
-df_subset <- df %>% filter(grade == "03" & test_id == "01" & race %in% c("001","074","075","076","077","078","079","080","144")
+df_subset <- df_subset %>% filter(grade == "03" & test_id == "01" & race %in% c("001","074","075","076","077","078","079","080","144")
                            & type_id %in% c("04", "05")) %>%    
   
   

@@ -1,5 +1,5 @@
 #install packages if not already installed
-list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse")
+list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
@@ -13,8 +13,6 @@ library(sf)
 library(tidyverse) # to scrape metadata table from cde website
 #library(rvest) # to scrape metadata table from cde website
 library(stringr) # cleaning up data
-
-# setwd("W:/Project/RACE COUNTS/2022_v5/Education/R/")
 
 
 # create connection for rda database
