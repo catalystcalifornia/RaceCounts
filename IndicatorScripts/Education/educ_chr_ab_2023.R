@@ -1,5 +1,5 @@
 #install packages if not already installed
-list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr")
+list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
@@ -13,6 +13,7 @@ library(sf)
 library(tidyverse) # to scrape metadata table from cde website
 #library(rvest) # to scrape metadata table from cde website
 library(stringr) # cleaning up data
+library(usethis) # connect to github
 
 
 # create connection for rda database
@@ -41,6 +42,7 @@ con <- connect_to_db("rda_shared_data")
 ## Run function to add rda_shared_data column comments
 # See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
 url <-  "https://www.cde.ca.gov/ds/ad/fsabd.asp"   # define webpage with metadata
+html_nodes <- "table"
 colcomments <- get_cde_metadata(url, table_schema, table_name)
 View(colcomments)
 
