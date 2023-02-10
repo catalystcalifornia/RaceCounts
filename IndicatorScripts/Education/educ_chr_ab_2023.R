@@ -41,6 +41,7 @@ con <- connect_to_db("rda_shared_data")
 ## Run function to add rda_shared_data column comments
 # See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
 url <-  "https://www.cde.ca.gov/ds/ad/fsabd.asp"   # define webpage with metadata
+html_nodes <- "table"
 colcomments <- get_cde_metadata(url, table_schema, table_name)
 View(colcomments)
 

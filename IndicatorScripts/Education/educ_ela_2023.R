@@ -1,5 +1,5 @@
 # #install packages if not already installed ------------------------------
-list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr")
+list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 
 if(length(new.packages)) install.packages(new.packages)
@@ -12,6 +12,7 @@ library(sf)
 library(tidyverse) # to scrape metadata table from cde website
 #library(rvest) # to scrape metadata table from cde website
 library(stringr) # cleaning up data
+library(usethis) # connect to github
 
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
@@ -42,70 +43,22 @@ source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
 df <- get_caaspp_data(url, zipfile, file, url2, zipfile2, file2, exdir)
 head(df)
 
-
-
-############################
-if(!file.exists(file)) { download.file(url=url, destfile=zipfile) } # download file ONLY if it is not already in exdir
-if(!file.exists(file)) { unzip(zipfile, exdir = exdir) }
-
-#Read in data
-all_student_groups <- read_fwf(file, na = c("*", ""),
-                               fwf_widths(c(14,4,4,3,1,7,7,2,2,7,7,6,6,6,6,6,6,7,6,6,6,6,6,6,6,6,6,6,6,6,2),
-                                          col_names = c("cdscode","filler","test_year","student_grp_id",
-                                                        "test_type","total_tested_at_reporting_level","total_tested_with_scores",
-                                                        "grade","test_id","students_enrolled","students_tested","mean_scale_score",
-                                                        "percentage_standard_exceeded","percentage_standard_met","percentage_standard_met_and_above",
-                                                        "percentage_standard_nearly_met","percentage_standard_not_met","students_with_scores",
-                                                        "area_1_percentage_above_standard","area_1_percentage_near_standard","area_1_percentage_below_standard",
-                                                        "area_2_percentage_above_standard","area_2_percentage_near_standard","area_2_percentage_below_standard",
-                                                        "area_3_percentage_above_standard","area_3_percentage_near_standard","area_3_percentage_below_standard",
-                                                        "area_4_percentage_above_standard","area_4_percentage_near_standard","area_4_percentage_below_standard",
-                                                        "type_id")))
-
-all_student_groups <- all_student_groups %>% select(-c(filler))
-
-if(!file.exists(file2)) { download.file(url=url2, destfile=zipfile2) } # download file ONLY if it is not already in exdir
-if(!file.exists(file2)) { unzip(zipfile2, exdir = exdir) } 
-
-#Read in entities
-entities <- read_fwf(file2, fwf_widths(c(14,4,4,2,50), col_names = c("cdscode","filler","test_year","type_id", "geoname")))
-entities <- entities %>% select(-c(filler))
-
-df <-left_join(x=all_student_groups,y=entities,by= c("cdscode", "test_year", "type_id")) %>%
-  select(cdscode, everything())
-df <- df %>% dplyr::relocate(geoname, .after = cdscode)
-
-
-## from get_cde_data
-#format column names
-#Encoding(df$schoolname) <- "ISO 8859-1"  # added this piece in 2023 script bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
-#Encoding(df$districtname) <- "ISO 8859-1"  # added this piece in 2023 script bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
-# 
-#  WRITE TABLE TO POSTGRES DB
-
-#make character vector for field types in postgres table
-charvect = rep('numeric', dim(df)[2])
-charvect[fieldtype] <- "varchar" # specify which cols are varchar, the rest will be numeric
-
-#add names to the character vector
-names(charvect) <- colnames(df)
-
- dbWriteTable(con, c(table_schema, table_name), df, 
-              overwrite = FALSE, row.names = FALSE,
-              field.types = charvect)
- 
- # write comment to table, and the first three fields that won't change.
- table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
- 
- # send table comment to database
- dbSendQuery(conn = con, table_comment)      			
+## Run function to add rda_shared_data column comments
+# See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
+url <-  "https://caaspp-elpac.ets.org/caaspp/ResearchFileFormatSB?ps=true&lstTestYear=2022&lstTestType=B"   # define webpage with metadata
+html_nodes <- xpath='//*[@id="MainContent_divResearchFileLayout2022"]/h2'     # define as "table" if only 1 table on a page, or follow instructions here to get xpath when there is more than 1 table on the page: https://www.r-bloggers.com/2015/01/using-rvest-to-scrape-an-html-table/
+colcomments <- get_cde_metadata(url, html_nodes, table_schema, table_name)
+View(colcomments)
 
 
 
-##############################
 
 
-# #join data to entities --------------------------------------------------
+
+
+
+
+###### PREP FOR RC FUNCTIONS #######
 df_subset <- df %>% rename(df, rate = percentage_standard_met_and_above, pop = students_with_scores, race = student_grp_id)
 
 # Filter for 3rd grade, Math test, race/ethnicity subgroups, county/state level 
