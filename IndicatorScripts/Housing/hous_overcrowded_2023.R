@@ -1,4 +1,4 @@
-# B25014: Overcrowded Housing for RC v4
+# B25014: Overcrowded Housing for RC v5
 
 library(tidyr)
 library(stringr)
@@ -6,21 +6,22 @@ library(tidycensus)
 library(dplyr)
 library(DBI)
 library(RPostgreSQL)
+library(sf)
 
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
-# API Call Info - Shouldn't need to change until next year
-yr = 2020
+# API Call Info - Change each year
+yr = 2021
 srvy = "acs5"
 
 ############## UPDATE FOR SPECIFIC INDICATOR HERE ##############
 
-table_code = "B25014"     # YOU MUST UPDATE based on Indicator Methodology 2021 or RC 2022 Workflow/Cnty-State Indicator Tracking
+table_code = "B25014"     # YOU MUST UPDATE based on most recent Indicator Methodology or Workflow/Cnty-State Indicator Tracking
 dataset = "acs5"         # YOU MUST UPDATE: "acs5/subject" for subject ("S") tables OR "acs5/profile" for data profile ("DP") tables OR "acs5" for detailed ("B") tables
-cv_threshold = 40         # YOU MUST UPDATE based on Indicator Methodology 2021
-pop_threshold = 100        # YOU MUST UPDATE based on Indicator Methodology 2021 or set to NA B19301
+cv_threshold = 40         # YOU MUST UPDATE based on most recent Indicator Methodology
+pop_threshold = 100        # YOU MUST UPDATE based on most recent Indicator Methodology or set to NA B19301
 asbest = 'min'            # YOU MUST UPDATE based on indicator, set to 'min' if S2701 or B25014
 
 ############## PULL DATA FROM CENSUS API ##############
@@ -45,7 +46,16 @@ df <- do.call(rbind.data.frame, list(
   get_acs(geography = "county", state = "CA", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE)
   %>% mutate(geolevel = "county"),
   get_acs(geography = "place", state = "CA", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE)
-  %>% mutate(geolevel = "place"))
+  %>% mutate(geolevel = "place"),
+  get_acs(geography = "puma", state = "CA", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE)
+  %>% mutate(geolevel = "puma"),
+  get_acs(geography = "tract", state = "CA", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE)
+  %>% mutate(geolevel = "tract"),
+  get_acs(geography = "zcta", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE) 
+  %>% mutate(geolevel = "zcta") 
+  # %>% 
+  #   filter(GEOID %in% list_ca_zctas)
+) 
 )
 
 # Rename estimate and moe columns to e and m, respectively
@@ -366,7 +376,7 @@ if (startsWith(table_code, "DP05")) {
   df_wide_multigeo <- df_wide_multigeo %>%
     rename_with(~ new_names[which(old_names == .x)], .cols = old_names)
   
-  # drop total_rate (same value as total_pop) & drop _moe values: these fields are not needed for arei_race_county_2022
+  # drop total_rate (same value as total_pop) & drop _moe values: these fields are not needed for arei_race_county_2023
   df_wide_multigeo <- select(df_wide_multigeo, -ends_with("_moe"), -ends_with("_rate"))
 }
 
@@ -473,8 +483,9 @@ df <- select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), en
 ############## CALCULATE RACE COUNTS STATS AND SEND FINAL TABLES TO POSTGRES##############
 
 #set source for RC Functions script
-source("W:/Project/RACE COUNTS/2022_v4/RaceCounts/RC_Functions.R")
-d <- df
+source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
+d <- df[df$geolevel %in% c('state', 'county', 'place'), ]
+
 
 if (table_code != "DP05") {
 
@@ -496,7 +507,7 @@ if (table_code != "DP05") {
   city_table <- d[d$geolevel == 'place', ]
 
   #calculate STATE z-scores
-  state_table <- calc_state_z(state_table)
+  state_table <- calc_state_z(state_table) %>% select(-c(geolevel))
   View(state_table)
 
   #calculate COUNTY z-scores
@@ -507,12 +518,12 @@ if (table_code != "DP05") {
   View(county_table)
 
 
-  # #calculate CITY z-scores
-  # city_table <- calc_z(city_table)
-  #
-  # ## Calc city ranks##
-  # city_table <- calc_ranks(city_table)
-  # View(city_table)
+  #calculate CITY z-scores
+  city_table <- calc_z(city_table)
+
+  ## Calc city ranks##
+  city_table <- calc_ranks(city_table)
+  View(city_table)
   
   #rename geoid to state_id, county_id, city_id
   colnames(state_table)[1:2] <- c("state_id", "state_name")
@@ -522,14 +533,14 @@ if (table_code != "DP05") {
   # ############## NON-DP05 ----- SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
 
   ###update info for postgres tables###
-  county_table_name <- "arei_hous_overcrowded_county_2022"      # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
-  state_table_name <- "arei_hous_overcrowded_state_2022"        # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
-  #city_table_name <- "arei_hous_overcrowded_city_2022"         # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
-  indicator <- "Overcrowded Housing Units (%) (> 1 person per room)"                         # See Indicator Methodology 2021 for indicator description
-  source <- "2016-2020 ACS 5-Year Estimates, Tables B25014B-I, https://data.census.gov/cedsci/"   # See Indicator Methodology 2021 for source info
-
+  county_table_name <- "arei_hous_overcrowded_county_2023"      # See most recent RC Workflow SQL Views for table name (remember to update year)
+  state_table_name <- "arei_hous_overcrowded_state_2023"        # See most recent RC Workflow SQL Views for table name (remember to update year)
+  city_table_name <- "arei_hous_overcrowded_city_2023"         # See most recent RC Workflow SQL Views for table name (remember to update year)
+  indicator <- "Overcrowded Housing Units (%) (> 1 person per room)"                         # See most recent Indicator Methodology for indicator description
+  source <- "2017-2021 ACS 5-Year Estimates, Tables B25014B-I, https://data.census.gov/cedsci/"   # See most recent Indicator Methodology for source info
+  rc_schema <- "v5"
   #send tables to postgres COMMENTED OUT FOR QA
-  to_postgres()
+  # to_postgres()
   # # to_postgres(county_table)
   # # to_postgres(state_table)
   # # add in city to_postgres function once it's written
@@ -539,13 +550,18 @@ if (table_code != "DP05") {
   # ############## DPO5 ONLY ----- SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
   county_table <- d
   ###update info for postgres tables###
-  county_table_name <- "arei_race_county_2022"      # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
-  indicator <- "County and State population by race/ethnicity for RC Place page"        # See Indicator Methodology 2021 for indicator description
-  source <- "ACS 2016-2020, Table DP05. All AIAN, All NHPI, All Latinx, all other groups are one race alone and non-Latinx."   # See Indicator Methodology 2021 for source info
-
+  county_table_name <- "arei_race_county_2023"      # See most recent RC Workflow SQL Views for table name (remember to update year)
+  indicator <- "County and State population by race/ethnicity for RC Place page"        # See most recent Indicator Methodology for indicator description
+  source <- "ACS 2017-2021, Table DP05. All AIAN, All NHPI, All Latinx, all other groups are one race alone and non-Latinx."   # See most recent Indicator Methodology for source info
+  rc_schema <- "v5"
   #send tables to postgres COMMENTED OUT FOR QA
   # to_postgres(county_table)
 }
+
+
+####### SEND TO POSTGRES #######
+to_postgres(county_table,state_table)
+#city_to_postgres()
   
 ############## CHECK COVERAGE WITH CV_THRESHOLD = 40 AND POP_THRESHOLD = 100##############
 # coverage_cv40_pop100 <- county_table %>%
