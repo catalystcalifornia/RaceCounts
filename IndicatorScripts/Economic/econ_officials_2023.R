@@ -1,4 +1,4 @@
-### Officials & Managers RC v4 ###
+### Officials & Managers RC v5 ###
 
 #Load libraries
 library(data.table)
@@ -117,7 +117,7 @@ d <- screened
 
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source("W:/Project/RACE COUNTS/2022_v4/RaceCounts/RC_Functions.R")
+source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
 
@@ -147,8 +147,8 @@ county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "count
 View(county_table)
 
 ###update info for postgres tables###
-county_table_name <- "arei_econ_officials_county_2022"
-state_table_name <- "arei_econ_officials_state_2022"
+county_table_name <- "arei_econ_officials_county_2023"
+state_table_name <- "arei_econ_officials_state_2023"
 indicator <- "Number of Officials & Managers per 1k People by Race. Only people ages 18-64 who are in the labor force are included. PUMAs contained by 1 county and PUMAs with 60%+ of their area contained by 1 county are included in the calcs, we also screened by pop and CV. White, Black, Asian, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN and NHPI are Latinx-inclusive so they are also included in Latinx counts. AIAN and NHPI include AIAN and NHPI Alone and in Combo, so non-Latinx AIAN and NHPI in combo are also included in Two or More. This data is"
 source <- "ACS PUMS (2017-2021)"
 
