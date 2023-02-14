@@ -56,7 +56,7 @@ View(colcomments)
 df_subset <- rename(df, rate = percentage_standard_met_and_above, pop = students_with_scores, race = student_grp_id)
 
 # Filter for 3rd grade, Math test, race/ethnicity subgroups, county/state level 
-df_subset <- df_subset %>% filter(grade == "03" & test_id == "01" & race %in% c("001","074","075","076","077","078","079","080","144")
+df_subset <- df_subset %>% filter(grade == "03" & test_id == "02" & race %in% c("001","074","075","076","077","078","079","080","144")
                            & type_id %in% c("04", "05")) %>%    
 
   ## calc raw/rate and screen ---------------------------------------------------------
@@ -139,12 +139,12 @@ county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "count
 View(county_table)
 
 ###update info for postgres tables###
-county_table_name <- "arei_educ_gr3_ela_scores_county_2023"
-state_table_name <- "arei_educ_gr3_ela_scores_state_2023"
-#city_table_name <- "arei_educ_gr3_ela_scores_district_2023"
+county_table_name <- "arei_educ_gr3_math_scores_county_2023"
+state_table_name <- "arei_educ_gr3_math_scores_state_2023"
+#city_table_name <- "arei_educ_gr3_math_scores_district_2023"
 rc_schema <- "v5"
 
-indicator <- "Students scoring proficient or better on 3rd grade English Language Arts (%)"
+indicator <- "Students scoring proficient or better on 3rd grade Math (%)"
 source <- "CAASPP 2021-22 https://caaspp-elpac.ets.org/caaspp/ResearchFileListSB?ps=true&lstTestYear=2022&lstTestType=B&lstCounty=00&lstDistrict=00000"
 
 #send tables to postgres
