@@ -1,4 +1,4 @@
-# #install packages if not already installed ------------------------------
+##install packages if not already installed ------------------------------
 list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 
@@ -45,34 +45,27 @@ head(df)
 
 ## Run function to add rda_shared_data column comments
 # See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
-url <-  "https://caaspp-elpac.ets.org/caaspp/ResearchFileFormatSB?ps=true&lstTestYear=2022&lstTestType=B"   # define webpage with metadata
-html_nodes <- xpath='//*[@id="MainContent_divResearchFileLayout2022"]/h2'     # define as "table" if only 1 table on a page, or follow instructions here to get xpath when there is more than 1 table on the page: https://www.r-bloggers.com/2015/01/using-rvest-to-scrape-an-html-table/
-colcomments <- get_cde_metadata(url, html_nodes, table_schema, table_name)
+
+#### NOTE: Each year, the xpath needs to be updated in this function. See rdashared_functions.R for more info ###
+url3 <- "https://caaspp-elpac.ets.org/caaspp/ResearchFileFormatSB?ps=true&lstTestYear=2022&lstTestType=B"   # define webpage with metadata
+colcomments <- get_caaspp_metadata(url3, table_schema, table_name)
 View(colcomments)
 
 
-
-
-
-
-
-
-
 ###### PREP FOR RC FUNCTIONS #######
-df_subset <- df %>% rename(df, rate = percentage_standard_met_and_above, pop = students_with_scores, race = student_grp_id)
+df_subset <- rename(df, rate = percentage_standard_met_and_above, pop = students_with_scores, race = student_grp_id)
 
 # Filter for 3rd grade, Math test, race/ethnicity subgroups, county/state level 
 df_subset <- df_subset %>% filter(grade == "03" & test_id == "01" & race %in% c("001","074","075","076","077","078","079","080","144")
                            & type_id %in% c("04", "05")) %>%    
-  
-  
-  # # calc raw/rate and screen ---------------------------------------------------------
+
+  ## calc raw/rate and screen ---------------------------------------------------------
 #calculate raw
 mutate(raw = round(pop * rate / 100, 0)) 
 
 #pop screen
 threshold = 20
-df_subset <- df_subset %>%mutate(raw = ifelse(pop < threshold, NA, raw), rate = ifelse(pop < threshold, NA, rate))
+df_subset <- df_subset %>% mutate(raw = ifelse(pop < threshold, NA, raw), rate = ifelse(pop < threshold, NA, rate))
 
 #select just fields we need
 df_subset <- df_subset %>% select(geoname, race, rate, raw, pop) 
@@ -95,12 +88,12 @@ census_api_key("25fb5e48345b42318ae435e4dcd28ad3f196f2c4", overwrite = TRUE)
 ca <- get_acs(geography = "county", 
               variables = c("B01001_001"), 
               state = "CA", 
-              year = 2020)
+              year = 2021)
 
 ca <- ca[,1:2]
 ca$NAME <- gsub(" County, California", "", ca$NAME)
 names(ca) <- c("geoid", "geoname")
-#View(ca)
+View(ca)
 
 #add county geoids
 df_subset <- merge(x=ca,y=df_subset,by="geoname", all=T)
@@ -116,7 +109,7 @@ d <- df_wide
 ####################################################################################################################################################
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source("W:/Project/RACE COUNTS/2022_v4/RaceCounts/RC_Functions.R")
+source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
@@ -146,11 +139,13 @@ county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "count
 View(county_table)
 
 ###update info for postgres tables###
-county_table_name <- "arei_educ_gr3_ela_scores_county_2022"
-state_table_name <- "arei_educ_gr3_ela_scores_state_2022"
+county_table_name <- "arei_educ_gr3_ela_scores_county_2023"
+state_table_name <- "arei_educ_gr3_ela_scores_state_2023"
+#city_table_name <- "arei_educ_gr3_ela_scores_district_2023"
+rc_schema <- "v5"
 
 indicator <- "Students scoring proficient or better on 3rd grade English Language Arts (%)"
-source <- "CAASPP 2020-21 https://caaspp-elpac.cde.ca.gov/caaspp/ResearchFileListSB?ps=true&lstTestYear=2021&lstTestType=B&lstCounty=00&lstDistrict=00000"
+source <- "CAASPP 2021-22 https://caaspp-elpac.ets.org/caaspp/ResearchFileListSB?ps=true&lstTestYear=2022&lstTestType=B&lstCounty=00&lstDistrict=00000"
 
 #send tables to postgres
-to_postgres()
+to_postgres(county_table,state_table)
