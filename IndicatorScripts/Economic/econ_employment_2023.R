@@ -1,4 +1,8 @@
 ## Employment for RC v5 ##
+#install packages if not already installed
+list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis", "sf")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
 
 library(tidyr)
 library(stringr)
@@ -6,6 +10,7 @@ library(tidycensus)
 library(dplyr)
 library(DBI)
 library(RPostgreSQL)
+library(usethis)
 library(sf)
 
 # create connection for rda database
@@ -40,6 +45,11 @@ acs_vars <- load_variables(year = yr, dataset = dataset, cache = TRUE)
 df_metadata <- subset(acs_vars, acs_vars$name %in% vars_list)
 
 # Pull data from Census API
+# get array of zctas in CA ---- May need to change to appropriate data year
+#### get latest cbf ZCTA shapefile here - https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.2020.html . Then clip to CA only using DP05 ZCTA list.
+list_ca_zctas <- st_read(con, query = "select zcta5ce20 from geographies_ca.cb_2020_ca_zcta520_500k")
+list_ca_zctas <- list_ca_zctas$zcta5ce20
+
 df <- do.call(rbind.data.frame, list(
   get_acs(geography = "state", state = "CA", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE)
   %>% mutate(geolevel = "state"),
@@ -392,8 +402,8 @@ if (table_code != "DP05") {
   # ############## DPO5 ONLY ----- SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
   county_table <- d
   ###update info for postgres tables###
-  county_table_name <- "arei_race_county_2023"      # See most recent RC Workflow SQL Views for table name (remember to update year)
-  indicator <- "County and State population by race/ethnicity for RC Place page"        # See most recent Indicator Methodology for indicator description
+  county_table_name <- "arei_race_multigeo_2023"      # See most recent RC Workflow SQL Views for table name (remember to update year)
+  indicator <- "Place, County, and State population by race/ethnicity for RC Place page"        # See most recent Indicator Methodology for indicator description
   source <- "ACS 2017-2021, Table DP05. All AIAN, All NHPI, All Latinx, all other groups are one race alone and non-Latinx."   # See most recent Indicator Methodology for source info
   rc_schema <- "v5"
 }

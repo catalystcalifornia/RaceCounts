@@ -1,4 +1,4 @@
-## Per Capita Income for RC v5 ##
+## Pop by race/ethnicity for RC 2023 v5 ###
 #install packages if not already installed
 list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis", "sf")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
@@ -11,24 +11,25 @@ library(dplyr)
 library(DBI)
 library(RPostgreSQL)
 library(usethis)
-library(sf)
+library(sf) # to grab zcta shapes
 
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
-
-# API Call Info - Shouldn't need to change until next year
+# API Call Info - Change each year
 yr = 2021
 srvy = "acs5"
 
 ############## UPDATE FOR SPECIFIC INDICATOR HERE ##############
 
-table_code = "B19301"     # YOU MUST UPDATE based on most recent Indicator Methodology or Workflow/Cnty-State Indicator Tracking
-dataset = "acs5"      # YOU MUST UPDATE: "acs5/subject" for subject ("S") tables OR "acs5/profile" for data profile ("DP") tables OR "acs5" for detailed ("B") tables
-cv_threshold = 30         # YOU MUST UPDATE based on most recent Indicator Methodology
+table_code = "DP05"     # YOU MUST UPDATE based on most recent Indicator Methodology or most recent Workflow/Cnty-State Indicator Tracking
+dataset = "acs5/profile"      # YOU MUST UPDATE: "acs5/subject" for subject ("S") tables OR "acs5/profile" for data profile ("DP") tables OR "acs5" for detailed ("B") tables
+cv_threshold = NA         # YOU MUST UPDATE based on most recent Indicator Methodology
 pop_threshold = NA        # YOU MUST UPDATE based on most recent Indicator Methodology or set to NA B19301
 asbest = 'max'            # YOU MUST UPDATE based on indicator, set to 'min' if S2701
+has_rate = TRUE           # YOU MUST UPDATE set to FALSE if B25003, all else are TRUE
+
 
 ############## PRE-CALCULATION DATA PREP ##############
 
@@ -222,18 +223,69 @@ if (startsWith(table_code, "DP05")) {
   old_names <- colnames(df_wide_multigeo)[-(1:3)]
   new_names <- c("total_pop", "total_rate", "aian_pop", "pct_aian_pop", "pacisl_pop", 
                  "pct_pacisl_pop", "latino_pop", "pct_latino_pop", "nh_white_pop", "pct_nh_white_pop", 
-                 "black_pop", "pct_black_pop", "asian_pop", "pct_asian_pop", "other_pop", "pct_other_pop", 
-                 "twoormor_pop", "pct_twoormor_pop", "total_pop_moe", "pct_total_pop_moe", "aian_pop_moe", "pct_aian_pop_moe", "pacisl_pop_moe", 
-                 "pct_pacisl_pop_moe", "latino_pop_moe", "pct_latino_pop_moe", "nh_white_pop_moe", "pct_nh_white_pop_moe", 
-                 "black_pop_moe", "pct_black_pop_moe", "asian_pop_moe", "pct_asian_pop_moe", "other_pop_moe", "pct_other_pop_moe", 
-                 "twoormor_pop_moe", "pct_twoormor_pop_moe")
+                 "nh_black_pop", "pct_nh_black_pop", "nh_asian_pop", "pct_nh_asian_pop", "nh_other_pop", "pct_nh_other_pop", 
+                 "twoormor_pop", "pct_nh_twoormor_pop", "total_pop_moe", "pct_total_pop_moe", "aian_pop_moe", "pct_aian_pop_moe", 
+                 "pacisl_pop_moe", "pct_pacisl_pop_moe", "latino_pop_moe", "pct_latino_pop_moe", "nh_white_pop_moe", "pct_nh_white_pop_moe", 
+                 "nh_black_pop_moe", "pct_nh_black_pop_moe", "nh_asian_pop_moe", "pct_nh_asian_pop_moe", "nh_other_pop_moe", "pct_nh_other_pop_moe", 
+                 "nh_twoormor_pop_moe", "pct_nh_twoormor_pop_moe")
   df_wide_multigeo <- df_wide_multigeo %>%
     rename_with(~ new_names[which(old_names == .x)], .cols = old_names)
   
-  # drop total_rate - is just a copy of total_pop & drop _moe values (get clarification: aren't included in arei_race_county_2022)
+  # drop total_rate - is just a copy of total_pop & drop _moe values (get clarification: aren't included in arei_race_county_2021)
   df_wide_multigeo <- select(df_wide_multigeo, -ends_with("_moe"), -ends_with("_rate"))
 }
 
+if(has_rate == FALSE){ # Only applies to B25003
+  ## Calc rates -- copy from B25003 example - it's the only one with no rates provided and the naming conventions are off
+  
+  # [race]_rate  ### UPDATE _POP == 0 TO _POP <= 0
+  df_wide_multigeo$total_rate <- ifelse(df_wide_multigeo$total_pop <= 0, NA, df_wide_multigeo$total_raw/df_wide_multigeo$total_pop*100)
+  df_wide_multigeo$asian_rate <- ifelse(df_wide_multigeo$asian_pop <= 0, NA, df_wide_multigeo$asian_raw/df_wide_multigeo$asian_pop*100)
+  df_wide_multigeo$black_rate <- ifelse(df_wide_multigeo$black_pop <= 0, NA, df_wide_multigeo$black_raw/df_wide_multigeo$black_pop*100)
+  df_wide_multigeo$nh_white_rate <- ifelse(df_wide_multigeo$nh_white_pop <= 0, NA, df_wide_multigeo$nh_white_raw/df_wide_multigeo$nh_white_pop*100)
+  df_wide_multigeo$latino_rate <- ifelse(df_wide_multigeo$latino_pop <= 0, NA, df_wide_multigeo$latino_raw/df_wide_multigeo$latino_pop*100)
+  df_wide_multigeo$other_rate <- ifelse(df_wide_multigeo$other_pop <= 0, NA, df_wide_multigeo$other_raw/df_wide_multigeo$other_pop*100)
+  df_wide_multigeo$pacisl_rate <- ifelse(df_wide_multigeo$pacisl_pop <= 0, NA, df_wide_multigeo$pacisl_raw/df_wide_multigeo$pacisl_pop*100)
+  df_wide_multigeo$twoormor_rate <- ifelse(df_wide_multigeo$twoormor_pop <= 0, NA, df_wide_multigeo$twoormor_raw/df_wide_multigeo$twoormor_pop*100)
+  df_wide_multigeo$aian_rate <- ifelse(df_wide_multigeo$aian_pop <= 0, NA, df_wide_multigeo$aian_raw/df_wide_multigeo$aian_pop*100)
+  
+  # [race]_rate_moe
+  df_wide_multigeo$total_rate_moe <- ifelse(df_wide_multigeo$total_raw_moe^2 - (df_wide_multigeo$total_raw / df_wide_multigeo$total_pop)^2 * df_wide_multigeo$total_pop_moe^2 < 0,
+                                            (df_wide_multigeo$total_raw_moe^2 + (df_wide_multigeo$total_raw/df_wide_multigeo$total_pop)^2 * df_wide_multigeo$total_pop_moe^2)^(1/2)/ df_wide_multigeo$total_pop * 100,
+                                            (df_wide_multigeo$total_raw_moe^2 - (df_wide_multigeo$total_raw / df_wide_multigeo$total_pop)^2 * df_wide_multigeo$total_pop_moe^2)^(1/2) / df_wide_multigeo$total_pop * 100)
+  
+  df_wide_multigeo$asian_rate_moe <- ifelse(df_wide_multigeo$asian_raw_moe^2 - (df_wide_multigeo$asian_raw / df_wide_multigeo$asian_pop)^2 * df_wide_multigeo$asian_pop_moe^2 < 0,
+                                            (df_wide_multigeo$asian_raw_moe^2 + (df_wide_multigeo$asian_raw/df_wide_multigeo$asian_pop)^2 * df_wide_multigeo$asian_pop_moe^2)^(1/2)/ df_wide_multigeo$asian_pop * 100,
+                                            (df_wide_multigeo$asian_raw_moe^2 - (df_wide_multigeo$asian_raw / df_wide_multigeo$asian_pop)^2 * df_wide_multigeo$asian_pop_moe^2)^(1/2) / df_wide_multigeo$asian_pop * 100)
+  
+  df_wide_multigeo$black_rate_moe <- ifelse(df_wide_multigeo$black_raw_moe^2 - (df_wide_multigeo$black_raw / df_wide_multigeo$black_pop)^2 * df_wide_multigeo$black_pop_moe^2 < 0,
+                                            (df_wide_multigeo$black_raw_moe^2 + (df_wide_multigeo$black_raw/df_wide_multigeo$black_pop)^2 * df_wide_multigeo$black_pop_moe^2)^(1/2)/ df_wide_multigeo$black_pop * 100,
+                                            (df_wide_multigeo$black_raw_moe^2 - (df_wide_multigeo$black_raw / df_wide_multigeo$black_pop)^2 * df_wide_multigeo$black_pop_moe^2)^(1/2) / df_wide_multigeo$black_pop * 100)
+  
+  df_wide_multigeo$nh_white_rate_moe <- ifelse(df_wide_multigeo$nh_white_raw_moe^2 - (df_wide_multigeo$nh_white_raw / df_wide_multigeo$nh_white_pop)^2 * df_wide_multigeo$nh_white_pop_moe^2 < 0,
+                                               (df_wide_multigeo$nh_white_raw_moe^2 + (df_wide_multigeo$nh_white_raw/df_wide_multigeo$nh_white_pop)^2 * df_wide_multigeo$nh_white_pop_moe^2)^(1/2)/ df_wide_multigeo$nh_white_pop * 100,
+                                               (df_wide_multigeo$nh_white_raw_moe^2 - (df_wide_multigeo$nh_white_raw / df_wide_multigeo$nh_white_pop)^2 * df_wide_multigeo$nh_white_pop_moe^2)^(1/2) / df_wide_multigeo$nh_white_pop * 100)
+  
+  df_wide_multigeo$latino_rate_moe <- ifelse(df_wide_multigeo$latino_raw_moe^2 - (df_wide_multigeo$latino_raw / df_wide_multigeo$latino_pop)^2 * df_wide_multigeo$latino_pop_moe^2 < 0,
+                                             (df_wide_multigeo$latino_raw_moe^2 + (df_wide_multigeo$latino_raw/df_wide_multigeo$latino_pop)^2 * df_wide_multigeo$latino_pop_moe^2)^(1/2)/ df_wide_multigeo$latino_pop * 100,
+                                             (df_wide_multigeo$latino_raw_moe^2 - (df_wide_multigeo$latino_raw / df_wide_multigeo$latino_pop)^2 * df_wide_multigeo$latino_pop_moe^2)^(1/2) / df_wide_multigeo$latino_pop * 100)
+  
+  df_wide_multigeo$other_rate_moe <- ifelse(df_wide_multigeo$other_raw_moe^2 - (df_wide_multigeo$other_raw / df_wide_multigeo$other_pop)^2 * df_wide_multigeo$other_pop_moe^2 < 0,
+                                            (df_wide_multigeo$other_raw_moe^2 + (df_wide_multigeo$other_raw/df_wide_multigeo$other_pop)^2 * df_wide_multigeo$other_pop_moe^2)^(1/2)/ df_wide_multigeo$other_pop * 100,
+                                            (df_wide_multigeo$other_raw_moe^2 - (df_wide_multigeo$other_raw / df_wide_multigeo$other_pop)^2 * df_wide_multigeo$other_pop_moe^2)^(1/2) / df_wide_multigeo$other_pop * 100)
+  
+  df_wide_multigeo$pacisl_rate_moe <- ifelse(df_wide_multigeo$pacisl_raw_moe^2 - (df_wide_multigeo$pacisl_raw / df_wide_multigeo$pacisl_pop)^2 * df_wide_multigeo$pacisl_pop_moe^2 < 0,
+                                             (df_wide_multigeo$pacisl_raw_moe^2 + (df_wide_multigeo$pacisl_raw/df_wide_multigeo$pacisl_pop)^2 * df_wide_multigeo$pacisl_pop_moe^2)^(1/2)/ df_wide_multigeo$pacisl_pop * 100,
+                                             (df_wide_multigeo$pacisl_raw_moe^2 - (df_wide_multigeo$pacisl_raw / df_wide_multigeo$pacisl_pop)^2 * df_wide_multigeo$pacisl_pop_moe^2)^(1/2) / df_wide_multigeo$pacisl_pop * 100)
+  
+  df_wide_multigeo$twoormor_rate_moe <- ifelse(df_wide_multigeo$twoormor_raw_moe^2 - (df_wide_multigeo$twoormor_raw / df_wide_multigeo$twoormor_pop)^2 * df_wide_multigeo$twoormor_pop_moe^2 < 0,
+                                               (df_wide_multigeo$twoormor_raw_moe^2 + (df_wide_multigeo$twoormor_raw/df_wide_multigeo$twoormor_pop)^2 * df_wide_multigeo$twoormor_pop_moe^2)^(1/2)/ df_wide_multigeo$twoormor_pop * 100,
+                                               (df_wide_multigeo$twoormor_raw_moe^2 - (df_wide_multigeo$twoormor_raw / df_wide_multigeo$twoormor_pop)^2 * df_wide_multigeo$twoormor_pop_moe^2)^(1/2) / df_wide_multigeo$twoormor_pop * 100)
+  
+  df_wide_multigeo$aian_rate_moe <- ifelse(df_wide_multigeo$aian_raw_moe^2 - (df_wide_multigeo$aian_raw / df_wide_multigeo$aian_pop)^2 * df_wide_multigeo$aian_pop_moe^2 < 0,
+                                           (df_wide_multigeo$aian_raw_moe^2 + (df_wide_multigeo$aian_raw/df_wide_multigeo$aian_pop)^2 * df_wide_multigeo$aian_pop_moe^2)^(1/2)/ df_wide_multigeo$aian_pop * 100,
+                                           (df_wide_multigeo$aian_raw_moe^2 - (df_wide_multigeo$aian_raw / df_wide_multigeo$aian_pop)^2 * df_wide_multigeo$aian_pop_moe^2)^(1/2) / df_wide_multigeo$aian_pop * 100)
+}
 
 # Finish up data cleaning
 # make colnames lower case
@@ -246,15 +298,42 @@ df_wide_multigeo$name <- gsub(" city", "", df_wide_multigeo$name)
 df_wide_multigeo$name <- gsub(" town", "", df_wide_multigeo$name)
 df_wide_multigeo$name <- gsub(" CDP", "", df_wide_multigeo$name)
 
-############## PRE-CALCULATION POPULATION AND/OR CV CHECKS ##############
+############## CV CALCS AND EXPORT TO RDA_SHARED_DATA ##############
 
 df <- df_wide_multigeo
 
-### Do population checks and cv checks
-if (!is.na(pop_threshold) & is.na(cv_threshold)) {
-  # if pop_threshold exists and cv_threshold is NA, do pop check but no CV check (doesn't apply to any at this time)
-  # Apply screen(s) to [race]_rate columns (potential screens: CVs > cv_threshold and _pop < pop_threshold)
+### calc cv's
+## Calculate CV values for all rates - store in columns as cv_[race]_rate
+if (!is.na(cv_threshold)){
+  df$total_rate_cv <- ifelse(df$total_rate==0, NA, df$total_rate_moe/1.645/df$total_rate*100)
+  df$asian_rate_cv <- ifelse(df$asian_rate==0, NA, df$asian_rate_moe/1.645/df$asian_rate*100)
+  df$black_rate_cv <- ifelse(df$black_rate==0, NA, df$black_rate_moe/1.645/df$black_rate*100)
+  df$nh_white_rate_cv <- ifelse(df$nh_white_rate==0, NA, df$nh_white_rate_moe/1.645/df$nh_white_rate*100)
+  df$latino_rate_cv <- ifelse(df$latino_rate==0, NA, df$latino_rate_moe/1.645/df$latino_rate*100)
+  df$other_rate_cv <- ifelse(df$other_rate==0, NA, df$other_rate_moe/1.645/df$other_rate*100)
+  df$pacisl_rate_cv <- ifelse(df$pacisl_rate==0, NA, df$pacisl_rate_moe/1.645/df$pacisl_rate*100)
+  df$twoormor_rate_cv <- ifelse(df$twoormor_rate==0, NA, df$twoormor_rate_moe/1.645/df$twoormor_rate*100)
+  df$aian_rate_cv <- ifelse(df$aian_rate==0, NA, df$aian_rate_moe/1.645/df$aian_rate*100)
   
+} 
+
+### NOTE: THIS PIECE DOESN'T WORK FOR SUBJECT TABLES YET ###
+## Run function to prep and export rda_shared_data table 
+source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
+table_schema <- "demographics"
+table_name <- "acs_5yr_dp05_multigeo_2021"
+table_comment_source <- "ACS 2017-2021 5-Year Estimate Table DP05 https://data.census.gov/cedsci/. State, county, place, PUMA, tract, and ZCTA"
+df <- get_acs_data(df, table_schema, table_name, table_comment_source) # function to create and export rda_shared_table to postgres db
+View(df)
+
+# Run function to add column comments --- THE COLUMN COMMENTS/METADATA FUNCTION ISN'T WORKING FOR THIS TABLE YET
+#colcomments <- get_acs_metadata(df_metadata, table_schema, table_name)
+#View(colcomments)
+
+
+############## PRE-CALCULATION POPULATION AND/OR CV CHECKS ##############
+if (!is.na(pop_threshold) & is.na(cv_threshold)) {
+  # if pop_threshold exists and cv_threshold is NA, do pop check but no CV check (doesn't apply to any at this time, may need to add _raw screens later.)
   ## Screen out low populations
   df$total_rate <- ifelse(df$total_pop < pop_threshold, NA, df$total_rate)
   df$asian_rate <- ifelse(df$asian_pop < pop_threshold, NA, df$asian_rate)
@@ -267,18 +346,7 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
   df$aian_rate <- ifelse(df$aian_pop < pop_threshold, NA, df$aian_rate)
   
 } else if (is.na(pop_threshold) & !is.na(cv_threshold)){
-  # if pop_threshold is NA and cv_threshold exists, check cv only (i.e. only B19301)
-  ## Calculate CV values for all rates - store in columns as cv_[race]_rate
-  df$total_rate_cv <- ifelse(df$total_rate==0, NA, df$total_rate_moe/1.645/df$total_rate*100)
-  df$asian_rate_cv <- ifelse(df$asian_rate==0, NA, df$asian_rate_moe/1.645/df$asian_rate*100)
-  df$black_rate_cv <- ifelse(df$black_rate==0, NA, df$black_rate_moe/1.645/df$black_rate*100)
-  df$nh_white_rate_cv <- ifelse(df$nh_white_rate==0, NA, df$nh_white_rate_moe/1.645/df$nh_white_rate*100)
-  df$latino_rate_cv <- ifelse(df$latino_rate==0, NA, df$latino_rate_moe/1.645/df$latino_rate*100)
-  df$other_rate_cv <- ifelse(df$other_rate==0, NA, df$other_rate_moe/1.645/df$other_rate*100)
-  df$pacisl_rate_cv <- ifelse(df$pacisl_rate==0, NA, df$pacisl_rate_moe/1.645/df$pacisl_rate*100)
-  df$twoormor_rate_cv <- ifelse(df$twoormor_rate==0, NA, df$twoormor_rate_moe/1.645/df$twoormor_rate*100)
-  df$aian_rate_cv <- ifelse(df$aian_rate==0, NA, df$aian_rate_moe/1.645/df$aian_rate*100)
-  
+  # if pop_threshold is NA and cv_threshold exists, check cv only (i.e. only B19301). As of now, the only table that uses this does not have _raw values, may need to add _raw screens later.
   ## Screen out rates with high CVs
   df$total_rate <- ifelse(df$total_rate_cv > cv_threshold, NA, df$total_rate)
   df$asian_rate <- ifelse(df$asian_rate_cv > cv_threshold, NA, df$asian_rate)
@@ -292,17 +360,6 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
   
 } else if (!is.na(pop_threshold) & !is.na(cv_threshold)){
   # if pop_threshold exists and cv_threshold exists, check population and cv (i.e. B25003, S2301, S2802, S2701, B25014)
-  ## Calculate CV values for all rates - store in columns as cv_[race]_rate
-  df$total_rate_cv <- ifelse(df$total_rate==0, NA, df$total_rate_moe/1.645/df$total_rate*100)
-  df$asian_rate_cv <- ifelse(df$asian_rate==0, NA, df$asian_rate_moe/1.645/df$asian_rate*100)
-  df$black_rate_cv <- ifelse(df$black_rate==0, NA, df$black_rate_moe/1.645/df$black_rate*100)
-  df$nh_white_rate_cv <- ifelse(df$nh_white_rate==0, NA, df$nh_white_rate_moe/1.645/df$nh_white_rate*100)
-  df$latino_rate_cv <- ifelse(df$latino_rate==0, NA, df$latino_rate_moe/1.645/df$latino_rate*100)
-  df$other_rate_cv <- ifelse(df$other_rate==0, NA, df$other_rate_moe/1.645/df$other_rate*100)
-  df$pacisl_rate_cv <- ifelse(df$pacisl_rate==0, NA, df$pacisl_rate_moe/1.645/df$pacisl_rate*100)
-  df$twoormor_rate_cv <- ifelse(df$twoormor_rate==0, NA, df$twoormor_rate_moe/1.645/df$twoormor_rate*100)
-  df$aian_rate_cv <- ifelse(df$aian_rate==0, NA, df$aian_rate_moe/1.645/df$aian_rate*100)
-  
   ## Screen out rates with high CVs and low populations
   df$total_rate <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_rate))
   df$asian_rate <- ifelse(df$asian_rate_cv > cv_threshold, NA, ifelse(df$asian_pop < pop_threshold, NA, df$asian_rate))
@@ -313,6 +370,15 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
   df$pacisl_rate <- ifelse(df$pacisl_rate_cv > cv_threshold, NA, ifelse(df$pacisl_pop < pop_threshold, NA, df$pacisl_rate))
   df$twoormor_rate <- ifelse(df$twoormor_rate_cv > cv_threshold, NA, ifelse(df$twoormor_pop < pop_threshold, NA, df$twoormor_rate))
   df$aian_rate <- ifelse(df$aian_rate_cv > cv_threshold, NA, ifelse(df$aian_pop < pop_threshold, NA, df$aian_rate))
+  df$total_raw <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_raw))
+  df$asian_raw <- ifelse(df$asian_rate_cv > cv_threshold, NA, ifelse(df$asian_pop < pop_threshold, NA, df$asian_raw))
+  df$black_raw <- ifelse(df$black_rate_cv > cv_threshold, NA, ifelse(df$black_pop < pop_threshold, NA, df$black_raw))
+  df$nh_white_raw <- ifelse(df$nh_white_rate_cv > cv_threshold, NA, ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_raw))
+  df$latino_raw <- ifelse(df$latino_rate_cv > cv_threshold, NA, ifelse(df$latino_pop < pop_threshold, NA, df$latino_raw))
+  df$other_raw <- ifelse(df$other_rate_cv > cv_threshold, NA, ifelse(df$other_pop < pop_threshold, NA, df$other_raw))
+  df$pacisl_raw <- ifelse(df$pacisl_rate_cv > cv_threshold, NA, ifelse(df$pacisl_pop < pop_threshold, NA, df$pacisl_raw))
+  df$twoormor_raw <- ifelse(df$twoormor_rate_cv > cv_threshold, NA, ifelse(df$twoormor_pop < pop_threshold, NA, df$twoormor_raw))
+  df$aian_raw <- ifelse(df$aian_rate_cv > cv_threshold, NA, ifelse(df$aian_pop < pop_threshold, NA, df$aian_raw))  
   
 } else {
   # Only DP05 should hit this condition
@@ -322,23 +388,13 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
   
 }
 
-## Run function to prep and export rda_shared_data table 
-  source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
-  table_schema <- "economic."
-  table_name <- "acs_5yr_b19301ai_multigeo_2021"
-  table_comment_source <- "ACS 2017-2021 5-Year Estimate Table B19301A-I."
-  df <- get_acs_data(x, table_schema, table_name, table_comment_source) # function to create and export rda_shared_table to postgres db
-  View(df)
+df <- select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"))
 
-# Run function to add column comments
-  colcomments <- get_acs_metadata(df_metadata, table_schema, table_name)
-  View(colcomments)
-  
 ############## CALC RACE COUNTS STATS ##############
 
 #set source for RC Functions script
 source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
-d <- df
+d <- df[df$geolevel %in% c('state', 'county', 'place'), ]
 
 if (table_code != "DP05") {
   
@@ -348,7 +404,7 @@ if (table_code != "DP05") {
   
   d <- count_values(d) #calculate number of "_rate" values
   d <- calc_best(d) #calculate best rates -- be sure to update previous line of code accordingly before running this function.
-  d <- calc_diff(d) # check if 393-396 work as is with updated rc functions
+  d <- calc_diff(d) 
   d <- calc_avg_diff(d)
   d <- calc_s_var(d)
   d <- calc_id(d)
@@ -376,7 +432,7 @@ if (table_code != "DP05") {
   # 
   # ## Calc city ranks##
   # city_table <- calc_ranks(city_table)
-  # View(county_table)
+  # View(city_table)
   
   #rename geoid to state_id, county_id, city_id
   colnames(state_table)[1:2] <- c("state_id", "state_name")
@@ -387,23 +443,46 @@ if (table_code != "DP05") {
   # ############## NON-DP05 ----- SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
   
   ###update info for postgres tables###
-  county_table_name <- "arei_econ_per_capita_income_county_2023"            # See RC 2023 Workflow/v3 2022 SQL Views for table name (remember to update year to 2023)
-  state_table_name <- "arei_econ_per_capita_income_state_2023"              # See RC 2023 Workflow/v3 2022 SQL Views for table name (remember to update year to 2023)
-  #city_table_name <- "arei_econ_per_capita_income_city_2023"               # See RC 2023 Workflow/v3 2022 SQL Views for table name (remember to update year to 2023)
-  indicator <- "Per Capita Income ($)"                         # See Indicator Methodology 2022 for indicator description
-  source <- "2017-2021 ACS 5-Year Estimates, Tables B19301B-I, https://data.census.gov/cedsci/"   # See Indicator Methodology 2022 for source info
+  county_table_name <- "arei_econ_internet_county_2023"            # See most recent RC Workflow/tables for table name (remember to update year)
+  state_table_name <- "arei_econ_internet_state_2023"              # See most recent RC Workflow/tables for table name (remember to update year)
+  #city_table_name <- "arei_econ_internet_city_2023"               # See most recent RC Workflow/tables for table name (remember to update year)
+  indicator <- "Persons with Internet Access (%)"                        # See most recent Indicator Methodology for indicator description
+  source <- "2017-2021 ACS 5-Year Estimates, Table S2802, https://data.census.gov/cedsci/"   # See most recent Indicator Methodology for source info
+  rc_schema <- "v5"
   
+  ####### SEND TO POSTGRES #######
+  to_postgres(county_table,state_table)
   
 } else {
   
   # ############## DPO5 ONLY ----- SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
   county_table <- d
   ###update info for postgres tables###
-  county_table_name <- "arei_race_county_2023"      # See RC 2023 Workflow/v3 2022 SQL Views for table name (remember to update year to 2023)
-  indicator <- "County and State population by race/ethnicity for RC Place page"        # See Indicator Methodology 2022 for indicator description
-  source <- "ACS 2017-2021, Table DP05. All AIAN, All NHPI, All Latinx, all other groups are one race alone and non-Latinx."   # See Indicator Methodology 2022 for source info
+  county_table_name <- "arei_race_multigeo_2023"      # See See most recent RC Workflow/tables for table name (remember to update year)
+  indicator <- "City, County, and State population by race/ethnicity for RC Place page"        # See most recent Indicator Methodology for indicator description
+  source <- "ACS 2017-2021, Table DP05. All AIAN, All NHPI, All Latinx, all other groups are one race alone and non-Latinx."   # See most recent Indicator Methodology for source info
+  rc_schema <- "v5"
+  
+  ####### SEND TO POSTGRES #######
+ # create connection for rda database
+  source("W:\\RDA Team\\R\\credentials_source.R")
+  con <- connect_to_db("racecounts")
+  
+  
+  #COUNTY TABLE
+  county_table <- as.data.frame(county_table)
+
+  dbWriteTable(con, c(rc_schema, county_table_name), county_table,
+               overwrite = FALSE, row.names = FALSE)
+  
+  #comment on table and columns
+  comment <- paste0("COMMENT ON TABLE v5.", county_table_name,  " IS '", indicator, " from ", source, ".';
+                                                                                      COMMENT ON COLUMN v5.", county_table_name, ".geoid IS 'FIPS code';")
+  print(comment)            
+  dbSendQuery(con, comment)
+  
+  dbDisconnect(con) 
   
 }
 
-####### SEND TO POSTGRES #######
-to_postgres()
+
