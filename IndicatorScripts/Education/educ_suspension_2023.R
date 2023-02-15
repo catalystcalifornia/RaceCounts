@@ -139,7 +139,6 @@ state_table_name <- "arei_educ_suspension_state_2023"
 rc_schema <- "v5"
 
 indicator <- "Unduplicated students suspended, cumulative enrollment, and unduplicated suspension rate. This data is"
-
 source <- "CDE 2021-22 https://www.cde.ca.gov/ds/ad/filessd.asp"
 
 #send tables to postgres
