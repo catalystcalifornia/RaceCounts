@@ -18,14 +18,14 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
 
-# API Call Info - Shouldn't need to change until next year
+# API Call Info - Change each year
 yr = 2021
 srvy = "acs5"
 
 ############## UPDATE FOR SPECIFIC INDICATOR HERE ##############
 
 table_code = "B19301"     # YOU MUST UPDATE based on most recent Indicator Methodology or Workflow/Cnty-State Indicator Tracking
-dataset = "acs5"      # YOU MUST UPDATE: "acs5/subject" for subject ("S") tables OR "acs5/profile" for data profile ("DP") tables OR "acs5" for detailed ("B") tables
+dataset = "acs5"          # YOU MUST UPDATE: "acs5/subject" for subject ("S") tables OR "acs5/profile" for data profile ("DP") tables OR "acs5" for detailed ("B") tables
 cv_threshold = 30         # YOU MUST UPDATE based on most recent Indicator Methodology
 pop_threshold = NA        # YOU MUST UPDATE based on most recent Indicator Methodology or set to NA B19301
 asbest = 'max'            # YOU MUST UPDATE based on indicator, set to 'min' if S2701
@@ -324,10 +324,10 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
 
 ## Run function to prep and export rda_shared_data table 
   source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
-  table_schema <- "economic."
+  table_schema <- "economic"
   table_name <- "acs_5yr_b19301ai_multigeo_2021"
-  table_comment_source <- "ACS 2017-2021 5-Year Estimate Table B19301A-I."
-  df <- get_acs_data(x, table_schema, table_name, table_comment_source) # function to create and export rda_shared_table to postgres db
+  table_comment_source <- "ACS 2017-2021 5-Year Estimate Table B19301A-Ihttps://data.census.gov/cedsci/. State, county, place, PUMA, tract, and ZCTA"
+  df <- get_acs_data(df, table_schema, table_name, table_comment_source) # function to create and export rda_shared_table to postgres db
   View(df)
 
 # Run function to add column comments
@@ -338,8 +338,8 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
 
 #set source for RC Functions script
 source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
-d <- df
-
+d <- df[df$geolevel %in% c('state', 'county', 'place'), ]
+  
 if (table_code != "DP05") {
   
   
@@ -361,6 +361,7 @@ if (table_code != "DP05") {
   
   #calculate STATE z-scores
   state_table <- calc_state_z(state_table)
+  state_table <- state_table %>% select(-c(geolevel))
   View(state_table)
   
   #calculate COUNTY z-scores
@@ -368,6 +369,7 @@ if (table_code != "DP05") {
   
   ## Calc county ranks##
   county_table <- calc_ranks(county_table)
+  county_table <- county_table %>% select(-c(geolevel))
   View(county_table)
   
   
@@ -376,7 +378,8 @@ if (table_code != "DP05") {
   # 
   # ## Calc city ranks##
   # city_table <- calc_ranks(city_table)
-  # View(county_table)
+  # city_table <- city_table %>% select(-c(geolevel))
+  # View(city_table)
   
   #rename geoid to state_id, county_id, city_id
   colnames(state_table)[1:2] <- c("state_id", "state_name")
@@ -387,11 +390,11 @@ if (table_code != "DP05") {
   # ############## NON-DP05 ----- SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
   
   ###update info for postgres tables###
-  county_table_name <- "arei_econ_per_capita_income_county_2023"            # See RC 2023 Workflow/v3 2022 SQL Views for table name (remember to update year to 2023)
-  state_table_name <- "arei_econ_per_capita_income_state_2023"              # See RC 2023 Workflow/v3 2022 SQL Views for table name (remember to update year to 2023)
-  #city_table_name <- "arei_econ_per_capita_income_city_2023"               # See RC 2023 Workflow/v3 2022 SQL Views for table name (remember to update year to 2023)
-  indicator <- "Per Capita Income ($)"                         # See Indicator Methodology 2022 for indicator description
-  source <- "2017-2021 ACS 5-Year Estimates, Tables B19301B-I, https://data.census.gov/cedsci/"   # See Indicator Methodology 2022 for source info
+  county_table_name <- "arei_econ_per_capita_income_county_2023"            # See most recent RC Workflow SQL Views for table name (remember to update year to 2023)
+  state_table_name <- "arei_econ_per_capita_income_state_2023"              # See most recent RC Workflow SQL Views for table name (remember to update year to 2023)
+  #city_table_name <- "arei_econ_per_capita_income_city_2023"               # See most recent RC Workflow SQL Views for table name (remember to update year to 2023)
+  indicator <- "Per Capita Income ($)"                         # See most recent Indicator Methodology for indicator description
+  source <- "2017-2021 ACS 5-Year Estimates, Tables B19301B-I, https://data.census.gov/cedsci/"   # See most recent Indicator Methodology” (8)	“RC 2023 Workflow/Cnty-State Indicator Tracking” to “Workflow/Cnty for source info
   
   
 } else {
@@ -399,9 +402,9 @@ if (table_code != "DP05") {
   # ############## DPO5 ONLY ----- SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
   county_table <- d
   ###update info for postgres tables###
-  county_table_name <- "arei_race_county_2023"      # See RC 2023 Workflow/v3 2022 SQL Views for table name (remember to update year to 2023)
-  indicator <- "County and State population by race/ethnicity for RC Place page"        # See Indicator Methodology 2022 for indicator description
-  source <- "ACS 2017-2021, Table DP05. All AIAN, All NHPI, All Latinx, all other groups are one race alone and non-Latinx."   # See Indicator Methodology 2022 for source info
+  county_table_name <- "arei_race_county_2023"      # See most recent RC Workflow SQL Views for table name (remember to update year to 2023)
+  indicator <- "County and State population by race/ethnicity for RC Place page"        # See most recent Indicator Methodology for indicator description
+  source <- "ACS 2017-2021, Table DP05. All AIAN, All NHPI, All Latinx, all other groups are one race alone and non-Latinx."   # See most recent Indicator Methodology for indicator description
   
 }
 
