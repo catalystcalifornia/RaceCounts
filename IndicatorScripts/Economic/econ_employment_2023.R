@@ -364,6 +364,7 @@ if (table_code != "DP05") {
   
   #calculate STATE z-scores
   state_table <- calc_state_z(state_table)
+  state_table <- state_table %>% select(-c(geolevel))
   View(state_table)
   
   #calculate COUNTY z-scores
@@ -371,14 +372,15 @@ if (table_code != "DP05") {
   
   ## Calc county ranks##
   county_table <- calc_ranks(county_table)
+  county_table <- county_table %>% select(-c(geolevel))
   View(county_table)
-  
   
   #calculate CITY z-scores
   city_table <- calc_z(city_table)
   
   ## Calc city ranks##
   city_table <- calc_ranks(city_table)
+  city_table <- city_table %>% select(-c(geolevel))
   View(city_table)
 
   #rename geoid to state_id, county_id, city_id
