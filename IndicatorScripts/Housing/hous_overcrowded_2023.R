@@ -46,13 +46,14 @@ df <- do.call(rbind.data.frame, list(
   get_acs(geography = "county", state = "CA", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE)
   %>% mutate(geolevel = "county"),
   get_acs(geography = "place", state = "CA", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE)
-  %>% mutate(geolevel = "place"),
-  get_acs(geography = "puma", state = "CA", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE)
-  %>% mutate(geolevel = "puma"),
-  get_acs(geography = "tract", state = "CA", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE)
-  %>% mutate(geolevel = "tract"),
-  get_acs(geography = "zcta", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE) 
-  %>% mutate(geolevel = "zcta") 
+  %>% mutate(geolevel = "place")
+  # ,
+  # get_acs(geography = "puma", state = "CA", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE)
+  # %>% mutate(geolevel = "puma"),
+  # get_acs(geography = "tract", state = "CA", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE)
+  # %>% mutate(geolevel = "tract"),
+  # get_acs(geography = "zcta", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE) 
+  # %>% mutate(geolevel = "zcta") 
   # %>% 
   #   filter(GEOID %in% list_ca_zctas)
 ) 
