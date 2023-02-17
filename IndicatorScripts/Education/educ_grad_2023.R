@@ -143,8 +143,8 @@ View(county_table)
 county_table_name <- "arei_educ_hs_grad_county_2023"
 state_table_name <- "arei_educ_hs_grad_state_2023"
 indicator <- "Four-year adjusted cohort graduation rate"
-source <- "CDE 2021-22 https://www.cde.ca.gov/ds/ad/filesacgr.asp "
+source <- "CDE 2021-22 https://www.cde.ca.gov/ds/ad/filesacgr.asp"
 rc_schema <- "v5"
 
 #send tables to postgres
-to_postgres()
+to_postgres(county_table,state_table)
