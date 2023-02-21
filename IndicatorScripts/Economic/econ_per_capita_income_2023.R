@@ -246,15 +246,41 @@ df_wide_multigeo$name <- gsub(" city", "", df_wide_multigeo$name)
 df_wide_multigeo$name <- gsub(" town", "", df_wide_multigeo$name)
 df_wide_multigeo$name <- gsub(" CDP", "", df_wide_multigeo$name)
 
-############## PRE-CALCULATION POPULATION AND/OR CV CHECKS ##############
+
+############## CV CALCS AND EXPORT TO RDA_SHARED_DATA ##############
 
 df <- df_wide_multigeo
 
-### Do population checks and cv checks
-if (!is.na(pop_threshold) & is.na(cv_threshold)) {
-  # if pop_threshold exists and cv_threshold is NA, do pop check but no CV check (doesn't apply to any at this time)
-  # Apply screen(s) to [race]_rate columns (potential screens: CVs > cv_threshold and _pop < pop_threshold)
+### calc cv's
+## Calculate CV values for all rates - store in columns as cv_[race]_rate
+if (!is.na(cv_threshold)){
+  df$total_rate_cv <- ifelse(df$total_rate==0, NA, df$total_rate_moe/1.645/df$total_rate*100)
+  df$asian_rate_cv <- ifelse(df$asian_rate==0, NA, df$asian_rate_moe/1.645/df$asian_rate*100)
+  df$black_rate_cv <- ifelse(df$black_rate==0, NA, df$black_rate_moe/1.645/df$black_rate*100)
+  df$nh_white_rate_cv <- ifelse(df$nh_white_rate==0, NA, df$nh_white_rate_moe/1.645/df$nh_white_rate*100)
+  df$latino_rate_cv <- ifelse(df$latino_rate==0, NA, df$latino_rate_moe/1.645/df$latino_rate*100)
+  df$other_rate_cv <- ifelse(df$other_rate==0, NA, df$other_rate_moe/1.645/df$other_rate*100)
+  df$pacisl_rate_cv <- ifelse(df$pacisl_rate==0, NA, df$pacisl_rate_moe/1.645/df$pacisl_rate*100)
+  df$twoormor_rate_cv <- ifelse(df$twoormor_rate==0, NA, df$twoormor_rate_moe/1.645/df$twoormor_rate*100)
+  df$aian_rate_cv <- ifelse(df$aian_rate==0, NA, df$aian_rate_moe/1.645/df$aian_rate*100)
   
+} 
+
+## Run function to prep and export rda_shared_data table 
+source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
+table_schema <- "economic"
+table_name <- "acs_5yr_b19301ai_multigeo_2021"
+table_comment_source <- "ACS 2017-2021 5-Year Estimate Table B19301A-Ihttps://data.census.gov/cedsci/. State, county, place, PUMA, tract, and ZCTA"
+df <- get_acs_data(df, table_schema, table_name, table_comment_source) # function to create and export rda_shared_table to postgres db
+View(df)
+
+# Run function to add column comments
+colcomments <- get_acs_metadata(df_metadata, table_schema, table_name)
+View(colcomments)
+
+############## PRE-CALCULATION POPULATION AND/OR CV CHECKS ##############
+if (!is.na(pop_threshold) & is.na(cv_threshold)) {
+  # if pop_threshold exists and cv_threshold is NA, do pop check but no CV check (doesn't apply to any at this time, may need to add _raw screens later.)
   ## Screen out low populations
   df$total_rate <- ifelse(df$total_pop < pop_threshold, NA, df$total_rate)
   df$asian_rate <- ifelse(df$asian_pop < pop_threshold, NA, df$asian_rate)
@@ -267,18 +293,7 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
   df$aian_rate <- ifelse(df$aian_pop < pop_threshold, NA, df$aian_rate)
   
 } else if (is.na(pop_threshold) & !is.na(cv_threshold)){
-  # if pop_threshold is NA and cv_threshold exists, check cv only (i.e. only B19301)
-  ## Calculate CV values for all rates - store in columns as cv_[race]_rate
-  df$total_rate_cv <- ifelse(df$total_rate==0, NA, df$total_rate_moe/1.645/df$total_rate*100)
-  df$asian_rate_cv <- ifelse(df$asian_rate==0, NA, df$asian_rate_moe/1.645/df$asian_rate*100)
-  df$black_rate_cv <- ifelse(df$black_rate==0, NA, df$black_rate_moe/1.645/df$black_rate*100)
-  df$nh_white_rate_cv <- ifelse(df$nh_white_rate==0, NA, df$nh_white_rate_moe/1.645/df$nh_white_rate*100)
-  df$latino_rate_cv <- ifelse(df$latino_rate==0, NA, df$latino_rate_moe/1.645/df$latino_rate*100)
-  df$other_rate_cv <- ifelse(df$other_rate==0, NA, df$other_rate_moe/1.645/df$other_rate*100)
-  df$pacisl_rate_cv <- ifelse(df$pacisl_rate==0, NA, df$pacisl_rate_moe/1.645/df$pacisl_rate*100)
-  df$twoormor_rate_cv <- ifelse(df$twoormor_rate==0, NA, df$twoormor_rate_moe/1.645/df$twoormor_rate*100)
-  df$aian_rate_cv <- ifelse(df$aian_rate==0, NA, df$aian_rate_moe/1.645/df$aian_rate*100)
-  
+  # if pop_threshold is NA and cv_threshold exists, check cv only (i.e. only B19301). As of now, the only table that uses this does not have _raw values, may need to add _raw screens later.
   ## Screen out rates with high CVs
   df$total_rate <- ifelse(df$total_rate_cv > cv_threshold, NA, df$total_rate)
   df$asian_rate <- ifelse(df$asian_rate_cv > cv_threshold, NA, df$asian_rate)
@@ -292,17 +307,6 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
   
 } else if (!is.na(pop_threshold) & !is.na(cv_threshold)){
   # if pop_threshold exists and cv_threshold exists, check population and cv (i.e. B25003, S2301, S2802, S2701, B25014)
-  ## Calculate CV values for all rates - store in columns as cv_[race]_rate
-  df$total_rate_cv <- ifelse(df$total_rate==0, NA, df$total_rate_moe/1.645/df$total_rate*100)
-  df$asian_rate_cv <- ifelse(df$asian_rate==0, NA, df$asian_rate_moe/1.645/df$asian_rate*100)
-  df$black_rate_cv <- ifelse(df$black_rate==0, NA, df$black_rate_moe/1.645/df$black_rate*100)
-  df$nh_white_rate_cv <- ifelse(df$nh_white_rate==0, NA, df$nh_white_rate_moe/1.645/df$nh_white_rate*100)
-  df$latino_rate_cv <- ifelse(df$latino_rate==0, NA, df$latino_rate_moe/1.645/df$latino_rate*100)
-  df$other_rate_cv <- ifelse(df$other_rate==0, NA, df$other_rate_moe/1.645/df$other_rate*100)
-  df$pacisl_rate_cv <- ifelse(df$pacisl_rate==0, NA, df$pacisl_rate_moe/1.645/df$pacisl_rate*100)
-  df$twoormor_rate_cv <- ifelse(df$twoormor_rate==0, NA, df$twoormor_rate_moe/1.645/df$twoormor_rate*100)
-  df$aian_rate_cv <- ifelse(df$aian_rate==0, NA, df$aian_rate_moe/1.645/df$aian_rate*100)
-  
   ## Screen out rates with high CVs and low populations
   df$total_rate <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_rate))
   df$asian_rate <- ifelse(df$asian_rate_cv > cv_threshold, NA, ifelse(df$asian_pop < pop_threshold, NA, df$asian_rate))
@@ -313,6 +317,15 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
   df$pacisl_rate <- ifelse(df$pacisl_rate_cv > cv_threshold, NA, ifelse(df$pacisl_pop < pop_threshold, NA, df$pacisl_rate))
   df$twoormor_rate <- ifelse(df$twoormor_rate_cv > cv_threshold, NA, ifelse(df$twoormor_pop < pop_threshold, NA, df$twoormor_rate))
   df$aian_rate <- ifelse(df$aian_rate_cv > cv_threshold, NA, ifelse(df$aian_pop < pop_threshold, NA, df$aian_rate))
+  df$total_raw <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_raw))
+  df$asian_raw <- ifelse(df$asian_rate_cv > cv_threshold, NA, ifelse(df$asian_pop < pop_threshold, NA, df$asian_raw))
+  df$black_raw <- ifelse(df$black_rate_cv > cv_threshold, NA, ifelse(df$black_pop < pop_threshold, NA, df$black_raw))
+  df$nh_white_raw <- ifelse(df$nh_white_rate_cv > cv_threshold, NA, ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_raw))
+  df$latino_raw <- ifelse(df$latino_rate_cv > cv_threshold, NA, ifelse(df$latino_pop < pop_threshold, NA, df$latino_raw))
+  df$other_raw <- ifelse(df$other_rate_cv > cv_threshold, NA, ifelse(df$other_pop < pop_threshold, NA, df$other_raw))
+  df$pacisl_raw <- ifelse(df$pacisl_rate_cv > cv_threshold, NA, ifelse(df$pacisl_pop < pop_threshold, NA, df$pacisl_raw))
+  df$twoormor_raw <- ifelse(df$twoormor_rate_cv > cv_threshold, NA, ifelse(df$twoormor_pop < pop_threshold, NA, df$twoormor_raw))
+  df$aian_raw <- ifelse(df$aian_rate_cv > cv_threshold, NA, ifelse(df$aian_pop < pop_threshold, NA, df$aian_raw))  
   
 } else {
   # Only DP05 should hit this condition
@@ -322,18 +335,8 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
   
 }
 
-## Run function to prep and export rda_shared_data table 
-  source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
-  table_schema <- "economic"
-  table_name <- "acs_5yr_b19301ai_multigeo_2021"
-  table_comment_source <- "ACS 2017-2021 5-Year Estimate Table B19301A-Ihttps://data.census.gov/cedsci/. State, county, place, PUMA, tract, and ZCTA"
-  df <- get_acs_data(df, table_schema, table_name, table_comment_source) # function to create and export rda_shared_table to postgres db
-  View(df)
+df <- select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"))
 
-# Run function to add column comments
-  colcomments <- get_acs_metadata(df_metadata, table_schema, table_name)
-  View(colcomments)
-  
 ############## CALC RACE COUNTS STATS ##############
 
 #set source for RC Functions script

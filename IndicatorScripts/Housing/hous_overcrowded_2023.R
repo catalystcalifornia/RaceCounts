@@ -419,6 +419,7 @@ if (!is.na(cv_threshold)){
   df$aian_rate_cv <- ifelse(df$aian_rate==0, NA, df$aian_rate_moe/1.645/df$aian_rate*100)
   
 } 
+
 ### NOTE: THIS PIECE DOESN'T WORK FOR SUBJECT TABLES YET ###
 ## Run function to prep and export rda_shared_data table 
 # source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
@@ -490,7 +491,7 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
 }
 
 df <- select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"))
-
+#df <- unique(df)  # there were dupes in this table for some reason. not an issue in other acs tables.
 
 ############## CALCULATE RACE COUNTS STATS AND SEND FINAL TABLES TO POSTGRES##############
 
@@ -507,8 +508,8 @@ if (table_code != "DP05") {
 
   d <- count_values(d)
   d <- calc_best(d)
-  d <- calc_diff(d)
-  d <- calc_avg_diff(d)
+  d <- calc_diff(d) #something is going wrong here or in next step
+  d <- calc_avg_diff(d) 
   d <- calc_s_var(d)
   d <- calc_id(d)
 
@@ -561,13 +562,13 @@ if (table_code != "DP05") {
   indicator <- "County and State population by race/ethnicity for RC Place page"        # See most recent Indicator Methodology for indicator description
   source <- "ACS 2017-2021, Table DP05. All AIAN, All NHPI, All Latinx, all other groups are one race alone and non-Latinx."   # See most recent Indicator Methodology for source info
   rc_schema <- "v5"
-  #send tables to postgres COMMENTED OUT FOR QA
-  # to_postgres(county_table)
+  #send tables to postgres
+  to_postgres(county_table)
 }
 
 
 ####### SEND TO POSTGRES #######
-#to_postgres(county_table,state_table)
+to_postgres(county_table,state_table)
 #city_to_postgres()
 
 
