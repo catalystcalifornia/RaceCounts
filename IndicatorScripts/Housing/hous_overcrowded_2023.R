@@ -491,7 +491,6 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
 }
 
 df <- select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"))
-#df <- unique(df)  # there were dupes in this table for some reason. not an issue in other acs tables.
 
 ############## CALCULATE RACE COUNTS STATS AND SEND FINAL TABLES TO POSTGRES##############
 
