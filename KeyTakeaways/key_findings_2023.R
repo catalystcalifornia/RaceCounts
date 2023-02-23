@@ -1,5 +1,5 @@
-## RC v4 Automated Findings
-### Created by: AB, DS, LF on 10/18/22 ##
+## RC v5 Automated Findings
+### Updated ##
 # Install packages if not already installed
 list.of.packages <- c("usethis","dplyr","data.table", "tidycensus", "sf", "RPostgreSQL",
                       "stringr", "tidyr", "matrixStats", "tidyverse", "writexl")
@@ -21,7 +21,8 @@ library(writexl) # not used?                to create csv
 options(scipen=999)
 
 # load the PostgreSQL driver & create connection for database
-source("W:\\Project\\RACE COUNTS\\2022_v4\\Key_Findings\\passwords.R")
+source("W:\\RDA Team\\R\\credentials_source.R")
+con <- connect_to_db("racecounts")
 
 # Function to clean county/state data -------------------------------------
 clean_data <- function(county, state, issue, indicator) {
@@ -122,20 +123,20 @@ clean_data <- function(county, state, issue, indicator) {
 }
 
 # GET CRIME & JUSTICE DATA ---------------------------------------------------
-## Import tables. Copy from v4 index view.
+## Import tables. Copy from current index view.
 ## county indicator tables
-c_1 <- st_read(con, query = "SELECT * FROM v4.arei_crim_incarceration_county_2022")
-c_2 <- st_read(con, query = "SELECT * FROM v4.arei_crim_perception_of_safety_county_2022")
-c_3 <- st_read(con, query = "SELECT * FROM v4.arei_crim_status_offenses_county_2022")
-c_4 <- st_read(con, query = "SELECT * FROM v4.arei_crim_use_of_force_county_2022")
+c_1 <- st_read(con, query = "SELECT * FROM v5.arei_crim_incarceration_county_2023")
+c_2 <- st_read(con, query = "SELECT * FROM v5.arei_crim_perception_of_safety_county_2023")
+c_3 <- st_read(con, query = "SELECT * FROM v5.arei_crim_status_offenses_county_2023")
+c_4 <- st_read(con, query = "SELECT * FROM v5.arei_crim_use_of_force_county_2023")
 
 ## state indicator tables - in another window, find/replace county table lines above: 'county' to 'state' and 'c_' to 's_'.
-s_1 <- st_read(con, query = "SELECT * FROM v4.arei_crim_incarceration_state_2022")
-s_2 <- st_read(con, query = "SELECT * FROM v4.arei_crim_perception_of_safety_state_2022")
-s_3 <- st_read(con, query = "SELECT * FROM v4.arei_crim_status_offenses_state_2022")
-s_4 <- st_read(con, query = "SELECT * FROM v4.arei_crim_use_of_force_state_2022")
+s_1 <- st_read(con, query = "SELECT * FROM v5.arei_crim_incarceration_state_2023")
+s_2 <- st_read(con, query = "SELECT * FROM v5.arei_crim_perception_of_safety_state_2023")
+s_3 <- st_read(con, query = "SELECT * FROM v5.arei_crim_status_offenses_state_2023")
+s_4 <- st_read(con, query = "SELECT * FROM v5.arei_crim_use_of_force_state_2023")
 
-## update issue value. define variable names for clean_data_z function. Copy from v4 index view.
+## update issue value. define variable names for clean_data_z function. Copy from current index view.
 issue <- 'crim'
 varname1 <- 'incarceration'
 varname2 <- 'safety'
@@ -152,24 +153,24 @@ df4 <- clean_data(c_4, s_4, issue, varname4)
 crime <- bind_rows(df1, df2, df3, df4) # adjust for number of indicators in specific issue area.
 
 # GET DEMOCRACY DATA ---------------------------------------------------
-## Import tables. Copy from v4 index view.
+## Import tables. Copy from current index view.
 ## county indicator tables
-c_1 <- st_read(con, query = "SELECT * FROM v4.arei_demo_census_participation_county_2022")
-c_2 <- st_read(con, query = "SELECT * FROM v4.arei_demo_diversity_of_candidates_county_2022")
-c_3 <- st_read(con, query = "SELECT * FROM v4.arei_demo_diversity_of_electeds_county_2022")
-c_4 <- st_read(con, query = "SELECT * FROM v4.arei_demo_registered_voters_county_2022")
-c_5 <- st_read(con, query = "SELECT * FROM v4.arei_demo_voting_midterm_county_2022")
-c_6 <- st_read(con, query = "SELECT * FROM v4.arei_demo_voting_presidential_county_2022")
+c_1 <- st_read(con, query = "SELECT * FROM v5.arei_demo_census_participation_county_2023")
+c_2 <- st_read(con, query = "SELECT * FROM v5.arei_demo_diversity_of_candidates_county_2023")
+c_3 <- st_read(con, query = "SELECT * FROM v5.arei_demo_diversity_of_electeds_county_2023")
+c_4 <- st_read(con, query = "SELECT * FROM v5.arei_demo_registered_voters_county_2023")
+c_5 <- st_read(con, query = "SELECT * FROM v5.arei_demo_voting_midterm_county_2023")
+c_6 <- st_read(con, query = "SELECT * FROM v5.arei_demo_voting_presidential_county_2023")
 
 ## state indicator tables - in another window, find/replace 'county' for 'state'.
-s_1 <- st_read(con, query = "SELECT * FROM v4.arei_demo_census_participation_state_2022")
-s_2 <- st_read(con, query = "SELECT * FROM v4.arei_demo_diversity_of_candidates_state_2022")
-s_3 <- st_read(con, query = "SELECT * FROM v4.arei_demo_diversity_of_electeds_state_2022")
-s_4 <- st_read(con, query = "SELECT * FROM v4.arei_demo_registered_voters_state_2022")
-s_5 <- st_read(con, query = "SELECT * FROM v4.arei_demo_voting_midterm_state_2022")
-s_6 <- st_read(con, query = "SELECT * FROM v4.arei_demo_voting_presidential_state_2022")
+s_1 <- st_read(con, query = "SELECT * FROM v5.arei_demo_census_participation_state_2023")
+s_2 <- st_read(con, query = "SELECT * FROM v5.arei_demo_diversity_of_candidates_state_2023")
+s_3 <- st_read(con, query = "SELECT * FROM v5.arei_demo_diversity_of_electeds_state_2023")
+s_4 <- st_read(con, query = "SELECT * FROM v5.arei_demo_registered_voters_state_2023")
+s_5 <- st_read(con, query = "SELECT * FROM v5.arei_demo_voting_midterm_state_2023")
+s_6 <- st_read(con, query = "SELECT * FROM v5.arei_demo_voting_presidential_state_2023")
 
-## update issue value. define variable names for clean_data_z function. Copy from v4 index view.
+## update issue value. define variable names for clean_data_z function. Copy from current index view.
 issue <- 'demo'
 varname1 <- 'census'
 varname2 <- 'candidate'
@@ -191,26 +192,26 @@ df6 <- clean_data(c_6, s_6, issue, varname6)
 democracy <- bind_rows(df1, df2, df3, df4, df5, df6) # adjust for number of indicators in specific issue area.
 
 # GET ECONOMIC DATA ---------------------------------------------------
-## Import tables. Copy from v4 index view. NOTE: I added in Living Wage bc it's not included in index.
+## Import tables. Copy from current index view. NOTE: I added in Living Wage bc it's not included in index.
 ## county indicator tables
-c_1 <- st_read(con, query = "SELECT * FROM v4.arei_econ_connected_youth_county_2022")
-c_2 <- st_read(con, query = "SELECT * FROM v4.arei_econ_employment_county_2022")
-c_3 <- st_read(con, query = "SELECT * FROM v4.arei_econ_internet_county_2022")
-c_4 <- st_read(con, query = "SELECT * FROM v4.arei_econ_officials_county_2022")
-c_5 <- st_read(con, query = "SELECT * FROM v4.arei_econ_per_capita_income_county_2022")
-c_6 <- st_read(con, query = "SELECT * FROM v4.arei_econ_real_cost_measure_county_2022")
-c_7 <- st_read(con, query = "SELECT * FROM v4.arei_econ_living_wage_county_2022")
+c_1 <- st_read(con, query = "SELECT * FROM v5.arei_econ_connected_youth_county_2023")
+c_2 <- st_read(con, query = "SELECT * FROM v5.arei_econ_employment_county_2023")
+c_3 <- st_read(con, query = "SELECT * FROM v5.arei_econ_internet_county_2023")
+c_4 <- st_read(con, query = "SELECT * FROM v5.arei_econ_officials_county_2023")
+c_5 <- st_read(con, query = "SELECT * FROM v5.arei_econ_per_capita_income_county_2023")
+c_6 <- st_read(con, query = "SELECT * FROM v5.arei_econ_real_cost_measure_county_2023")
+c_7 <- st_read(con, query = "SELECT * FROM v5.arei_econ_living_wage_county_2023")
 
 ## state indicator tables - in another window, find/replace 'county' for 'state'.
-s_1 <- st_read(con, query = "SELECT * FROM v4.arei_econ_connected_youth_state_2022")
-s_2 <- st_read(con, query = "SELECT * FROM v4.arei_econ_employment_state_2022")
-s_3 <- st_read(con, query = "SELECT * FROM v4.arei_econ_internet_state_2022")
-s_4 <- st_read(con, query = "SELECT * FROM v4.arei_econ_officials_state_2022")
-s_5 <- st_read(con, query = "SELECT * FROM v4.arei_econ_per_capita_income_state_2022")
-s_6 <- st_read(con, query = "SELECT * FROM v4.arei_econ_real_cost_measure_state_2022")
-s_7 <- st_read(con, query = "SELECT * FROM v4.arei_econ_living_wage_state_2022")
+s_1 <- st_read(con, query = "SELECT * FROM v5.arei_econ_connected_youth_state_2023")
+s_2 <- st_read(con, query = "SELECT * FROM v5.arei_econ_employment_state_2023")
+s_3 <- st_read(con, query = "SELECT * FROM v5.arei_econ_internet_state_2023")
+s_4 <- st_read(con, query = "SELECT * FROM v5.arei_econ_officials_state_2023")
+s_5 <- st_read(con, query = "SELECT * FROM v5.arei_econ_per_capita_income_state_2023")
+s_6 <- st_read(con, query = "SELECT * FROM v5.arei_econ_real_cost_measure_state_2023")
+s_7 <- st_read(con, query = "SELECT * FROM v5.arei_econ_living_wage_state_2023")
 
-## update issue value. define variable names for clean_data_z function. Copy from v4 index view. Note: I added in Liv Wage bc it's not in index.
+## update issue value. define variable names for clean_data_z function. Copy from current index view. Note: I added in Liv Wage bc it's not in index.
 issue <- 'econ'
 varname1 <- 'connected'
 varname2 <- 'employ'
@@ -236,26 +237,26 @@ economic <- bind_rows(df1, df2, df3, df4, df5, df6, df7) # adjust for number of 
 
 
 # GET EDUCATION DATA ---------------------------------------------------
-## Import tables. Copy from v4 index view.
+## Import tables. Copy from current index view.
 ## county indicator tables
-c_1 <- st_read(con, query = "SELECT * FROM v4.arei_educ_chronic_absenteeism_county_2022")
-c_2 <- st_read(con, query = "SELECT * FROM v4.arei_educ_hs_grad_county_2022")
-c_3 <- st_read(con, query = "SELECT * FROM v4.arei_educ_gr3_ela_scores_county_2022")
-c_4 <- st_read(con, query = "SELECT * FROM v4.arei_educ_gr3_math_scores_county_2022")
-c_5 <- st_read(con, query = "SELECT * FROM v4.arei_educ_suspension_county_2022")
-c_6 <- st_read(con, query = "SELECT * FROM v4.arei_educ_ece_access_county_2022")
-c_7 <- st_read(con, query = "SELECT * FROM v4.arei_educ_staff_diversity_county_2022")
+c_1 <- st_read(con, query = "SELECT * FROM v5.arei_educ_chronic_absenteeism_county_2023")
+c_2 <- st_read(con, query = "SELECT * FROM v5.arei_educ_hs_grad_county_2023")
+c_3 <- st_read(con, query = "SELECT * FROM v5.arei_educ_gr3_ela_scores_county_2023")
+c_4 <- st_read(con, query = "SELECT * FROM v5.arei_educ_gr3_math_scores_county_2023")
+c_5 <- st_read(con, query = "SELECT * FROM v5.arei_educ_suspension_county_2023")
+c_6 <- st_read(con, query = "SELECT * FROM v5.arei_educ_ece_access_county_2023")
+c_7 <- st_read(con, query = "SELECT * FROM v5.arei_educ_staff_diversity_county_2023")
 
 ## state indicator tables - in another window, find/replace 'county' for 'state'.
-s_1 <- st_read(con, query = "SELECT * FROM v4.arei_educ_chronic_absenteeism_state_2022")
-s_2 <- st_read(con, query = "SELECT * FROM v4.arei_educ_hs_grad_state_2022")
-s_3 <- st_read(con, query = "SELECT * FROM v4.arei_educ_gr3_ela_scores_state_2022")
-s_4 <- st_read(con, query = "SELECT * FROM v4.arei_educ_gr3_math_scores_state_2022")
-s_5 <- st_read(con, query = "SELECT * FROM v4.arei_educ_suspension_state_2022")
-s_6 <- st_read(con, query = "SELECT * FROM v4.arei_educ_ece_access_state_2022")
-s_7 <- st_read(con, query = "SELECT * FROM v4.arei_educ_staff_diversity_state_2022")
+s_1 <- st_read(con, query = "SELECT * FROM v5.arei_educ_chronic_absenteeism_state_2023")
+s_2 <- st_read(con, query = "SELECT * FROM v5.arei_educ_hs_grad_state_2023")
+s_3 <- st_read(con, query = "SELECT * FROM v5.arei_educ_gr3_ela_scores_state_2023")
+s_4 <- st_read(con, query = "SELECT * FROM v5.arei_educ_gr3_math_scores_state_2023")
+s_5 <- st_read(con, query = "SELECT * FROM v5.arei_educ_suspension_state_2023")
+s_6 <- st_read(con, query = "SELECT * FROM v5.arei_educ_ece_access_state_2023")
+s_7 <- st_read(con, query = "SELECT * FROM v5.arei_educ_staff_diversity_state_2023")
 
-## update issue value. define variable names for clean_data_z function. Copy from v4 index view.
+## update issue value. define variable names for clean_data_z function. Copy from current index view.
 issue <- 'educ'
 varname1 <- 'abst'
 varname2 <- 'grad'
@@ -280,24 +281,24 @@ education <- bind_rows(df1, df2, df3, df4, df5, df6, df7) # adjust for number of
 
 
 # GET HBEN DATA ---------------------------------------------------
-## Import tables. Copy from v4 index view.
+## Import tables. Copy from current index view.
 ## county indicator tables
-c_1 <- st_read(con, query = "SELECT * FROM v4.arei_hben_drinking_water_county_2022")
-c_2 <- st_read(con, query = "SELECT * FROM v4.arei_hben_food_access_county_2022")
-c_3 <- st_read(con, query = "SELECT * FROM v4.arei_hben_haz_weighted_avg_county_2022")
-c_4 <- st_read(con, query = "SELECT * FROM v4.arei_hben_toxic_release_county_2022")
-c_5 <- st_read(con, query = "SELECT * FROM v4.arei_hben_asthma_county_2022")
-c_6 <- st_read(con, query = "SELECT * FROM v4.arei_hben_lack_of_greenspace_county_2022")
+c_1 <- st_read(con, query = "SELECT * FROM v5.arei_hben_drinking_water_county_2023")
+c_2 <- st_read(con, query = "SELECT * FROM v5.arei_hben_food_access_county_2023")
+c_3 <- st_read(con, query = "SELECT * FROM v5.arei_hben_haz_weighted_avg_county_2023")
+c_4 <- st_read(con, query = "SELECT * FROM v5.arei_hben_toxic_release_county_2023")
+c_5 <- st_read(con, query = "SELECT * FROM v5.arei_hben_asthma_county_2023")
+c_6 <- st_read(con, query = "SELECT * FROM v5.arei_hben_lack_of_greenspace_county_2023")
 
 ## state indicator tables - in another window, find/replace 'county' for 'state'.
-s_1 <- st_read(con, query = "SELECT * FROM v4.arei_hben_drinking_water_state_2022")
-s_2 <- st_read(con, query = "SELECT * FROM v4.arei_hben_food_access_state_2022")
-s_3 <- st_read(con, query = "SELECT * FROM v4.arei_hben_haz_weighted_avg_state_2022")
-s_4 <- st_read(con, query = "SELECT * FROM v4.arei_hben_toxic_release_state_2022")
-s_5 <- st_read(con, query = "SELECT * FROM v4.arei_hben_asthma_state_2022")
-s_6 <- st_read(con, query = "SELECT * FROM v4.arei_hben_lack_of_greenspace_state_2022")
+s_1 <- st_read(con, query = "SELECT * FROM v5.arei_hben_drinking_water_state_2023")
+s_2 <- st_read(con, query = "SELECT * FROM v5.arei_hben_food_access_state_2023")
+s_3 <- st_read(con, query = "SELECT * FROM v5.arei_hben_haz_weighted_avg_state_2023")
+s_4 <- st_read(con, query = "SELECT * FROM v5.arei_hben_toxic_release_state_2023")
+s_5 <- st_read(con, query = "SELECT * FROM v5.arei_hben_asthma_state_2023")
+s_6 <- st_read(con, query = "SELECT * FROM v5.arei_hben_lack_of_greenspace_state_2023")
 
-## update issue value. define variable names for clean_data_z function. Copy from v4 index view.
+## update issue value. define variable names for clean_data_z function. Copy from current index view.
 issue <- 'hben'
 varname1 <- 'water'
 varname2 <- 'food'
@@ -320,26 +321,26 @@ hbe <- bind_rows(df1, df2, df3, df4, df5, df6) # adjust for number of indicators
 
 
 # GET HEALTH DATA ---------------------------------------------------
-## Import tables. Copy from v4 index view.
+## Import tables. Copy from current index view.
 ## county indicator tables
-c_1 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_got_help_county_2022")
-c_2 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_health_insurance_county_2022")
-c_3 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_life_expectancy_county_2022")
-c_4 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_low_birthweight_county_2022")
-c_5 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_usual_source_of_care_county_2022")
-c_6 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_preventable_hospitalizations_county_2022")
+c_1 <- st_read(con, query = "SELECT * FROM v5.arei_hlth_got_help_county_2023")
+c_2 <- st_read(con, query = "SELECT * FROM v5.arei_hlth_health_insurance_county_2023")
+c_3 <- st_read(con, query = "SELECT * FROM v5.arei_hlth_life_expectancy_county_2023")
+c_4 <- st_read(con, query = "SELECT * FROM v5.arei_hlth_low_birthweight_county_2023")
+c_5 <- st_read(con, query = "SELECT * FROM v5.arei_hlth_usual_source_of_care_county_2023")
+c_6 <- st_read(con, query = "SELECT * FROM v5.arei_hlth_preventable_hospitalizations_county_2023")
 
 
 ## state indicator tables - in another window, find/replace 'county' for 'state'.
-s_1 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_got_help_state_2022")
-s_2 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_health_insurance_state_2022")
-s_3 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_life_expectancy_state_2022")
-s_4 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_low_birthweight_state_2022")
-s_5 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_usual_source_of_care_state_2022")
-s_6 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_preventable_hospitalizations_state_2022")
+s_1 <- st_read(con, query = "SELECT * FROM v5.arei_hlth_got_help_state_2023")
+s_2 <- st_read(con, query = "SELECT * FROM v5.arei_hlth_health_insurance_state_2023")
+s_3 <- st_read(con, query = "SELECT * FROM v5.arei_hlth_life_expectancy_state_2023")
+s_4 <- st_read(con, query = "SELECT * FROM v5.arei_hlth_low_birthweight_state_2023")
+s_5 <- st_read(con, query = "SELECT * FROM v5.arei_hlth_usual_source_of_care_state_2023")
+s_6 <- st_read(con, query = "SELECT * FROM v5.arei_hlth_preventable_hospitalizations_state_2023")
 
 
-## update issue value. define variable names for clean_data_z function. Copy from v4 index view.
+## update issue value. define variable names for clean_data_z function. Copy from current index view.
 issue <- 'hlth'
 varname1 <- 'help'
 varname2 <- 'insur'
@@ -362,32 +363,32 @@ health <- bind_rows(df1, df2, df3, df4, df5, df6) # adjust for number of indicat
 
 
 # GET HOUSING DATA ---------------------------------------------------
-## Import tables. Copy from v4 index view.
+## Import tables. Copy from current index view.
 ## county indicator tables
-c_1 <- st_read(con, query = "SELECT * FROM v4.arei_hous_cost_burden_owner_county_2022")
-c_2 <- st_read(con, query = "SELECT * FROM v4.arei_hous_cost_burden_renter_county_2022")
-c_3 <- st_read(con, query = "SELECT * FROM v4.arei_hous_denied_mortgages_county_2022")
-c_4 <- st_read(con, query = "SELECT * FROM v4.arei_hous_eviction_filing_rate_county_2022") 
-c_5 <- st_read(con, query = "SELECT * FROM v4.arei_hous_foreclosure_county_2022")
-c_6 <- st_read(con, query = "SELECT * FROM v4.arei_hous_homeownership_county_2022")
-c_7 <- st_read(con, query = "SELECT * FROM v4.arei_hous_overcrowded_county_2022")
-c_8 <- st_read(con, query = "SELECT * FROM v4.arei_hous_housing_quality_county_2022")
-c_9 <- st_read(con, query = "SELECT * FROM v4.arei_hous_student_homelessness_county_2022")
-c_10 <- st_read(con, query = "SELECT * FROM v4.arei_hous_subprime_county_2022")
+c_1 <- st_read(con, query = "SELECT * FROM v5.arei_hous_cost_burden_owner_county_2023")
+c_2 <- st_read(con, query = "SELECT * FROM v5.arei_hous_cost_burden_renter_county_2023")
+c_3 <- st_read(con, query = "SELECT * FROM v5.arei_hous_denied_mortgages_county_2023")
+c_4 <- st_read(con, query = "SELECT * FROM v5.arei_hous_eviction_filing_rate_county_2023") 
+c_5 <- st_read(con, query = "SELECT * FROM v5.arei_hous_foreclosure_county_2023")
+c_6 <- st_read(con, query = "SELECT * FROM v5.arei_hous_homeownership_county_2023")
+c_7 <- st_read(con, query = "SELECT * FROM v5.arei_hous_overcrowded_county_2023")
+c_8 <- st_read(con, query = "SELECT * FROM v5.arei_hous_housing_quality_county_2023")
+c_9 <- st_read(con, query = "SELECT * FROM v5.arei_hous_student_homelessness_county_2023")
+c_10 <- st_read(con, query = "SELECT * FROM v5.arei_hous_subprime_county_2023")
 
 ## state indicator tables - in another window, find/replace 'county' for 'state'.
-s_1 <- st_read(con, query = "SELECT * FROM v4.arei_hous_cost_burden_owner_state_2022")
-s_2 <- st_read(con, query = "SELECT * FROM v4.arei_hous_cost_burden_renter_state_2022")
-s_3 <- st_read(con, query = "SELECT * FROM v4.arei_hous_denied_mortgages_state_2022")
-s_4 <- st_read(con, query = "SELECT * FROM v4.arei_hous_eviction_filing_rate_state_2022")
-s_5 <- st_read(con, query = "SELECT * FROM v4.arei_hous_foreclosure_state_2022")
-s_6 <- st_read(con, query = "SELECT * FROM v4.arei_hous_homeownership_state_2022")
-s_7 <- st_read(con, query = "SELECT * FROM v4.arei_hous_overcrowded_state_2022")
-s_8 <- st_read(con, query = "SELECT * FROM v4.arei_hous_housing_quality_state_2022")
-s_9 <- st_read(con, query = "SELECT * FROM v4.arei_hous_student_homelessness_state_2022")
-s_10 <- st_read(con, query = "SELECT * FROM v4.arei_hous_subprime_state_2022")
+s_1 <- st_read(con, query = "SELECT * FROM v5.arei_hous_cost_burden_owner_state_2023")
+s_2 <- st_read(con, query = "SELECT * FROM v5.arei_hous_cost_burden_renter_state_2023")
+s_3 <- st_read(con, query = "SELECT * FROM v5.arei_hous_denied_mortgages_state_2023")
+s_4 <- st_read(con, query = "SELECT * FROM v5.arei_hous_eviction_filing_rate_state_2023")
+s_5 <- st_read(con, query = "SELECT * FROM v5.arei_hous_foreclosure_state_2023")
+s_6 <- st_read(con, query = "SELECT * FROM v5.arei_hous_homeownership_state_2023")
+s_7 <- st_read(con, query = "SELECT * FROM v5.arei_hous_overcrowded_state_2023")
+s_8 <- st_read(con, query = "SELECT * FROM v5.arei_hous_housing_quality_state_2023")
+s_9 <- st_read(con, query = "SELECT * FROM v5.arei_hous_student_homelessness_state_2023")
+s_10 <- st_read(con, query = "SELECT * FROM v5.arei_hous_subprime_state_2023")
 
-## update issue value. define variable names for clean_data_z function. Copy from v4 index view.
+## update issue value. define variable names for clean_data_z function. Copy from current index view.
 issue <- 'hous'
 varname1 <- 'burden_own'
 varname2 <- 'burden_rent'
@@ -429,7 +430,6 @@ long_name <- c("Total", "API", "Black", "Latinx", "American Indian / Alaska Nati
 race_names <- data.frame(race_generic, long_name)
 
 # Create indicator long name df -------------------------------------------
-
 indicator <- c("Employment","Living Wage","Per Capita Income","Cost-of-Living Adjusted Poverty","Overcrowded Housing", "Connected Youth","Officials and Managers",
                "Internet Access","Life Expectancy","Health Insurance","Preventable Hospitalizations","Low Birthweight","Usual Source of Care","Got Help",
                "High School Graduation","3rd Grade English Proficiency","3rd Grade Math Proficiency","Suspensions","Early Childhood Education Access",
@@ -438,14 +438,15 @@ indicator <- c("Employment","Living Wage","Per Capita Income","Cost-of-Living Ad
                "Voting in Midterm Elections","Voter Registration","Census Participation","Arrests for Status Offenses","Use of Force","Incarceration","Perception of Safety",
                "Drinking Water Contaminants","Food Access","Proximity to Hazards","Toxic Releases from Facilities","Asthma","Lack of Greenspace")             
 
-
 indicator_short <- c("employ","livwage","percap","realcost","overcrowded","connected","officials","internet","life","insur","hosp","bwt","usoc","help","grad","ela","math",     
                      "susp","ece","diver","abst","subprime","quality","burden_rent","burden_own","forecl","denied","homeown","homeless","eviction","elected","candidate",
                      "president","midterm","voter","census","offenses","force","incarceration","safety","water","food","hazard","toxic","asthma","green")
 
 indicator <- data.frame(indicator, indicator_short)
+
 ### LF: This section creates findings like: -----------------------------------------------------
-## Race page: "Kern's Latinx residents have the worst rates for 7 of the 42 RACE COUNTS indicators." and Place page: "Across indicators, Contra Costa County Black residents are most impacted by racial disparity."
+## Race page: "Kern's Latinx residents have the worst rates for 7 of the 42 RACE COUNTS indicators." 
+## and Place pages: "Across indicators, Contra Costa County Black residents are most impacted by racial disparity."
   ### Step 1: Get worst raced rate for each indicator and pull in race name grouped by geo + indicator
   ### Step 2: Count number of times each race has the worst rate grouped by geo
   ### Step 3: Generate sentences with # indicators with worst rates each race has out of all indicators grouped by geo + race
@@ -533,15 +534,16 @@ worst_best_counts <- worst_best_counts %>% mutate(geo_level = ifelse(geo_name ==
   impact_table2 <- impact_table %>% 
     group_by(geoid, geoname, count) %>% 
     mutate(long_name2 = paste0(long_name, collapse = " and ")) %>% select(-c(long_name, race_generic)) %>% unique()
-  # updated screen to > 4 from > 5 used in v3 so that Alpine County would get a finding. Alpine finding is consistent with v3, although there is 1 less indicator with an ID in Alpine in v4.
+  # updated screen to > 4 from > 5 used in v3 so that Alpine County would get a finding. Alpine finding is consistent with v3, although there is 1 less indicator with an ID in Alpine in v5.
   most_impacted <- impact_table2 %>% mutate(finding = ifelse(id_count > 4, paste0("Across indicators, ", geoname, " ", long_name2, " residents are most impacted by racial disparity."), paste0("Data for residents of ", geoname, " is too limited for this analysis.")))
 
 
 #save output as a csv
-  #write.csv(most_impacted, file = "W:\\Project\\RACE COUNTS\\2022_v4\\Key_Findings\\RaceCounts\\most_impacted_race_v2.csv", row.names = FALSE)  
+  #write.csv(most_impacted, file = "W:\\Project\\RACE COUNTS\\2023_v5\\Key_Findings\\RaceCounts\\most_impacted_race_v2.csv", row.names = FALSE)  
   
   
-### DS: This section creates findings for Race pages - most disparate indicator by Race & Place. Example:"Denied Mortgages is the most disparate indicator for American Indian/Alaska Native residents of San Francisco." ------------------------------------------------------------------
+### DS: This section creates findings for Race pages - most disparate indicator by race & place. 
+  ##Example:"Denied Mortgages is the most disparate indicator for American Indian/Alaska Native residents of San Francisco." ------------------------------------------------------------------
 
 # Function to prep raced most_disparate tables
   most_disp_by_race <- function(x, y, d) {
@@ -651,38 +653,38 @@ worst_best_counts <- worst_best_counts %>% mutate(geo_level = ifelse(geo_name ==
   
   
 # Save most_disp, best_rate_counts, worst_rate_counts as 1 csv
-# rda_race_door_findings <- bind_rows(most_disp, worst_best_counts)
-# rda_race_door_findings <- rda_race_door_findings %>% relocate(geo_level, .after = geo_name) %>% relocate(finding_type, .after = race) %>% mutate( src = 'rda', citations = '') %>%
- #                          mutate(race = ifelse(race == 'latino', 'latinx', ifelse(race == 'pacisl', 'nhpi', race)))  # rename latino to latinx, and pacisl to nhpi to feed API - will change API later so we can use RC standard latino/pacisl
+ rda_race_door_findings <- bind_rows(most_disp, worst_best_counts)
+ rda_race_door_findings <- rda_race_door_findings %>% relocate(geo_level, .after = geo_name) %>% relocate(finding_type, .after = race) %>% mutate( src = 'rda', citations = '') %>%
+                           mutate(race = ifelse(race == 'latino', 'latinx', ifelse(race == 'pacisl', 'nhpi', race)))  # rename latino to latinx, and pacisl to nhpi to feed API - will change API later so we can use RC standard latino/pacisl
  
- # write.csv(rda_race_door_findings, file = "W:\\Project\\RACE COUNTS\\2022_v4\\Key_Findings\\RaceCounts\\rda_race_door_findings.csv", row.names = FALSE)
+ # write.csv(rda_race_door_findings, file = "W:\\Project\\RACE COUNTS\\2023_v5\\Key_Findings\\RaceCounts\\rda_race_door_findings.csv", row.names = FALSE)
 
 ## Create postgres table
- #dbWriteTable(con, c("v4", "arei_racedoor_findings_multigeo"), rda_race_door_findings,
- #             overwrite = FALSE, row.names = FALSE)
+ #dbWriteTable(con, c("v5", "arei_racedoor_findings_multigeo"), rda_race_door_findings,
+ #            overwrite = FALSE, row.names = FALSE)
 
  # comment on table and columns
- #comment <- paste0("COMMENT ON TABLE v4.arei_racedoor_findings_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2022_v4\\Key_Findings\\RaceCounts\\key_findings_2022.R.';",
- #                  "COMMENT ON COLUMN v4.arei_racedoor_findings_multigeo.finding_type
+ #comment <- paste0("COMMENT ON TABLE v5.arei_racedoor_findings_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\Key_Findings\\RaceCounts\\key_findings_2023.R.';",
+ #                  "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.finding_type
  #                       IS 'Categorizes findings: count of best and worst rates by race/geo combo, race most impacted by inequities in a geo, most disparate indicator in a geo and findings by issue area/race combo';",
- #                  "COMMENT ON COLUMN v4.arei_racedoor_findings_multigeo.src
+ #                  "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.src
  #                       IS 'Categorizes source of finding as either rda or program area';",
- #                  "COMMENT ON COLUMN v4.arei_racedoor_findings_multigeo.citations
+ #                  "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.citations
  #                       IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
- #                  "COMMENT ON COLUMN v4.arei_racedoor_findings_multigeo.findings_pos
+ #                  "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.findings_pos
  #                       IS 'Used to determine the order a set of findings should appear in on RC.org';")
  #print(comment)
  #dbSendQuery(con, comment)
 
 ### AB: This section creates findings for Place page - the most disparate and worst performance indicators across counties #####
 # Load Indexes
-  c_1 <- st_read(con, query = "SELECT * FROM v4.arei_crim_index_2022")
-  c_2 <- st_read(con, query = "SELECT * FROM v4.arei_demo_index_2022")
-  c_3 <- st_read(con, query = "SELECT * FROM v4.arei_econ_index_2022")
-  c_4 <- st_read(con, query = "SELECT * FROM v4.arei_educ_index_2022")
-  c_5 <- st_read(con, query = "SELECT * FROM v4.arei_hben_index_2022")
-  c_6 <- st_read(con, query = "SELECT * FROM v4.arei_hlth_index_2022")
-  c_7 <- st_read(con, query = "SELECT * FROM v4.arei_hous_index_2022")
+  c_1 <- st_read(con, query = "SELECT * FROM v5.arei_crim_index_2023")
+  c_2 <- st_read(con, query = "SELECT * FROM v5.arei_demo_index_2023")
+  c_3 <- st_read(con, query = "SELECT * FROM v5.arei_econ_index_2023")
+  c_4 <- st_read(con, query = "SELECT * FROM v5.arei_educ_index_2023")
+  c_5 <- st_read(con, query = "SELECT * FROM v5.arei_hben_index_2023")
+  c_6 <- st_read(con, query = "SELECT * FROM v5.arei_hlth_index_2023")
+  c_7 <- st_read(con, query = "SELECT * FROM v5.arei_hous_index_2023")
 
 data_list <- list(c_1, c_2, c_3, c_4, c_5, c_6, c_7)
 
@@ -788,13 +790,13 @@ worst_perf2 <- worst_perf2 %>%
 final_df <- worst_disp2 %>% left_join(worst_perf2, by = 'county_name')
 
 #save output as a csv
- #write.csv(final_df,"W:\\Project\\RACE COUNTS\\2022_v4\\Key_Findings\\RaceCounts\\worst_disp_perf_by_county.csv", row.names = FALSE)
+ #write.csv(final_df,"W:\\Project\\RACE COUNTS\\2023_v5\\Key_Findings\\RaceCounts\\worst_disp_perf_by_county.csv", row.names = FALSE)
 
 
 
 ### AB: This section creates findings for Place page- the summary statements above/below avg disparity/performance across counties ####
 # Indicators
-c_1 <- st_read(con, query = "SELECT * FROM v4.arei_composite_index_2022")
+c_1 <- st_read(con, query = "SELECT * FROM v5.arei_composite_index_2023")
 
 #extracting and creating new variables based on conditions
 sum_statement_df <- c_1 %>% 
@@ -812,7 +814,7 @@ sum_statement_df <- sum_statement_df  %>%
 sum_statement_df <- sum_statement_df[order(sum_statement_df$county_name),]
 
 # save output as a csv
- #write.csv(sum_statement_df,"W:\\Project\\RACE COUNTS\\2022_v4\\Key_Findings\\RaceCounts\\summary_statements_by_county.csv", row.names = FALSE)
+ #write.csv(sum_statement_df,"W:\\Project\\RACE COUNTS\\2023_v5\\Key_Findings\\RaceCounts\\summary_statements_by_county.csv", row.names = FALSE)
 
 # prep df to merge into main findings df
 #sum_statement_df <- sum_statement_df  %>%
