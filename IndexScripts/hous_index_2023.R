@@ -10,6 +10,7 @@ if(length(new.packages)) install.packages(new.packages)
 library(tidyverse)
 library(RPostgreSQL)
 library(sf)
+library(usethis)
 
 
 # Load PostgreSQL driver and databases --------------------------------------------------
@@ -31,7 +32,7 @@ c_8 <- st_read(con, query = "SELECT * FROM v5.arei_hous_housing_quality_county_2
 c_9 <- st_read(con, query = "SELECT * FROM v5.arei_hous_student_homelessness_county_2023")
 c_10 <- st_read(con, query = "SELECT * FROM v5.arei_hous_subprime_county_2023")
 
-region_urban_type <- st_read(con, query = "SELECT geoid AS county_id, region, urban_type FROM v5.arei_race_multigeo_2023")
+region_urban_type <- st_read(con, query = "SELECT geoid AS county_id, region, urban_type FROM v4.arei_multigeo_list")
 
 
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area. Copy from v3 index view.
@@ -121,9 +122,9 @@ View(index_table)
 index_table_name <- "arei_hous_index_2023"
 index <- "Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is"
 source <- "CUS Department of Housing and Urban Development (HUD) Comprehensive Housing Affordability Strategy (CHAS) data (2014-2018), Home Mortgage Disclosure Act (HMDA) (2019-2020), The Eviction Lab at Princeton University (2014-2017), DataQuick (2017-2021), and AMERICAN COMMUNITY SURVEY 5-YEAR ESTIMATES, TABLES B25003B-I (2017-2021), B25014B-I, DP05, and PUMS (2017-2021) "
+rc_schema <- "v5"
 
-index_to_postgres()
-
+index_to_postgres(index_table, rc_schema)
 
 
 
