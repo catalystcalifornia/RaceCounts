@@ -110,9 +110,6 @@ source <- "American Community Survey (ACS) PUMS 2017-2021, American Community Su
 
 index_to_postgres()
 
-```{r}
-index_table
-```
 
 
 
