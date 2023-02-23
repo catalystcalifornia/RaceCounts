@@ -22,7 +22,7 @@ con <- connect_to_db("rda_shared_data")
 ############### PREP RDA_SHARED_DATA TABLE ########################
 
 ## Manually define test data download site, file names, file location etc.
-url = "https://caaspp-elpac.ets.org/caaspp/researchfiles/sb_ca2022_all_ascii_v2.zip"
+url = "https://caaspp-elpac.ets.org/caaspp/researchfiles/sb_ca2022_all_ascii_v1.zip"
 zipfile = "W:\\Data\\Education\\CAASPP\\2021-22\\sb_ca2022_all_ascii_v1.zip"
 file = "W:\\Data\\Education\\CAASPP\\2021-22\\sb_ca2022_all_ascii_v1.txt"
 exdir = "W:\\Data\\Education\\CAASPP\\2021-22"
@@ -55,7 +55,7 @@ View(colcomments)
 ###### PREP FOR RC FUNCTIONS #######
 df_subset <- rename(df, rate = percentage_standard_met_and_above, pop = students_with_scores, race = student_grp_id)
 
-# Filter for 3rd grade, Math test, race/ethnicity subgroups, county/state level 
+# Filter for 3rd grade, ELA test, race/ethnicity subgroups, county/state level 
 df_subset <- df_subset %>% filter(grade == "03" & test_id == "01" & race %in% c("001","074","075","076","077","078","079","080","144")
                            & type_id %in% c("04", "05")) %>%    
 

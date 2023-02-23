@@ -22,7 +22,7 @@ con <- connect_to_db("rda_shared_data")
 ############### PREP RDA_SHARED_DATA TABLE ########################
 
 ## Manually define test data download site, file names, file location etc.
-url = "https://caaspp-elpac.ets.org/caaspp/researchfiles/sb_ca2022_all_ascii_v2.zip"
+url = "https://caaspp-elpac.ets.org/caaspp/researchfiles/sb_ca2022_all_ascii_v1.zip"
 zipfile = "W:\\Data\\Education\\CAASPP\\2021-22\\sb_ca2022_all_ascii_v1.zip"
 file = "W:\\Data\\Education\\CAASPP\\2021-22\\sb_ca2022_all_ascii_v1.txt"
 exdir = "W:\\Data\\Education\\CAASPP\\2021-22"
