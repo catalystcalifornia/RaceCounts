@@ -443,7 +443,7 @@ indicator_short <- c("employ","livwage","percap","realcost","overcrowded","conne
 
 indicator <- data.frame(indicator, indicator_short)
 
-### LF: This section creates findings like: -----------------------------------------------------
+### This section creates findings like: -----------------------------------------------------
 ## Race page: "Kern's Latinx residents have the worst rates for 7 of the 42 RACE COUNTS indicators." 
 ## and Place pages: "Across indicators, Contra Costa County Black residents are most impacted by racial disparity."
   ### Step 1: Get worst raced rate for each indicator and pull in race name grouped by geo + indicator
@@ -534,12 +534,12 @@ worst_best_counts <- worst_best_counts %>% mutate(geo_level = ifelse(geo_name ==
     group_by(geoid, geo_name, count) %>% 
     mutate(long_name2 = paste0(long_name, collapse = " and ")) %>%  select(-c(long_name, race_generic)) %>% unique()
   most_impacted <- impact_table2 %>% mutate(finding_type = 'most impacted', finding = ifelse(id_count > 4, paste0("Across indicators, ", geo_name, " ", long_name2, " residents are most impacted by racial disparity."), paste0("Data for residents of ", geo_name, " is too limited for this analysis.")),
-                                            finding_pos = '1')
-  most_impacted <- most_impacted %>% select(c(geoid, geo_name, finding_type, finding, finding_pos))
+                                            findings_pos = '1')
+  most_impacted <- most_impacted %>% select(c(geoid, geo_name, finding_type, finding, findings_pos))
   most_impacted$geo_name <- gsub(" County", "", most_impacted$geo_name) 
   most_impacted <- most_impacted[-c(1)]
 
-### DS: This section creates findings for Race pages - most disparate indicator by race & place. 
+### This section creates findings for Race pages - most disparate indicator by race & place. 
   ##Example:"Denied Mortgages is the most disparate indicator for American Indian/Alaska Native residents of San Francisco." ------------------------------------------------------------------
 
 # Function to prep raced most_disparate tables 
@@ -655,23 +655,23 @@ worst_best_counts <- worst_best_counts %>% mutate(geo_level = ifelse(geo_name ==
                            mutate(race = ifelse(race == 'latino', 'latinx', ifelse(race == 'pacisl', 'nhpi', race)))  # rename latino to latinx, and pacisl to nhpi to feed API - will change API later so we can use RC standard latino/pacisl
  
 ## Create postgres table
- #dbWriteTable(con, c("v5", "arei_racedoor_findings_multigeo"), rda_race_door_findings,
- #            overwrite = FALSE, row.names = FALSE)
+ dbWriteTable(con, c("v5", "arei_racedoor_findings_multigeo"), rda_race_door_findings,
+             overwrite = FALSE, row.names = FALSE)
 
  # comment on table and columns
- #comment <- paste0("COMMENT ON TABLE v5.arei_racedoor_findings_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
- #                  "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.finding_type
- #                       IS 'Categorizes findings: count of best and worst rates by race/geo combo, most disparate indicator by race/geo combo';",
- #                  "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.src
- #                       IS 'Categorizes source of finding as either rda or program area';",
- #                  "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.citations
- #                       IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
- #                  "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.findings_pos
- #                       IS 'Used to determine the order a set of findings should appear in on RC.org';")
- #print(comment)
- #dbSendQuery(con, comment)
+ # comment <- paste0("COMMENT ON TABLE v5.arei_racedoor_findings_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
+ #                   "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.finding_type
+ #                        IS 'Categorizes findings: count of best and worst rates by race/geo combo, most disparate indicator by race/geo combo';",
+ #                   "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.src
+ #                        IS 'Categorizes source of finding as either rda or program area';",
+ #                   "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.citation
+ #                        IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
+ #                   "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.findings_pos
+ #                        IS 'Used to determine the order a set of findings should appear in on RC.org';")
+ # print(comment)
+ # dbSendQuery(con, comment)
 
-### AB: This section creates findings for Place page - the most disparate and worst performance indicators across counties #####
+### This section creates findings for Place page - the most disparate and worst performance indicators across counties #####
 # Load Indexes
   c_1 <- st_read(con, query = "SELECT * FROM v5.arei_crim_index_2023")
   c_2 <- st_read(con, query = "SELECT * FROM v5.arei_demo_index_2023")
@@ -731,8 +731,8 @@ worst_disp2 <- worst_disp2 %>%
   mutate(finding_type = 'worst disparity', finding = ifelse(disp_ties > 1, 
                                       paste0(geo_name, " County's high racial disparity in ", long_disp_indicator," stand out most compared to other counties."),
                                       paste0(geo_name, " County's high racial disparity in ", long_disp_indicator," stands out most compared to other counties.")), 
-         finding_pos = '4') %>% 
-         select(geoid, geo_name, finding_type, finding, finding_pos)
+         findings_pos = '4') %>% 
+         select(geoid, geo_name, finding_type, finding, findings_pos)
 
 
 ## Worst Performance - PLACE PAGE ----
@@ -779,8 +779,8 @@ worst_perf2 <- worst_perf2 %>%
               mutate(finding_type = 'worst performance', finding = ifelse(perf_ties > 1, 
                       paste0(geo_name, " County's low overall performance in ", long_perf_indicator, " stand out most compared to other counties."),
                       paste0(geo_name, " County's low overall performance in ", long_perf_indicator," stands out most compared to other counties.")),  
-              finding_pos = '5') %>% 
-              select(geoid, geo_name, finding_type, finding, finding_pos)
+              findings_pos = '5') %>% 
+              select(geoid, geo_name, finding_type, finding, findings_pos)
 
 # Combine findings into one final df
 worst_disp_perf <- union(worst_disp2, worst_perf2)
@@ -799,32 +799,32 @@ sum_statement_df <- c_1 %>%
 
 disp_avg_statement <- sum_statement_df  %>% rename(geoid = county_id, geo_name = county_name) %>%
   mutate(finding_type = 'disp avg', finding = ifelse(is.na(disp_type), NA, paste0(geo_name, " County's racial disparity across indicators is ", disp_type, " average for California counties.")),
-         finding_pos = '2') %>% 
-  select(geoid, geo_name, finding_type, finding, finding_pos) 
+         findings_pos = '2') %>% 
+  select(geoid, geo_name, finding_type, finding, findings_pos) 
 
 perf_avg_statement <- sum_statement_df  %>% rename(geoid = county_id, geo_name = county_name) %>%
   mutate(finding_type = 'perf avg', finding = ifelse(is.na(perf_type), NA, paste0(geo_name, " County's performance across indicators is ", perf_type, " average for California counties.")),
-         finding_pos = '3') %>% 
-  select(geoid, geo_name, finding_type, finding, finding_pos) 
+         findings_pos = '3') %>% 
+  select(geoid, geo_name, finding_type, finding, findings_pos) 
 
 rda_places_findings <- rbind(most_impacted, disp_avg_statement, perf_avg_statement, worst_disp_perf) %>%
-                      mutate(geo_level = ifelse(geoid == '06', 'state', 'county'), src = 'rda', citation = '') %>%
+                      mutate(geo_level = ifelse(geoid == '06', 'state', 'county'), src = 'rda', citations = '') %>%
                       relocate(geo_level, .after = geo_name)
 
 ## Create postgres table
-#dbWriteTable(con, c("v5", "arei_places_findings_multigeo"), rda_places_findings,
-#            overwrite = FALSE, row.names = FALSE)
+dbWriteTable(con, c("v5", "arei_places_findings_county"), rda_places_findings,
+            overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
-# comment <- paste0("COMMENT ON TABLE arei_places_findings_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
-#                  "COMMENT ON COLUMN v5.arei_places_findings_multigeo.finding_type
-#                       IS 'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below perf, most disp indicator, worst perf indicator';",
-#                  "COMMENT ON COLUMN v5.arei_places_findings_multigeo.src
-#                       IS 'Categorizes source of finding as either rda or program area';",
-#                  "COMMENT ON COLUMN v5.arei_places_findings_multigeo.citations
-#                       IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
-#                  "COMMENT ON COLUMN v5.arei_places_findings_multigeo.findings_pos
-#                       IS 'Used to determine the order a set of findings should appear in on RC.org';")
-#print(comment)
-#dbSendQuery(con, comment)
+#  comment <- paste0("COMMENT ON TABLE v5.arei_places_findings_county IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
+#                   "COMMENT ON COLUMN v5.arei_places_findings_county.finding_type
+#                        IS 'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below perf, most disp indicator, worst perf indicator';",
+#                   "COMMENT ON COLUMN v5.arei_places_findings_county.src
+#                        IS 'Categorizes source of finding as either rda or program area';",
+#                   "COMMENT ON COLUMN v5.arei_places_findings_county.citations
+#                        IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
+#                   "COMMENT ON COLUMN v5.arei_places_findings_county.findings_pos
+#                        IS 'Used to determine the order a set of findings should appear in on RC.org';")
+# print(comment)
+# dbSendQuery(con, comment)
 
