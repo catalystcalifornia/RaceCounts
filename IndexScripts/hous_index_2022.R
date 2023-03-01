@@ -120,7 +120,7 @@ View(index_table)
 # Send table to postgres 
 index_table_name <- "arei_hous_index_2023"
 index <- "Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is"
-source <- "CUS Department of Housing and Urban Development (HUD) Comprehensive Housing Affordability Strategy (CHAS) data (2014-2018), Home Mortgage Disclosure Act (HMDA) (2019-2020), The Eviction Lab at Princeton University (2014-2017), DataQuick (2017-2021), and AMERICAN COMMUNITY SURVEY 5-YEAR ESTIMATES, TABLES B25003B-I (2017-2021), B25014B-I, DP05, and PUMS (2017-2021) "
+source <- "CUS Department of Housing and Urban Development (HUD) Comprehensive Housing Affordability Strategy (CHAS) data (2014-2018), Home Mortgage Disclosure Act (HMDA) (2019-2020), The Eviction Lab at Princeton University (2014-2017), DataQuick (2017-2021), and AMERICAN COMMUNITY SURVEY 5-YEAR ESTIMATES, TABLES B25003B-I (2016-2020), B25014B-I, DP05, and PUMS (2016-2020)"
 
 index_to_postgres()
 

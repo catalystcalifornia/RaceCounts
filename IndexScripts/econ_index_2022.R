@@ -105,8 +105,8 @@ View(index_table)
 
 # Send table to postgres 
 index_table_name <- "arei_econ_index_2023"
-index <- "Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is"
-source <- "American Community Survey (ACS) PUMS 2017-2021, American Community Survey (ACS) 2017-2021 Tables S2301 / S2802 / B19301B-I, and United Ways of California 2021"
+index <- "Includes all issue indicators except for living wage. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators except for living wage. This data is"
+source <- "American Community Survey (ACS) PUMS 2016-2020, American Community Survey (ACS) 2016-2020 Tables S2301 / S2802 / B19301B-I, and United Ways of California 2021"
 
 index_to_postgres()
 

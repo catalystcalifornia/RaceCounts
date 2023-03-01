@@ -106,7 +106,7 @@ View(index_table)
 # Send table to postgres 
 index_table_name <- "arei_educ_index_2023"
 index <- "Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is"
-source <- "CALIFORNIA DEPARTMENT OF EDUCATION (2021-22) for Suspensions, Chronic Absenteeism, High School Graduation, 3rd Grade English and Math, and (2018-19) for Diversity of Teachers, CALIFORNIA HEALTH INTERVIEW SURVEY (2011-2020), CALIFORNIA CHILD CARE RESOURCE & REFERRAL NETWORK (2019), AMERICAN INSTITUTES FOR RESEARCH EARLY LEARNING NEEDS ASSESSMENT TOOL (2018)"
+source <- "CALIFORNIA DEPARTMENT OF EDUCATION (2021-22) for Suspensions, Chronic Absenteeism, High School Graduation, 3rd Grade English and Math, and (2018-19) for Diversity of Teachers, CALIFORNIA CHILD CARE RESOURCE & REFERRAL NETWORK (2019), AMERICAN INSTITUTES FOR RESEARCH EARLY LEARNING NEEDS ASSESSMENT TOOL (2018)"
 rc_schema <- "v5"
 
 index_to_postgres()
