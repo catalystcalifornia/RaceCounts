@@ -534,7 +534,7 @@ worst_best_counts <- worst_best_counts %>% mutate(geo_level = ifelse(geo_name ==
     group_by(geoid, geo_name, count) %>% 
     mutate(long_name2 = paste0(long_name, collapse = " and ")) %>%  select(-c(long_name, race_generic)) %>% unique()
   most_impacted <- impact_table2 %>% mutate(finding_type = 'most impacted', finding = ifelse(id_count > 4, paste0("Across indicators, ", geo_name, " ", long_name2, " residents are most impacted by racial disparity."), paste0("Data for residents of ", geo_name, " is too limited for this analysis.")),
-                                            findings_pos = '1')
+                                            findings_pos = 1)
   most_impacted <- most_impacted %>% select(c(geoid, geo_name, finding_type, finding, findings_pos))
   most_impacted$geo_name <- gsub(" County", "", most_impacted$geo_name) 
   most_impacted <- most_impacted[-c(1)]
@@ -779,7 +779,7 @@ worst_perf2 <- worst_perf2 %>%
               mutate(finding_type = 'worst performance', finding = ifelse(perf_ties > 1, 
                       paste0(geo_name, " County's low overall performance in ", long_perf_indicator, " stand out most compared to other counties."),
                       paste0(geo_name, " County's low overall performance in ", long_perf_indicator," stands out most compared to other counties.")),  
-              findings_pos = '5') %>% 
+              findings_pos = 5) %>% 
               select(geoid, geo_name, finding_type, finding, findings_pos)
 
 # Combine findings into one final df
@@ -799,12 +799,12 @@ sum_statement_df <- c_1 %>%
 
 disp_avg_statement <- sum_statement_df  %>% rename(geoid = county_id, geo_name = county_name) %>%
   mutate(finding_type = 'disp avg', finding = ifelse(is.na(disp_type), NA, paste0(geo_name, " County's racial disparity across indicators is ", disp_type, " average for California counties.")),
-         findings_pos = '2') %>% 
+         findings_pos = 2) %>% 
   select(geoid, geo_name, finding_type, finding, findings_pos) 
 
 perf_avg_statement <- sum_statement_df  %>% rename(geoid = county_id, geo_name = county_name) %>%
   mutate(finding_type = 'perf avg', finding = ifelse(is.na(perf_type), NA, paste0(geo_name, " County's performance across indicators is ", perf_type, " average for California counties.")),
-         findings_pos = '3') %>% 
+         findings_pos = 3) %>% 
   select(geoid, geo_name, finding_type, finding, findings_pos) 
 
 rda_places_findings <- rbind(most_impacted, disp_avg_statement, perf_avg_statement, worst_disp_perf) %>%
