@@ -186,4 +186,4 @@ source <- "CalEnviroScreen 4.0 https://oehha.ca.gov/calenviroscreen/report/calen
 
 #send tables to postgres
 #to_postgres(county_table, state_table)
-♣
+#city_to_postgres(city_table)
