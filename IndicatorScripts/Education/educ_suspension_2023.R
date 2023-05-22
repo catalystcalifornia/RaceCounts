@@ -27,9 +27,8 @@ fieldtype = 1:11 # specify which cols should be varchar, the rest will be assign
 
 ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 table_schema <- "education"
-table_name <- "cde_multigeo_suspensions_2021_22"
-table_comment_source <- "NOTE: Only use chronic absenteeism data from this link. The Dashboard download is incomplete and lacks data for most high schools (at least within LAUSD).
-     Chronic absenteeism data downloaded from https://www.cde.ca.gov/ds/ad/filessd.asp"
+table_name <- "cde_multigeo_calpads_suspensions_2021_22"
+table_comment_source <- "NOTE: Only use suspension data from this link, https://www.cde.ca.gov/ds/ad/filessd.asp. The Dashboard download is incomplete and lacks data for most high schools (at least within LAUSD). Wide data format, multigeo table with state, county, district, and school"
 table_source <- "Wide data format, multigeo table with state, county, district, and school"
 
 ## Run function to prep and export rda_shared_data table 
