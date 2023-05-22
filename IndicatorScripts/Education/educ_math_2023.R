@@ -55,10 +55,10 @@ View(colcomments)
 ###### PREP FOR RC FUNCTIONS #######
 df_subset <- rename(df, rate = percentage_standard_met_and_above, pop = students_with_scores, race = student_grp_id)
 
-# Filter for 3rd grade, Math test, race/ethnicity subgroups, county/state level 
+# Filter for 3rd grade, math test, race/ethnicity subgroups, county/state/district/ level 
 df_subset <- df_subset %>% filter(grade == "03" & test_id == "02" & race %in% c("001","074","075","076","077","078","079","080","144")
-                           & type_id %in% c("04", "05")) %>%    
-
+                                  & type_id %in% c("04", "05", "06")) %>%    
+  
   ## calc raw/rate and screen ---------------------------------------------------------
 #calculate raw
 mutate(raw = round(pop * rate / 100, 0)) 
@@ -68,7 +68,7 @@ threshold = 20
 df_subset <- df_subset %>% mutate(raw = ifelse(pop < threshold, NA, raw), rate = ifelse(pop < threshold, NA, rate))
 
 #select just fields we need
-df_subset <- df_subset %>% select(geoname, race, rate, raw, pop) 
+df_subset <- df_subset %>% select(geoname, cdscode, type_id, race, rate, raw, pop) 
 
 #rename race/eth categories
 df_subset$race <- gsub("001", "total", df_subset$race)
@@ -83,28 +83,33 @@ df_subset$race <- gsub("144", "nh_twoormor", df_subset$race)
 df_subset$geoname <- gsub("State of ", "", df_subset$geoname)
 
 #get county geoids
-census_api_key("25fb5e48345b42318ae435e4dcd28ad3f196f2c4", overwrite = TRUE)
+census_api_key(census_key1, overwrite=TRUE) # In practice, may need to include install=TRUE if switching between census api keys
+Sys.getenv("CENSUS_API_KEY") # confirms value saved to .renviron
 
-ca <- get_acs(geography = "county", 
-              variables = c("B01001_001"), 
-              state = "CA", 
-              year = 2021)
+# county geoids
+counties <- get_acs(geography = "county",
+                    variables = c("B01001_001"), 
+                    state = "CA", 
+                    year = 2021)
 
-ca <- ca[,1:2]
-ca$NAME <- gsub(" County, California", "", ca$NAME)
-names(ca) <- c("geoid", "geoname")
-View(ca)
+counties <- counties[,1:2]
+counties$NAME <- gsub(" County, California", "", counties$NAME) 
+names(counties) <- c("geoid", "geoname")
+county_match <- filter(df_subset,type_id=="05") %>% right_join(counties,by='geoname') %>% mutate(district='')
 
-#add county geoids
-df_subset <- merge(x=ca,y=df_subset,by="geoname", all=T)
-#add state geoid
-df_subset <- within(df_subset, geoid[geoname == 'California'] <- '06')
-#View(df_subset)
+# get school district geoids (NCES District ID) - pull in active district records w/ geoids and names from CDE schools' list
+districts <- st_read(con, query = "SELECT cdscode, district, ncesdist AS geoid FROM education.cde_public_schools_2021_22 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'")
+district_match <- filter(df_subset,type_id=="06") %>% right_join(districts,by='cdscode')
 
-#pivot
-df_wide <- df_subset %>% pivot_wider(names_from = race, names_glue = "{race}_{.value}", values_from = c(raw, pop, rate))
+matched <- union(county_match, district_match) %>% select(c(cdscode, geoid, district)) %>% distinct() # combine distinct county and district geoid matched df's
+df_final <- df_subset %>% full_join(matched, by='cdscode')
+df_final <- df_final %>% relocate(geoid) %>% mutate(geoname = ifelse(type_id == "04", "California", geoname), # add geoname and geoid for state
+                                                    geoid = ifelse(type_id == "04", "06", geoid),
+                                                    geoname = ifelse(type_id == "06", district, geoname)) %>% select(-c(district)) # sub district name into geoname for district rows
+df_final <- filter(df_final, !is.na(geoid)) # remove records without fips codes
 
-d <- df_wide 
+d <- df_final %>% pivot_wider(names_from = race, names_glue = "{race}_{.value}", values_from = c(pop, raw, rate)) # pivot to wide format, ensure correct col names for RC functions
+
 
 ####################################################################################################################################################
 ############## CALC RACE COUNTS STATS ##############
@@ -121,16 +126,16 @@ d <- calc_p_var(d) #calculate (row wise) population or sample variance. be sure 
 d <- calc_id(d) #calculate index of disparity
 View(d)
 
-#split STATE into separate table and format id, name columns
-state_table <- d[d$geoname == 'California', ]
+#split STATE into separate table
+state_table <- d[d$geoname == 'California', ] %>% select(-c(cdscode, type_id))
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
 state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
 View(state_table)
 
-#remove state from county table
-county_table <- d[d$geoname != 'California', ]
+#split COUNTY into separate table
+county_table <- d[d$type_id == '05', ] %>% select(-c(cdscode, type_id))
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
@@ -138,14 +143,26 @@ county_table <- calc_ranks(county_table)
 county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
 View(county_table)
 
+#split CITY into separate table
+city_table <- d[d$type_id == '06', ] %>% select(-c(cdscode, type_id))
+
+#calculate DISTRICT z-scores
+city_table <- calc_z(city_table)
+city_table <- calc_ranks(city_table)
+city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") 
+View(city_table)
+
+
+
 ###update info for postgres tables###
 county_table_name <- "arei_educ_gr3_math_scores_county_2023"
 state_table_name <- "arei_educ_gr3_math_scores_state_2023"
-#city_table_name <- "arei_educ_gr3_math_scores_district_2023"
+city_table_name <- "arei_educ_gr3_math_scores_district_2023"
 rc_schema <- "v5"
 
 indicator <- "Students scoring proficient or better on 3rd grade Math (%)"
 source <- "CAASPP 2021-22 https://caaspp-elpac.ets.org/caaspp/ResearchFileListSB?ps=true&lstTestYear=2022&lstTestType=B&lstCounty=00&lstDistrict=00000"
 
 #send tables to postgres
-to_postgres(county_table,state_table)
+#to_postgres(county_table,state_table)
+#city_to_postgres()
