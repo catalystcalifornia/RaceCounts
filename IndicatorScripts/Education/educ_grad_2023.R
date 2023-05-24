@@ -24,8 +24,8 @@ con <- connect_to_db("rda_shared_data")
 
 #Get HS Grad, handle nas, ensure DistrictCode reads in right
 # Data Dictionary: https://www.cde.ca.gov/ds/ad/fsacgr.asp
-filepath = "https://www3.cde.ca.gov/demo-downloads/acgr/acgr22-v2.txt"
-fieldtype = 1:11 # specify which cols should be varchar, the rest will be assigned numeric
+filepath = "https://www3.cde.ca.gov/demo-downloads/acgr/acgr22-v2.txt" 
+fieldtype = 1:12 # specify which cols should be varchar, the rest will be assigned numeric
 
 ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 table_schema <- "education"
@@ -41,6 +41,7 @@ View(df)
 ## Run function to add rda_shared_data column comments
 # See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
 url <-  "https://www.cde.ca.gov/ds/ad/fsacgr.asp"   # define webpage with metadata
+html_nodes <- "table"
 colcomments <- get_cde_metadata(url, table_schema, table_name)
 View(colcomments)
 
