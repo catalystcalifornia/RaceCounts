@@ -5,13 +5,9 @@ new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"
 if(length(new.packages)) install.packages(new.packages)
 library(dplyr)
 library(tidyr)
-library(DBI)
-library(RPostgreSQL)
 library(tidycensus)
 library(sf)
 library(tidyverse) # to scrape metadata table from cde website
-#library(rvest) # to scrape metadata table from cde website
-library(stringr) # cleaning up data
 library(usethis) # connect to github
 
 # create connection for rda database
@@ -48,7 +44,7 @@ head(df)
 
 #### NOTE: Each year, the xpath needs to be updated in this function. See rdashared_functions.R for more info ###
 url3 <- "https://caaspp-elpac.ets.org/caaspp/ResearchFileFormatSB?ps=true&lstTestYear=2022&lstTestType=B"   # define webpage with metadata
-colcomments <- get_caaspp_metadata(url3, table_schema, table_name)
+#colcomments <- get_caaspp_metadata(url3, table_schema, table_name)
 View(colcomments)
 
 
