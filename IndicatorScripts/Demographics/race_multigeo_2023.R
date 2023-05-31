@@ -224,7 +224,7 @@ if (startsWith(table_code, "DP05")) {
   new_names <- c("total_pop", "total_rate", "aian_pop", "pct_aian_pop", "pacisl_pop", 
                  "pct_pacisl_pop", "latino_pop", "pct_latino_pop", "nh_white_pop", "pct_nh_white_pop", 
                  "nh_black_pop", "pct_nh_black_pop", "nh_asian_pop", "pct_nh_asian_pop", "nh_other_pop", "pct_nh_other_pop", 
-                 "twoormor_pop", "pct_nh_twoormor_pop", "total_pop_moe", "pct_total_pop_moe", "aian_pop_moe", "pct_aian_pop_moe", 
+                 "nh_twoormor_pop", "pct_nh_twoormor_pop", "total_pop_moe", "pct_total_pop_moe", "aian_pop_moe", "pct_aian_pop_moe", 
                  "pacisl_pop_moe", "pct_pacisl_pop_moe", "latino_pop_moe", "pct_latino_pop_moe", "nh_white_pop_moe", "pct_nh_white_pop_moe", 
                  "nh_black_pop_moe", "pct_nh_black_pop_moe", "nh_asian_pop_moe", "pct_nh_asian_pop_moe", "nh_other_pop_moe", "pct_nh_other_pop_moe", 
                  "nh_twoormor_pop_moe", "pct_nh_twoormor_pop_moe")
