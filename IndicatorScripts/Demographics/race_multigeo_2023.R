@@ -458,7 +458,7 @@ if (table_code != "DP05") {
   # ############## DPO5 ONLY ----- SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
   county_table <- d
   ###update info for postgres tables###
-  county_table_name <- "arei_race_multigeo_2023"      # See See most recent RC Workflow/tables for table name (remember to update year)
+  county_table_name <- "arei_race_multigeo"      # See See most recent RC Workflow/tables for table name (remember to update year)
   indicator <- "City, County, and State population by race/ethnicity for RC Place page"        # See most recent Indicator Methodology for indicator description
   source <- "ACS 2017-2021, Table DP05. All AIAN, All NHPI, All Latinx, all other groups are one race alone and non-Latinx."   # See most recent Indicator Methodology for source info
   rc_schema <- "v5"
