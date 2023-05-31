@@ -803,7 +803,7 @@ disp_avg_statement <- sum_statement_df  %>% rename(geoid = county_id, geo_name =
   select(geoid, geo_name, finding_type, finding, findings_pos) 
 
 perf_avg_statement <- sum_statement_df  %>% rename(geoid = county_id, geo_name = county_name) %>%
-  mutate(finding_type = 'perf avg', finding = ifelse(is.na(perf_type), NA, paste0(geo_name, " County's performance across indicators is ", perf_type, " average for California counties.")),
+  mutate(finding_type = 'perf avg', finding = ifelse(is.na(perf_type), NA, paste0(geo_name, " County's outcomes across indicators are ", perf_type, " average for California counties.")),
          findings_pos = 3) %>% 
   select(geoid, geo_name, finding_type, finding, findings_pos) 
 
