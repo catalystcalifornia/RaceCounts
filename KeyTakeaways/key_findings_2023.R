@@ -777,8 +777,8 @@ worst_perf2 <- worst_perf %>%
 # Write Findings using ifelse statements
 worst_perf2 <- worst_perf2 %>% 
               mutate(finding_type = 'worst performance', finding = ifelse(perf_ties > 1, 
-                      paste0(geo_name, " County's low overall performance in ", long_perf_indicator, " stand out most compared to other counties."),
-                      paste0(geo_name, " County's low overall performance in ", long_perf_indicator," stands out most compared to other counties.")),  
+                      paste0(geo_name, " County's low overall outcomes in ", long_perf_indicator, " stand out most compared to other counties."),
+                      paste0(geo_name, " County's low overall outcomes in ", long_perf_indicator," stands out most compared to other counties.")),  
               findings_pos = 5) %>% 
               select(geoid, geo_name, finding_type, finding, findings_pos)
 
