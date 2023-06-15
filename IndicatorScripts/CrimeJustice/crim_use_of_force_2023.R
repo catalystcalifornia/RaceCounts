@@ -2,7 +2,7 @@
 
 ## Set up ----------------------------------------------------------------
 #install packages if not already installed
-list.of.packages <- c("DBI", "tidyverse","RPostgreSQL", "tidycensus", "readxl", "sf", "janitor", "stringr", "rlist", "pipeR", "data.table", "usethis")
+list.of.packages <- c("DBI", "tidyverse","RPostgreSQL", "tidycensus", "readxl", "sf", "janitor", "stringr", "data.table", "usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
@@ -15,8 +15,6 @@ library(tidycensus)
 library(DBI)
 library(janitor)
 library(stringr)
-library(rlist) # working within list
-library(pipeR) # data grouping within list
 library(data.table) # %like% operator
 library(usethis)
 
