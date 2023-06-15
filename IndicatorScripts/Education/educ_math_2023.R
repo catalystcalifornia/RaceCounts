@@ -1,17 +1,13 @@
 ##install packages if not already installed ------------------------------
-list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis")
+list.of.packages <- c("tidyr", "dplyr", "sf", "tidycensus", "tidyverse", "usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 
 if(length(new.packages)) install.packages(new.packages)
 library(dplyr)
 library(tidyr)
-library(DBI)
-library(RPostgreSQL)
 library(tidycensus)
 library(sf)
 library(tidyverse) # to scrape metadata table from cde website
-#library(rvest) # to scrape metadata table from cde website
-library(stringr) # cleaning up data
 library(usethis) # connect to github
 
 # create connection for rda database
