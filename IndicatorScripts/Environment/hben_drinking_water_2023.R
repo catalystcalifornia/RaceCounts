@@ -19,10 +19,6 @@ options(scipen=999)
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
-# load census API
-census_api_key(census_key1, overwrite=TRUE) # In practice, may need to include install=TRUE if switching between census api keys
-Sys.getenv("CENSUS_API_KEY") # confirms value saved to .renviron
-
 #set source for RC Functions script
 source("W:/RDA Team/R/Functions/Cnty_St_Wt_Avg_Functions.R")
 
@@ -47,8 +43,7 @@ pop_threshold = 250               # define population threshold for screening
 
 ### CT-Place Crosswalk ###
 # pull in 2020 CBF Places
-places <- places(state = 'CA', year = 2020, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, STUSPS, STATE_NAME, LSAD))
-tracts <- tracts(state = 'CA', year = 2020, cb = TRUE) %>% select(-c(STATEFP, TRACTCE, AFFGEOID, NAME, NAMELSAD, STATE_NAME, LSAD))
+tracts_places$intersect_area <- st_area(tracts_places)
 tracts$area <- st_area(tracts)
 tracts_centroid <- st_centroid(tracts) # calc tract centroids for spatial join to places (spatial join of tract polys to places does not ever complete bc there are too many polys)
 intersect <- st_join(tracts_centroid, places, join = st_within) %>% filter(!is.na(NAME)) # join tract centroids to places they are within, drop tracts with centroids outside of cities
