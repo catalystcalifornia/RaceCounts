@@ -48,7 +48,7 @@ head(df)
 
 #### NOTE: Each year, the xpath needs to be updated in this function. See rdashared_functions.R for more info ###
 url3 <- "https://caaspp-elpac.ets.org/caaspp/ResearchFileFormatSB?ps=true&lstTestYear=2022&lstTestType=B"   # define webpage with metadata
-colcomments <- get_caaspp_metadata(url3, table_schema, table_name)
+#colcomments <- get_caaspp_metadata(url3, table_schema, table_name)
 View(colcomments)
 
 
