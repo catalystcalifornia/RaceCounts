@@ -1,6 +1,6 @@
 ## Homeownership for RC v5 ##
 #install packages if not already installed
-list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis", "sf")
+list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis", "sf", "tigris")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
@@ -11,6 +11,8 @@ library(dplyr)
 library(DBI)
 library(RPostgreSQL)
 library(sf)
+library(tigris)
+library(dplyr)
 library(usethis)
 
 # create connection for rda database
@@ -47,10 +49,16 @@ acs_vars <- load_variables(year = yr, dataset = dataset, cache = TRUE)
 df_metadata <- subset(acs_vars, acs_vars$name %in% vars_list)
 
 # Pull data from Census API
-# get array of zctas in CA ---- May need to change to appropriate data year
-#### get latest cbf ZCTA shapefile here - https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.2020.html . Then clip to CA only using DP05 ZCTA list.
-list_ca_zctas <- st_read(con, query = "select zcta5ce20 from geographies_ca.cb_2020_ca_zcta520_500k")
-list_ca_zctas <- list_ca_zctas$zcta5ce20
+# get array of zctas in CA ---- 
+state_shp <- states(year = yr, cb = FALSE) %>% filter(, NAME == 'California') # non-cbf shape to match zctas
+zcta_shp <- zctas(year = yr, cb = FALSE) %>% filter(substr(GEOID20,1,1)=="9") # non-cbf bc 2021 cbf zctas are not available yet, also not avail. by state. filter for zctas that start with '9' bc it makes processing faster and CA zctas start with 9.
+zcta_shp$area <- st_area(zcta_shp)
+zcta_shp <- st_intersection(zcta_shp, state_shp) %>%   # clip zctas to state shape aka create our own CA-only zcta shape
+             dplyr::select(c("GEOID20", "area", "geometry"))  # keep only needed columns
+zcta_shp$new_area <- st_area(zcta_shp) # calc area of zcta that intersects with CA
+zcta_shp$pct_area <- (zcta_shp$new_area / zcta_shp$area) * 100 # calc % of zcta that intersects with CA to check we are only including zcta's that are mainly in CA
+
+list_ca_zctas <- zcta_shp$GEOID20
 
 df <- do.call(rbind.data.frame, list(
   get_acs(geography = "state", state = "CA", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE)
@@ -65,7 +73,7 @@ df <- do.call(rbind.data.frame, list(
   %>% mutate(geolevel = "tract"),
   get_acs(geography = "zcta", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE) 
   %>% mutate(geolevel = "zcta") %>% 
-   filter(GEOID %in% list_ca_zctas)) 
+    filter(GEOID %in% list_ca_zctas)) 
 )
 
 # Rename estimate and moe columns to e and m, respectively
@@ -199,7 +207,7 @@ if(endsWith(table_code, "B25014")) {
   df_wide_multigeo$pacisl_raw <- df_wide_multigeo$pacisl_raw_owner_1 + df_wide_multigeo$pacisl_raw_owner_2 +df_wide_multigeo$pacisl_raw_renter_1 + df_wide_multigeo$pacisl_raw_renter_2
   df_wide_multigeo$twoormor_raw <- df_wide_multigeo$twoormor_raw_owner_1 + df_wide_multigeo$twoormor_raw_owner_2 +df_wide_multigeo$twoormor_raw_renter_1 + df_wide_multigeo$twoormor_raw_renter_2
   df_wide_multigeo$aian_raw <- df_wide_multigeo$aian_raw_owner_1 + df_wide_multigeo$aian_raw_owner_2 +df_wide_multigeo$aian_raw_renter_1 + df_wide_multigeo$aian_raw_renter_2
-    
+  
   # Because we've aggregated these values, will need to calculate a new moe
   # Formula: sqrt(moe1^2 + moe2^2 + moe3^2 + moe4^2)
   df_wide_multigeo$total_raw_moe <- sqrt(total_raw_owner_moe_1^2 + total_raw_owner_moe_2^2 + total_raw_renter_moe_1^2 + total_raw_renter_moe_2^2)
@@ -289,7 +297,7 @@ if (startsWith(table_code, "DP05")) {
     rename_with(~ new_names[which(old_names == .x)], .cols = old_names)
   
   # drop total_rate - is just a copy of total_pop & drop _moe values (get clarification: aren't included in arei_race_county_2021)
-  df_wide_multigeo <- select(df_wide_multigeo, -ends_with("_moe"), -ends_with("_rate"))
+  df_wide_multigeo <- dplyr::select(df_wide_multigeo, -ends_with("_moe"), -ends_with("_rate"))
 }
 
 
@@ -324,15 +332,15 @@ if (!is.na(cv_threshold)){
   
 } 
 
-### NOTE: THIS PIECE DOESN'T WORK FOR SUBJECT TABLES YET ###
 ## Run function to prep and export rda_shared_data table 
-# source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
-# table_schema <- "housing"
-# table_name <- "acs_5yr_b25003_multigeo_2021"
-# table_comment_source <- "ACS 2017-2021 5-Year Estimate Table B25003 https://data.census.gov/cedsci/. State, county, place, PUMA, tract, and ZCTA"
+source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
+table_schema <- "housing"
+table_name <- "acs_5yr_b25003_multigeo_2021"
+table_comment_source <- "ACS 2017-2021 5-Year Estimate Table B25003 https://data.census.gov/cedsci/. State, county, place, PUMA, tract, and ZCTA"
 # df <- get_acs_data(df, table_schema, table_name, table_comment_source) # function to create and export rda_shared_table to postgres db
-# View(df)
-# 
+View(df)
+
+### NOTE: THIS PIECE DOESN'T WORK YET ###
 # # Run function to add column comments
 # colcomments <- get_acs_metadata(df_metadata, table_schema, table_name)
 # View(colcomments)
@@ -389,12 +397,12 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
 } else {
   # Only DP05 should hit this condition
   # Will use to change population values < 0 to NA (negative values are Census annotations)
-  pop_columns <- colnames(select(df, ends_with("_pop")))
+  pop_columns <- colnames(dplyr::select(df, ends_with("_pop")))
   df[,pop_columns] <- sapply(df[,pop_columns], function(x) ifelse(x<0, NA, x))
   
 }
 
-df <- select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"))
+df <- dplyr::select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"))
 
 ############## CALC RACE COUNTS STATS ##############
 
@@ -422,15 +430,15 @@ if (table_code != "DP05") {
   city_table <- d[d$geolevel == 'place', ]
   
   #calculate STATE z-scores
-  state_table <- calc_state_z(state_table) %>% select(-c(geolevel))
+  state_table <- calc_state_z(state_table) %>% dplyr::select(-c(geolevel))
   View(state_table)
   
   #calculate COUNTY z-scores
   county_table <- calc_z(county_table) 
   
   ## Calc county ranks##
-  county_table <- calc_ranks(county_table) %>% select(-c(geolevel))
-
+  county_table <- calc_ranks(county_table) %>% dplyr::select(-c(geolevel))
+  
   View(county_table)
   
   
@@ -438,7 +446,7 @@ if (table_code != "DP05") {
   city_table <- calc_z(city_table)
   # 
   # ## Calc city ranks##
-  city_table <- calc_ranks(city_table) %>% select(-c(geolevel))
+  city_table <- calc_ranks(city_table) %>% dplyr::select(-c(geolevel))
   View(city_table)
   
   #rename geoid to state_id, county_id, city_id
@@ -447,7 +455,7 @@ if (table_code != "DP05") {
   colnames(city_table)[1:2] <- c("city_id", "city_name")
   
   
-  ############### NON-DP05 ----- SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
+  ############### NON-DP05 ----- COUNTY, STATE, CITY METADATA  ##############
   
   ###update info for postgres tables###
   county_table_name <- "arei_hous_homeownership_county_2023"      # See most recent RC Workflow SQL Views for table name (remember to update year)
@@ -459,7 +467,7 @@ if (table_code != "DP05") {
   
 } else {
   
-  # ############## DPO5 ONLY ----- SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
+  # ############## DPO5 ONLY ----- COUNTY, STATE, CITY METADATA ##############
   county_table <- d
   ###update info for postgres tables###
   county_table_name <- "arei_race_multigeo_2023"      # See most recent RC Workflow SQL Views for table name (remember to update year)
@@ -469,5 +477,5 @@ if (table_code != "DP05") {
 }
 
 ####### SEND TO POSTGRES #######
-to_postgres(county_table,state_table)
-#city_to_postgres()
+#to_postgres(county_table,state_table)
+#city_to_postgres(city_table)
