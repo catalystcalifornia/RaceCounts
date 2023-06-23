@@ -1,5 +1,5 @@
 ### Drinking Water Contamination (Weighted Avg) RC v5 ### 
-# #install packages if not already installed ------------------------------
+##install packages if not already installed ------------------------------
 list.of.packages <- c("dplyr","data.table","sf","tigris","readr","tidyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 
@@ -27,7 +27,7 @@ source("W:/RDA Team/R/Functions/Cnty_St_Wt_Avg_Functions.R")
 # load indicator data
 ind_df <- st_read(con, query = "select ct_geoid AS geoid, drinkwat from built_environment.oehha_ces4_tract_2021")
 ind_df <- dplyr::rename(ind_df, sub_id = geoid, indicator = drinkwat)       # rename columns for functions
-
+ind_df <- filter(ind_df, indicator >= 0) # screen out NA values of -999
 
 ############# CITY ##################
 
@@ -40,14 +40,69 @@ targetgeolevel <- c('place')     # define your target geolevel: county (state is
 survey <- "acs5"                  # define which Census survey you want
 pop_threshold = 250               # define population threshold for screening
 
+### CT-Place Crosswalk ### ---------------------------------------------------------------------
+## pull in 2020 CBF Places ##
+  places <- places(state = 'CA', year = 2020, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
+  tracts <- tracts(state = 'CA', year = 2020, cb = TRUE) %>% select(-c(STATEFP, TRACTCE, AFFGEOID, NAME, NAMELSAD, STATE_NAME, LSAD, ALAND, AWATER))
 
-### CT-Place Crosswalk ###
-# pull in 2020 CBF Places
-tracts_places$intersect_area <- st_area(tracts_places)
-tracts$area <- st_area(tracts)
-tracts_centroid <- st_centroid(tracts) # calc tract centroids for spatial join to places (spatial join of tract polys to places does not ever complete bc there are too many polys)
-intersect <- st_join(tracts_centroid, places, join = st_within) %>% filter(!is.na(NAME)) # join tract centroids to places they are within, drop tracts with centroids outside of cities
+## spatial join ##
+    places_3310 <- st_transform(places, 3310) # change projection to 3310
+    tracts_3310 <- st_transform(tracts, 3310) # change projection to 3310
+  # calculate area of tracts and places
+    tracts_3310$area <- st_area(tracts_3310)
+    places_3310$pl_area <- st_area(places_3310)
+  # rename geoid fields
+    tracts_3310 <- tracts_3310%>% 
+      rename("ct_geoid" = "GEOID", "county_geoid" = "COUNTYFP", "county_name" = "NAMELSADCO")
+    places_3310 <- places_3310%>% 
+      rename("place_geoid" = "GEOID", "place_name" = "NAME")
+  # run intersect
+    tracts_places <- st_intersection(tracts_3310, places_3310) 
+  # create ct_place combo geoid field
+    tracts_places$ct_place_geoid <- paste(tracts_places$place_geoid, tracts_places$ct_geoid, sep = "_")
+  # calculate area of intersect
+    tracts_places$intersect_area <- st_area(tracts_places)
+  # calculate percent of intersect out of total place area
+    places_tracts <- tracts_places %>% mutate(prc_pl_area = as.numeric(tracts_places$intersect_area/tracts_places$pl_area))
+  # calculate percent of intersect out of total tract area
+    tracts_places$prc_area <- as.numeric(tracts_places$intersect_area/tracts_places$area)
+  # convert to df
+    tracts_places <- as.data.frame(tracts_places)
+    places_tracts <- as.data.frame(places_tracts)
+  # xwalk N = 16,342
+    xwalk <- full_join(places_tracts, select(tracts_places, c(ct_place_geoid, prc_area)), by = 'ct_place_geoid')
+  # filter xwalk where intersect between tracts and places is equal or greater than X% of tract area OR place area. xwalk_filter N = 9,675
+    threshold <- .25
+    xwalk_filter <- xwalk %>% filter(prc_area >= threshold | prc_pl_area >= threshold)
+    names(xwalk_filter) <- tolower(names(xwalk_filter)) # make col names lowercase
+    xwalk_filter <- select(xwalk_filter, ct_place_geoid, ct_geoid, place_geoid, county_geoid, place_name, namelsad, county_name, area, pl_area, intersect_area, prc_area, prc_pl_area)
 
+# export xwalk table
+    table_name <- "ct_place_2021"
+    table_schema <- "crosswalks"
+    table_comment_source <- "Created with W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\IndicatorScripts\\Environment\\hben_drinking_water_2023.R and based on 2021 ACS TIGER non-CBF shapefiles.
+    CTs with 25% or more of their area within a city or that cover 25% or more of a city''s area are assigned to those cities.
+    As a result, a CT can be assigned to more than one city"
+    
+    # make character vector for field types in postgresql db
+    charvect = rep('numeric', dim(xwalk_filter)[2])
+    
+    # change data type for first three columns
+    charvect[1:7] <- "varchar" # first 7 are character for the geoid and names etc
+    
+    # add names to the character vector
+    names(charvect) <- colnames(xwalk_filter)
+    
+    #dbWriteTable(con, c(table_schema, table_name), xwalk_filter, 
+    #             overwrite = FALSE, row.names = FALSE,
+    #             field.types = charvect)
+    
+    # write comment to table, and the first three fields that won't change.
+    table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ".", "';")
+    
+    # send table comment to database
+    #dbSendQuery(conn = con, table_comment)      			
+    
 
 ##### GET SUB GEOLEVEL POP DATA ######
 pop <- update_detailed_table(vars = vars_list, yr = year, srvy = survey)  # subgeolevel pop
@@ -55,18 +110,17 @@ pop <- update_detailed_table(vars = vars_list, yr = year, srvy = survey)  # subg
 # transform pop data to wide format 
 pop_wide <- lapply(pop, to_wide)
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
-pop_wide <- as.data.frame(pop_wide) %>% right_join(select(intersect, c(GEOID.x, GEOID.y)), by = c("GEOID" = "GEOID.x"))  # join target geoids/names
-pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = GEOID.y) # rename to generic column name for WA functions
+pop_wide <- as.data.frame(pop_wide) %>% right_join(select(xwalk_filter, c(ct_geoid, place_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
+pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = place_geoid) # rename to generic column names for WA functions
 
 # calc target geolevel pop and number of sub geolevels per target geolevel
-pop_df <- targetgeo_pop(pop_wide)
-
+pop_df <- targetgeo_pop(pop_wide) 
 
 ##### CITY WEIGHTED AVG CALCS ######
-pct_df <- pop_pct(pop_df)   # calc pct of target geolevel pop in each sub geolevel
+pct_df <- pop_pct_multi(pop_df)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
 city_wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
 city_wa <- city_wa %>% left_join(select(places, c(GEOID, NAME)), by = c("target_id" = "GEOID"))  # add in target geolevel names
-city_wa <- city_wa %>% rename(target_name = NAME) %>% select(-c(geometry)) %>% mutate(geolevel = 'city')  # change NAME to target_name, drop geometry
+city_wa <- city_wa %>% rename(target_name = NAME) %>% select(-c(geometry)) %>% mutate(geolevel = 'city')  # change NAME to target_name, drop geometry, add geolevel
 
 
 ############# COUNTY ##################
@@ -176,9 +230,9 @@ city_table_name <- "arei_hben_drinking_water_city_2023"
 rc_schema <- 'v5'
 
 indicator <- "Exposure to Contaminated Drinking Water Score"
-source <- "CalEnviroScreen 4.0 https://oehha.ca.gov/calenviroscreen/report/calenviroscreen-40"
+source <- "CalEnviroScreen 4.0 https://oehha.ca.gov/calenviroscreen/report/calenviroscreen-40 . Created 6-23-23"
 
 
 #send tables to postgres
 #to_postgres(county_table, state_table)
-#city_to_postgres(city_table)
+#↨
