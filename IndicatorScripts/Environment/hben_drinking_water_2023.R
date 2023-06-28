@@ -78,9 +78,9 @@ pop_threshold = 250               # define population threshold for screening
     xwalk_filter <- select(xwalk_filter, ct_place_geoid, ct_geoid, place_geoid, county_geoid, place_name, namelsad, county_name, area, pl_area, intersect_area, prc_area, prc_pl_area)
 
 # export xwalk table
-    table_name <- "ct_place_2021"
+    table_name <- "ct_place_2020"
     table_schema <- "crosswalks"
-    table_comment_source <- "Created with W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\IndicatorScripts\\Environment\\hben_drinking_water_2023.R and based on 2021 ACS TIGER non-CBF shapefiles.
+    table_comment_source <- "Created with W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\IndicatorScripts\\Environment\\hben_drinking_water_2023.R and based on 2020 ACS TIGER non-CBF shapefiles.
     CTs with 25% or more of their area within a city or that cover 25% or more of a city''s area are assigned to those cities.
     As a result, a CT can be assigned to more than one city"
     
