@@ -41,7 +41,7 @@ survey <- "acs5"                  # define which Census survey you want
 pop_threshold = 250               # define population threshold for screening
 
 ### Load CT-Place Crosswalk & Places ### ---------------------------------------------------------------------
-xwalk_filter <- st_read(con, query = "select * from crosswalks.ct_place_2021")
+xwalk_filter <- st_read(con, query = "select * from crosswalks.ct_place_2020")
 places <- places(state = 'CA', year = 2020, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
 
 ##### GET SUB GEOLEVEL POP DATA ######
