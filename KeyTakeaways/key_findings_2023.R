@@ -1,5 +1,5 @@
-## RC v5 Automated Findings
-### Updated ##
+## RC Automated Findings v5 ##
+
 # Install packages if not already installed
 list.of.packages <- c("usethis","dplyr","data.table", "tidycensus", "sf", "RPostgreSQL",
                       "stringr", "tidyr", "matrixStats", "tidyverse", "writexl")
