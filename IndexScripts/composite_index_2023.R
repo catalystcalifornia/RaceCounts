@@ -110,7 +110,7 @@ index_table_name <- "arei_composite_index_2023"
 index <- "QA doc: W:\\Project\\RACE COUNTS\\2023_v5\\Composite Index\\QA_Sheet_Composite_Index.docx Includes all Issue area indexes. Composite index z-scores are the average z-scores for performance and disparity across all issue indexes. This data is"
 source <- "various sources"
 
-index_to_postgres()
+#index_to_postgres()
 
 
 
