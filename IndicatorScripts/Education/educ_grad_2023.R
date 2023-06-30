@@ -3,7 +3,8 @@ list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", 
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
-#library(readr)
+# Load Libraries
+library(readr)
 library(dplyr)
 library(tidyr)
 library(DBI)
@@ -11,7 +12,7 @@ library(RPostgreSQL)
 library(tidycensus)
 library(sf)
 library(tidyverse) # to scrape metadata table from cde website
-#library(rvest) # to scrape metadata table from cde website
+library(rvest) # to scrape metadata table from cde website
 library(stringr) # cleaning up data
 library(usethis)
 
@@ -53,7 +54,7 @@ df_subset <- df %>% filter(aggregatelevel %in% c("C", "T", "D") & charterschool 
                              reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
   
   #select just fields we need
-  select(cdscode, countyname, districtname, reportingcategory, cohortstudents, regularhsdiplomagraduatescount, regularhsdiplomagraduatesrate)
+  dplyr::select(aggregatelevel, cdscode, countyname, districtname, reportingcategory, cohortstudents, regularhsdiplomagraduatescount, regularhsdiplomagraduatesrate)
 # View(df_subset)
 #format for column headers
 df_subset <- rename(df_subset, 
@@ -99,38 +100,24 @@ names(ca) <- c("geoid", "geoname")
 
 
 #add county geoids
-df_wide <- merge(x=ca,y=df_wide,by="geoname", all=T)
+df_wide <- merge(x=ca,y=df_wide,by="geoname", all=T) #%>% mutate(district='')
 #add state geoid
 df_wide <- within(df_wide, geoid[geoname == 'California'] <- '06')
 
-#doesn't have type_id so just manually assign
-df_wide$type_id <- '05'
-
-df_wide <- df_wide %>% mutate(type_id = ifelse(geoname == "California", '04', type_id),
-                              type_id = ifelse(!is.na(districtname), '06', type_id),
-                              geoid = ifelse(type_id == '06', NA, geoid))
-
-
-# county_match <- filter(df_wide,type_id=="05") %>% right_join(counties,by='geoname') %>% mutate(district='')
-
-
-df_wide <- df_wide %>% mutate(geoname = ifelse(geoid == "04", "California", geoname), # add geoname and geoid for state
-                                                                              geoname = ifelse(!is.na(districtname), districtname, geoname))
 
 # get school district geoids (NCES District ID) - pull in active district records w/ geoids and names from CDE schools' list
 
-districts <- st_read(con, query = "SELECT cdscode, district, ncesdist AS geoid FROM education.cde_public_schools_2021_22 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'")
-district_match <- filter(df_wide,type_id=="06") %>% 
-  right_join(districts, by = c('cdscode'))%>% 
-  dplyr::rename("geoid" = "geoid.x") %>% 
-  mutate(geoid=ifelse(is.na(geoid), geoid.y, geoid)) %>% 
-  select(c(-geoid.y, cdscode, geoid, district)) %>%
-  distinct() # combine distinct county and district geoid matched df's
+districts <- st_read(con, query = "SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_2021_22 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'") # district,
 
-df_final <- district_match  %>% relocate(geoid, geoname, cdscode, type_id) %>% 
-  mutate(type_id = ifelse(geoname == "California", '04', type_id),
-  type_id = ifelse(type_id != '06' & type_id != "04", "05", , type_id)) %>% 
-  mutate(geoname=ifelse(!is.na(district), district, geoname)) %>%  select(-c(districtname, -district)) # sub district name into geoname for district rows  
+df_final <- 
+  left_join(df_wide, districts, by = c('cdscode')) %>% 
+  dplyr::rename("geoid" = "geoid.x") %>%
+  mutate(geoid=ifelse(aggregatelevel == "D", geoid.y, geoid),
+         geoname=ifelse(!is.na(districtname), districtname, geoname)) %>% 
+  select(-c(geoid.y, districtname)) %>% 
+  distinct() %>%  # combine distinct county and district geoid matched df's
+  relocate(geoid, geoname, cdscode, aggregatelevel)
+
 df_final <- filter(df_final, !is.na(geoid)) # remove records without fips codes
 View(df_final)
 
@@ -152,8 +139,7 @@ d <- calc_id(d) #calculate index of disparity
 View(d)
 
 #split STATE into separate table and format id, name columns
-state_table <- d[d$geoname == 'California', ]%>% select(-c(cdscode, type_id))
-
+state_table <- d[d$geoname == 'California', ]%>% select(-c(cdscode, aggregatelevel))
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
@@ -161,7 +147,7 @@ state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id
 View(state_table)
 
 #remove state from county table
-county_table <- d[d$type_id == '05', ] %>% select(-c(cdscode, type_id))
+county_table <- d[d$aggregatelevel == 'C', ] %>% select(-c(cdscode, aggregatelevel))
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
@@ -170,7 +156,7 @@ county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "count
 View(county_table)
 
 #split CITY into separate table
-city_table <- d[d$type_id == '06', ] %>% select(-c(cdscode, type_id))
+city_table <- d[d$aggregatelevel == 'D', ] %>% select(-c(cdscode, aggregatelevel))
 
 #calculate DISTRICT z-scores
 city_table <- calc_z(city_table)
@@ -188,3 +174,5 @@ rc_schema <- "v5"
 
 #send tables to postgres
 # to_postgres(county_table,state_table)
+# city_to_postgres(city_table)
+# city_to_postgres()
