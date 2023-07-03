@@ -664,7 +664,7 @@ dbWriteTable(con, c("v5", "arei_findings_races_multigeo"), rda_race_door_finding
 #                        IS 'Categorizes findings: count of best and worst rates by race/geo combo, most disparate indicator by race/geo combo';",
 #                   "COMMENT ON COLUMN v5.arei_findings_races_multigeo.src
 #                        IS 'Categorizes source of finding as either rda or program area';",
-#                   "COMMENT ON COLUMN v5.arei_findings_races_multigeo.citation
+#                   "COMMENT ON COLUMN v5.arei_findings_races_multigeo.citations
 #                        IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
 #                   "COMMENT ON COLUMN v5.arei_findings_races_multigeo.findings_pos
 #                        IS 'Used to determine the order a set of findings should appear in on RC.org';")
