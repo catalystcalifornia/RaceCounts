@@ -868,13 +868,10 @@ dbWriteTable(con, c("v5", "arei_findings_issues"), issue_area_findings,
 # dbSendQuery(con, comment)
 
 # prep issues table for addition to places_findings_table
-state_issue_area_findings <- issue_area_dummy_findings
-
-state_issue_area_findings$finding_type <- paste0(issue_area_dummy_findings$issue_area,
-                                                 issue_area_dummy_findings$findings_pos)
+state_issue_area_findings <- issue_area_findings
 
 state_issue_area_findings <- state_issue_area_findings %>%
-  -select(issue_area)
+  select(-issue_area)
 
 state_issue_area_findings$geoid <- "06"
 state_issue_area_findings$geoname <- "California"
