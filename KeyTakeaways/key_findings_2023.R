@@ -813,25 +813,25 @@ rda_places_findings <- rbind(most_impacted, disp_avg_statement, perf_avg_stateme
   relocate(geo_level, .after = geoname)
 
 ## Create postgres table
-dbWriteTable(con, c("v5", "arei_places_findings_county"), rda_places_findings,
+dbWriteTable(con, c("v5", "arei_findings_places_multigeo"), rda_places_findings,
              overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
-#  comment <- paste0("COMMENT ON TABLE v5.arei_places_findings_county IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
-#                   "COMMENT ON COLUMN v5.arei_places_findings_county.finding_type
+#  comment <- paste0("COMMENT ON TABLE v5.arei_findings_places_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
+#                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo.finding_type
 #                        IS 'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below perf, most disp indicator, worst perf indicator';",
-#                   "COMMENT ON COLUMN v5.arei_places_findings_county.src
+#                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo.src
 #                        IS 'Categorizes source of finding as either rda or program area';",
-#                   "COMMENT ON COLUMN v5.arei_places_findings_county.citations
+#                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo.citations
 #                        IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
-#                   "COMMENT ON COLUMN v5.arei_places_findings_county.findings_pos
+#                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo.findings_pos
 #                        IS 'Used to determine the order a set of findings should appear in on RC.org';")
 # print(comment)
 # dbSendQuery(con, comment)
 
-# HK: added this for the findings API endpoint - we need all findings in one 
-# multigeo table, and to have the duplicated issue area findings stored for CA
-# in the places_findings_multigeo table
+# HK: manual issue area findings (for the state page)
+
+read.csv()
 issue_area <- c("economy", "economy", "economy",
                 "housing", "housing", "housing",
                 "education", "education", "education",
