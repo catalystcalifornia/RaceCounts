@@ -671,23 +671,6 @@ dbWriteTable(con, c("v5", "arei_races_findings_multigeo"), rda_race_door_finding
 # print(comment)
 # dbSendQuery(con, comment)
 
-# HK: added this for API findings endpoints
-## Create postgres table
-dbWriteTable(con, c("v5", "arei_findings_races_multigeo"), rda_race_door_findings,
-             overwrite = FALSE, row.names = FALSE)
-
-# # comment on table and columns
-# comment <- paste0("COMMENT ON TABLE v5.arei_findings_races_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
-#                   "COMMENT ON COLUMN v5.arei_findings_races_multigeo.finding_type
-#                        IS 'Categorizes findings: count of best and worst rates by race/geo combo, most disparate indicator by race/geo combo';",
-#                   "COMMENT ON COLUMN v5.arei_findings_races_multigeo.src
-#                        IS 'Categorizes source of finding as either rda or program area';",
-#                   "COMMENT ON COLUMN v5.arei_findings_races_multigeo.citations
-#                        IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
-#                   "COMMENT ON COLUMN v5.arei_findings_races_multigeo.findings_pos
-#                        IS 'Used to determine the order a set of findings should appear in on RC.org';")
-# print(comment)
-# dbSendQuery(con, comment)
 
 ### This section creates findings for Place page - the most disparate and worst outcome indicators across counties #####
 # Load Indexes
