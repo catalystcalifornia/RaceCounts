@@ -655,18 +655,18 @@ rda_race_door_findings <- rda_race_door_findings %>% relocate(geo_level, .after 
   mutate(race = ifelse(race == 'latino', 'latinx', ifelse(race == 'pacisl', 'nhpi', race)))  # rename latino to latinx, and pacisl to nhpi to feed API - will change API later so we can use RC standard latino/pacisl
 
 ## Create postgres table
-dbWriteTable(con, c("v5", "arei_races_findings_multigeo"), rda_race_door_findings,
+dbWriteTable(con, c("v5", "arei_findings_races_multigeo"), rda_race_door_findings,
              overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
-# comment <- paste0("COMMENT ON TABLE v5.arei_races_findings_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
-#                   "COMMENT ON COLUMN v5.arei_races_findings_multigeo.finding_type
+# comment <- paste0("COMMENT ON TABLE v5.arei_findings_races_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
+#                   "COMMENT ON COLUMN v5.arei_findings_races_multigeo.finding_type
 #                        IS 'Categorizes findings: count of best and worst rates by race/geo combo, most disparate indicator by race/geo combo';",
-#                   "COMMENT ON COLUMN v5.arei_races_findings_multigeo.src
+#                   "COMMENT ON COLUMN v5.arei_findings_races_multigeo.src
 #                        IS 'Categorizes source of finding as either rda or program area';",
-#                   "COMMENT ON COLUMN v5.arei_races_findings_multigeo.citation
+#                   "COMMENT ON COLUMN v5.arei_findings_races_multigeo.citation
 #                        IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
-#                   "COMMENT ON COLUMN v5.arei_races_findings_multigeo.findings_pos
+#                   "COMMENT ON COLUMN v5.arei_findings_races_multigeo.findings_pos
 #                        IS 'Used to determine the order a set of findings should appear in on RC.org';")
 # print(comment)
 # dbSendQuery(con, comment)
@@ -829,60 +829,29 @@ dbWriteTable(con, c("v5", "arei_findings_places_multigeo"), rda_places_findings,
 # print(comment)
 # dbSendQuery(con, comment)
 
-# HK: manual issue area findings (for the state page)
+# HK: (manual) issue area findings (used on issue areas pages and the state places page)
 
-read.csv()
-issue_area <- c("economy", "economy", "economy",
-                "housing", "housing", "housing",
-                "education", "education", "education",
-                "health", "health", "health",
-                "democracy", "democracy", "democracy",
-                "crime", "crime", "crime",
-                "hbe", "hbe", "hbe")
-finding_type <- c("", "", "", 
-                  "", "", "", 
-                  "", "", "", 
-                  "", "", "", 
-                  "", "", "", 
-                  "", "", "", 
-                  "", "", "")
-findings_pos <- c(1, 2, 3,
-                  1, 2, 3,
-                  1, 2, 3,
-                  1, 2, 3,
-                  1, 2, 3,
-                  1, 2, 3,
-                  1, 2, 3)
+issue_area_findings <- read.csv(paste0(getwd(), "/KeyTakeaways/manual_findings_v5_2023.csv"), encoding = "UTF-8")
+colnames(issue_area_findings) <- c("issue_area", "finding", "findings_pos")
 
-src <- c("rda", "rda", "rda",
-         "rda", "rda", "rda",
-         "rda", "rda", "rda",
-         "rda", "rda", "rda",
-         "rda", "rda", "rda",
-         "rda", "rda", "rda",
-         "rda", "rda", "rda")
+issue_area_findings_type_dict <- list(economy = "Economic Opportunity",
+                                      education = "Education",
+                                      housing = "Housing",
+                                      health = "Health Care Access",
+                                      democracy = "Democracy",
+                                      crime = "Crime and Justice",
+                                      hbe = "Healthy Built Environment")
 
-citations <- c("", "", "", 
-               "", "", "", 
-               "", "", "", 
-               "", "", "", 
-               "", "", "", 
-               "", "", "", 
-               "", "", "")
+issue_area_findings$finding_type <- ifelse(issue_area_findings$issue_area == 'economy', "Economic Opportunity",
+                                            ifelse(issue_area_findings$issue_area == 'health', "Health Care Access",
+                                                   ifelse(issue_area_findings$issue_area == 'crime', "Crime and Justice",
+                                                          ifelse(issue_area_findings$issue_area == 'hbe', "Healthy Built Environment",
+                                                                 str_to_title(issue_area_findings$issue_area)))))
+issue_area_findings$src <- "rda"
 
+issue_area_findings$citations <- ""
 
-issue_area_dummy_findings <- data.frame(issue_area,
-                                        finding_type,
-                                        findings_pos,
-                                        src,
-                                        citations)
-
-issue_area_dummy_findings$finding <- paste0("this finding is for: ",
-                                            issue_area_dummy_findings$issue_area,
-                                            " and is in position: ",
-                                            issue_area_dummy_findings$findings_pos)
-
-dbWriteTable(con, c("v5", "arei_findings_issues"), issue_area_dummy_findings,
+dbWriteTable(con, c("v5", "arei_findings_issues"), issue_area_findings,
              overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
