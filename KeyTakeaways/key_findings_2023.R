@@ -655,18 +655,18 @@ rda_race_door_findings <- rda_race_door_findings %>% relocate(geo_level, .after 
   mutate(race = ifelse(race == 'latino', 'latinx', ifelse(race == 'pacisl', 'nhpi', race)))  # rename latino to latinx, and pacisl to nhpi to feed API - will change API later so we can use RC standard latino/pacisl
 
 ## Create postgres table
-dbWriteTable(con, c("v5", "arei_racedoor_findings_multigeo"), rda_race_door_findings,
+dbWriteTable(con, c("v5", "arei_races_findings_multigeo"), rda_race_door_findings,
              overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
-# comment <- paste0("COMMENT ON TABLE v5.arei_racedoor_findings_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
-#                   "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.finding_type
+# comment <- paste0("COMMENT ON TABLE v5.arei_races_findings_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
+#                   "COMMENT ON COLUMN v5.arei_races_findings_multigeo.finding_type
 #                        IS 'Categorizes findings: count of best and worst rates by race/geo combo, most disparate indicator by race/geo combo';",
-#                   "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.src
+#                   "COMMENT ON COLUMN v5.arei_races_findings_multigeo.src
 #                        IS 'Categorizes source of finding as either rda or program area';",
-#                   "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.citation
+#                   "COMMENT ON COLUMN v5.arei_races_findings_multigeo.citation
 #                        IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
-#                   "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.findings_pos
+#                   "COMMENT ON COLUMN v5.arei_races_findings_multigeo.findings_pos
 #                        IS 'Used to determine the order a set of findings should appear in on RC.org';")
 # print(comment)
 # dbSendQuery(con, comment)
