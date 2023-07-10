@@ -395,7 +395,7 @@ if (table_code != "DP05") {
   ###update info for postgres tables###
   county_table_name <- "arei_econ_per_capita_income_county_2023"            # See most recent RC Workflow SQL Views for table name (remember to update year to 2023)
   state_table_name <- "arei_econ_per_capita_income_state_2023"              # See most recent RC Workflow SQL Views for table name (remember to update year to 2023)
-  #city_table_name <- "arei_econ_per_capita_income_city_2023"               # See most recent RC Workflow SQL Views for table name (remember to update year to 2023)
+  city_table_name <- "arei_econ_per_capita_income_city_2023"               # See most recent RC Workflow SQL Views for table name (remember to update year to 2023)
   indicator <- "Per Capita Income ($)"                         # See most recent Indicator Methodology for indicator description
   source <- "2017-2021 ACS 5-Year Estimates, Tables B19301B-I, https://data.census.gov/cedsci/"   # See most recent Indicator Methodology” (8)	“RC 2023 Workflow/Cnty-State Indicator Tracking” to “Workflow/Cnty for source info
   

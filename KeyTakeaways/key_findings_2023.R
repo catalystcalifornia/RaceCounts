@@ -649,7 +649,7 @@ most_disp <- final_findings %>% mutate(geo_level = ifelse(geoname == 'California
                                        findings_pos = 3, geoname = gsub(' County', '', geoname))
 
 
-# Save most_disp, best_rate_counts, worst_rate_counts as 1 csv
+# Save most_disp, best_rate_counts, worst_rate_counts
 rda_race_door_findings <- bind_rows(most_disp, worst_best_counts)
 rda_race_door_findings <- rda_race_door_findings %>% relocate(geo_level, .after = geoname) %>% relocate(finding_type, .after = race) %>% mutate( src = 'rda', citations = '') %>%
   mutate(race = ifelse(race == 'latino', 'latinx', ifelse(race == 'pacisl', 'nhpi', race)))  # rename latino to latinx, and pacisl to nhpi to feed API - will change API later so we can use RC standard latino/pacisl
@@ -815,21 +815,21 @@ rda_places_findings <- rbind(most_impacted, disp_avg_statement, perf_avg_stateme
 rda_places_findings <- rda_places_findings %>% mutate(finding = ifelse(is.na(finding), paste0("Data for ", geoname, " County is too limited for this analysis."), finding))
 
 ## Create postgres table
-# dbWriteTable(con, c("v5", "arei_findings_places_multigeo"), rda_places_findings,
-#              overwrite = FALSE, row.names = FALSE)
+ dbWriteTable(con, c("v5", "arei_findings_places_multigeo"), rda_places_findings,
+              overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
-#  comment <- paste0("COMMENT ON TABLE v5.arei_findings_places_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
-#                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo.finding_type
-#                        IS 'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below perf, most disp indicator, worst perf indicator';",
-#                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo.src
-#                        IS 'Categorizes source of finding as either rda or program area';",
-#                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo.citations
-#                        IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
-#                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo.findings_pos
-#                        IS 'Used to determine the order a set of findings should appear in on RC.org';")
-# print(comment)
-# dbSendQuery(con, comment)
+  comment <- paste0("COMMENT ON TABLE v5.arei_findings_places_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
+                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo.finding_type
+                        IS 'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below perf, most disp indicator, worst perf indicator';",
+                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo.src
+                        IS 'Categorizes source of finding as either rda or program area';",
+                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo.citations
+                        IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
+                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo.findings_pos
+                        IS 'Used to determine the order a set of findings should appear in on RC.org';")
+ print(comment)
+ dbSendQuery(con, comment)
 
 # HK: (manual) issue area findings (used on issue areas pages and the state places page)
 
