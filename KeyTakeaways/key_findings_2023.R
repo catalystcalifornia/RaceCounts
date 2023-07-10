@@ -487,12 +487,12 @@ worst_table2 <- #subset(df_lf, (!race_generic %in% c('filipino', 'other', 'twoor
   mutate(worst = ifelse((race_generic == worst_rate), 1, 0)) %>%             
   group_by(geoid, geoname, race_generic) %>% summarise(count = sum(worst, na.rm = TRUE)) %>%
   left_join(race_names, by = "race_generic") %>%
-  left_join(bestworst_screen, by = c("geoid", "race_generic")) 
+  left_join(bestworst_screen, by = c("geoid", "race_generic"))
 worst_table2 <- worst_table2 %>% mutate(count = ifelse(is.na(count) & rate_count > 0, 0, count)) 
 
 
 worst_rate_count <- filter(worst_table2, !is.na(rate_count)) %>% mutate(geoname = gsub(' County', '', geoname), finding_type = 'worst count', findings_pos = 2) %>% 
-  mutate(finding = ifelse(rate_count > 5, paste0(geoname, "'s ", long_name, " residents have the worst rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geoname, " is too limited for this analysis.")))
+  mutate(finding = ifelse(rate_count > 5, paste0(geoname, " County's ", long_name, " residents have the worst rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geoname, " County is too limited for this analysis.")))
 
 ### Best rates - RACE PAGE ###
 #### Note: Code differs from Worst rates to account for when min is best and there is raced rate = 0, so we cannot use disparity_z for min asbest indicators ####
@@ -516,7 +516,7 @@ best_table2 <- best_table2 %>% mutate(count = ifelse(is.na(count) & rate_count >
 
 
 best_rate_count <- filter(best_table2, !is.na(rate_count)) %>% mutate(geoname = gsub(' County', '', geoname), finding_type = 'best count', findings_pos = 1) %>%
-  mutate(finding = ifelse(rate_count > 5, paste0(geoname, "'s ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geoname, " is too limited for this analysis."))) 
+  mutate(finding = ifelse(rate_count > 5, paste0(geoname, " County's ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geoname, " County is too limited for this analysis."))) 
 
 
 ### Bind worst and best tables - RACE PAGE ### ----------------------------------------------
@@ -655,8 +655,8 @@ rda_race_door_findings <- rda_race_door_findings %>% relocate(geo_level, .after 
   mutate(race = ifelse(race == 'latino', 'latinx', ifelse(race == 'pacisl', 'nhpi', race)))  # rename latino to latinx, and pacisl to nhpi to feed API - will change API later so we can use RC standard latino/pacisl
 
 ## Create postgres table
-dbWriteTable(con, c("v5", "arei_findings_races_multigeo"), rda_race_door_findings,
-             overwrite = FALSE, row.names = FALSE)
+# dbWriteTable(con, c("v5", "arei_findings_races_multigeo"), rda_race_door_findings,
+#              overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
 # comment <- paste0("COMMENT ON TABLE v5.arei_findings_races_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
@@ -812,9 +812,11 @@ rda_places_findings <- rbind(most_impacted, disp_avg_statement, perf_avg_stateme
   mutate(geo_level = ifelse(geoid == '06', 'state', 'county'), src = 'rda', citations = '') %>%
   relocate(geo_level, .after = geoname)
 
+rda_places_findings <- rda_places_findings %>% mutate(finding = ifelse(is.na(finding), paste0("Data for ", geoname, " County is too limited for this analysis."), finding))
+
 ## Create postgres table
-dbWriteTable(con, c("v5", "arei_findings_places_multigeo"), rda_places_findings,
-             overwrite = FALSE, row.names = FALSE)
+# dbWriteTable(con, c("v5", "arei_findings_places_multigeo"), rda_places_findings,
+#              overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
 #  comment <- paste0("COMMENT ON TABLE v5.arei_findings_places_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
@@ -851,8 +853,8 @@ issue_area_findings$src <- "rda"
 
 issue_area_findings$citations <- ""
 
-dbWriteTable(con, c("v5", "arei_findings_issues"), issue_area_findings,
-             overwrite = FALSE, row.names = FALSE)
+# dbWriteTable(con, c("v5", "arei_findings_issues"), issue_area_findings,
+#              overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
 #  comment <- paste0("COMMENT ON TABLE v5.arei_findings_issues IS 'findings for Issue Area pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
@@ -885,8 +887,8 @@ findings_places_multigeo <- rbind(rda_places_findings,
                                   state_issue_area_findings)
 
 ## Create postgres table
-dbWriteTable(con, c("v5", "arei_findings_places_multigeo"), findings_places_multigeo,
-             overwrite = FALSE, row.names = FALSE)
+# dbWriteTable(con, c("v5", "arei_findings_places_multigeo"), findings_places_multigeo,
+#              overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
 #  comment <- paste0("COMMENT ON TABLE v5.arei_findings_places_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
