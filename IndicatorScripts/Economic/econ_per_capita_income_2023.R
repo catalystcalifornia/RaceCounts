@@ -412,5 +412,5 @@ if (table_code != "DP05") {
 }
 
 ####### SEND TO POSTGRES #######
-to_postgres(county_table,state_table)
+#to_postgres(county_table,state_table)
 #city_to_postgres()

@@ -48,7 +48,6 @@ View(colcomments)
 #### Continue prep for RC ####
 
 #filter for county and state rows, all types of schools, and racial categories
-
 df_subset <- df %>% filter(aggregatelevel %in% c("C", "T") & charterschool == "All" & dass == "All" & 
                              reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
   
@@ -86,7 +85,6 @@ df_wide$geoname[df_wide$geoname =='State'] <- 'California'   # update state rows
 # View(df_subset)
 
 #get county Geoids
-census_api_key("25fb5e48345b42318ae435e4dcd28ad3f196f2c4", install = TRUE, overwrite = TRUE)
 ca <- get_acs(geography = "county", 
               variables = c("B01001_001"), 
               state = "CA", 
@@ -124,7 +122,6 @@ View(d)
 
 #split STATE into separate table and format id, name columns
 state_table <- d[d$geoname == 'California', ]
-
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
