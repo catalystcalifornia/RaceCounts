@@ -649,7 +649,7 @@ most_disp <- final_findings %>% mutate(geo_level = ifelse(geoname == 'California
                                        findings_pos = 3, geoname = gsub(' County', '', geoname))
 
 
-# Save most_disp, best_rate_counts, worst_rate_counts as 1 csv
+# Save most_disp, best_rate_counts, worst_rate_counts
 rda_race_door_findings <- bind_rows(most_disp, worst_best_counts)
 rda_race_door_findings <- rda_race_door_findings %>% relocate(geo_level, .after = geoname) %>% relocate(finding_type, .after = race) %>% mutate( src = 'rda', citations = '') %>%
   mutate(race = ifelse(race == 'latino', 'latinx', ifelse(race == 'pacisl', 'nhpi', race)))  # rename latino to latinx, and pacisl to nhpi to feed API - will change API later so we can use RC standard latino/pacisl
