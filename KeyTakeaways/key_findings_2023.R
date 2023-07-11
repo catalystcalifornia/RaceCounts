@@ -487,12 +487,12 @@ worst_table2 <- #subset(df_lf, (!race_generic %in% c('filipino', 'other', 'twoor
   mutate(worst = ifelse((race_generic == worst_rate), 1, 0)) %>%             
   group_by(geoid, geoname, race_generic) %>% summarise(count = sum(worst, na.rm = TRUE)) %>%
   left_join(race_names, by = "race_generic") %>%
-  left_join(bestworst_screen, by = c("geoid", "race_generic")) 
+  left_join(bestworst_screen, by = c("geoid", "race_generic"))
 worst_table2 <- worst_table2 %>% mutate(count = ifelse(is.na(count) & rate_count > 0, 0, count)) 
 
 
 worst_rate_count <- filter(worst_table2, !is.na(rate_count)) %>% mutate(geoname = gsub(' County', '', geoname), finding_type = 'worst count', findings_pos = 2) %>% 
-  mutate(finding = ifelse(rate_count > 5, paste0(geoname, "'s ", long_name, " residents have the worst rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geoname, " is too limited for this analysis.")))
+  mutate(finding = ifelse(rate_count > 5, paste0(geoname, " County's ", long_name, " residents have the worst rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geoname, " County is too limited for this analysis.")))
 
 ### Best rates - RACE PAGE ###
 #### Note: Code differs from Worst rates to account for when min is best and there is raced rate = 0, so we cannot use disparity_z for min asbest indicators ####
@@ -516,7 +516,7 @@ best_table2 <- best_table2 %>% mutate(count = ifelse(is.na(count) & rate_count >
 
 
 best_rate_count <- filter(best_table2, !is.na(rate_count)) %>% mutate(geoname = gsub(' County', '', geoname), finding_type = 'best count', findings_pos = 1) %>%
-  mutate(finding = ifelse(rate_count > 5, paste0(geoname, "'s ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geoname, " is too limited for this analysis."))) 
+  mutate(finding = ifelse(rate_count > 5, paste0(geoname, " County's ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geoname, " County is too limited for this analysis."))) 
 
 
 ### Bind worst and best tables - RACE PAGE ### ----------------------------------------------
@@ -649,34 +649,16 @@ most_disp <- final_findings %>% mutate(geo_level = ifelse(geoname == 'California
                                        findings_pos = 3, geoname = gsub(' County', '', geoname))
 
 
-# Save most_disp, best_rate_counts, worst_rate_counts as 1 csv
+# Save most_disp, best_rate_counts, worst_rate_counts
 rda_race_door_findings <- bind_rows(most_disp, worst_best_counts)
 rda_race_door_findings <- rda_race_door_findings %>% relocate(geo_level, .after = geoname) %>% relocate(finding_type, .after = race) %>% mutate( src = 'rda', citations = '') %>%
   mutate(race = ifelse(race == 'latino', 'latinx', ifelse(race == 'pacisl', 'nhpi', race)))  # rename latino to latinx, and pacisl to nhpi to feed API - will change API later so we can use RC standard latino/pacisl
 
 ## Create postgres table
-dbWriteTable(con, c("v5", "arei_racedoor_findings_multigeo"), rda_race_door_findings,
-             overwrite = FALSE, row.names = FALSE)
+# dbWriteTable(con, c("v5", "arei_findings_races_multigeo"), rda_race_door_findings,
+#              overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
-# comment <- paste0("COMMENT ON TABLE v5.arei_racedoor_findings_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
-#                   "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.finding_type
-#                        IS 'Categorizes findings: count of best and worst rates by race/geo combo, most disparate indicator by race/geo combo';",
-#                   "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.src
-#                        IS 'Categorizes source of finding as either rda or program area';",
-#                   "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.citation
-#                        IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
-#                   "COMMENT ON COLUMN v5.arei_racedoor_findings_multigeo.findings_pos
-#                        IS 'Used to determine the order a set of findings should appear in on RC.org';")
-# print(comment)
-# dbSendQuery(con, comment)
-
-# HK: added this for API findings endpoints
-## Create postgres table
-dbWriteTable(con, c("v5", "arei_findings_races_multigeo"), rda_race_door_findings,
-             overwrite = FALSE, row.names = FALSE)
-
-# # comment on table and columns
 # comment <- paste0("COMMENT ON TABLE v5.arei_findings_races_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
 #                   "COMMENT ON COLUMN v5.arei_findings_races_multigeo.finding_type
 #                        IS 'Categorizes findings: count of best and worst rates by race/geo combo, most disparate indicator by race/geo combo';",
@@ -688,6 +670,7 @@ dbWriteTable(con, c("v5", "arei_findings_races_multigeo"), rda_race_door_finding
 #                        IS 'Used to determine the order a set of findings should appear in on RC.org';")
 # print(comment)
 # dbSendQuery(con, comment)
+
 
 ### This section creates findings for Place page - the most disparate and worst outcome indicators across counties #####
 # Load Indexes
@@ -829,78 +812,49 @@ rda_places_findings <- rbind(most_impacted, disp_avg_statement, perf_avg_stateme
   mutate(geo_level = ifelse(geoid == '06', 'state', 'county'), src = 'rda', citations = '') %>%
   relocate(geo_level, .after = geoname)
 
+rda_places_findings <- rda_places_findings %>% mutate(finding = ifelse(is.na(finding), paste0("Data for ", geoname, " County is too limited for this analysis."), finding))
+
 ## Create postgres table
-dbWriteTable(con, c("v5", "arei_places_findings_county"), rda_places_findings,
-             overwrite = FALSE, row.names = FALSE)
+# dbWriteTable(con, c("v5", "arei_findings_places_multigeo"), rda_places_findings,
+#              overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
-#  comment <- paste0("COMMENT ON TABLE v5.arei_places_findings_county IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
-#                   "COMMENT ON COLUMN v5.arei_places_findings_county.finding_type
+#  comment <- paste0("COMMENT ON TABLE v5.arei_findings_places_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
+#                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo.finding_type
 #                        IS 'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below perf, most disp indicator, worst perf indicator';",
-#                   "COMMENT ON COLUMN v5.arei_places_findings_county.src
+#                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo.src
 #                        IS 'Categorizes source of finding as either rda or program area';",
-#                   "COMMENT ON COLUMN v5.arei_places_findings_county.citations
+#                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo.citations
 #                        IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
-#                   "COMMENT ON COLUMN v5.arei_places_findings_county.findings_pos
+#                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo.findings_pos
 #                        IS 'Used to determine the order a set of findings should appear in on RC.org';")
 # print(comment)
 # dbSendQuery(con, comment)
 
-# HK: added this for the findings API endpoint - we need all findings in one 
-# multigeo table, and to have the duplicated issue area findings stored for CA
-# in the places_findings_multigeo table
-issue_area <- c("economy", "economy", "economy",
-                "housing", "housing", "housing",
-                "education", "education", "education",
-                "health", "health", "health",
-                "democracy", "democracy", "democracy",
-                "crime", "crime", "crime",
-                "hbe", "hbe", "hbe")
-finding_type <- c("", "", "", 
-                  "", "", "", 
-                  "", "", "", 
-                  "", "", "", 
-                  "", "", "", 
-                  "", "", "", 
-                  "", "", "")
-findings_pos <- c(1, 2, 3,
-                  1, 2, 3,
-                  1, 2, 3,
-                  1, 2, 3,
-                  1, 2, 3,
-                  1, 2, 3,
-                  1, 2, 3)
+# HK: (manual) issue area findings (used on issue areas pages and the state places page)
 
-src <- c("rda", "rda", "rda",
-         "rda", "rda", "rda",
-         "rda", "rda", "rda",
-         "rda", "rda", "rda",
-         "rda", "rda", "rda",
-         "rda", "rda", "rda",
-         "rda", "rda", "rda")
+issue_area_findings <- read.csv(paste0(getwd(), "/KeyTakeaways/manual_findings_v5_2023.csv"), encoding = "UTF-8")
+colnames(issue_area_findings) <- c("issue_area", "finding", "findings_pos")
 
-citations <- c("", "", "", 
-               "", "", "", 
-               "", "", "", 
-               "", "", "", 
-               "", "", "", 
-               "", "", "", 
-               "", "", "")
+issue_area_findings_type_dict <- list(economy = "Economic Opportunity",
+                                      education = "Education",
+                                      housing = "Housing",
+                                      health = "Health Care Access",
+                                      democracy = "Democracy",
+                                      crime = "Crime and Justice",
+                                      hbe = "Healthy Built Environment")
 
+issue_area_findings$finding_type <- ifelse(issue_area_findings$issue_area == 'economy', "Economic Opportunity",
+                                            ifelse(issue_area_findings$issue_area == 'health', "Health Care Access",
+                                                   ifelse(issue_area_findings$issue_area == 'crime', "Crime and Justice",
+                                                          ifelse(issue_area_findings$issue_area == 'hbe', "Healthy Built Environment",
+                                                                 str_to_title(issue_area_findings$issue_area)))))
+issue_area_findings$src <- "rda"
 
-issue_area_dummy_findings <- data.frame(issue_area,
-                                        finding_type,
-                                        findings_pos,
-                                        src,
-                                        citations)
+issue_area_findings$citations <- ""
 
-issue_area_dummy_findings$finding <- paste0("this finding is for: ",
-                                            issue_area_dummy_findings$issue_area,
-                                            " and is in position: ",
-                                            issue_area_dummy_findings$findings_pos)
-
-dbWriteTable(con, c("v5", "arei_findings_issues"), issue_area_dummy_findings,
-             overwrite = FALSE, row.names = FALSE)
+# dbWriteTable(con, c("v5", "arei_findings_issues"), issue_area_findings,
+#              overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
 #  comment <- paste0("COMMENT ON TABLE v5.arei_findings_issues IS 'findings for Issue Area pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
@@ -916,13 +870,10 @@ dbWriteTable(con, c("v5", "arei_findings_issues"), issue_area_dummy_findings,
 # dbSendQuery(con, comment)
 
 # prep issues table for addition to places_findings_table
-state_issue_area_findings <- issue_area_dummy_findings
-
-state_issue_area_findings$finding_type <- paste0(issue_area_dummy_findings$issue_area,
-                                                 issue_area_dummy_findings$findings_pos)
+state_issue_area_findings <- issue_area_findings
 
 state_issue_area_findings <- state_issue_area_findings %>%
-  -select(issue_area)
+  select(-issue_area)
 
 state_issue_area_findings$geoid <- "06"
 state_issue_area_findings$geoname <- "California"
@@ -936,8 +887,8 @@ findings_places_multigeo <- rbind(rda_places_findings,
                                   state_issue_area_findings)
 
 ## Create postgres table
-dbWriteTable(con, c("v5", "arei_findings_places_multigeo"), findings_places_multigeo,
-             overwrite = FALSE, row.names = FALSE)
+# dbWriteTable(con, c("v5", "arei_findings_places_multigeo"), findings_places_multigeo,
+#              overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
 #  comment <- paste0("COMMENT ON TABLE v5.arei_findings_places_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",

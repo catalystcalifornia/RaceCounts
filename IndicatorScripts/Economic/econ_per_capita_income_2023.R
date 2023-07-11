@@ -376,13 +376,13 @@ if (table_code != "DP05") {
   View(county_table)
   
   
-  # #calculate CITY z-scores
-  # city_table <- calc_z(city_table)
-  # 
-  # ## Calc city ranks##
-  # city_table <- calc_ranks(city_table)
-  # city_table <- city_table %>% select(-c(geolevel))
-  # View(city_table)
+  #calculate CITY z-scores
+  city_table <- calc_z(city_table)
+
+  ## Calc city ranks##
+  city_table <- calc_ranks(city_table)
+  city_table <- city_table %>% select(-c(geolevel))
+  View(city_table)
   
   #rename geoid to state_id, county_id, city_id
   colnames(state_table)[1:2] <- c("state_id", "state_name")
