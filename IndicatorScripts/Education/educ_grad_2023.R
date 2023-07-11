@@ -51,6 +51,7 @@ df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_
 #filter for county and state rows, all types of schools, and racial categories
 
 df_subset <- df %>% filter(aggregatelevel %in% c("C", "T", "D") & charterschool == "All" & dass == "All" & 
+
                              reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
   
   #select just fields we need
@@ -87,7 +88,9 @@ df_wide$geoname[df_wide$geoname =='State'] <- 'California'   # update state rows
 
 
 #get county Geoids
+
 census_api_key(census_key1, install = TRUE, overwrite = TRUE)
+
 ca <- get_acs(geography = "county", 
               variables = c("B01001_001"), 
               state = "CA", 
@@ -139,6 +142,7 @@ d <- calc_id(d) #calculate index of disparity
 View(d)
 
 #split STATE into separate table and format id, name columns
+
 state_table <- d[d$geoname == 'California', ]%>% select(-c(cdscode, aggregatelevel))
 
 #calculate STATE z-scores
