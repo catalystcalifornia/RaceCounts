@@ -658,7 +658,7 @@ state_table <- rename(state_table, state_id = geoid, state_name = geoname)
 View(state_table)
 
 # get COUNTY into separate table and format id, name columns
-county_table <- d[d$geoname != 'California', ] %>% select(-c(geolevel))
+county_table <- d[d$geolevel == 'county', ] %>% select(-c(geolevel))
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
