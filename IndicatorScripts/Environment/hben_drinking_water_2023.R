@@ -130,7 +130,7 @@ city_wa <- city_wa %>% rename(target_name = NAME) %>% select(-c(geometry)) %>% m
 # set values for weighted average functions - You may need to update these
 year <- c(2020)                   # define your data vintage
 subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- c('county')     # define your target geolevel: county (state is handled separately)
+targetgeolevel <- c('county')     # define your target geolevel: place
 survey <- "acs5"                  # define which Census survey you want
 pop_threshold = 250               # define population threshold for screening
 
@@ -217,7 +217,7 @@ View(county_table)
 #split CITY into separate table and format id, name columns
 city_table <- d[d$geolevel == 'city', ] %>% select(-c(geolevel))
 
-#calculate DISTRICT z-scores
+#calculate CITY z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
 city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") 
