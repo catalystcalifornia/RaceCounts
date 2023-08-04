@@ -18,6 +18,7 @@ options(scipen=999)
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
+con2<-connect_to_db("racecounts")
 
 #set source for RC Functions script
 source("W:/RDA Team/R/Functions/Cnty_St_Wt_Avg_Functions.R")
@@ -181,3 +182,5 @@ source <- "Multi-Resolution Land Characteristics Consortium, National Land Cover
 #send tables to postgres
 # to_postgres(county_table, state_table)
 # city_to_postgres(city_table)
+dbDisconnect(con)
+dbDisconnect(con2)
