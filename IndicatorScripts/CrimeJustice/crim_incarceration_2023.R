@@ -92,9 +92,7 @@ pop2 <- update_detailed_table_census(vars = vars_list_dp, yr = year, srvy = surv
 pop_wide <- pop %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = value)
 pop2_wide <- pop2 %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = value) %>% select(GEOID, "DP1_0088C", "DP1_0090C")
 pop_wide <- pop_wide %>% left_join(pop2_wide, by = 'GEOID')
-
 pop_wide <- as.data.frame(pop_wide) %>% right_join(select(crosswalk, c(ct_geoid, place_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
-
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = place_geoid) # rename to generic column names for WA functions
 
 
@@ -110,6 +108,7 @@ pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = place_geoid) # r
 #p2_010n # nh_other: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Some Other Race alone
 #p2_011n # nh_twoormor: !!Total:!!Not Hispanic or Latino:!!Population of two or more races
 #p2_002n # latinx: !!Total:!!Hispanic or Latino
+<<<<<<< HEAD
 
 #dp1_0088c # all aian
 #dp1_0090c # all nhpi
@@ -120,12 +119,11 @@ pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = place_geoid) # r
 #) %>% filter(grepl('American Indian and Alaska Native', label)  & grepl('P1', name))
 #all_aian$name
 
+=======
+>>>>>>> ed2dc18aed5d94fd5a42d551ee5eef39285c873f
 
-#all_nhpi <- load_variables(
-#  2020, 
-#  dataset = "pl"
-#) %>% filter(grepl('Native Hawaiian and Other Pacific Islander', label)  & grepl('P1', name))
-#all_nhpi$name
+#dp1_0088c # all aian
+#dp1_0090c # all nhpi
 
 pop_wide <- pop_wide %>% rename(
   total_pop = P2_001N,
@@ -136,12 +134,7 @@ pop_wide <- pop_wide %>% rename(
   nh_twoormor_pop = P2_011N,
   latino_pop = P2_002N,
   aian_pop = DP1_0088C,
-  pacisl_pop = DP1_0090C) %>% #mutate(
-  
-  #aian_pop =   P1_005N + P1_012N + P1_016N + P1_020N + P1_021N + P1_022N + P1_027N + P1_031N + P1_032N + P1_033N + P1_037N + P1_038N + P1_039N + P1_043N + P1_044N + P1_045N + P1_048N + P1_049N + P1_050N + P1_054N + P1_055N + P1_056N + P1_058N + P1_059N + P1_060N + P1_062N + P1_064N + P1_065N + P1_066N + P1_068N + P1_069N + P1_071N,
-  
-  #pacisl_pop =  P1_007N + P1_014N + P1_018N + P1_021N + P1_023N + P1_025N + P1_029N + P1_032N + P1_034N + P1_036N + P1_038N + P1_040N + P1_042N + P1_043N +P1_045N + P1_046N + P1_049N + P1_051N + P1_053N + P1_054N + P1_056N + P1_057N + P1_058N + P1_060N + P1_061N + P1_062N + P1_064N + P1_066N + P1_067N + P1_068N + P1_069N + P1_071N
-  #) %>%
+  pacisl_pop = DP1_0090C) %>% 
   select(sub_id, target_id, NAME, geolevel, ends_with("pop"))
 
 #  CITY WEIGHTED AVG CALCS ------------------------------------------------
@@ -162,7 +155,6 @@ city_wa <- city_wa %>% left_join(raw_df, by = c("geoid" = "place_geoid")) %>% dp
 
 # final df
 d <- city_wa
-
 
 ############## CALC RACE COUNTS STATS ##############
 ############ To use the following RC Functions, 'd' will need the following columns at minimum: 
