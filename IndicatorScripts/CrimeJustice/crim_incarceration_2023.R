@@ -1,3 +1,5 @@
+## Incarceration 2020 (City-Level) for RC v5
+
 ## Set up ----------------------------------------------------------------
 #install packages if not already installed
 list.of.packages <- c("DBI", "tidyverse","RPostgreSQL", "tidycensus", "readxl", "sf", "janitor", "stringr", "data.table", "usethis", "rvest", "tigris")
@@ -39,20 +41,20 @@ dt <- datatable [[1]] # keep first
 
 df  <- dt %>% clean_names() %>% as.data.frame() # clean up names
 
-df$fips_code_2020 <- paste0("0", df$fips_code_2020) # paste a 0 here to match the crosswalk
-
+df$fips_code_2020 <- paste0("0", df$fips_code_2020) # add leading zeroes here to match the crosswalk fips codes
+df$census_population_2020 = as.integer(gsub("\\,", "", df$census_population_2020)) # change text fields to integer, remove commas
+df$total_population_2020 = as.integer(gsub("\\,", "", df$total_population_2020))
+df$imprisonment_rate_per_100_000 = as.integer(gsub("\\,", "", df$imprisonment_rate_per_100_000))
 
 # export incarceration  to rda shared table ------------------------------------------------------------
 ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 table_schema <- "crime_and_justice"
-table_name <- "prison_policy_incarceration_2020"
+table_name <- "prison_policy_incarceration_tract_2020"
 table_comment_source <- "Number of people in prison in 2020 from each California Census tract"
 table_source <- "Incarceration data downloaded 7/11/2023
 from https://www.prisonpolicy.org/origin/ca/2020/tract.html"
 
-
-#dbWriteTable(con2, c(table_schema, table_name), df,
-#overwrite = FALSE, row.names = FALSE)
+#dbWriteTable(con2, c(table_schema, table_name), df, overwrite = FALSE, row.names = FALSE)
 
 # write comment to table, and the first three fields that won't change.
 table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
@@ -61,14 +63,12 @@ table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS
 #dbSendQuery(conn = con2, table_comment)  
 
 #rename columns for weighted average functions to work ------------------------------------------------------------
-ind_df <- df %>% rename(sub_id =  fips_code_2020, indicator = imprisonment_rate_per_100_000)  %>% mutate(indicator = as.numeric(indicator)) %>% as.data.frame() 
+ind_df <- df %>% rename(sub_id = fips_code_2020, indicator = imprisonment_rate_per_100_000) %>% as.data.frame() 
 
-# cross-walk ------------------------------------------------------------
-
+# pull in ct-city crosswalk ------------------------------------------------------------
 crosswalk <- dbGetQuery(con2, "SELECT * FROM crosswalks.ct_place_2020")
 
-# places ------------------------------------------------------------
-
+# pull in place shapes ------------------------------------------------------------
 places <- places(state = 'CA', year = 2020, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
 
 # Weighted Averages Functions  ------------------------------------------------------------
@@ -78,14 +78,20 @@ places <- places(state = 'CA', year = 2020, cb = TRUE) %>% select(-c(STATEFP, PL
 # set values for weighted average functions - You may need to update these
 year <- c(2020)                   # define your data vintage
 subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- c('place')     # define your target geolevel: county (state is handled separately)
-survey <- "census"                  # define which Census survey you want
+targetgeolevel <- c('place')      # define your target geolevel: place
+survey <- "census"                # define which Census survey you want
 pop_threshold = 250               # define population threshold for screening
+census_api_key(census_key1)       # reload census API key
 
 ##### GET SUB GEOLEVEL POP DATA ######
-pop <- update_detailed_table(vars = vars_list2, yr = year, srvy = survey)  # subgeolevel pop
+vars_list <- "vars_list_p2"
+pop <- update_detailed_table_census(vars = vars_list_p2, yr = year, srvy = survey)  # subgeolevel total, nh alone pop
+vars_list <- "vars_list_dp"
+pop2 <- update_detailed_table_census(vars = vars_list_dp, yr = year, srvy = survey)  # all aian, all nhpi subgeolevel pop
 
-pop_wide <- pop %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel),names_from =variable, values_from = value)
+pop_wide <- pop %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = value)
+pop2_wide <- pop2 %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = value) %>% select(GEOID, "DP1_0088C", "DP1_0090C")
+pop_wide <- pop_wide %>% left_join(pop2_wide, by = 'GEOID')
 
 pop_wide <- as.data.frame(pop_wide) %>% right_join(select(crosswalk, c(ct_geoid, place_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
 
@@ -94,17 +100,19 @@ pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = place_geoid) # r
 
 # rename columns to appropriate name ------------------------------------
 
-
 # Census Labels
 #p2_001n # Total:
-#p2_005n # Nh White: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!White alone
-#p2_006n # NH Black: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Black or African American alone
+#p2_005n # nh_white: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!White alone
+#p2_006n # nh_black: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Black or African American alone
 #p1_005n # aian: !!Total:!!Population of one race:!!American Indian and Alaska Native alone
-#p2_008n # Nh Asian:  !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Asian alone
-#p1_007n # pacisl:  !!Total:!!Population of one race:!!Native Hawaiian and Other Pacific Islander alone
+#p2_008n # nh_asian: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Asian alone
+#p1_007n # pacisl: !!Total:!!Population of one race:!!Native Hawaiian and Other Pacific Islander alone
 #p2_010n # nh_other: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Some Other Race alone
-#p2_011n #nh_twoormor: !!Total:!!Not Hispanic or Latino:!!Population of two or more races
-#p2_002n #	latinx: !!Total:!!Hispanic or Latino
+#p2_011n # nh_twoormor: !!Total:!!Not Hispanic or Latino:!!Population of two or more races
+#p2_002n # latinx: !!Total:!!Hispanic or Latino
+
+#dp1_0088c # all aian
+#dp1_0090c # all nhpi
 
 #all_aian <- load_variables(
 # 2020, 
@@ -126,15 +134,15 @@ pop_wide <- pop_wide %>% rename(
   nh_asian_pop = P2_008N,
   nh_other_pop = P2_010N,
   nh_twoormor_pop = P2_011N,
-  latinx_pop = P2_002N) %>% mutate(
-    
-    aian_pop =   P1_005N + P1_012N + P1_016N + P1_020N + P1_021N + P1_022N + P1_027N + P1_031N + P1_032N + P1_033N + P1_037N + P1_038N + P1_039N + P1_043N + P1_044N + P1_045N + P1_048N + P1_049N + P1_050N + P1_054N + P1_055N + P1_056N + P1_058N + P1_059N + P1_060N + P1_062N + P1_064N + P1_065N + P1_066N + P1_068N + P1_069N + P1_071N,
-    
-    pacisl_pop =  P1_007N + P1_014N + P1_018N + P1_021N + P1_023N + P1_025N + P1_029N + P1_032N + P1_034N + P1_036N + P1_038N + P1_040N + P1_042N + P1_043N +P1_045N + P1_046N + P1_049N + P1_051N + P1_053N + P1_054N + P1_056N + P1_057N + P1_058N + P1_060N + P1_061N + P1_062N + P1_064N + P1_066N + P1_067N + P1_068N + P1_069N + P1_071N
-    
-  ) %>% select(
-    sub_id, target_id, NAME, geolevel, ends_with("pop")
-  )
+  latino_pop = P2_002N,
+  aian_pop = DP1_0088C,
+  pacisl_pop = DP1_0090C) %>% #mutate(
+  
+  #aian_pop =   P1_005N + P1_012N + P1_016N + P1_020N + P1_021N + P1_022N + P1_027N + P1_031N + P1_032N + P1_033N + P1_037N + P1_038N + P1_039N + P1_043N + P1_044N + P1_045N + P1_048N + P1_049N + P1_050N + P1_054N + P1_055N + P1_056N + P1_058N + P1_059N + P1_060N + P1_062N + P1_064N + P1_065N + P1_066N + P1_068N + P1_069N + P1_071N,
+  
+  #pacisl_pop =  P1_007N + P1_014N + P1_018N + P1_021N + P1_023N + P1_025N + P1_029N + P1_032N + P1_034N + P1_036N + P1_038N + P1_040N + P1_042N + P1_043N +P1_045N + P1_046N + P1_049N + P1_051N + P1_053N + P1_054N + P1_056N + P1_057N + P1_058N + P1_060N + P1_061N + P1_062N + P1_064N + P1_066N + P1_067N + P1_068N + P1_069N + P1_071N
+  #) %>%
+  select(sub_id, target_id, NAME, geolevel, ends_with("pop"))
 
 #  CITY WEIGHTED AVG CALCS ------------------------------------------------
 
@@ -147,13 +155,12 @@ city_wa <- city_wa %>% left_join(select(places, c(GEOID, NAME)), by = c("target_
   rename(geoname = NAME, geoid = target_id) %>% select(-c(geometry)) %>% mutate(geolevel = 'city') %>% dplyr::relocate(geoname, .after = geoid)   # rename columns for RC functions
 
 # aggregate total raw -----------------------------------------------------
-raw_df <-  df %>% rename(ct_geoid =  fips_code_2020, total_raw = number_of_people_in_state_prison_from_each_census_tract_2020) %>% select(ct_geoid, total_raw) %>% right_join(select(crosswalk, c(ct_geoid, place_geoid))) %>% group_by(place_geoid) %>%  summarize(total_raw = sum(total_raw)) 
+raw_df <- df %>% rename(ct_geoid =  fips_code_2020, total_raw = number_of_people_in_state_prison_from_each_census_tract_2020) %>% select(ct_geoid, total_raw) %>% right_join(select(crosswalk, c(ct_geoid, place_geoid))) %>% group_by(place_geoid) %>%  summarize(total_raw = sum(total_raw)) 
 
 ## merge raw with city weighted averages
 city_wa <- city_wa %>% left_join(raw_df, by = c("geoid" = "place_geoid")) %>% dplyr::relocate(total_raw, .after = geoname) %>% dplyr::relocate(total_rate, .after = total_raw)
 
 # final df
-
 d <- city_wa
 
 
@@ -187,11 +194,14 @@ View(city_table)
 city_table_name <- "arei_crim_incarceration_city_2023"
 rc_schema <- 'v5'
 
-indicator <- "Number of people in prison in 2020 weighted average calculations"
-source <- "Prison Policy Org  https://www.prisonpolicy.org/origin/ca/2020/tract.html. Created 7-11-23"
+indicator <- "Number of people in prison in 2020 - weighted average by race"
+source <- "NOTE: This is a different source than the county/state incarceration indicator. Prison Policy Org https://www.prisonpolicy.org/origin/ca/2020/tract.html. Created 7-11-23"
 
+#send to postgres
 #city_to_postgres(city_table)
 
+dbDisconnect(con)
+dbDisconnect(con2)
 
 
 
