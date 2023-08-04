@@ -108,19 +108,6 @@ pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = place_geoid) # r
 #p2_010n # nh_other: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Some Other Race alone
 #p2_011n # nh_twoormor: !!Total:!!Not Hispanic or Latino:!!Population of two or more races
 #p2_002n # latinx: !!Total:!!Hispanic or Latino
-<<<<<<< HEAD
-
-#dp1_0088c # all aian
-#dp1_0090c # all nhpi
-
-#all_aian <- load_variables(
-# 2020, 
-#  dataset = "pl"
-#) %>% filter(grepl('American Indian and Alaska Native', label)  & grepl('P1', name))
-#all_aian$name
-
-=======
->>>>>>> ed2dc18aed5d94fd5a42d551ee5eef39285c873f
 
 #dp1_0088c # all aian
 #dp1_0090c # all nhpi
