@@ -510,23 +510,7 @@ df_2020_calc_city <- city_calc(df_2020_cities)
 
 
 ## add county id's to city data -----------------------------------------------
-  counties <- counties(state = 'CA', year = 2020, cb = TRUE) %>% select(-c(STATEFP, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
-  ## spatial join ##
-  places_3310 <- st_transform(ca_cities, 3310) # change projection to 3310, ca_cities was created earlier in script
-  counties_3310 <- st_transform(counties, 3310) # change projection to 3310
-  # rename geoid fields
-  counties_3310 <- counties_3310%>% 
-    rename("county_geoid" = "GEOID", "county_name" = "NAMELSAD")
-  places_3310 <- places_3310%>% 
-    rename("place_geoid" = "geoid", "place_name" = "name")
-  # run intersect
-  counties_places <- st_intersection(counties_3310, places_3310) 
-  # calculate area of intersect
-  counties_places$intersect_area <- st_area(counties_places)
-  # keep only intersects with largest areas
-  counties_places_final <- counties_places %>%
-                  arrange(place_geoid, -intersect_area) %>%
-                          filter(duplicated(place_geoid) == FALSE) %>% select(place_geoid, place_name, county_geoid, county_name) %>% st_drop_geometry()
+  counties_places_final <- st_read(con, query = "select * from crosswalks.county_place_2020")
   df_2019_calc_city <- left_join(df_2019_calc_city, select(counties_places_final, place_name, place_geoid, county_geoid, county_name), by = c("geoname" = "place_name")) %>%
                             select(geoname, place_geoid, county_name, county_geoid, everything())
   df_2020_calc_city <- left_join(df_2020_calc_city, select(counties_places_final, place_name, place_geoid, county_geoid, county_name), by = c("geoname" = "place_name")) %>%
@@ -693,29 +677,4 @@ source <- "Who Leads Us Campaign (county & state: 2017, 2019, and 2020; city: 20
 # close db connections
 dbDisconnect(con)
 dbDisconnect(con2)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
