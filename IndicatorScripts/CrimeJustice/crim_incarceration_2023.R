@@ -137,6 +137,7 @@ city_wa <- city_wa %>% left_join(select(places, c(GEOID, NAME)), by = c("target_
 # aggregate total raw -----------------------------------------------------
 raw_df <- df %>% rename(ct_geoid =  fips_code_2020, total_raw = number_of_people_in_state_prison_from_each_census_tract_2020) %>% select(ct_geoid, total_raw) %>% right_join(select(crosswalk, c(ct_geoid, place_geoid))) %>% group_by(place_geoid) %>%  summarize(total_raw = sum(total_raw)) 
 
+
 ## merge raw with city weighted averages
 city_wa <- city_wa %>% left_join(raw_df, by = c("geoid" = "place_geoid")) %>% dplyr::relocate(total_raw, .after = geoname) %>% dplyr::relocate(total_rate, .after = total_raw)
 
