@@ -254,22 +254,22 @@ d <- calc_id(d) #calculate index of disparity
 View(d)
 
 #split STATE into separate table and format id, name columns
-# state_table <- d[d$geoname == 'California', ]
-# 
-# #calculate STATE z-scores
-# state_table <- calc_state_z(state_table)
-# state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
-# View(state_table)
-# 
-# #remove state from county table
-# county_table <- d %>% filter(!grepl("Census Tract",geoname))
-# county_table <- d %>% filter(!grepl("California,geoname))
-#
-# #calculate COUNTY z-scores
-# county_table <- calc_z(county_table)
-# county_table <- calc_ranks(county_table)
-# county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
-# View(county_table)
+state_table <- d[d$geoname == 'California', ]
+
+#calculate STATE z-scores
+state_table <- calc_state_z(state_table)
+state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
+View(state_table)
+
+#remove state from county table
+county_table <- d %>% filter(!grepl("Census Tract",geoname))
+county_table <- d %>% filter(!grepl("California,geoname))
+
+#calculate COUNTY z-scores
+county_table <- calc_z(county_table)
+county_table <- calc_ranks(county_table)
+county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
+View(county_table)
 
 #remove county/state from place table -----
 city_table <- d %>% filter(grepl("city|CDP", geoname))
@@ -282,8 +282,8 @@ city_table <- city_table %>%
 View(city_table)
 
 ###update info for postgres tables###
-# county_table_name <- "arei_hous_cost_burden_owner_county_2023"
-# state_table_name <- "arei_hous_cost_burden_owner_state_2023"
+county_table_name <- "arei_hous_cost_burden_owner_county_2023"
+state_table_name <- "arei_hous_cost_burden_owner_state_2023"
 
 city_table_name <- "arei_hous_cost_burden_renter_city_2023"
 rc_schema <- "v5"
@@ -317,22 +317,22 @@ d <- calc_p_var(d) #calculate (row wise) population or sample variance. be sure 
 d <- calc_id(d) #calculate index of disparity
 View(d)
 
-# #split STATE into separate table and format id, name columns
-# state_table <- d[d$geoname == 'California', ]
-# 
-# #calculate STATE z-scores
-# state_table <- calc_state_z(state_table)
-# state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
-# View(state_table)
-# 
-# #remove state from county table
-# county_table <- d[d$geoname != 'California', ]
-# 
-# #calculate COUNTY z-scores
-# county_table <- calc_z(county_table)
-# county_table <- calc_ranks(county_table)
-# county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
-# View(county_table)
+#split STATE into separate table and format id, name columns
+state_table <- d[d$geoname == 'California', ]
+
+#calculate STATE z-scores
+state_table <- calc_state_z(state_table)
+state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
+View(state_table)
+
+#remove state from county table
+county_table <- d[d$geoname != 'California', ]
+
+#calculate COUNTY z-scores
+county_table <- calc_z(county_table)
+county_table <- calc_ranks(county_table)
+county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
+View(county_table)
 
 #remove county/state from place table -----
 city_table <- d %>% filter(grepl("city|CDP", geoname))
