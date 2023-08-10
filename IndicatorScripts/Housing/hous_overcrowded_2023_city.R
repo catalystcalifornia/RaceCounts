@@ -27,7 +27,8 @@ srvy = "acs5"
 table_code = "B25014"     # YOU MUST UPDATE based on most recent Indicator Methodology or Workflow/Cnty-State Indicator Tracking
 dataset = "acs5"         # YOU MUST UPDATE: "acs5/subject" for subject ("S") tables OR "acs5/profile" for data profile ("DP") tables OR "acs5" for detailed ("B") tables
 cv_threshold = 40         # YOU MUST UPDATE based on most recent Indicator Methodology
-pop_threshold = 100        # YOU MUST UPDATE based on most recent Indicator Methodology or set to NA B19301
+# pop_threshold = 100        # YOU MUST UPDATE based on most recent Indicator Methodology or set to NA B19301
+pop_threshold = 0        #set to zero for city so not too much data is removed
 asbest = 'min'            # YOU MUST UPDATE based on indicator, set to 'min' if S2701 or B25014
 
 ############## PULL DATA FROM CENSUS API ##############
@@ -64,7 +65,7 @@ df <- do.call(rbind.data.frame, list(
   %>% mutate(geolevel = "tract"),
   get_acs(geography = "zcta", variables = vars_list, year = yr, survey = srvy, cache_table = TRUE)
   %>% mutate(geolevel = "zcta") %>%
-      filter(GEOID %in% list_ca_zctas)) 
+    filter(GEOID %in% list_ca_zctas)) 
 )
 
 # Rename estimate and moe columns to e and m, respectively
@@ -237,7 +238,7 @@ if(endsWith(table_code, "B25014")) {  # Overcrowded Housing #
                                              total_rate_moes$total_pop_moe)*100
   total_rate_moes <- total_rate_moes %>%
     select(GEOID, total_rate_moe)
-    
+  
   #### join these calculations back to df_wide_multigeo
   df_wide_multigeo <- left_join(df_wide_multigeo, total_rate_moes, by = "GEOID")
   
@@ -253,7 +254,7 @@ if(endsWith(table_code, "B25014")) {  # Overcrowded Housing #
   df_wide_multigeo$pacisl_rate <- ifelse(df_wide_multigeo$pacisl_pop <= 0, NA, df_wide_multigeo$pacisl_raw/df_wide_multigeo$pacisl_pop*100)
   df_wide_multigeo$twoormor_rate <- ifelse(df_wide_multigeo$twoormor_pop <= 0, NA, df_wide_multigeo$twoormor_raw/df_wide_multigeo$twoormor_pop*100)
   df_wide_multigeo$aian_rate <- ifelse(df_wide_multigeo$aian_pop <= 0, NA, df_wide_multigeo$aian_raw/df_wide_multigeo$aian_pop*100)
-
+  
   
   ### calculate moes for raced rates
   df_wide_multigeo$asian_rate_moe <- moe_prop(df_wide_multigeo$asian_raw,
@@ -501,39 +502,39 @@ d <- df[df$geolevel %in% c('state', 'county', 'place'), ]
 
 
 if (table_code != "DP05") {
-
-
+  
+  
   # Adds asbest value for RC Functions
   d$asbest = asbest
-
+  
   d <- count_values(d)
   d <- calc_best(d)
   d <- calc_diff(d) #something is going wrong here or in next step
   d <- calc_avg_diff(d) 
   d <- calc_s_var(d)
   d <- calc_id(d)
-
+  
   ### Split into geolevel tables
   #split into STATE, COUNTY, CITY tables
   state_table <- d[d$geolevel == 'state', ]
   county_table <- d[d$geolevel == 'county', ]
   city_table <- d[d$geolevel == 'place', ]
-
+  
   #calculate STATE z-scores
   state_table <- calc_state_z(state_table) %>% select(-c(geolevel))
   View(state_table)
-
+  
   #calculate COUNTY z-scores
   county_table <- calc_z(county_table)
-
+  
   ## Calc county ranks##
   county_table <- calc_ranks(county_table) %>% select(-c(geolevel))
   View(county_table)
-
-
+  
+  
   #calculate CITY z-scores
   city_table <- calc_z(city_table)
-
+  
   ## Calc city ranks##
   city_table <- calc_ranks(city_table) %>% select(-c(geolevel))
   View(city_table)
@@ -544,7 +545,7 @@ if (table_code != "DP05") {
   colnames(city_table)[1:2] <- c("city_id", "city_name")
   
   # ############## NON-DP05 ----- SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
-
+  
   ###update info for postgres tables###
   county_table_name <- "arei_hous_overcrowded_county_2023"      # See most recent RC Workflow SQL Views for table name (remember to update year)
   state_table_name <- "arei_hous_overcrowded_state_2023"        # See most recent RC Workflow SQL Views for table name (remember to update year)
@@ -552,9 +553,9 @@ if (table_code != "DP05") {
   indicator <- "Overcrowded Housing Units (%) (> 1 person per room)"                         # See most recent Indicator Methodology for indicator description
   source <- "2017-2021 ACS 5-Year Estimates, Tables B25014B-I, https://data.census.gov/cedsci/"   # See most recent Indicator Methodology for source info
   rc_schema <- "v5"
- 
+  
 } else {
-
+  
   # ############## DPO5 ONLY ----- SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
   county_table <- d
   ###update info for postgres tables###
@@ -568,7 +569,7 @@ if (table_code != "DP05") {
 
 
 ####### SEND TO POSTGRES #######
-to_postgres(county_table,state_table)
+# to_postgres(county_table,state_table)
 #city_to_postgres()
 
 
@@ -576,7 +577,7 @@ to_postgres(county_table,state_table)
 
 
 
-  
+
 ############## CHECK COVERAGE WITH CV_THRESHOLD = 40 AND POP_THRESHOLD = 100##############
 # coverage_cv40_pop100 <- county_table %>%
 #   select(ends_with("_rate"))
@@ -682,4 +683,4 @@ to_postgres(county_table,state_table)
 #   select(-c(raw_group, cv_group))
 # cv_35_40 <- cv_35_40 %>% drop_na(county_name)
 #  View(cv_35_40)
- 
+
