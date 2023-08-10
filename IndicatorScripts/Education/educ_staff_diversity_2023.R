@@ -158,7 +158,7 @@ df_enroll_staff <- left_join(enrollment_wide, df_wide, by= c("districtcode", "ge
 
 #screen data
 #set population screen threshhold
-pop_screen <- 0
+pop_screen <- 100
 #pop screen on number of chronically absent students (raw) #at the state or county level the threshhold should probably be set to 20 but at the district level it doesn't male sense soI set it to zero
 df_enroll_staff <- df_enroll_staff %>% mutate(
                                   total_raw = ifelse(total_pop < pop_screen, NA, total_raw),
@@ -200,7 +200,7 @@ df_final <- district_match
 df_final <- df_final %>% relocate(geoid, cdscode) 
 df_final <- filter(df_final, !is.na(geoid)) # remove records without fips codes
 df_final <- filter(df_final, !is.na(districtcode)) # remove records without fips codes
-df_final <- df_final %>% unique() %>% select(-c(district_geoid,district))
+df_final <- df_final %>% unique() %>% select(-c(district_geoid))
 
 d <- df_final 
 
