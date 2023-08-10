@@ -27,8 +27,7 @@ srvy = "acs5"
 table_code = "B25014"     # YOU MUST UPDATE based on most recent Indicator Methodology or Workflow/Cnty-State Indicator Tracking
 dataset = "acs5"         # YOU MUST UPDATE: "acs5/subject" for subject ("S") tables OR "acs5/profile" for data profile ("DP") tables OR "acs5" for detailed ("B") tables
 cv_threshold = 40         # YOU MUST UPDATE based on most recent Indicator Methodology
-# pop_threshold = 100        # YOU MUST UPDATE based on most recent Indicator Methodology or set to NA B19301
-pop_threshold = 0        #set to zero for city so not too much data is removed
+pop_threshold = 100        # YOU MUST UPDATE based on most recent Indicator Methodology or set to NA B19301
 asbest = 'min'            # YOU MUST UPDATE based on indicator, set to 'min' if S2701 or B25014
 
 ############## PULL DATA FROM CENSUS API ##############
