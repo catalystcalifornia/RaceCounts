@@ -47,8 +47,8 @@ places <- st_read(con, query = "select * from geographies_ca.cb_2020_06_place_50
 
 ##### GET SUB GEOLEVEL POP DATA ######
 census_api_key(census_key1)       # reload census API key
-vars_list_ <- "vars_list_p16"
-pop <- update_detailed_table_census(vars = vars_list_p16, yr = year, srvy = survey)  # subgeolevel pop
+vars_list <- "vars_list_p16"
+pop <- update_detailed_table_census(vars = vars_list, yr = year, srvy = survey)  # subgeolevel pop
 
 pop_wide <- pop %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = value)
 
