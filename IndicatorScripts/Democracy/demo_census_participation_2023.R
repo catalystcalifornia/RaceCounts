@@ -48,7 +48,7 @@ places <- st_read(con, query = "select * from geographies_ca.cb_2020_06_place_50
 ##### GET SUB GEOLEVEL POP DATA ######
 census_api_key(census_key1)       # reload census API key
 vars_list <- "vars_list_p16"
-pop <- update_detailed_table_census(vars = vars_list, yr = year, srvy = survey)  # subgeolevel pop
+pop <- update_detailed_table_census(vars = vars_list_p16, yr = year, srvy = survey)  # subgeolevel pop
 
 pop_wide <- pop %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = value)
 
@@ -113,6 +113,7 @@ pop_threshold = 150               # define household threshold for screening
 
 ##### CREATE COUNTY GEOID & NAMES TABLE ######  You will NOT need this chunk if your indicator data table has target geolevel names already
 survey <- "acs5"                  # define which Census survey you want
+vars_list <- "vars_list_acs"
 targetgeo_names <- county_names(vars = vars_list, yr = year, srvy = survey)
 targetgeo_names <- select(as.data.frame(targetgeo_names), target_id = GEOID, target_name = NAME) %>%   # get targetgeolevel names
   mutate(target_name = sub(" County, California", "", target_name))           # rename columns        
@@ -122,9 +123,9 @@ targetgeo_names <- distinct(targetgeo_names, .keep_all = FALSE)                 
 
 ##### GET SUB GEOLEVEL POP DATA ######
 survey <- "census"               # define which Census survey you want
-vars_list_ <- "vars_list_p16"
-# pop <- update_detailed_table_census(vars = vars_list_p16, yr = year, srvy = survey)  # subgeolevel pop
-# pop_wide <- pop %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = value)
+vars_list <- "vars_list_p16"
+pop <- update_detailed_table_census(vars = vars_list_p16, yr = year, srvy = survey)  # subgeolevel pop
+pop_wide <- pop %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = value)
 pop_wide <- as.data.frame(pop_wide) %>% mutate(target_id = substr(GEOID, 1, 5)) # use left 5 characters as target_id
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID) # rename to generic column names for WA functions
 
