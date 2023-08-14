@@ -1,0 +1,408 @@
+# Denied Mortgages Applications for RC v4
+list.of.packages <- c("openxlsx","tidyr","dplyr","stringr", "DBI", "RPostgreSQL","data.table", "openxlsx", "tidycensus", "tidyverse", "janitor")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
+#library(plyr)
+library(dplyr)
+library(DBI)
+library(RPostgreSQL)
+library(data.table)
+library(stringr)
+library(openxlsx)
+library(tidyr)
+library(tidycensus)                                
+library(tidyverse)
+library(tigris)
+library(sf)
+library(janitor)
+# library(janitor)
+options(scipen=999)
+
+setwd("W:/Data/Housing/HMDA/Denied Mortgages/2019_20/")
+
+
+# ### DENIED MORTGAGE APPLICATIONS ----------------------------------------
+#Get data then filter out multifamily housing and subordinate liens. Keep only single family housing and first liens. Replace state_code with FIPS Code.
+denied_2019 <- read.csv("actions_taken_3_state_CA_2019.csv", colClasses = c(county_code = "character", census_tract = "character")) %>%
+           select(activity_year, state_code, county_code, census_tract, derived_loan_product_type, derived_dwelling_category, derived_ethnicity, derived_race) %>%
+           filter(derived_dwelling_category != 'Multifamily:Site-Built' & derived_dwelling_category != 'Multifamily:Manufactured' &
+             derived_loan_product_type != 'Conventional:Subordinate Lien' & derived_loan_product_type != 'FHA:Subordinate Lien' &
+             derived_loan_product_type != 'FSA/RHS:Subordinate Lien' & derived_loan_product_type != 'VA:Subordinate Lien' &
+           str_detect(county_code, "^06")) %>%      # select records where county_code begins with '06'
+           mutate(state_code = replace(state_code, str_detect(state_code, "CA"), "06")) %>%  # replace state_code in those records with '06'
+           select(state_code, county_code, census_tract, derived_ethnicity, derived_race)
+# head(denied_2019)
+
+# Get data, then filter out multifamily housing and subordinate liens. Keep only single family housing and first liens. Replace state_code with FIPS Code.
+denied_2020 <- read.csv("actions_taken_3_state_CA_2020.csv", colClasses = c(county_code = "character", census_tract = "character")) %>%
+         mutate(county_code = paste0("0",county_code), census_tract = paste0("0",census_tract)) %>%   # add leading zeroes to county/ct FIPS codes
+         select(activity_year, state_code, county_code, census_tract, derived_loan_product_type, derived_dwelling_category, 
+         derived_ethnicity, derived_race) %>%
+         filter(derived_dwelling_category != 'Multifamily:Site-Built' & derived_dwelling_category != 'Multifamily:Manufactured' &
+           derived_loan_product_type != 'Conventional:Subordinate Lien' & derived_loan_product_type != 'FHA:Subordinate Lien' &
+           derived_loan_product_type != 'FSA/RHS:Subordinate Lien' & derived_loan_product_type != 'VA:Subordinate Lien' &
+         str_detect(county_code, "^06")) %>%
+         mutate(state_code = replace(state_code, str_detect(state_code, "CA"), "06")) %>%
+         select(state_code, county_code, census_tract, derived_ethnicity, derived_race)
+# head(denied_2020)
+
+
+
+# ### LOANS ORIGINATED (Applications) -------------------------------------
+#Get downloaded data and subset
+loans_2019 <- read.csv("actions_taken_1_state_CA_2019.csv", colClasses = c(county_code = "character", census_tract = "character")) %>%
+          select(activity_year, state_code, county_code, census_tract, derived_loan_product_type, derived_dwelling_category, derived_ethnicity, derived_race) %>%
+          filter(derived_dwelling_category != 'Multifamily:Site-Built' & derived_dwelling_category != 'Multifamily:Manufactured' &
+            derived_loan_product_type != 'Conventional:Subordinate Lien' & derived_loan_product_type != 'FHA:Subordinate Lien' &
+            derived_loan_product_type != 'FSA/RHS:Subordinate Lien' & derived_loan_product_type != 'VA:Subordinate Lien' &
+          str_detect(county_code, "^06")) %>%
+          mutate(state_code = replace(state_code, str_detect(state_code, "CA"), "06")) %>%
+          select(state_code, county_code, census_tract, derived_ethnicity, derived_race)
+# head(loans_2019)
+
+loans_2020 <- read.csv("actions_taken_1_state_CA_2020.csv", colClasses = c(county_code = "character", census_tract = "character")) %>%
+          mutate(county_code = paste0("0",county_code), census_tract = paste0("0",census_tract)) %>%   # add leading zeroes to county/ct FIPS codes
+          select(activity_year, state_code, county_code, census_tract, derived_loan_product_type, derived_dwelling_category,
+          derived_ethnicity, derived_race) %>%
+          filter(derived_dwelling_category != 'Multifamily:Site-Built' & derived_dwelling_category != 'Multifamily:Manufactured' &
+           derived_loan_product_type != 'Conventional:Subordinate Lien' & derived_loan_product_type != 'FHA:Subordinate Lien' &
+           derived_loan_product_type != 'FSA/RHS:Subordinate Lien' & derived_loan_product_type != 'VA:Subordinate Lien'  &
+          str_detect(county_code, "^06")) %>%
+          mutate(state_code = replace(state_code, str_detect(state_code, "CA"), "06")) %>%
+          select(state_code, county_code, census_tract, derived_ethnicity, derived_race)
+
+# head(loans_2020)
+
+
+#Append years
+loans_2019_20 <- bind_rows(loans_2019, loans_2020) %>% plyr::rename(c("county_code" = "geoid"))
+denied_2019_20 <- bind_rows(denied_2019, denied_2020) %>% plyr::rename(c("county_code" = "geoid"))
+
+ # View(denied_2019_20)   #This line is used to see a pop-out view of the df. Un-comment this line if you intend to use it
+ # str(denied_2019_20) #This line is used to view column names so that you can select the appropriate column names when creating the df_subset. Un-comment this line if you intend to use it
+
+#loans = loans_2019_20 %>% dplyr::group_by(geoid, derived_ethnicity, derived_race) %>%                            
+#        dplyr::summarise(originated = n())
+
+### CT-Place Crosswalk ### ---------------------------------------------------------------------
+## pull in 2020 CBF Places ##
+places <- places(state = 'CA', year = 2020, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
+tracts <- tracts(state = 'CA', year = 2020, cb = TRUE) %>% select(-c(STATEFP, TRACTCE, AFFGEOID, NAME, NAMELSAD, STATE_NAME, LSAD, ALAND, AWATER))
+
+## spatial join ##
+places_3310 <- st_transform(places, 3310) # change projection to 3310
+tracts_3310 <- st_transform(tracts, 3310) # change projection to 3310
+# calculate area of tracts and places
+tracts_3310$area <- st_area(tracts_3310)
+places_3310$pl_area <- st_area(places_3310)
+# rename geoid fields
+tracts_3310 <- tracts_3310%>% 
+  rename("ct_geoid" = "GEOID", "county_geoid" = "COUNTYFP", "county_name" = "NAMELSADCO")
+places_3310 <- places_3310%>% 
+  rename("place_geoid" = "GEOID", "place_name" = "NAME")
+# run intersect
+tracts_places <- st_intersection(tracts_3310, places_3310) 
+# create ct_place combo geoid field
+tracts_places$ct_place_geoid <- paste(tracts_places$place_geoid, tracts_places$ct_geoid, sep = "_")
+# calculate area of intersect
+tracts_places$intersect_area <- st_area(tracts_places)
+# calculate percent of intersect out of total place area
+places_tracts <- tracts_places %>% mutate(prc_pl_area = as.numeric(tracts_places$intersect_area/tracts_places$pl_area))
+# calculate percent of intersect out of total tract area
+tracts_places$prc_area <- as.numeric(tracts_places$intersect_area/tracts_places$area)
+# convert to df
+tracts_places <- as.data.frame(tracts_places)
+places_tracts <- as.data.frame(places_tracts)
+# xwalk N = 16,342
+xwalk <- full_join(places_tracts, select(tracts_places, c(ct_place_geoid, prc_area)), by = 'ct_place_geoid')
+# filter xwalk where intersect between tracts and places is equal or greater than X% of tract area OR place area. xwalk_filter N = 9,675
+threshold <- .25
+xwalk_filter <- xwalk %>% filter(prc_area >= threshold | prc_pl_area >= threshold)
+names(xwalk_filter) <- tolower(names(xwalk_filter)) # make col names lowercase
+xwalk_filter <- select(xwalk_filter, ct_place_geoid, ct_geoid, place_geoid, county_geoid, place_name, namelsad, county_name, area, pl_area, intersect_area, prc_area, prc_pl_area)
+#View(xwalk_filter)
+############## City #############
+
+#join xwalk filter to loans
+loans_2019_20 <- loans_2019_20 %>% right_join(select(xwalk_filter, c(ct_geoid, place_geoid)), by = c("census_tract" = "ct_geoid"), relationship = "many-to-many")  # join target geoids/names
+
+# races----
+latino <- filter(loans_2019_20, derived_ethnicity == "Hispanic or Latino") %>% dplyr::group_by(place_geoid) %>%
+  dplyr::summarise(latino_originated = n())
+
+nh_black <- filter(loans_2019_20, derived_ethnicity == "Not Hispanic or Latino", derived_race == "Black or African American") %>%
+  dplyr::group_by(place_geoid) %>% dplyr::summarise(nh_black_originated = n())
+
+nh_asian <- filter(loans_2019_20, derived_ethnicity == "Not Hispanic or Latino", derived_race == "Asian") %>%
+  dplyr::group_by(place_geoid) %>% dplyr::summarise(nh_asian_originated = n())
+
+nh_white <- filter(loans_2019_20, derived_ethnicity == "Not Hispanic or Latino", derived_race == "White") %>%
+  dplyr::group_by(place_geoid) %>% dplyr::summarise(nh_white_originated = n())
+
+nh_twoormor <- filter(loans_2019_20, derived_ethnicity == "Not Hispanic or Latino", (derived_race == "Joint" | derived_race == "2 or more minority races")) %>%
+  dplyr::group_by(place_geoid) %>% dplyr::summarise(nh_twoormor_originated = n())
+
+#aian alone, latinx inclusive
+aian <- filter(loans_2019_20, derived_race == "American Indian or Alaska Native") %>%
+  dplyr::group_by(place_geoid) %>% dplyr::summarise(aian_originated = n())
+
+#pacisl alone, latinx inclusive
+pacisl <- filter(loans_2019_20, derived_race == "Native Hawaiian or Other Pacific Islander") %>%
+  dplyr::group_by(place_geoid) %>% dplyr::summarise(pacisl_originated = n())
+
+total <- loans_2019_20 %>% group_by(place_geoid) %>% summarise(total_originated = n())
+
+# merge all loan county tables
+loans <- left_join(total, nh_black, by = c("place_geoid")) %>% 
+  left_join(nh_asian, by = c("place_geoid")) %>% 
+  left_join(latino, by = c("place_geoid")) %>% 
+  left_join(nh_white, by = c("place_geoid")) %>% 
+  left_join(aian, by = c("place_geoid")) %>% 
+  left_join(pacisl, by = c("place_geoid")) %>% 
+  left_join(nh_twoormor, by = c("place_geoid"))
+# View(loans)
+
+
+# ########### Denied mortgages by race and total --------------------------
+
+#join xwalk filter to loans
+denied_2019_20 <- denied_2019_20 %>% right_join(select(xwalk_filter, c(ct_geoid, place_geoid)), by = c("census_tract" = "ct_geoid"), relationship = "many-to-many")  # join target geoids/names
+
+# races -----
+latino <- filter(denied_2019_20, derived_ethnicity== "Hispanic or Latino") %>%
+  dplyr::group_by(place_geoid) %>% dplyr::summarise(latino_denied = n())
+
+nh_black <- filter(denied_2019_20, derived_ethnicity == "Not Hispanic or Latino", derived_race == "Black or African American") %>%
+  dplyr::group_by(place_geoid) %>% dplyr::summarise(nh_black_denied = n())
+
+nh_asian <- filter(denied_2019_20, derived_ethnicity == "Not Hispanic or Latino", derived_race == "Asian") %>%
+  dplyr::group_by(place_geoid) %>% dplyr::summarise(nh_asian_denied = n())
+
+nh_white <- filter(denied_2019_20, derived_ethnicity == "Not Hispanic or Latino", derived_race == "White") %>%
+  dplyr::group_by(place_geoid) %>% dplyr::summarise(nh_white_denied = n())
+
+nh_twoormor <- filter(denied_2019_20,derived_ethnicity == "Not Hispanic or Latino", (derived_race == "Joint" | derived_race == "2 or more minority races")) %>%
+  dplyr::group_by(place_geoid) %>% dplyr::summarise(nh_twoormor_denied = n())
+
+#aian alone, latinx inclusive
+aian <- filter(denied_2019_20, derived_race == "American Indian or Alaska Native") %>%
+  dplyr::group_by(place_geoid) %>% dplyr::summarise(aian_denied = n())
+
+#pacisl alone, latinx inclusive
+pacisl <- filter(denied_2019_20, derived_race == "Native Hawaiian or Other Pacific Islander") %>%
+  dplyr::group_by(place_geoid) %>% dplyr::summarise(pacisl_denied = n())
+
+total <- denied_2019_20 %>% group_by(place_geoid) %>% summarise(total_denied = n())
+
+# merge all denied county tables
+denied <- left_join(total, nh_black, by = c("place_geoid")) %>% 
+  left_join(nh_asian, by = c("place_geoid")) %>% 
+  left_join(latino, by = c("place_geoid")) %>% 
+  left_join(nh_white, by = c("place_geoid")) %>% 
+  left_join(aian, by = c("place_geoid")) %>% 
+  left_join(pacisl, by = c("place_geoid")) %>% 
+  left_join(nh_twoormor, by = c("place_geoid"))
+#View(denied)
+
+#merge loan and denied dfs
+city_df <- left_join(loans, denied, by = c("place_geoid")) %>% 
+  left_join(select(xwalk_filter, c(place_name, place_geoid, county_name)), by = "place_geoid") %>% 
+  # left_join(select(loans_2019_20, c(place_geoid, geoid)), by = "place_geoid") %>% 
+  mutate(geolevel = "city") %>% 
+  dplyr::rename("geoname"="place_name", "geoid"="place_geoid") %>% unique()
+# city_df$county_name <- gsub(" County", "", city_df$county_name)
+# View(city_df)
+
+############## County / State #############
+# ######### Loan originations (applications) by race and total ------------
+latino <- filter(loans_2019_20, derived_ethnicity == "Hispanic or Latino") %>% dplyr::group_by(geoid) %>%
+          dplyr::summarise(latino_originated = n())
+
+nh_black <- filter(loans_2019_20, derived_ethnicity == "Not Hispanic or Latino", derived_race == "Black or African American") %>%
+            dplyr::group_by(geoid) %>% dplyr::summarise(nh_black_originated = n())
+
+nh_asian <- filter(loans_2019_20, derived_ethnicity == "Not Hispanic or Latino", derived_race == "Asian") %>%
+            dplyr::group_by(geoid) %>% dplyr::summarise(nh_asian_originated = n())
+
+nh_white <- filter(loans_2019_20, derived_ethnicity == "Not Hispanic or Latino", derived_race == "White") %>%
+            dplyr::group_by(geoid) %>% dplyr::summarise(nh_white_originated = n())
+
+nh_twoormor <- filter(loans_2019_20, derived_ethnicity == "Not Hispanic or Latino", (derived_race == "Joint" | derived_race == "2 or more minority races")) %>%
+               dplyr::group_by(geoid) %>% dplyr::summarise(nh_twoormor_originated = n())
+
+#aian alone, latinx inclusive
+aian <- filter(loans_2019_20, derived_race == "American Indian or Alaska Native") %>%
+        dplyr::group_by(geoid) %>% dplyr::summarise(aian_originated = n())
+
+#pacisl alone, latinx inclusive
+pacisl <- filter(loans_2019_20, derived_race == "Native Hawaiian or Other Pacific Islander") %>%
+          dplyr::group_by(geoid) %>% dplyr::summarise(pacisl_originated = n())
+
+total <- loans_2019_20 %>% group_by(geoid) %>% summarise(total_originated = n())
+
+# merge all loan county tables
+loans <- left_join(total, nh_black, by = c("geoid")) %>% 
+  left_join(nh_asian, by = c("geoid")) %>% 
+  left_join(latino, by = c("geoid")) %>% 
+  left_join(nh_white, by = c("geoid")) %>% 
+  left_join(aian, by = c("geoid")) %>% 
+  left_join(pacisl, by = c("geoid")) %>% 
+  left_join(nh_twoormor, by = c("geoid"))
+# View(loans)
+
+
+# ########### Denied mortgages by race and total --------------------------
+latino <- filter(denied_2019_20, derived_ethnicity== "Hispanic or Latino") %>%
+  dplyr::group_by(geoid) %>% dplyr::summarise(latino_denied = n())
+
+nh_black <- filter(denied_2019_20, derived_ethnicity == "Not Hispanic or Latino", derived_race == "Black or African American") %>%
+            dplyr::group_by(geoid) %>% dplyr::summarise(nh_black_denied = n())
+
+nh_asian <- filter(denied_2019_20, derived_ethnicity == "Not Hispanic or Latino", derived_race == "Asian") %>%
+            dplyr::group_by(geoid) %>% dplyr::summarise(nh_asian_denied = n())
+
+nh_white <- filter(denied_2019_20, derived_ethnicity == "Not Hispanic or Latino", derived_race == "White") %>%
+            dplyr::group_by(geoid) %>% dplyr::summarise(nh_white_denied = n())
+
+nh_twoormor <- filter(denied_2019_20,derived_ethnicity == "Not Hispanic or Latino", (derived_race == "Joint" | derived_race == "2 or more minority races")) %>%
+               dplyr::group_by(geoid) %>% dplyr::summarise(nh_twoormor_denied = n())
+
+#aian alone, latinx inclusive
+aian <- filter(denied_2019_20, derived_race == "American Indian or Alaska Native") %>%
+        dplyr::group_by(geoid) %>% dplyr::summarise(aian_denied = n())
+
+#pacisl alone, latinx inclusive
+pacisl <- filter(denied_2019_20, derived_race == "Native Hawaiian or Other Pacific Islander") %>%
+          dplyr::group_by(geoid) %>% dplyr::summarise(pacisl_denied = n())
+
+total <- denied_2019_20 %>% group_by(geoid) %>% summarise(total_denied = n())
+
+# merge all denied county tables
+denied <- left_join(total, nh_black, by = c("geoid")) %>% 
+  left_join(nh_asian, by = c("geoid")) %>% 
+  left_join(latino, by = c("geoid")) %>% 
+  left_join(nh_white, by = c("geoid")) %>% 
+  left_join(aian, by = c("geoid")) %>% 
+  left_join(pacisl, by = c("geoid")) %>% 
+  left_join(nh_twoormor, by = c("geoid"))
+#View(denied)
+
+#merge loan and denied dfs
+df_join <- left_join(loans, denied, by = c("geoid")) %>% mutate(geolevel = "county")
+df_join$place_geoid <- NA
+# df_join$place_name <- NA
+# View(df_join)
+
+
+# #get census geonames ----------------------------------------------------
+census_api_key("25fb5e48345b42318ae435e4dcd28ad3f196f2c4", overwrite = TRUE)
+ca <- get_acs(geography = "county", 
+              variables = c("B01001_001"), 
+              state = "CA", 
+              year = 2020)
+
+ca <- ca[,1:2]
+ca$NAME <- gsub(" County, California", "", ca$NAME)
+names(ca) <- c("geoid", "geoname")
+# View(ca)
+
+#add geonames, and state geoid
+df_wide <- merge(x=ca,y=df_join,by="geoid", all=T) %>%  adorn_totals("row")
+df_wide$geoid[df_wide$geoid == 'Total'] <- '06'
+df_wide$geoname[df_wide$geoid == '06'] <- 'California'
+df_wide$geolevel[df_wide$geoid == '06'] <- 'State'
+#View(df_wide)
+df_wide <- df_wide %>% select(-c(place_geoid))
+city_df <- city_df %>% select(-c(county_name))
+combined_df <- rbind(df_wide,city_df) %>% unique
+
+
+# # SCREEN DATA: set originated loan (application) threshold --------------
+threshold = 15
+
+df_pct <- combined_df %>% 
+  mutate( total_pct_denied = ifelse((total_originated) < threshold, NA, (total_denied / total_originated)*100),  
+          nh_black_pct_denied = ifelse(is.na(nh_black_originated), NA, (nh_black_denied / nh_black_originated)*100),
+          aian_pct_denied = ifelse(is.na(aian_originated), NA, (aian_denied / aian_originated)*100),
+          nh_asian_pct_denied = ifelse(is.na(nh_asian_originated), NA, (nh_asian_denied / nh_asian_originated)*100),
+          latino_pct_denied = ifelse(is.na(latino_originated), NA, (latino_denied / latino_originated)*100),
+          pacisl_pct_denied = ifelse(is.na(pacisl_originated), NA, (pacisl_denied / pacisl_originated)*100),
+          nh_white_pct_denied = ifelse(is.na(nh_white_originated), NA, (nh_white_denied / nh_white_originated)*100),
+          nh_twoormor_pct_denied = ifelse(is.na(nh_twoormor_originated), NA, (nh_twoormor_denied / nh_twoormor_originated)*100),
+
+          # calculate _raw column if _raw column is not less than threshold
+          total_raw = ifelse(total_originated < threshold, NA, total_denied),
+          nh_black_raw = ifelse(nh_black_originated < threshold, NA, nh_black_denied),
+          aian_raw = ifelse(aian_originated < threshold, NA, aian_denied),
+          nh_asian_raw = ifelse(nh_asian_originated < threshold, NA, nh_asian_denied),
+          latino_raw = ifelse(latino_originated < threshold, NA, latino_denied),
+          pacisl_raw = ifelse(pacisl_originated < threshold, NA, pacisl_denied),
+          nh_white_raw = ifelse(nh_white_originated < threshold, NA, nh_white_denied),
+          nh_twoormor_raw = ifelse(nh_twoormor_originated < threshold, NA, nh_twoormor_denied),
+              
+          # calculate _rate column if _rate column is not less than threshold
+          total_rate = ifelse(total_originated < threshold, NA, total_pct_denied),
+          nh_black_rate = ifelse(nh_black_originated < threshold, NA, nh_black_pct_denied),
+          aian_rate = ifelse(aian_originated < threshold, NA, aian_pct_denied),
+          nh_asian_rate = ifelse(nh_asian_originated < threshold, NA, nh_asian_pct_denied),
+          latino_rate = ifelse(latino_originated < threshold, NA, latino_pct_denied),
+          pacisl_rate = ifelse(pacisl_originated < threshold, NA, pacisl_pct_denied),
+          nh_white_rate = ifelse(nh_white_originated < threshold, NA, nh_white_pct_denied),
+          nh_twoormor_rate = ifelse(nh_twoormor_originated < threshold, NA, nh_twoormor_pct_denied)
+    )
+
+View(df_pct)
+
+d <- select(df_pct, geoid, geoname, ends_with("_originated"), ends_with("_rate"), ends_with("_raw"), geolevel) 
+
+############## CALC RACE COUNTS STATS ##############
+#set source for RC Functions script
+source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
+
+d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
+
+d <- count_values(d) #calculate number of "_rate" values
+d <- calc_best(d) #calculate best rates -- be sure to update previous line of code accordingly before running this function.
+d <- calc_diff(d) #calculate difference from best
+d <- calc_avg_diff(d) #calculate (row wise) mean difference from best
+d <- calc_p_var(d) #calculate (row wise) population or sample variance. be sure to use calc_s_var for sample data or calc_p_var for population data.
+d <- calc_id(d) #calculate index of disparity
+View(d)
+
+#split STATE into separate table and format id, name columns
+state_table <- d[d$geoname == 'California', ]
+
+#calculate STATE z-scores
+state_table <- calc_state_z(state_table)
+state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
+View(state_table)
+
+#remove state from county table
+county_table <- d[d$geolevel == 'county', ] %>% select(-c(geolevel))
+
+#calculate COUNTY z-scores
+county_table <- calc_z(county_table)
+county_table <- calc_ranks(county_table)
+county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
+View(county_table)
+
+#split CITY into separate table and format id, name columns
+city_table <- d[d$geolevel == 'city', ] %>% select(-c(geolevel))
+
+#calculate CITY z-scores
+city_table <- calc_z(city_table)
+city_table <- calc_ranks(city_table)
+city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") 
+View(city_table)
+###update info for postgres tables###
+county_table_name <- "arei_hous_denied_mortgages_county_2023"
+state_table_name <- "arei_hous_denied_mortgages_state_2023"
+city_table_name <- "arei_hous_denied_mortgages_city_2023"
+indicator <- "Denied Mortgages out of all Loan Applications (%). Subgroups with fewer than 15 applications (loans originated) are excluded. This data is"
+source <- "HMDA (2019-2020) https://ffiec.cfpb.gov/data-browser/"
+rc_schema <- 'v5'
+
+#send tables to postgres
+# to_postgres()
+city_to_postgres(city_table)
