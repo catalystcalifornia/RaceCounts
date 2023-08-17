@@ -31,6 +31,7 @@ rda_shared_schema <- list("DP05" = c("demographics"), # population,
 
 ############## DEFINES R-REQUIRED COLS - DO NOT MODIFY ##############
 rc_vars <- list("DP05" = c("DP05_0033", "DP05_0033P","DP05_0071", "DP05_0071P", "DP05_0077", "DP05_0077P", "DP05_0078", "DP05_0078P", "DP05_0066", "DP05_0066P", "DP05_0080", "DP05_0080P", "DP05_0068", "DP05_0068P", "DP05_0082", "DP05_0082P", "DP05_0083", "DP05_0083P"),
+
                       "S2701"= c("S2701_C01_001", "S2701_C01_017", "S2701_C01_018", "S2701_C01_019","S2701_C01_020","S2701_C01_021", "S2701_C01_022", "S2701_C01_023", "S2701_C01_024", "S2701_C05_001", "S2701_C05_017", "S2701_C05_018", "S2701_C05_019","S2701_C05_020","S2701_C05_021", "S2701_C05_022", "S2701_C05_023", "S2701_C05_024", "S2701_C04_001", "S2701_C04_017", "S2701_C04_018", "S2701_C04_019","S2701_C04_020","S2701_C04_021", "S2701_C04_022", "S2701_C04_023", "S2701_C04_024"),
                       "S2802"= c("S2802_C01_001", "S2802_C01_006", "S2802_C01_007", "S2802_C01_008","S2802_C01_009","S2802_C01_010", "S2802_C01_011", "S2802_C01_012", "S2802_C01_013", "S2802_C03_001", "S2802_C03_006", "S2802_C03_007", "S2802_C03_008","S2802_C03_009","S2802_C03_010", "S2802_C03_011", "S2802_C03_012", "S2802_C03_013", "S2802_C02_001", "S2802_C02_006", "S2802_C02_007", "S2802_C02_008","S2802_C02_009","S2802_C02_010", "S2802_C02_011", "S2802_C02_012", "S2802_C02_013"),
                       "S2301"= c("S2301_C01_001", "S2301_C01_013", "S2301_C01_014", "S2301_C01_015","S2301_C01_016","S2301_C01_017", "S2301_C01_018", "S2301_C01_019", "S2301_C01_020", "S2301_C03_001", "S2301_C03_013", "S2301_C03_014", "S2301_C03_015","S2301_C03_016","S2301_C03_017", "S2301_C03_018", "S2301_C03_019", "S2301_C03_020"),
@@ -45,6 +46,7 @@ rc_vars <- list("DP05" = c("DP05_0033", "DP05_0033P","DP05_0071", "DP05_0071P", 
                                    "B25014G_001", "B25014G_003", "B25014G_005", "B25014G_006", "B25014G_007", "B25014G_012", "B25014G_013", 
                                    "B25014H_001", "B25014H_003", "B25014H_005", "B25014H_006", "B25014H_007", "B25014H_012", "B25014H_013", 
                                    "B25014I_001", "B25014I_003", "B25014I_005", "B25014I_006", "B25014I_007", "B25014I_012", "B25014I_013"))
+
 
 ind_rc_vars <- tolower(rc_vars[table_code][[1]])
 all_rc_ind_vars <- append(c("geoid", "name", "geolevel"), ind_rc_vars)
@@ -360,7 +362,7 @@ if (startsWith(table_code, "S2802") | startsWith(table_code, "S2701")) {
                  "twoormor_rate", "twoormor_rate_moe",
                  "latino_rate", "latino_rate_moe",
                  "nh_white_rate", "nh_white_rate_moe")
-                 
+
   df_wide_multigeo <- df_wide_multigeo %>%
     rename_with(~ new_names[which(old_names == .x)], .cols = old_names)
 }
@@ -385,8 +387,7 @@ if (startsWith(table_code, "S2301")) {
                  "twoormor_rate", "twoormor_rate_moe", 
                  "latino_rate", "latino_rate_moe",
                  "nh_white_rate", "nh_white_rate_moe")
-                  
-                 
+
   df_wide_multigeo <- df_wide_multigeo %>%
     rename_with(~ new_names[which(old_names == .x)], .cols = old_names)
   
@@ -480,7 +481,7 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
   df$pacisl_rate_cv <- ifelse(df$pacisl_rate==0, NA, df$pacisl_rate_moe/1.645/df$pacisl_rate*100)
   df$twoormor_rate_cv <- ifelse(df$twoormor_rate==0, NA, df$twoormor_rate_moe/1.645/df$twoormor_rate*100)
   df$aian_rate_cv <- ifelse(df$aian_rate==0, NA, df$aian_rate_moe/1.645/df$aian_rate*100)
-    
+
   ## Screen out rates with high CVs
   df$total_rate <- ifelse(df$total_rate_cv > cv_threshold, NA, df$total_rate)
   df$asian_rate <- ifelse(df$asian_rate_cv > cv_threshold, NA, df$asian_rate)
@@ -611,4 +612,5 @@ city_to_postgres(city_table)
   #send tables to postgres COMMENTED OUT FOR QA
   # to_postgres(county_table)
 }
+
 

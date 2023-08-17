@@ -279,6 +279,11 @@ city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
 city_table <- city_table %>% 
   dplyr::rename("city_id" = "geoid", "city_name" = "geoname")
+# Clean geo names
+city_table$city_name <- gsub(" city", "", city_table$city_name)
+city_table$city_name <- gsub(" town", "", city_table$city_name)
+city_table$city_name <- gsub(" CDP", "", city_table$city_name)
+city_table$city_name <- gsub(" City", "", city_table$city_name)
 View(city_table)
 
 ###update info for postgres tables###
@@ -342,6 +347,11 @@ city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
 city_table <- city_table %>% 
   dplyr::rename("city_id" = "geoid", "city_name" = "geoname")
+# Clean geo names
+city_table$city_name <- gsub(" city", "", city_table$city_name)
+city_table$city_name <- gsub(" town", "", city_table$city_name)
+city_table$city_name <- gsub(" CDP", "", city_table$city_name)
+city_table$city_name <- gsub(" City", "", city_table$city_name)
 View(city_table)
 
 ###update info for postgres tables###
