@@ -31,20 +31,22 @@ rda_shared_schema <- list("DP05" = c("demographics"), # population,
 
 ############## DEFINES R-REQUIRED COLS - DO NOT MODIFY ##############
 rc_vars <- list("DP05" = c("DP05_0033", "DP05_0033P","DP05_0071", "DP05_0071P", "DP05_0077", "DP05_0077P", "DP05_0078", "DP05_0078P", "DP05_0066", "DP05_0066P", "DP05_0080", "DP05_0080P", "DP05_0068", "DP05_0068P", "DP05_0082", "DP05_0082P", "DP05_0083", "DP05_0083P"),
-                "S2701"= c("S2701_C01_001", "S2701_C01_017", "S2701_C01_018", "S2701_C01_019","S2701_C01_020","S2701_C01_021", "S2701_C01_022", "S2701_C01_023", "S2701_C01_024", "S2701_C05_001", "S2701_C05_017", "S2701_C05_018", "S2701_C05_019","S2701_C05_020","S2701_C05_021", "S2701_C05_022", "S2701_C05_023", "S2701_C05_024", "S2701_C04_001", "S2701_C04_017", "S2701_C04_018", "S2701_C04_019","S2701_C04_020","S2701_C04_021", "S2701_C04_022", "S2701_C04_023", "S2701_C04_024"),
-                "S2802"= c("S2802_C01_001", "S2802_C01_006", "S2802_C01_007", "S2802_C01_008","S2802_C01_009","S2802_C01_010", "S2802_C01_011", "S2802_C01_012", "S2802_C01_013", "S2802_C03_001", "S2802_C03_006", "S2802_C03_007", "S2802_C03_008","S2802_C03_009","S2802_C03_010", "S2802_C03_011", "S2802_C03_012", "S2802_C03_013", "S2802_C02_001", "S2802_C02_006", "S2802_C02_007", "S2802_C02_008","S2802_C02_009","S2802_C02_010", "S2802_C02_011", "S2802_C02_012", "S2802_C02_013"),
-                "S2301"= c("S2301_C01_001", "S2301_C01_013", "S2301_C01_014", "S2301_C01_015","S2301_C01_016","S2301_C01_017", "S2301_C01_018", "S2301_C01_019", "S2301_C01_020", "S2301_C03_001", "S2301_C03_013", "S2301_C03_014", "S2301_C03_015","S2301_C03_016","S2301_C03_017", "S2301_C03_018", "S2301_C03_019", "S2301_C03_020"),
-                "B19301"= c("B19301_001", "B19301B_001", "B19301C_001", "B19301D_001", "B19301E_001", "B19301F_001", "B19301G_001", "B19301H_001", "B19301I_001"),
-                "B25003"= c("B25003_001", "B25003_002", "B25003B_001", "B25003B_002", "B25003C_001", "B25003C_002", "B25003D_001", "B25003D_002", "B25003E_001", "B25003E_002", "B25003F_001", "B25003F_002", "B25003G_001", "B25003G_002", "B25003H_001", "B25003H_002", "B25003I_001", "B25003I_002"),
-                "B25014" = c("B25014_001", "B25014_003", "B25014_005", "B25014_006", "B25014_007", "B25014_012", "B25014_013", 
-                             "B25014B_001", "B25014B_003", "B25014B_005", "B25014B_006", "B25014B_007", "B25014B_012", "B25014B_013", 
-                             "B25014C_001", "B25014C_003", "B25014C_005", "B25014C_006", "B25014C_007", "B25014C_012", "B25014C_013", 
-                             "B25014D_001", "B25014D_003", "B25014D_005", "B25014D_006", "B25014D_007", "B25014D_012", "B25014D_013", 
-                             "B25014E_001", "B25014E_003", "B25014E_005", "B25014E_006", "B25014E_007", "B25014E_012", "B25014E_013", 
-                             "B25014F_001", "B25014F_003", "B25014F_005", "B25014F_006", "B25014F_007", "B25014F_012", "B25014F_013", 
-                             "B25014G_001", "B25014G_003", "B25014G_005", "B25014G_006", "B25014G_007", "B25014G_012", "B25014G_013", 
-                             "B25014H_001", "B25014H_003", "B25014H_005", "B25014H_006", "B25014H_007", "B25014H_012", "B25014H_013", 
-                             "B25014I_001", "B25014I_003", "B25014I_005", "B25014I_006", "B25014I_007", "B25014I_012", "B25014I_013"))
+
+                      "S2701"= c("S2701_C01_001", "S2701_C01_017", "S2701_C01_018", "S2701_C01_019","S2701_C01_020","S2701_C01_021", "S2701_C01_022", "S2701_C01_023", "S2701_C01_024", "S2701_C05_001", "S2701_C05_017", "S2701_C05_018", "S2701_C05_019","S2701_C05_020","S2701_C05_021", "S2701_C05_022", "S2701_C05_023", "S2701_C05_024", "S2701_C04_001", "S2701_C04_017", "S2701_C04_018", "S2701_C04_019","S2701_C04_020","S2701_C04_021", "S2701_C04_022", "S2701_C04_023", "S2701_C04_024"),
+                      "S2802"= c("S2802_C01_001", "S2802_C01_006", "S2802_C01_007", "S2802_C01_008","S2802_C01_009","S2802_C01_010", "S2802_C01_011", "S2802_C01_012", "S2802_C01_013", "S2802_C03_001", "S2802_C03_006", "S2802_C03_007", "S2802_C03_008","S2802_C03_009","S2802_C03_010", "S2802_C03_011", "S2802_C03_012", "S2802_C03_013", "S2802_C02_001", "S2802_C02_006", "S2802_C02_007", "S2802_C02_008","S2802_C02_009","S2802_C02_010", "S2802_C02_011", "S2802_C02_012", "S2802_C02_013"),
+                      "S2301"= c("S2301_C01_001", "S2301_C01_013", "S2301_C01_014", "S2301_C01_015","S2301_C01_016","S2301_C01_017", "S2301_C01_018", "S2301_C01_019", "S2301_C01_020", "S2301_C03_001", "S2301_C03_013", "S2301_C03_014", "S2301_C03_015","S2301_C03_016","S2301_C03_017", "S2301_C03_018", "S2301_C03_019", "S2301_C03_020"),
+                      "B19301"= c("B19301_001", "B19301B_001", "B19301C_001", "B19301D_001", "B19301E_001", "B19301F_001", "B19301G_001", "B19301H_001", "B19301I_001"),
+                      "B25003"= c("B25003_001", "B25003_002", "B25003B_001", "B25003B_002", "B25003C_001", "B25003C_002", "B25003D_001", "B25003D_002", "B25003E_001", "B25003E_002", "B25003F_001", "B25003F_002", "B25003G_001", "B25003G_002", "B25003H_001", "B25003H_002", "B25003I_001", "B25003I_002"),
+                      "B25014" = c("B25014_001", "B25014_003", "B25014_005", "B25014_006", "B25014_007", "B25014_012", "B25014_013", 
+                                   "B25014B_001", "B25014B_003", "B25014B_005", "B25014B_006", "B25014B_007", "B25014B_012", "B25014B_013", 
+                                   "B25014C_001", "B25014C_003", "B25014C_005", "B25014C_006", "B25014C_007", "B25014C_012", "B25014C_013", 
+                                   "B25014D_001", "B25014D_003", "B25014D_005", "B25014D_006", "B25014D_007", "B25014D_012", "B25014D_013", 
+                                   "B25014E_001", "B25014E_003", "B25014E_005", "B25014E_006", "B25014E_007", "B25014E_012", "B25014E_013", 
+                                   "B25014F_001", "B25014F_003", "B25014F_005", "B25014F_006", "B25014F_007", "B25014F_012", "B25014F_013", 
+                                   "B25014G_001", "B25014G_003", "B25014G_005", "B25014G_006", "B25014G_007", "B25014G_012", "B25014G_013", 
+                                   "B25014H_001", "B25014H_003", "B25014H_005", "B25014H_006", "B25014H_007", "B25014H_012", "B25014H_013", 
+                                   "B25014I_001", "B25014I_003", "B25014I_005", "B25014I_006", "B25014I_007", "B25014I_012", "B25014I_013"))
+
 
 ind_rc_vars <- tolower(rc_vars[table_code][[1]])
 all_rc_ind_vars <- append(c("geoid", "name", "geolevel"), ind_rc_vars)
@@ -360,7 +362,7 @@ if (startsWith(table_code, "S2802") | startsWith(table_code, "S2701")) {
                  "twoormor_rate", "twoormor_rate_moe",
                  "latino_rate", "latino_rate_moe",
                  "nh_white_rate", "nh_white_rate_moe")
-  
+
   df_wide_multigeo <- df_wide_multigeo %>%
     rename_with(~ new_names[which(old_names == .x)], .cols = old_names)
 }
@@ -385,8 +387,7 @@ if (startsWith(table_code, "S2301")) {
                  "twoormor_rate", "twoormor_rate_moe", 
                  "latino_rate", "latino_rate_moe",
                  "nh_white_rate", "nh_white_rate_moe")
-  
-  
+
   df_wide_multigeo <- df_wide_multigeo %>%
     rename_with(~ new_names[which(old_names == .x)], .cols = old_names)
   
@@ -480,7 +481,7 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
   df$pacisl_rate_cv <- ifelse(df$pacisl_rate==0, NA, df$pacisl_rate_moe/1.645/df$pacisl_rate*100)
   df$twoormor_rate_cv <- ifelse(df$twoormor_rate==0, NA, df$twoormor_rate_moe/1.645/df$twoormor_rate*100)
   df$aian_rate_cv <- ifelse(df$aian_rate==0, NA, df$aian_rate_moe/1.645/df$aian_rate*100)
-  
+
   ## Screen out rates with high CVs
   df$total_rate <- ifelse(df$total_rate_cv > cv_threshold, NA, df$total_rate)
   df$asian_rate <- ifelse(df$asian_rate_cv > cv_threshold, NA, df$asian_rate)
@@ -504,7 +505,7 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
   df$pacisl_rate_cv <- ifelse(df$pacisl_rate==0, NA, df$pacisl_rate_moe/1.645/df$pacisl_rate*100)
   df$twoormor_rate_cv <- ifelse(df$twoormor_rate==0, NA, df$twoormor_rate_moe/1.645/df$twoormor_rate*100)
   df$aian_rate_cv <- ifelse(df$aian_rate==0, NA, df$aian_rate_moe/1.645/df$aian_rate*100)
-  
+
   ## Screen out rates with high CVs and low populations
   df$total_rate <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_rate))
   df$asian_rate <- ifelse(df$asian_rate_cv > cv_threshold, NA, ifelse(df$asian_pop < pop_threshold, NA, df$asian_rate))
@@ -543,71 +544,73 @@ d <- df
 
 if (table_code != "DP05") {
   
-  
-  # Adds asbest value for RC Functions
-  d$asbest = asbest
-  
-  d <- count_values(d) 
-  d <- calc_best(d) 
-  d <- calc_diff(d) 
-  d <- calc_avg_diff(d)
-  d <- calc_s_var(d)
-  d <- calc_id(d)
-  
-  ### Split into geolevel tables
-  #split into STATE, COUNTY, CITY tables 
-  state_table <- d[d$geolevel == 'state', ]
-  county_table <- d[d$geolevel == 'county', ]
-  city_table <- d[d$geolevel == 'place', ]
-  
-  #calculate STATE z-scores
-  state_table <- calc_state_z(state_table)
-  View(state_table)
-  
-  #calculate COUNTY z-scores
-  county_table <- calc_z(county_table)
-  
-  ## Calc county ranks##
-  county_table <- calc_ranks(county_table)
-  View(county_table)
-  
-  
-  # #calculate CITY z-scores
-  city_table <- calc_z(city_table)
-  # 
-  # ## Calc city ranks##
-  city_table <- calc_ranks(city_table)
-  View(city_table)
-  
-  #rename geoid to state_id, county_id, city_id
-  colnames(state_table)[1:2] <- c("state_id", "state_name")
-  colnames(county_table)[1:2] <- c("county_id", "county_name")
-  colnames(city_table)[1:2] <- c("city_id", "city_name")
-  
-  
-  # ############## NON-DP05 ----- SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
-  
-  ###update info for postgres tables###
-  county_table_name <- "arei_hlth_health_insurance_county_2023"      # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
-  state_table_name <- "arei_hlth_health_insurance_state_2023"        # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
-  city_table_name <- "arei_hlth_health_insurance_city_2023"         # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
-  indicator <- "Uninsured Population (%)"                         # See Indicator Methodology 2021 for indicator description
-  source <- "2017-2021 ACS 5-Year Estimates, Table S2701, https://data.census.gov/cedsci/"   # See Indicator Methodology 2021 for source info
-  
-  #send tables to postgres COMMENTED OUT FOR QA
-  # to_postgres(county_table)
-  # to_postgres(state_table)
-  city_to_postgres(city_table)
-  
+
+# Adds asbest value for RC Functions
+d$asbest = asbest
+
+d <- count_values(d) 
+d <- calc_best(d) 
+d <- calc_diff(d) 
+d <- calc_avg_diff(d)
+d <- calc_s_var(d)
+d <- calc_id(d)
+
+### Split into geolevel tables
+#split into STATE, COUNTY, CITY tables 
+state_table <- d[d$geolevel == 'state', ]
+county_table <- d[d$geolevel == 'county', ]
+city_table <- d[d$geolevel == 'place', ]
+          
+#calculate STATE z-scores
+state_table <- calc_state_z(state_table)
+View(state_table)
+          
+#calculate COUNTY z-scores
+county_table <- calc_z(county_table)
+          
+## Calc county ranks##
+county_table <- calc_ranks(county_table)
+View(county_table)
+          
+          
+# #calculate CITY z-scores
+city_table <- calc_z(city_table)
+# 
+# ## Calc city ranks##
+city_table <- calc_ranks(city_table)
+View(city_table)
+          
+#rename geoid to state_id, county_id, city_id
+colnames(state_table)[1:2] <- c("state_id", "state_name")
+colnames(county_table)[1:2] <- c("county_id", "county_name")
+colnames(city_table)[1:2] <- c("city_id", "city_name")
+
+
+# ############## NON-DP05 ----- SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
+
+###update info for postgres tables###
+county_table_name <- "arei_hlth_health_insurance_county_2023"      # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
+state_table_name <- "arei_hlth_health_insurance_state_2023"        # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
+city_table_name <- "arei_hlth_health_insurance_city_2023"         # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
+indicator <- "Uninsured Population (%)"                         # See Indicator Methodology 2021 for indicator description
+source <- "2017-2021 ACS 5-Year Estimates, Table S2701, https://data.census.gov/cedsci/"   # See Indicator Methodology 2021 for source info
+rc_schema <- "v5"
+#send tables to postgres COMMENTED OUT FOR QA
+# to_postgres(county_table)
+# to_postgres(state_table)
+city_to_postgres(city_table)
+
 } else {
   
-  # # ############## DPO5 ONLY ----- SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
-  county_table <- d
-  ###update info for postgres tables###
-  county_table_name <- "arei_race_county_2023"      # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
-  indicator <- "County and State population by race/ethnicity for RC Place page"        # See Indicator Methodology 2021 for indicator description
-  source <- "ACS 2017-2021, Table DP05. All AIAN, All NHPI, All Latinx, all other groups are one race alone and non-Latinx."   # See Indicator Methodology 2021 for source info
-  
+# # ############## DPO5 ONLY ----- SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
+   county_table <- d
+   ###update info for postgres tables###
+   county_table_name <- "arei_race_county_2023"      # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
+   indicator <- "County and State population by race/ethnicity for RC Place page"        # See Indicator Methodology 2021 for indicator description
+   source <- "ACS 2017-2021, Table DP05. All AIAN, All NHPI, All Latinx, all other groups are one race alone and non-Latinx."   # See Indicator Methodology 2021 for source info
+
   #send tables to postgres COMMENTED OUT FOR QA
   # to_postgres(county_table)
 }
+
+
