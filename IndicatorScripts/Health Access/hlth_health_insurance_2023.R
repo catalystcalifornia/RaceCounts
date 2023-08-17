@@ -593,7 +593,7 @@ state_table_name <- "arei_hlth_health_insurance_state_2023"        # See RC 2022
 city_table_name <- "arei_hlth_health_insurance_city_2023"         # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
 indicator <- "Uninsured Population (%)"                         # See Indicator Methodology 2021 for indicator description
 source <- "2017-2021 ACS 5-Year Estimates, Table S2701, https://data.census.gov/cedsci/"   # See Indicator Methodology 2021 for source info
-
+rc_schema <- "v5"
 #send tables to postgres COMMENTED OUT FOR QA
 # to_postgres(county_table)
 # to_postgres(state_table)
@@ -611,3 +611,4 @@ city_to_postgres(city_table)
   #send tables to postgres COMMENTED OUT FOR QA
   # to_postgres(county_table)
 }
+
