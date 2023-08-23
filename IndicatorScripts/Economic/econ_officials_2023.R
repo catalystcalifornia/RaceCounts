@@ -29,7 +29,8 @@ root <- "W:/Data/Demographics/PUMS/"
 # Load the people PUMS data
 ppl <- fread(paste0(root, "CA_2017_2021/psam_p06.csv"), header = TRUE, data.table = FALSE, 
              colClasses = list(character = c("PUMA", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH", "SOCP", "ESR", "AGEP")))
-
+# ppl_orig <- ppl #save so you don't have to load data again
+# ppl <- ppl_orig
 # For this project we only wanted data for people in labor market - ages between 18 and 64
 ppl <- ppl[ppl$AGEP >= 18 & ppl$AGEP <= 64 , ]
 
@@ -95,6 +96,7 @@ table(ppl$indicator, useNA = "always")
   weight <- 'PWGTP'           
 # You must specify the population base you want to use for the rate calc. Ex. 100 for percents, or 1000 for rate per 1k.
   pop_base <- 1000
+  
   
 rc_state <- state_pums(ppl)
 View(rc_state)

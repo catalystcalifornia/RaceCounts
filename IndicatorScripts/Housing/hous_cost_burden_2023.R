@@ -201,7 +201,7 @@ cost_burden_county_rc <-
 ## Screen out values with high CVs and small populations
 
 # set thresholds 
-cv_threshold <- 35
+cv_threshold <- 40
 # pop_threshold <- 100
 pop_threshold <- 0
 
@@ -263,7 +263,7 @@ View(state_table)
 
 #remove state from county table
 county_table <- d %>% filter(!grepl("Census Tract",geoname))
-county_table <- d %>% filter(!grepl("California,geoname))
+county_table <- d %>% filter(!grepl("California",geoname))
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
@@ -279,13 +279,18 @@ city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
 city_table <- city_table %>% 
   dplyr::rename("city_id" = "geoid", "city_name" = "geoname")
+# Clean geo names
+city_table$city_name <- gsub(" city", "", city_table$city_name)
+city_table$city_name <- gsub(" town", "", city_table$city_name)
+city_table$city_name <- gsub(" CDP", "", city_table$city_name)
+city_table$city_name <- gsub(" City", "", city_table$city_name)
 View(city_table)
 
 ###update info for postgres tables###
 county_table_name <- "arei_hous_cost_burden_owner_county_2023"
 state_table_name <- "arei_hous_cost_burden_owner_state_2023"
 
-city_table_name <- "arei_hous_cost_burden_renter_city_2023"
+city_table_name <- "arei_hous_cost_burden_owner_city_2023"
 rc_schema <- "v5"
 
 indicator <- "The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. This data is"
@@ -342,13 +347,18 @@ city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
 city_table <- city_table %>% 
   dplyr::rename("city_id" = "geoid", "city_name" = "geoname")
+# Clean geo names
+city_table$city_name <- gsub(" city", "", city_table$city_name)
+city_table$city_name <- gsub(" town", "", city_table$city_name)
+city_table$city_name <- gsub(" CDP", "", city_table$city_name)
+city_table$city_name <- gsub(" City", "", city_table$city_name)
 View(city_table)
 
 ###update info for postgres tables###
 county_table_name <- "arei_hous_cost_burden_renter_county_2023"
 state_table_name <- "arei_hous_cost_burden_renter_state_2023"
 
-city_table_name <- "arei_hous_cost_burden_renter_district_2023"
+city_table_name <- "arei_hous_cost_burden_renter_city_2023"
 rc_schema <- "v5"
 
 indicator <- "The percentage of rented housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. This data is"
