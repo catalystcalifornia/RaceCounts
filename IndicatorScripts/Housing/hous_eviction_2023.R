@@ -295,15 +295,6 @@ e <- select(pop_wide_city, sub_id, target_id, geolevel, ends_with("003"), -NAME)
 names(e) <- c('sub_id', 'target_id', 'geolevel', 'total_sub_pop', 'black_sub_pop', 'aian_sub_pop', 'asian_sub_pop', 'pacisl_sub_pop', 'other_sub_pop', 'twoormor_sub_pop', 'nh_white_sub_pop', 'latino_sub_pop')
 pop_df_city <- e %>% left_join(c, by = "target_id")
 
-
-###################################
-# Commenting eviction rate calc out here bc it now happens before County WA calcs instead.
-##### EXTRA STEP: Calc avg annual evictions per 100 renter hh's (rate) by tract bc WA avg should be calc'd using this, not avg # of evictions (raw)
-# ind_df <- ind_df %>% left_join(pop_df_city %>% select(sub_id, total_sub_pop), by = "sub_id") %>% 
-#   mutate(indicator = (avg_eviction / total_sub_pop) * 100)
-# ind_df <- ind_df %>% ungroup() %>% select(sub_id, indicator) 
-# View(ind_df)
-
 ##### CITY WEIGHTED AVG CALCS ######
 pct_df <- pop_pct_multi(pop_df_city)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
 city_wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
