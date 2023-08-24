@@ -32,7 +32,7 @@ df_orig <- fread("W:/Data/Housing/Eviction Lab/2000-2018/tract_proprietary_valid
 df <- df_orig %>% dplyr::filter((state == "California") & grepl("2014|2015|2016|2017|2018", year)) %>% 
   mutate(county_id = paste0("0", cofips), county_name = gsub(" County", "", county), fips = paste0("0", fips)) %>% 
   select(fips, county_id, county_name, year, filings) 
- #View(df)
+#View(df)
 
 ######### Screening / Data Exploration ##########
 # get count of ct's per county for context
@@ -197,70 +197,6 @@ pop_threshold = 200               # define population threshold for screening
 ### CT-Place Crosswalk ### ---------------------------------------------------------------------
 crosswalk <- st_read(con, query = "SELECT * FROM crosswalks.ct_place_2017")
 
-## pull in TIGER Places ## -- Commenting out the xwalk calcs after xwalk was exported to postgres
-# places <- places(state = 'CA', year = 2017) %>% select(-c(STATEFP, PLACEFP, PLACENS, LSAD, CLASSFP, PCICBSA, PCINECTA, MTFCC, FUNCSTAT, ALAND, AWATER))
-# tracts <- tracts(state = 'CA', year = 2017) %>% mutate(county_geoid = paste0(STATEFP, COUNTYFP)) %>%
-#   select(-c(STATEFP, COUNTYFP, TRACTCE, NAME, NAMELSAD, MTFCC, FUNCSTAT, ALAND, AWATER)) 
-# 
-# ## spatial join ##
-# places_3310 <- st_transform(places, 3310) # change projection to 3310
-# tracts_3310 <- st_transform(tracts, 3310) # change projection to 3310
-# # calculate area of tracts and places
-# tracts_3310$area <- st_area(tracts_3310)
-# places_3310$pl_area <- st_area(places_3310)
-# # rename geoid fields
-# tracts_3310 <- tracts_3310%>% 
-#   rename("ct_geoid" = "GEOID")
-# places_3310 <- places_3310%>% 
-#   rename("place_geoid" = "GEOID", "place_name" = "NAME")
-# # run intersect
-# tracts_places <- st_intersection(tracts_3310, places_3310) 
-# # create ct_place combo geoid field
-# tracts_places$ct_place_geoid <- paste(tracts_places$place_geoid, tracts_places$ct_geoid, sep = "_")
-# # calculate area of intersect
-# tracts_places$intersect_area <- st_area(tracts_places)
-# # calculate percent of intersect out of total place area
-# places_tracts <- tracts_places %>% mutate(prc_pl_area = as.numeric(tracts_places$intersect_area/tracts_places$pl_area))
-# # calculate percent of intersect out of total tract area
-# tracts_places$prc_area <- as.numeric(tracts_places$intersect_area/tracts_places$area)
-# # convert to df
-# tracts_places <- as.data.frame(tracts_places)
-# places_tracts <- as.data.frame(places_tracts)
-# # xwalk N = 14,793
-# xwalk <- full_join(places_tracts, select(tracts_places, c(ct_place_geoid, prc_area)), by = 'ct_place_geoid')
-# # filter xwalk where intersect between tracts and places is equal or greater than X% of tract area OR place area. xwalk_filter N = 9,675
-# threshold <- .25
-# xwalk_filter <- xwalk %>% filter(prc_area >= threshold | prc_pl_area >= threshold)
-# names(xwalk_filter) <- tolower(names(xwalk_filter)) # make col names lowercase
-# xwalk_filter <- select(xwalk_filter, ct_place_geoid, ct_geoid, place_geoid, county_geoid, place_name, namelsad, area, pl_area, intersect_area, prc_area, prc_pl_area)
-
-# export xwalk table
-# table_name <- "ct_place_2017"
-# table_schema <- "crosswalks"
-# table_comment_source <- "Created with W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\IndicatorScripts\\Housing\\hous_eviction_2023.R and based on 2017 ACS TIGER non-CBF shapefiles.
-#     CTs with 25% or more of their area within a city or that cover 25% or more of a city''s area are assigned to those cities.
-#     As a result, a CT can be assigned to more than one city"
-
-# make character vector for field types in postgresql db
-# charvect = rep('numeric', dim(xwalk_filter)[2])
-
-# change data type for first three columns
-# charvect[1:6] <- "varchar" # first 6 are character for the geoid and names etc
-
-# add names to the character vector
-# names(charvect) <- colnames(xwalk_filter)
-
-# dbWriteTable(con, c(table_schema, table_name), xwalk_filter,
-#             overwrite = FALSE, row.names = FALSE,
-#             field.types = charvect)
-
-# write comment to table, and the first three fields that won't change.
-# table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ".", "';")
-
-# send table comment to database
-#dbSendQuery(conn = con, table_comment)      			
-
-# crosswalk <- xwalk_filter
 
 ##### GET SUB GEOLEVEL POP DATA ######
 census_api_key(census_key1)       # reload census API key
@@ -366,4 +302,6 @@ rc_schema <- 'v5'
 
 #send tables to postgres
 #to_postgres(county_table, state_table)
+
 #city_to_postgres(city_table)
+
