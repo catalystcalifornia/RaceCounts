@@ -70,10 +70,6 @@ table_source <- "HMDA historic Data: https://www.consumerfinance.gov/data-resear
 
 df_applications <- dbGetQuery(con2, "SELECT * FROM housing.hmda_2017_5yr_all_applications")
 
-```{r}
-
-```
-
 
 
 
