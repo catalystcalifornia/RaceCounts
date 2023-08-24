@@ -105,7 +105,7 @@ pop_threshold = 250               # define population threshold for screening
     
 
 ##### GET SUB GEOLEVEL POP DATA ######
-pop <- update_detailed_table(vars = vars_list, yr = year, srvy = survey)  # subgeolevel pop
+pop <- update_detailed_table(vars = vars_list_acs, yr = year, srvy = survey)  # subgeolevel pop
 
 # transform pop data to wide format 
 pop_wide <- lapply(pop, to_wide)
@@ -135,7 +135,7 @@ survey <- "acs5"                  # define which Census survey you want
 pop_threshold = 250               # define population threshold for screening
 
 ##### CREATE COUNTY GEOID & NAMES TABLE ######  You will NOT need this chunk if your indicator data table has target geolevel names already
-targetgeo_names <- county_names(vars = vars_list, yr = year, srvy = survey)
+targetgeo_names <- county_names(vars = vars_list_acs, yr = year, srvy = survey)
 targetgeo_names <- select(as.data.frame(targetgeo_names), target_id = GEOID, target_name = NAME) %>%   # get targetgeolevel names
   mutate(target_name = sub(" County, California", "", target_name))           # rename columns
 targetgeo_names <- distinct(targetgeo_names, .keep_all = FALSE)                                        # keep only unique rows, 1 per target geo
@@ -143,7 +143,7 @@ targetgeo_names <- distinct(targetgeo_names, .keep_all = FALSE)                 
 
 
 ##### GET SUB GEOLEVEL POP DATA ######
-pop <- update_detailed_table(vars = vars_list, yr = year, srvy = survey)  # subgeolevel pop
+pop <- update_detailed_table(vars = vars_list_acs, yr = year, srvy = survey)  # subgeolevel pop
 
 # transform pop data to wide format 
 pop_wide <- lapply(pop, to_wide)
@@ -163,7 +163,7 @@ wa <- wa %>% left_join(targetgeo_names, by = "target_id") %>% mutate(geolevel = 
 
 ############# STATE CALCS ##################
 # get and prep state pop
-ca_pop_wide <- state_pop(vars = vars_list, yr = year, srvy = survey)
+ca_pop_wide <- state_pop(vars = vars_list_acs, yr = year, srvy = survey)
 
 # calc state wa
 ca_pct_df <- ca_pop_pct(ca_pop_wide)
