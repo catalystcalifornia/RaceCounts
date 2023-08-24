@@ -234,7 +234,7 @@ pct_df <- pop_pct_multi(pop_df_city)  # NOTE: use function for cases where a sub
 city_wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
 city_wa <- city_wa %>% left_join(select(crosswalk, c(place_geoid, place_name)), by = c("target_id" = "place_geoid"))  # add in target geolevel names
 city_wa <- city_wa %>% rename(target_name = place_name) %>% mutate(geolevel = 'city')  # change NAME to target_name, drop geometry, add geolevel
-
+city_wa<- city_wa %>% unique()
 ############ JOIN CITY, COUNTY & STATE WA TABLES  ##################
 wa_all <- union(wa, ca_wa) %>% union(city_wa)
 wa_all <- rename(wa_all, geoid = target_id, geoname = target_name)   # rename columns for RC functions
