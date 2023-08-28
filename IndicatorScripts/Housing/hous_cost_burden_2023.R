@@ -28,14 +28,17 @@ root <- "W:/Data/Housing/HUD/CHAS/"
 
 state_data <- fread(paste0(root, "2014thru2018-040-csv/040/Table9.csv"), header = TRUE, data.table = FALSE)
 state_data$geoid <- substring(state_data$geoid,8)
+state_data$geolevel <- "state"
 # View(state_data)
 
 county_data <- fread(paste0(root, "2014thru2018-050-csv/050/Table9.csv"), header = TRUE, data.table = FALSE)
 county_data$geoid <- substring(county_data$geoid,8)
+county_data$geolevel <- "county"
 # View(county_data)
 
 city_data <- fread(paste0(root, "2014thru2018-160-csv/160/Table9.csv"), header = TRUE, data.table = FALSE)
 city_data$geoid <- substring(city_data$geoid,8)
+city_data$geolevel <- "city"
 # View(city_data)
 
 dict <- read_excel(paste0(root, "2014thru2018-050-csv/050/CHAS data dictionary 14-18.xlsx"), sheet = "Table 9")
@@ -48,11 +51,23 @@ city_data['cnty'] <- NA
 ppl <- rbind(state_data, county_data, city_data)
 # View(ppl)
 
+
+# export incarceration  to rda shared table ------------------------------------------------------------
+## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+# con2 <- connect_to_db("rda_shared_data")
+# table_schema <- "housing"
+# table_name <- "hud_chas_cost_burden_multigeo_2014_18"
+# table_comment_source <- "The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive.  "
+# table_source <- "HUD CHAS (2014-2018) https://www.huduser.gov/portal/datasets/cp.html#2006-2018_data"
+# 
+# dbWriteTable(con2, c(table_schema, table_name), ppl, overwrite = FALSE, row.names = FALSE)
+
+
 # data cleaning
 ppl <- ppl %>%
   mutate(cntyname = gsub("^(.*?),.*", "\\1", ppl$name)) %>% # get county name
   filter(substr(geoid, start = 1, stop = 2) == "06") %>% # keep only CA counties
-  select(geoid, cntyname, starts_with("T9")) # drop unneeded cols
+  select(geoid, cntyname, starts_with("T9"), geolevel) # drop unneeded cols
 View(ppl)
 # make longer
 ppl <- pivot_longer(ppl, cols = starts_with("T9"), names_to = "Column Name", 
@@ -106,23 +121,23 @@ ppl <- filter(ppl, !str_detect(ppl$`Column Name`, 'moe'))
 costburden_race <-
   ppl %>%
   # filter(!is.na(cost_burdened)) %>%
-  group_by(geoid, cntyname, race, cost_burdened, Tenure) %>%  
+  group_by(geoid, cntyname, race, cost_burdened, Tenure, geolevel) %>%  
   summarise(
     raw = sum(housingunits)) %>%       
   
   left_join(ppl %>%                                                   
-              group_by(geoid, cntyname, race, Tenure) %>%                                  
+              group_by(geoid, cntyname, race, Tenure, geolevel) %>%                                  
               summarise(pop = sum(housingunits)))
 View(costburden_race)
 ## calculate rate moe
 costburden_moe <-
   moe %>%
-  group_by(geoid, cntyname, race, cost_burdened, Tenure) %>%  
+  group_by(geoid, cntyname, race, cost_burdened, Tenure, geolevel) %>%  
   summarise(
     num_moe = norm(housingunits, type = "2")) %>%       
   
   left_join(moe %>%                                                   
-              group_by(geoid, cntyname, race, Tenure) %>%                                  
+              group_by(geoid, cntyname, race, Tenure, geolevel) %>%                                  
               summarise(den_moe = norm(housingunits, type = "2")))
 
 ## put it all together
@@ -137,23 +152,23 @@ costburden_race <- costburden_race %>%
 ## calculate proportions first
 costburden_tot <-
   ppl %>%
-  group_by(geoid, cntyname, cost_burdened, Tenure) %>%  
+  group_by(geoid, cntyname, cost_burdened, Tenure, geolevel) %>%  
   summarise(
     raw = sum(housingunits)) %>%       
   
   left_join(ppl %>%                                                   
-              group_by(geoid, cntyname, Tenure) %>%                                  
+              group_by(geoid, cntyname, Tenure, geolevel) %>%                                  
               summarise(pop = sum(housingunits)))
 
 ## calculate rate moe
 costburden_moe_tot <-
   moe %>%
-  group_by(geoid, cost_burdened, cntyname, Tenure) %>%  
+  group_by(geoid, cost_burdened, cntyname, Tenure, geolevel) %>%  
   summarise(
     num_moe = norm(housingunits, type = "2")) %>%       
   
   left_join(moe %>%                                                   
-              group_by(geoid, cntyname, Tenure) %>%                                  
+              group_by(geoid, cntyname, Tenure, geolevel) %>%                                  
               summarise(den_moe = norm(housingunits, type = "2")))
 
 ## put it all together
@@ -191,7 +206,7 @@ cost_burden_county_rc <-
   
   
   # convert to wide format
-  pivot_wider(id_cols = c(geoid, cntyname, Tenure),
+  pivot_wider(id_cols = c(geoid, cntyname, Tenure, geolevel),
               names_from = c(race),
               values_from = c("raw", "pop", "rate", "rate_moe", "rate_cv"),
               names_glue = "{race}_{.value}")%>% 
@@ -254,31 +269,31 @@ d <- calc_id(d) #calculate index of disparity
 View(d)
 
 #split STATE into separate table and format id, name columns
-state_table <- d[d$geoname == 'California', ]
+state_table <- d[d$geolevel == 'state', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
-state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
+state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")%>% select(-c(geolevel, Tenure))
 View(state_table)
 
 #remove state from county table
-county_table <- d %>% filter(!grepl("Census Tract",geoname))
-county_table <- d %>% filter(!grepl("California",geoname))
+county_table <- d[d$geolevel == 'county', ]
+
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
-county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
+county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")%>% select(-c(geolevel, Tenure))
 View(county_table)
 
 #remove county/state from place table -----
-city_table <- d %>% filter(grepl("city|CDP", geoname))
+city_table <- d[d$geolevel == 'city', ]
 
 #calculate DISTRICT z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
 city_table <- city_table %>% 
-  dplyr::rename("city_id" = "geoid", "city_name" = "geoname")
+  dplyr::rename("city_id" = "geoid", "city_name" = "geoname")%>% select(-c(geolevel, Tenure))
 # Clean geo names
 city_table$city_name <- gsub(" city", "", city_table$city_name)
 city_table$city_name <- gsub(" town", "", city_table$city_name)
@@ -323,30 +338,30 @@ d <- calc_id(d) #calculate index of disparity
 View(d)
 
 #split STATE into separate table and format id, name columns
-state_table <- d[d$geoname == 'California', ]
+state_table <- d[d$geolevel == 'state', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
-state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
+state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")%>% select(-c(geolevel, Tenure))
 View(state_table)
 
 #remove state from county table
-county_table <- d[d$geoname != 'California', ]
+county_table <- d[d$geolevel == 'county', ]
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
-county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
+county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid") %>% select(-c(geolevel, Tenure))
 View(county_table)
 
 #remove county/state from place table -----
-city_table <- d %>% filter(grepl("city|CDP", geoname))
+city_table <- d[d$geolevel == 'city', ]
 
 #calculate DISTRICT z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
 city_table <- city_table %>% 
-  dplyr::rename("city_id" = "geoid", "city_name" = "geoname")
+  dplyr::rename("city_id" = "geoid", "city_name" = "geoname")%>% select(-c(geolevel, Tenure))
 # Clean geo names
 city_table$city_name <- gsub(" city", "", city_table$city_name)
 city_table$city_name <- gsub(" town", "", city_table$city_name)
