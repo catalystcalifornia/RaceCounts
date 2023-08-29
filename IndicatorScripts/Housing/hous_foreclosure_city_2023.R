@@ -72,7 +72,7 @@ year <- c(2020)                   # define your data vintage
 subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
 targetgeolevel <- c('place')     # define your target geolevel: county (state is handled separately)
 survey <- "acs5"                  # define which Census survey you want
-pop_threshold = 250               # define population threshold for screening
+pop_threshold = 30              # define population threshold for screening #its 250 for county and state
 
 ### CT-Place Crosswalk ### ---------------------------------------------------------------------
 ## pull in 2020 CBF Places ##
