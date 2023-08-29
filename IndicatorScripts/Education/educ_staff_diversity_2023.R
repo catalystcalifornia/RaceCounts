@@ -199,7 +199,6 @@ district_match <- district_match %>% mutate(geoid=ifelse(aggregatelevel=="D",dis
 df_final <- district_match
 df_final <- df_final %>% relocate(geoid, cdscode) 
 df_final <- filter(df_final, !is.na(geoid)) # remove records without fips codes
-df_final <- filter(df_final, !is.na(districtcode)) # remove records without fips codes
 df_final <- df_final %>% unique() %>% select(-c(district_geoid))
 
 d <- df_final 
@@ -220,22 +219,22 @@ d <- calc_p_var(d) #calculate (row wise) population or sample variance. be sure 
 d <- calc_id(d) #calculate index of disparity
 # View(d)
 
-# #split STATE into separate table and format id, name columns ----
-# state_table <- d[d$aggregatelevel == 'T', ]
-# 
-# #calculate STATE z-scores
-# state_table <- calc_state_z(state_table)
-# state_table <- state_table %>% dplyr::rename("state_id" = "geoid", "state_name" = "geoname") %>% select(-c(districtname, cdscode, aggregatelevel))
-# # View(state_table)
-# 
-# #remove state from county table
-# county_table <- d[d$aggregatelevel == 'C', ]
-# 
-# #calculate COUNTY z-scores
-# county_table <- calc_z(county_table)
-# county_table <- calc_ranks(county_table)
-# county_table <- county_table %>% dplyr::rename("county_id" = "geoid", "county_name" = "geoname") %>% select(-c(districtname, cdscode, aggregatelevel))
-# # View(county_table)
+#split STATE into separate table and format id, name columns ----
+state_table <- d[d$aggregatelevel == 'T', ]
+
+#calculate STATE z-scores
+state_table <- calc_state_z(state_table)
+state_table <- state_table %>% dplyr::rename("state_id" = "geoid", "state_name" = "geoname") %>% select(-c(districtname, districtcode, cdscode, aggregatelevel))
+# View(state_table)
+
+#remove state from county table
+county_table <- d[d$aggregatelevel == 'C', ]
+
+#calculate COUNTY z-scores
+county_table <- calc_z(county_table)
+county_table <- calc_ranks(county_table)
+county_table <- county_table %>% dplyr::rename("county_id" = "geoid", "county_name" = "geoname") %>% select(-c(districtname, districtcode, cdscode, aggregatelevel))
+# View(county_table)
 
 #remove county/state from place table -----
 city_table <- d[d$aggregatelevel == 'D', ]
@@ -244,14 +243,14 @@ city_table <- d[d$aggregatelevel == 'D', ]
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
 city_table <- city_table %>% 
-  dplyr::rename("city_id" = "geoid", "city_name" = "districtname", "county_name" = "geoname") %>% 
-  select(-c(cdscode, aggregatelevel))
+  dplyr::rename("dist_geoid" = "geoid", "district_name" = "districtname", "cds_code" = "cdscode") %>% 
+  select(-c(aggregatelevel, geoname, districtcode))
 # View(city_table)
 
 
 ###update info for postgres tables###
-county_table_name <- "arei_educ_staff_diversity_county_2023_"
-state_table_name <- "arei_educ_staff_diversity_state_2023_"
+county_table_name <- "arei_educ_staff_diversity_county_2023"
+state_table_name <- "arei_educ_staff_diversity_state_2023"
 city_table_name <- "arei_educ_staff_diversity_district_2023"
 rc_schema <- "v5"
 
@@ -263,5 +262,5 @@ source <- "CDE 2018-2019 https://www.cde.ca.gov/ds/ad/filesabd.asp"
 # to_postgres(county_table,state_table)
 
 
-city_to_postgres()
+# city_to_postgres()
 
