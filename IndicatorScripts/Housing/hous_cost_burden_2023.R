@@ -216,7 +216,7 @@ cost_burden_county_rc <-
 ## Screen out values with high CVs and small populations
 
 # set thresholds 
-cv_threshold <- 30
+cv_threshold <- 35
 pop_threshold <- 100
 
 
