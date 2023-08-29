@@ -238,7 +238,9 @@ city_wa<- city_wa %>% unique()
 ############ JOIN CITY, COUNTY & STATE WA TABLES  ##################
 wa_all <- union(wa, ca_wa) %>% union(city_wa)
 wa_all <- rename(wa_all, geoid = target_id, geoname = target_name)   # rename columns for RC functions
-wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid) %>% relocate(total_rate, .after = twoormor_rate) %>% relocate(total_pop, .after = twoormor_pop)# move geoname column
+wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid) %>% 
+  relocate(total_rate, .after = twoormor_rate) %>% 
+  relocate(total_pop, .after = twoormor_pop)# move geoname column
 
 
 #### EXTRA SCREENING BC NA'S SHOULD NOT BE TREATED AS ZEROES IN THIS DATASET ####
