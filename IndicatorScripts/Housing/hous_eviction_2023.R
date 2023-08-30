@@ -1,7 +1,8 @@
 ######### Eviction Filings for RC v5 #########
 
 ##install packages if not already installed ------------------------------
-list.of.packages <- c("dplyr","data.table","sf","tigris","readr","tidyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr")
+list.of.packages <- c("dplyr","data.table","sf","tigris","readr","tidyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr","usethis")
+
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 
 if(length(new.packages)) install.packages(new.packages)
@@ -13,7 +14,8 @@ library(RPostgreSQL)
 library(stringr)
 library(tidyr)
 library(tigris)
-options(scipen=999)
+library(usethis)
+
 
 ###### SET UP WORKSPACE #######
 # create connection for rda database
@@ -33,6 +35,7 @@ df <- df_orig %>% dplyr::filter((state == "California") & grepl("2014|2015|2016|
   mutate(county_id = paste0("0", cofips), county_name = gsub(" County", "", county), fips = paste0("0", fips)) %>% 
   select(fips, county_id, county_name, year, filings) 
 #View(df)
+
 
 ######### Screening / Data Exploration ##########
 # get count of ct's per county for context
@@ -91,6 +94,7 @@ View(ind_df)
 ############# COUNTY CALCS ##################
 
 ###### DEFINE VALUES FOR FUNCTIONS ######
+
 # set values for weighted average functions - You may need to update these
 year <- c(2017)                   # define your pop data vintage
 subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
@@ -111,6 +115,7 @@ targetgeo_names <- select(as.data.frame(targetgeo_names), target_id = GEOID, tar
 targetgeo_names <- distinct(targetgeo_names, .keep_all = FALSE)                                        # keep only unique rows, 1 per target geo
 #####
 
+
 ##### GET SUB GEOLEVEL POP DATA ######
 pop <- update_detailed_table(vars = vars_list_custom, yr = year, srvy = survey)  # subgeolevel pop
 
@@ -119,6 +124,7 @@ pop_wide <- lapply(pop, to_wide)
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
 pop_wide <- as.data.frame(pop_wide) %>% mutate(target_id = substr(GEOID, 1, 5))  # use left 5 characters as target_id
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID)                              # rename to generic column name for WA functions
+
 
 ############### CUSTOMIZED VERSION OF TARGETGEO_POP FUNCTION HERE THAT WORKS WITH RENTER HOUSEHOLDS AS POP BASIS #######
 
@@ -144,6 +150,7 @@ pop_df <- e %>% left_join(c, by = "target_id")
 ind_df <- ind_df %>% left_join(pop_df %>% select(sub_id, total_sub_pop), by = "sub_id") %>% 
   mutate(indicator = (avg_eviction / total_sub_pop) * 100)
 ind_df <- ind_df %>% ungroup() %>% select(sub_id, indicator) 
+
 
 ##### COUNTY WEIGHTED AVG CALCS ######
 pct_df <- pop_pct(pop_df)   # calc pct of target geolevel pop in each sub geolevel
@@ -198,6 +205,72 @@ pop_threshold = 200               # define population threshold for screening
 crosswalk <- st_read(con, query = "SELECT * FROM crosswalks.ct_place_2017")
 
 
+## pull in TIGER Places ## -- Commenting out the xwalk calcs after xwalk was exported to postgres
+# places <- places(state = 'CA', year = 2017) %>% select(-c(STATEFP, PLACEFP, PLACENS, LSAD, CLASSFP, PCICBSA, PCINECTA, MTFCC, FUNCSTAT, ALAND, AWATER))
+# tracts <- tracts(state = 'CA', year = 2017) %>% mutate(county_geoid = paste0(STATEFP, COUNTYFP)) %>%
+#   select(-c(STATEFP, COUNTYFP, TRACTCE, NAME, NAMELSAD, MTFCC, FUNCSTAT, ALAND, AWATER)) 
+# 
+# ## spatial join ##
+# places_3310 <- st_transform(places, 3310) # change projection to 3310
+# tracts_3310 <- st_transform(tracts, 3310) # change projection to 3310
+# # calculate area of tracts and places
+# tracts_3310$area <- st_area(tracts_3310)
+# places_3310$pl_area <- st_area(places_3310)
+# # rename geoid fields
+# tracts_3310 <- tracts_3310%>% 
+#   rename("ct_geoid" = "GEOID")
+# places_3310 <- places_3310%>% 
+#   rename("place_geoid" = "GEOID", "place_name" = "NAME")
+# # run intersect
+# tracts_places <- st_intersection(tracts_3310, places_3310) 
+# # create ct_place combo geoid field
+# tracts_places$ct_place_geoid <- paste(tracts_places$place_geoid, tracts_places$ct_geoid, sep = "_")
+# # calculate area of intersect
+# tracts_places$intersect_area <- st_area(tracts_places)
+# # calculate percent of intersect out of total place area
+# places_tracts <- tracts_places %>% mutate(prc_pl_area = as.numeric(tracts_places$intersect_area/tracts_places$pl_area))
+# # calculate percent of intersect out of total tract area
+# tracts_places$prc_area <- as.numeric(tracts_places$intersect_area/tracts_places$area)
+# # convert to df
+# tracts_places <- as.data.frame(tracts_places)
+# places_tracts <- as.data.frame(places_tracts)
+# # xwalk N = 14,793
+# xwalk <- full_join(places_tracts, select(tracts_places, c(ct_place_geoid, prc_area)), by = 'ct_place_geoid')
+# # filter xwalk where intersect between tracts and places is equal or greater than X% of tract area OR place area. xwalk_filter N = 9,675
+# threshold <- .25
+# xwalk_filter <- xwalk %>% filter(prc_area >= threshold | prc_pl_area >= threshold)
+# names(xwalk_filter) <- tolower(names(xwalk_filter)) # make col names lowercase
+# xwalk_filter <- select(xwalk_filter, ct_place_geoid, ct_geoid, place_geoid, county_geoid, place_name, namelsad, area, pl_area, intersect_area, prc_area, prc_pl_area)
+
+# export xwalk table
+# table_name <- "ct_place_2017"
+# table_schema <- "crosswalks"
+# table_comment_source <- "Created with W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\IndicatorScripts\\Housing\\hous_eviction_2023.R and based on 2017 ACS TIGER non-CBF shapefiles.
+#     CTs with 25% or more of their area within a city or that cover 25% or more of a city''s area are assigned to those cities.
+#     As a result, a CT can be assigned to more than one city"
+
+# make character vector for field types in postgresql db
+# charvect = rep('numeric', dim(xwalk_filter)[2])
+
+# change data type for first three columns
+# charvect[1:6] <- "varchar" # first 6 are character for the geoid and names etc
+
+# add names to the character vector
+# names(charvect) <- colnames(xwalk_filter)
+
+# dbWriteTable(con, c(table_schema, table_name), xwalk_filter,
+#             overwrite = FALSE, row.names = FALSE,
+#             field.types = charvect)
+
+# write comment to table, and the first three fields that won't change.
+# table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ".", "';")
+
+# send table comment to database
+#dbSendQuery(conn = con, table_comment)      			
+
+# crosswalk <- xwalk_filter
+
+
 ##### GET SUB GEOLEVEL POP DATA ######
 census_api_key(census_key1)       # reload census API key
 # EXTRA STEP: Must define different vars_list than what's in WA functions, bc basis here is renter households by race, not population by race.
@@ -234,22 +307,25 @@ pct_df <- pop_pct_multi(pop_df_city)  # NOTE: use function for cases where a sub
 city_wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
 city_wa <- city_wa %>% left_join(select(crosswalk, c(place_geoid, place_name)), by = c("target_id" = "place_geoid"))  # add in target geolevel names
 city_wa <- city_wa %>% rename(target_name = place_name) %>% mutate(geolevel = 'city')  # change NAME to target_name, drop geometry, add geolevel
+
 city_wa<- city_wa %>% unique()
 ############ JOIN CITY, COUNTY & STATE WA TABLES  ##################
 wa_all <- union(wa, ca_wa) %>% union(city_wa)
 wa_all <- rename(wa_all, geoid = target_id, geoname = target_name)   # rename columns for RC functions
 wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid) %>% 
-  relocate(total_rate, .after = twoormor_rate) %>% 
-  relocate(total_pop, .after = twoormor_pop)# move geoname column
+  dplyr::relocaterelocate(total_rate, .after = twoormor_rate) %>% 
+  dplyr::relocaterelocate(total_pop, .after = twoormor_pop)# move geoname column
 
 
 #### EXTRA SCREENING BC NA'S SHOULD NOT BE TREATED AS ZEROES IN THIS DATASET ####
+
 
 library(naniar)
 wa_all <- wa_all %>% 
   replace_with_na_at(.vars = c("total_rate","black_rate", "asian_rate", "aian_rate", "pacisl_rate", "other_rate", "twoormor_rate", "nh_white_rate", "latino_rate"),
                      condition = ~.x == 0.00000000) %>% relocate(total_rate, .after = twoormor_rate) %>% relocate(total_pop, .after = twoormor_pop)
 d <- wa_all
+# View(d)
 
 ############## CALC RACE COUNTS STATS ##############
 ############ To use the following RC Functions, 'd' will need the following columns at minimum: 
@@ -304,6 +380,5 @@ rc_schema <- 'v5'
 
 #send tables to postgres
 #to_postgres(county_table, state_table)
-
 #city_to_postgres(city_table)
 
