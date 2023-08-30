@@ -152,7 +152,7 @@ city_table <- d[d$aggregatelevel == 'D', ] %>% select(-c(aggregatelevel))
 #calculate DISTRICT z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
-city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" = "districtname", "county_name" = "geoname", "cds_code" = "cdscode") %>% relocate(county_name, .after = district_name)
+city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" = "districtname", "county_name" = "geoname") %>% relocate(county_name, .after = district_name)
 View(city_table)
 
 
