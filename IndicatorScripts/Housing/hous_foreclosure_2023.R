@@ -40,7 +40,7 @@ source("W:/RDA Team/R/Functions/Cnty_St_Wt_Avg_Functions.R")
 
 #load data and clean-----
 foreclosure <- dbGetQuery(con, "SELECT * FROM housing.dataquick_tract_2010_22_foreclosures")
-dbDisconnect(con)
+
 
 num_qtrs = 20   # update depending on how many data yrs you are working with
 foreclosure <- foreclosure %>% select(-matches('2010|2011|2012|2013|2014|2015|2016|2022')) %>%
@@ -304,5 +304,7 @@ source <- "DataQuick (2017-2021), purchased from DQNews and raced via weighted a
 rc_schema <- 'v5'
 
 #send tables to postgres
+
 #to_postgres(county_table, state_table)
 city_to_postgres(city_table)
+dbDisconnect(con)
