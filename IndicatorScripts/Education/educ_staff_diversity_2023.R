@@ -43,8 +43,8 @@ enrollment <- st_read(con, query = "select * from education.cde_multigeo_enrollm
 enrollment <- enrollment %>% mutate(districtcode = ifelse(!is.na(districtcode),paste0(enrollment$countycode,enrollment$districtcode), NA))
 
 enrollment_df <- enrollment %>% filter(aggregatelevel %in% c("C", "T", "D") & charter == "All" & 
-                             
-                             reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
+                                         
+                                         reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
   
   #select just fields we need
   select(aggregatelevel, cdscode, countyname, districtname, districtcode, reportingcategory, cumulativeenrollment) 
@@ -152,25 +152,25 @@ df_enroll_staff <- right_join(enrollment_wide, df_wide, by= c("districtcode", "c
 #set population screen threshold
 pop_screen <- 100
 df_enroll_staff <- df_enroll_staff %>% mutate(
-                                  total_raw = ifelse(total_pop < pop_screen, NA, total_raw),
-                                  nh_black_raw = ifelse(nh_black_pop < pop_screen, NA, nh_black_raw),
-                                  nh_aian_raw = ifelse(nh_aian_pop < pop_screen, NA, nh_aian_raw),
-                                  nh_asian_raw = ifelse(nh_asian_pop < pop_screen, NA, nh_asian_raw),
-                                  nh_filipino_raw = ifelse(nh_filipino_pop < pop_screen, NA, nh_filipino_raw),
-                                  latino_raw =   ifelse(latino_pop < pop_screen, NA, latino_raw),
-                                  nh_pacisl_raw =  ifelse(nh_pacisl_pop < pop_screen, NA, nh_pacisl_raw),
-                                  nh_twoormor_raw =  ifelse(nh_twoormor_pop < pop_screen, NA, nh_twoormor_raw),
-                                  nh_white_raw =  ifelse(nh_white_pop < pop_screen, NA, nh_white_raw),
-                                  
-                     total_rate = ifelse(is.na(total_raw) | is.na(total_pop) | total_pop == 0, NA, (total_raw / total_pop)*100),
-                     nh_black_rate = ifelse(is.na(nh_black_raw) | is.na(nh_black_pop) | nh_black_pop == 0, NA, (nh_black_raw / total_pop)*100),
-                     nh_aian_rate = ifelse(is.na(nh_aian_raw) | is.na(nh_aian_pop) |  nh_aian_pop == 0, NA, (nh_aian_raw / total_pop)*100),
-                     nh_asian_rate = ifelse(is.na(nh_asian_raw) | is.na(nh_asian_pop) | nh_asian_pop == 0, NA, (nh_asian_raw / total_pop)*100),
-                     nh_filipino_rate = ifelse(is.na(nh_filipino_raw) | is.na(nh_filipino_pop) | nh_filipino_pop == 0, NA, (nh_filipino_raw / total_pop)*100),
-                     latino_rate = ifelse(is.na(latino_raw) | is.na(latino_pop) | latino_pop == 0, NA, (latino_raw / total_pop)*100),
-                     nh_pacisl_rate = ifelse(is.na(nh_pacisl_raw) | is.na(nh_pacisl_pop) | nh_pacisl_pop == 0, NA, (nh_pacisl_raw / total_pop)*100),
-                     nh_white_rate = ifelse(is.na(nh_white_raw) | is.na(nh_white_pop) | nh_white_pop == 0, NA, (nh_white_raw / total_pop)*100),
-                     nh_twoormor_rate = ifelse(is.na(nh_twoormor_raw) | is.na(nh_twoormor_pop) | nh_twoormor_pop == 0, NA, (nh_twoormor_raw / total_pop)*100))
+  total_raw = ifelse(total_pop < pop_screen, NA, total_raw),
+  nh_black_raw = ifelse(nh_black_pop < pop_screen, NA, nh_black_raw),
+  nh_aian_raw = ifelse(nh_aian_pop < pop_screen, NA, nh_aian_raw),
+  nh_asian_raw = ifelse(nh_asian_pop < pop_screen, NA, nh_asian_raw),
+  nh_filipino_raw = ifelse(nh_filipino_pop < pop_screen, NA, nh_filipino_raw),
+  latino_raw =   ifelse(latino_pop < pop_screen, NA, latino_raw),
+  nh_pacisl_raw =  ifelse(nh_pacisl_pop < pop_screen, NA, nh_pacisl_raw),
+  nh_twoormor_raw =  ifelse(nh_twoormor_pop < pop_screen, NA, nh_twoormor_raw),
+  nh_white_raw =  ifelse(nh_white_pop < pop_screen, NA, nh_white_raw),
+  
+  total_rate = ifelse(is.na(total_raw) | is.na(total_pop) | total_pop == 0, NA, (total_raw / total_pop)*100),
+  nh_black_rate = ifelse(is.na(nh_black_raw) | is.na(nh_black_pop) | nh_black_pop == 0, NA, (nh_black_raw / total_pop)*100),
+  nh_aian_rate = ifelse(is.na(nh_aian_raw) | is.na(nh_aian_pop) |  nh_aian_pop == 0, NA, (nh_aian_raw / total_pop)*100),
+  nh_asian_rate = ifelse(is.na(nh_asian_raw) | is.na(nh_asian_pop) | nh_asian_pop == 0, NA, (nh_asian_raw / total_pop)*100),
+  nh_filipino_rate = ifelse(is.na(nh_filipino_raw) | is.na(nh_filipino_pop) | nh_filipino_pop == 0, NA, (nh_filipino_raw / total_pop)*100),
+  latino_rate = ifelse(is.na(latino_raw) | is.na(latino_pop) | latino_pop == 0, NA, (latino_raw / total_pop)*100),
+  nh_pacisl_rate = ifelse(is.na(nh_pacisl_raw) | is.na(nh_pacisl_pop) | nh_pacisl_pop == 0, NA, (nh_pacisl_raw / total_pop)*100),
+  nh_white_rate = ifelse(is.na(nh_white_raw) | is.na(nh_white_pop) | nh_white_pop == 0, NA, (nh_white_raw / total_pop)*100),
+  nh_twoormor_rate = ifelse(is.na(nh_twoormor_raw) | is.na(nh_twoormor_pop) | nh_twoormor_pop == 0, NA, (nh_twoormor_raw / total_pop)*100))
 # View(df_enroll_staff)
 
 
@@ -182,7 +182,7 @@ districts <- st_read(con, query = "SELECT cdscode, ncesdist AS geoid FROM educat
 
 # join dist geoids to data df, coalesce combined geoid col, drop separate county/state and district geoid cols
 df_final <- df_enroll_staff %>% left_join(districts, by="cdscode") %>% mutate(geoid = coalesce(geoid.x, geoid.y)) %>% 
-              select(-c(geoid.x, geoid.y, countycode)) %>% relocate(geoid, .before = everything())
+  select(-c(geoid.x, geoid.y, countycode)) %>% relocate(geoid, .before = everything())
 
 d <- df_final %>% drop_na(geoid) # drop records without geoids, these are all districts
 
@@ -240,4 +240,3 @@ source <- "CDE 2018-2019 https://www.cde.ca.gov/ds/ad/filesabd.asp"
 # send tables to postgres
 # to_postgres(county_table,state_table)
 # city_to_postgres()
-
