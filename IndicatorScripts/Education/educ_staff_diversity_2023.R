@@ -62,12 +62,10 @@ enrollment_df$reportingcategory <- gsub("RH", "latino", enrollment_df$reportingc
 enrollment_df$reportingcategory <- gsub("RP", "nh_pacisl", enrollment_df$reportingcategory)
 enrollment_df$reportingcategory <- gsub("RT", "nh_twoormor", enrollment_df$reportingcategory)
 enrollment_df$reportingcategory <- gsub("RW", "nh_white", enrollment_df$reportingcategory)
-#enrollment_df <- rename(enrollment_df,c("geoname" = "countyname"))
 
 
 #pivot wider
-enrollment_wide <- enrollment_df %>% pivot_wider(names_from = reportingcategory, names_glue = "{reportingcategory}_pop", 
-                                     values_from = cumulativeenrollment)
+enrollment_wide <- enrollment_df %>% pivot_wider(names_from = reportingcategory, names_glue = "{reportingcategory}_pop", values_from = cumulativeenrollment)
 enrollment_wide$countyname[enrollment_wide$countyname =='State'] <- 'California'   # update state row's countyname field values
 
 
@@ -179,13 +177,11 @@ df_enroll_staff <- df_enroll_staff %>% mutate(
 ####### GET SCHOOL DISTRICT GEOIDS ##### ---------------------------------------------------------------------
 # get school district geoids - pull in active district records w/ geoids from CDE schools' list (NCES District ID).
 ## can't get archival data, so using 2019-20 bc that is closest match to data vintage (2018-19)
-districts <- st_read(con, query = "SELECT cdscode, ncesdist AS geoid, district FROM education.cde_public_schools_2019_20 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'")
+districts <- st_read(con, query = "SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_2019_20 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'")
 # View(districts)
 
-dist_ids <- df_enroll_staff %>% select(-c(geoid)) %>% left_join(districts, by="cdscode") %>% select(cdscode, geoid) %>% na.omit()
-
 # join dist geoids to data df, coalesce combined geoid col, drop separate county/state and district geoid cols
-df_final <- df_enroll_staff %>% left_join(dist_ids, by="cdscode") %>% mutate(geoid = coalesce(geoid.x, geoid.y)) %>% 
+df_final <- df_enroll_staff %>% left_join(districts, by="cdscode") %>% mutate(geoid = coalesce(geoid.x, geoid.y)) %>% 
               select(-c(geoid.x, geoid.y, countycode)) %>% relocate(geoid, .before = everything())
 
 d <- df_final %>% drop_na(geoid) # drop records without geoids, these are all districts
