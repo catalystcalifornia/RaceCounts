@@ -56,8 +56,8 @@ df_subset <- rename(df, rate = percentage_standard_met_and_above, pop = students
 
 # Filter for 3rd grade, ELA test, race/ethnicity subgroups, county/state/district/ level 
 df_subset <- df_subset %>% filter(grade == "03" & test_id == "01" & race %in% c("001","074","075","076","077","078","079","080","144")
-                           & type_id %in% c("04", "05", "06")) %>%    
-
+                                  & type_id %in% c("04", "05", "06")) %>%    
+  
   ## calc raw/rate and screen ---------------------------------------------------------
 #calculate raw
 mutate(raw = round(pop * rate / 100, 0)) 
@@ -148,7 +148,7 @@ city_table <- d[d$type_id == '06', ] %>% select(-c(type_id))
 #calculate DISTRICT z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
-city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" = "geoname", "cds_code" = "cdscode") %>% relocate(cds_code, .after = dist_id)
+city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" = "geoname") %>% relocate(cdscode, .after = dist_id)
 View(city_table)
 
 
