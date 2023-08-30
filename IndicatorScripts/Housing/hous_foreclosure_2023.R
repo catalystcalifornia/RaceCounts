@@ -40,7 +40,7 @@ source("W:/RDA Team/R/Functions/Cnty_St_Wt_Avg_Functions.R")
 
 #load data and clean-----
 foreclosure <- dbGetQuery(con, "SELECT * FROM housing.dataquick_tract_2010_22_foreclosures")
-dbDisconnect(con)
+
 
 num_qtrs = 20   # update depending on how many data yrs you are working with
 foreclosure <- foreclosure %>% select(-matches('2010|2011|2012|2013|2014|2015|2016|2022')) %>%
@@ -59,7 +59,7 @@ Sys.getenv("CENSUS_API_KEY")
 ca <- get_acs(geography = "county", 
               variables = c("B01001_001"), 
               state = "CA", 
-              year = 2020)
+              year = 2021)
 ca <- ca[,1:2]
 ca$NAME <- gsub(" County, California", "", ca$NAME)
 names(ca) <- c("geoid", "geoname")
@@ -79,7 +79,7 @@ View(ind_df)
 ###### DEFINE VALUES FOR FUNCTIONS ######
 
 # set values for weighted average functions - You may need to update these
-year <- c(2020)                   # define your data vintage
+year <- c(2021)                   # define your data vintage
 subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
 targetgeolevel <- c('county')     # define your target geolevel: county (state is handled separately)
 survey <- "acs5"                  # define which Census survey you want
@@ -185,18 +185,18 @@ View(ind_df)
 ###### DEFINE VALUES FOR FUNCTIONS ######
 
 # set values for weighted average functions - You may need to update these
-year <- c(2020)                   # define your data vintage
+year <- c(2021)                   # define your data vintage
 subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
 targetgeolevel <- c('place')     # define your target geolevel: county (state is handled separately)
 survey <- "acs5"                  # define which Census survey you want
 pop_threshold = 30              # define population threshold for screening #its 250 for county and state
 
 ### CT-Place Crosswalk ### ---------------------------------------------------------------------
-## pull in 2020 CBF Places ##
-places <- places(state = 'CA', year = 2020, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
+## pull in 2021 CBF Places ##
+places <- places(state = 'CA', year = 2021, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
 
 # pull in crosswalk
-xwalk_filter <- dbGetQuery(con, "SELECT * FROM crosswalks.ct_place_2020")
+xwalk_filter <- dbGetQuery(con, "SELECT * FROM crosswalks.ct_place_2021")
 
 # ##### GET SUB GEOLEVEL POP DATA ######
 pop <- update_detailed_table(vars = vars_list_acs, yr = year, srvy = survey)  # subgeolevel pop
@@ -304,5 +304,7 @@ source <- "DataQuick (2017-2021), purchased from DQNews and raced via weighted a
 rc_schema <- 'v5'
 
 #send tables to postgres
+
 #to_postgres(county_table, state_table)
 city_to_postgres(city_table)
+dbDisconnect(con)
