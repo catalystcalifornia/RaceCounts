@@ -1,3 +1,5 @@
+### HS Graduation RC v5 ### 
+
 # install packages if not already installed
 list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
@@ -23,33 +25,34 @@ con <- connect_to_db("rda_shared_data")
 
 ############### PREP RDA_SHARED_DATA TABLE ########################
 
-#Get HS Grad, handle nas, ensure DistrictCode reads in right
-# Data Dictionary: https://www.cde.ca.gov/ds/ad/fsacgr.asp
-filepath = "https://www3.cde.ca.gov/demo-downloads/acgr/acgr22-v2.txt" 
-fieldtype = 1:12 # specify which cols should be varchar, the rest will be assigned numeric
+# #Get HS Grad, handle nas, ensure DistrictCode reads in right
+# # Data Dictionary: https://www.cde.ca.gov/ds/ad/fsacgr.asp
+# filepath = "https://www3.cde.ca.gov/demo-downloads/acgr/acgr22-v2.txt" 
+# fieldtype = 1:12 # specify which cols should be varchar, the rest will be assigned numeric
+# 
+# ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+# table_schema <- "education"
+# table_name <- "cde_multigeo_calpads_graduation_2021_22"
+# table_comment_source <- "NOTE: This data is not trendable with data from before 2016-17. See more here: https://www.cde.ca.gov/ds/sd/sd/acgrinfo.asp"
+# table_source <- "Downloaded from https://www.cde.ca.gov/ds/ad/filesacgr.asp. Headers were cleaned of characters like /, ., ), and (. Cells with values of * were nullified. Created cdscode by concatenating county, district, and school codes"
+# 
+# ## Run function to prep and export rda_shared_data table 
+# source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
+# df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
+# # View(df)
+# 
+# ## Run function to add rda_shared_data column comments
+# # See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
+# # url <-  "https://www.cde.ca.gov/ds/ad/fsacgr.asp"   # define webpage with metadata
+# # html_nodes <- "table"
+# # colcomments <- get_cde_metadata(url, table_schema, table_name)
+# # View(colcomments)
 
-## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
-table_schema <- "education"
-table_name <- "cde_multigeo_calpads_graduation_2021_22"
-table_comment_source <- "NOTE: This data is not trendable with data from before 2016-17. See more here: https://www.cde.ca.gov/ds/sd/sd/acgrinfo.asp"
-table_source <- "Downloaded from https://www.cde.ca.gov/ds/ad/filesacgr.asp. Headers were cleaned of characters like /, ., ), and (. Cells with values of * were nullified. Created cdscode by concatenating county, district, and school codes"
-
-## Run function to prep and export rda_shared_data table 
-source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
-df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
-# View(df)
-
-## Run function to add rda_shared_data column comments
-# See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
-# url <-  "https://www.cde.ca.gov/ds/ad/fsacgr.asp"   # define webpage with metadata
-# html_nodes <- "table"
-# colcomments <- get_cde_metadata(url, table_schema, table_name)
-# View(colcomments)
+df <- st_read(con, query = "SELECT * FROM education.cde_multigeo_calpads_graduation_2021_22") # comment out code to pull data and use this once rda_shared_data table is created
 
 #### Continue prep for RC ####
 
 #filter for county and state rows, all types of schools, and racial categories
-
 df_subset <- df %>% filter(aggregatelevel %in% c("C", "T", "D") & charterschool == "All" & dass == "All" & 
 
                              reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
@@ -84,11 +87,7 @@ df_wide <- df_subset %>% pivot_wider(names_from = reportingcategory, names_glue 
                                      values_from = c(raw, pop, rate))
 df_wide$geoname[df_wide$geoname =='State'] <- 'California'   # update state rows' geoname field values
 
-
-
-
-#get county Geoids
-
+## get county geoids
 census_api_key(census_key1, install = TRUE, overwrite = TRUE)
 
 ca <- get_acs(geography = "county", 
@@ -101,15 +100,12 @@ ca$NAME <- gsub(" County, California", "", ca$NAME)
 names(ca) <- c("geoid", "geoname")
 #View(ca)
 
-
 #add county geoids
 df_wide <- merge(x=ca,y=df_wide,by="geoname", all=T) #%>% mutate(district='')
 #add state geoid
 df_wide <- within(df_wide, geoid[geoname == 'California'] <- '06')
 
-
 # get school district geoids (NCES District ID) - pull in active district records w/ geoids and names from CDE schools' list
-
 districts <- st_read(con, query = "SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_2021_22 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'") # district,
 
 df_final <- 
@@ -160,12 +156,12 @@ county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "count
 View(county_table)
 
 #split CITY into separate table
-city_table <- d[d$aggregatelevel == 'D', ] %>% select(-c(cdscode, aggregatelevel))
+city_table <- d[d$aggregatelevel == 'D', ] %>% select(-c(aggregatelevel))
 
 #calculate DISTRICT z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
-city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") 
+city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" = "geoname") %>% relocate(cdscode, .after = dist_id)
 View(city_table)
 
 ###update info for postgres tables###

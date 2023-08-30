@@ -1,3 +1,5 @@
+### Suspension for RC v5 ###
+
 #install packages if not already installed
 list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
@@ -22,19 +24,21 @@ con <- connect_to_db("rda_shared_data")
 ############### PREP DATA ########################
 
 ## Get Suspensions
-filepath = "https://www3.cde.ca.gov/demo-downloads/discipline/suspension22-v2.txt"   # will need to update each year
-fieldtype = 1:11 # specify which cols should be varchar, the rest will be assigned numeric
+# filepath = "https://www3.cde.ca.gov/demo-downloads/discipline/suspension22-v2.txt"   # will need to update each year
+# fieldtype = 1:11 # specify which cols should be varchar, the rest will be assigned numeric
+# 
+# ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+# table_schema <- "education"
+# table_name <- "cde_multigeo_calpads_suspensions_2021_22"
+# table_comment_source <- "NOTE: Only use suspension data from this link, https://www.cde.ca.gov/ds/ad/filessd.asp. The Dashboard download is incomplete and lacks data for most high schools (at least within LAUSD). Wide data format, multigeo table with state, county, district, and school"
+# table_source <- "Wide data format, multigeo table with state, county, district, and school"
+# 
+# ## Run function to prep and export rda_shared_data table 
+# source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
+# df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
+# View(df)
 
-## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
-table_schema <- "education"
-table_name <- "cde_multigeo_calpads_suspensions_2021_22"
-table_comment_source <- "NOTE: Only use suspension data from this link, https://www.cde.ca.gov/ds/ad/filessd.asp. The Dashboard download is incomplete and lacks data for most high schools (at least within LAUSD). Wide data format, multigeo table with state, county, district, and school"
-table_source <- "Wide data format, multigeo table with state, county, district, and school"
-
-## Run function to prep and export rda_shared_data table 
-source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
-df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
-View(df)
+df <- st_read(con, query = "SELECT * FROM education.cde_multigeo_calpads_suspensions_2021_22") # comment out code to pull data and use this once rda_shared_data table is created
 
 ###### NOTE: This function isn't working for Suspensions (loop part of function is the issue).
 ## Run function to add rda_shared_data column comments
@@ -76,7 +80,6 @@ df_wide <- df_subset %>% pivot_wider(names_from = reportingcategory, names_glue 
 df_wide$geoname[df_wide$geoname =='State'] <- 'California'   # update state rows' geoname field values
 
 
-
 #get county geoids
 census_api_key(census_key1, overwrite = TRUE)
 
@@ -97,7 +100,6 @@ df_wide <- within(df_wide, geoid[geoname == 'California'] <- '06')
 View(df_wide)
 
 # get school district geoids (NCES District ID) - pull in active district records w/ geoids and names from CDE schools' list
-
 districts <- st_read(con, query = "SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_2021_22 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'") # district,
 
 df_final <- 
@@ -148,12 +150,12 @@ county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "count
 View(county_table)
 
 #split CITY into separate table
-city_table <- d[d$aggregatelevel == 'D', ] %>% select(-c(cdscode, aggregatelevel))
+city_table <- d[d$aggregatelevel == 'D', ] %>% select(-c(aggregatelevel))
 
 #calculate DISTRICT z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
-city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") 
+city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" = "geoname") %>% relocate(cdscode, .after = dist_id) 
 View(city_table)
 
 ###update info for postgres tables###
