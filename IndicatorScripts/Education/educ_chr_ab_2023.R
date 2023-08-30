@@ -1,3 +1,5 @@
+### Chronic Absenteeism RC v5 ### 
+
 #install packages if not already installed
 list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
@@ -24,28 +26,29 @@ con <- connect_to_db("rda_shared_data")
 ############### PREP RDA_SHARED_DATA TABLE ########################
 
 ## Get Chronic Absenteeism
-  filepath = "https://www3.cde.ca.gov/demo-downloads/attendance/chronicabsenteeism22-v2.txt"   # will need to update each year
-  fieldtype = 1:11 # specify which cols should be varchar, the rest will be assigned numeric
+#   filepath = "https://www3.cde.ca.gov/demo-downloads/attendance/chronicabsenteeism22-v2.txt"   # will need to update each year
+#   fieldtype = 1:11 # specify which cols should be varchar, the rest will be assigned numeric
+# 
+# ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+#      table_schema <- "education"
+#      table_name <- "cde_multigeo_chronicabs_2021_22"
+#      table_comment_source <- "NOTE: Only use chronic absenteeism data from this link. The Dashboard download is incomplete and lacks data for most high schools (at least within LAUSD).
+#      Chronic absenteeism data downloaded from https://www.cde.ca.gov/ds/ad/filesabd.asp"
+#      table_source <- "Wide data format, multigeo table with state, county, district, and school"
+# 
+# ## Run function to prep and export rda_shared_data table 
+#   source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
+#   df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
+#   View(df)
+#  
+# ## Run function to add rda_shared_data column comments
+# # See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
+# url <-  "https://www.cde.ca.gov/ds/ad/fsabd.asp"   # define webpage with metadata
+# html_nodes <- "table"
+# colcomments <- get_cde_metadata(url, table_schema, table_name)
+# View(colcomments)
 
-## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
-     table_schema <- "education"
-     table_name <- "cde_multigeo_chronicabs_2021_22"
-     table_comment_source <- "NOTE: Only use chronic absenteeism data from this link. The Dashboard download is incomplete and lacks data for most high schools (at least within LAUSD).
-     Chronic absenteeism data downloaded from https://www.cde.ca.gov/ds/ad/filesabd.asp"
-     table_source <- "Wide data format, multigeo table with state, county, district, and school"
-
-## Run function to prep and export rda_shared_data table 
-  source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
-  df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
-  View(df)
- 
-## Run function to add rda_shared_data column comments
-# See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
-url <-  "https://www.cde.ca.gov/ds/ad/fsabd.asp"   # define webpage with metadata
-html_nodes <- "table"
-colcomments <- get_cde_metadata(url, table_schema, table_name)
-View(colcomments)
-
+df <- st_read(con, query = "SELECT * FROM education.cde_multigeo_chronicabs_2021_22") # comment out code to pull data and use this once rda_shared_data table is created
 
 #### Continue prep for RC ####
 
@@ -144,18 +147,18 @@ county_table <- county_table %>% dplyr::rename("county_id" = "geoid", "county_na
 View(county_table)
 
 #remove county/state from place table
-city_table <- d[d$aggregatelevel == 'D', ]
+city_table <- d[d$aggregatelevel == 'D', ] %>% select(-c(aggregatelevel)) 
 
 #calculate DISTRICT z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
-city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "districtname", "county_name" = "geoname") %>% select(-c(cdscode, aggregatelevel))
+city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" = "districtname", "county_name" = "geoname", "cds_code" = "cdscode") %>% relocate(county_name, .after = district_name)
 View(city_table)
 
 
 ###update info for postgres tables###
-county_table_name <- "arei_educ_chronic_absenteeism_county_2023_"
-state_table_name <- "arei_educ_chronic_absenteeism_state_2023_"
+county_table_name <- "arei_educ_chronic_absenteeism_county_2023"
+state_table_name <- "arei_educ_chronic_absenteeism_state_2023"
 city_table_name <- "arei_educ_chronic_absenteeism_district_2023"
 rc_schema <- "v5"
 
@@ -164,8 +167,6 @@ indicator <- "Chronic Absenteeism Eligible Cumulative Enrollment, Chronic Absent
 source <- "CDE 2021-22 https://www.cde.ca.gov/ds/ad/filesabd.asp"
 
 #send tables to postgres
-to_postgres(county_table,state_table)
-
-source("W:/Project/RACE COUNTS/2023_v5/RaceCounts/RC_Functions.R")
-city_to_postgres()
+#to_postgres(county_table,state_table)
+#city_to_postgres()
 

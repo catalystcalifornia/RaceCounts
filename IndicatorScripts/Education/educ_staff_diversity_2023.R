@@ -1,3 +1,5 @@
+### Teacher & Staff Diversity RC v5 ### 
+
 #install packages if not already installed
 list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
@@ -33,7 +35,7 @@ con <- connect_to_db("rda_shared_data")
 # ## Run function to prep and export rda_shared_data table 
 # source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
 # df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
-####
+
 
 #######Get enrollment data for population values------
 enrollment <- st_read(con, query = "select * from education.cde_multigeo_enrollment_2018_19")
@@ -183,7 +185,7 @@ df_enroll_staff <- df_enroll_staff %>% mutate(
 # View(df_enroll_staff)
 
 
-####### GET COUNTY & SCHOOL DISTRICT GEOIDS ##### ---------------------------------------------------------------------
+####### GET SCHOOL DISTRICT GEOIDS ##### ---------------------------------------------------------------------
 census_api_key(census_key1, overwrite=TRUE) # In practice, may need to include install=TRUE if switching between census api keys
 Sys.getenv("CENSUS_API_KEY") # confirms value saved to .renviron
 
@@ -220,33 +222,33 @@ d <- calc_p_var(d) #calculate (row wise) population or sample variance. be sure 
 d <- calc_id(d) #calculate index of disparity
 # View(d)
 
-# #split STATE into separate table and format id, name columns ----
-# state_table <- d[d$aggregatelevel == 'T', ]
-# 
-# #calculate STATE z-scores
-# state_table <- calc_state_z(state_table)
-# state_table <- state_table %>% dplyr::rename("state_id" = "geoid", "state_name" = "geoname") %>% select(-c(districtname, cdscode, aggregatelevel))
-# # View(state_table)
-# 
-# #remove state from county table
-# county_table <- d[d$aggregatelevel == 'C', ]
-# 
-# #calculate COUNTY z-scores
-# county_table <- calc_z(county_table)
-# county_table <- calc_ranks(county_table)
-# county_table <- county_table %>% dplyr::rename("county_id" = "geoid", "county_name" = "geoname") %>% select(-c(districtname, cdscode, aggregatelevel))
-# # View(county_table)
+#split STATE into separate table and format id, name columns ----
+state_table <- d[d$aggregatelevel == 'T', ]
+
+#calculate STATE z-scores
+state_table <- calc_state_z(state_table)
+state_table <- state_table %>% dplyr::rename("state_id" = "geoid", "state_name" = "geoname") %>% select(-c(districtname, cdscode, aggregatelevel))
+View(state_table)
+
+#remove state from county table
+county_table <- d[d$aggregatelevel == 'C', ]
+
+#calculate COUNTY z-scores
+county_table <- calc_z(county_table)
+county_table <- calc_ranks(county_table)
+county_table <- county_table %>% dplyr::rename("county_id" = "geoid", "county_name" = "geoname") %>% select(-c(districtname, cdscode, aggregatelevel))
+View(county_table)
 
 #remove county/state from place table -----
-city_table <- d[d$aggregatelevel == 'D', ]
+city_table <- d[d$aggregatelevel == 'D', ] %>% select(-c(aggregatelevel))
 
 #calculate DISTRICT z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
 city_table <- city_table %>% 
-  dplyr::rename("city_id" = "geoid", "city_name" = "districtname", "county_name" = "geoname") %>% 
-  select(-c(cdscode, aggregatelevel))
-# View(city_table)
+  dplyr::rename("dist_id" = "geoid", "district_name" = "districtname", "county_name" = "geoname", "cds_code" = "cdscode") %>% relocate(cds_code, .after = dist_id)
+  
+View(city_table)
 
 
 ###update info for postgres tables###

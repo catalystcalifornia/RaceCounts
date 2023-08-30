@@ -1,3 +1,5 @@
+### 3rd Grade Math RC v5 ### 
+
 ##install packages if not already installed ------------------------------
 list.of.packages <- c("tidyr", "dplyr", "sf", "tidycensus", "tidyverse", "usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
@@ -17,36 +19,37 @@ con <- connect_to_db("rda_shared_data")
 
 ############### PREP RDA_SHARED_DATA TABLE ########################
 
-## Manually define test data download site, file names, file location etc.
-url = "https://caaspp-elpac.ets.org/caaspp/researchfiles/sb_ca2022_all_ascii_v1.zip"
-zipfile = "W:\\Data\\Education\\CAASPP\\2021-22\\sb_ca2022_all_ascii_v1.zip"
-file = "W:\\Data\\Education\\CAASPP\\2021-22\\sb_ca2022_all_ascii_v1.txt"
-exdir = "W:\\Data\\Education\\CAASPP\\2021-22"
+# ## Manually define test data download site, file names, file location etc.
+# url = "https://caaspp-elpac.ets.org/caaspp/researchfiles/sb_ca2022_all_ascii_v1.zip"
+# zipfile = "W:\\Data\\Education\\CAASPP\\2021-22\\sb_ca2022_all_ascii_v1.zip"
+# file = "W:\\Data\\Education\\CAASPP\\2021-22\\sb_ca2022_all_ascii_v1.txt"
+# exdir = "W:\\Data\\Education\\CAASPP\\2021-22"
+# 
+# ## Manually define entities data download site, file names, file location etc.
+# url2 = "https://caaspp-elpac.ets.org/caaspp/researchfiles/sb_ca2022entities_ascii.zip"
+# zipfile2 = "W:\\Data\\Education\\CAASPP\\2021-22\\sb_ca2022entities_ascii.zip"
+# file2 = "W:\\Data\\Education\\CAASPP\\2021-22\\sb_ca2022entities_ascii.txt"
+# 
+# ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+# fieldtype = c(1:5,8,9,31) # specify which cols should be varchar, the rest will be assigned numeric - this may NOT match metadata table
+# table_schema <- "education"
+# table_name <- "caaspp_multigeo_school_research_file_reformatted_2021_22"
+# table_comment_source <- "Downloaded from https://caaspp-elpac.ets.org/caaspp/ResearchFileListSB?ps=true&lstTestYear=2022&lstTestType=B&lstCounty=00&lstDistrict=00000. File layout: https://caaspp-elpac.cde.ca.gov/caaspp/research_fixfileformat19."
+# table_source <- "Wide data format, multigeo table with state, county, district, and school"
+# 
+# source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
+# df <- get_caaspp_data(url, zipfile, file, url2, zipfile2, file2, exdir)
+# head(df)
+# 
+# ## Run function to add rda_shared_data column comments
+# # See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
+# 
+# #### NOTE: Each year, the xpath needs to be updated in this function. See rdashared_functions.R for more info ###
+# url3 <- "https://caaspp-elpac.ets.org/caaspp/ResearchFileFormatSB?ps=true&lstTestYear=2022&lstTestType=B"   # define webpage with metadata
+# #colcomments <- get_caaspp_metadata(url3, table_schema, table_name)
+# View(colcomments)
 
-## Manually define entities data download site, file names, file location etc.
-url2 = "https://caaspp-elpac.ets.org/caaspp/researchfiles/sb_ca2022entities_ascii.zip"
-zipfile2 = "W:\\Data\\Education\\CAASPP\\2021-22\\sb_ca2022entities_ascii.zip"
-file2 = "W:\\Data\\Education\\CAASPP\\2021-22\\sb_ca2022entities_ascii.txt"
-
-## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
-fieldtype = c(1:5,8,9,31) # specify which cols should be varchar, the rest will be assigned numeric - this may NOT match metadata table
-table_schema <- "education"
-table_name <- "caaspp_multigeo_school_research_file_reformatted_2021_22"
-table_comment_source <- "Downloaded from https://caaspp-elpac.ets.org/caaspp/ResearchFileListSB?ps=true&lstTestYear=2022&lstTestType=B&lstCounty=00&lstDistrict=00000. File layout: https://caaspp-elpac.cde.ca.gov/caaspp/research_fixfileformat19."
-table_source <- "Wide data format, multigeo table with state, county, district, and school"
-
-source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
-df <- get_caaspp_data(url, zipfile, file, url2, zipfile2, file2, exdir)
-head(df)
-
-## Run function to add rda_shared_data column comments
-# See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
-
-#### NOTE: Each year, the xpath needs to be updated in this function. See rdashared_functions.R for more info ###
-url3 <- "https://caaspp-elpac.ets.org/caaspp/ResearchFileFormatSB?ps=true&lstTestYear=2022&lstTestType=B"   # define webpage with metadata
-#colcomments <- get_caaspp_metadata(url3, table_schema, table_name)
-View(colcomments)
-
+df <- st_read(con, query = "SELECT * FROM education.caaspp_multigeo_school_research_file_reformatted_2021_22") # comment out code to pull data and use this once rda_shared_data table is created
 
 ###### PREP FOR RC FUNCTIONS #######
 df_subset <- rename(df, rate = percentage_standard_met_and_above, pop = students_with_scores, race = student_grp_id)
@@ -140,12 +143,12 @@ county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "count
 View(county_table)
 
 #split CITY into separate table
-city_table <- d[d$type_id == '06', ] %>% select(-c(cdscode, type_id))
+city_table <- d[d$type_id == '06', ] %>% select(-c(type_id))
 
 #calculate DISTRICT z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
-city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") 
+city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" = "geoname", "cds_code" = "cdscode") %>% relocate(cds_code, .after = dist_id)
 View(city_table)
 
 
