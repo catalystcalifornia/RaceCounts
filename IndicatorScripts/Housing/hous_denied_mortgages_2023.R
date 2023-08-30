@@ -86,41 +86,8 @@ denied_2019_20 <- bind_rows(denied_2019, denied_2020) %>% plyr::rename(c("county
 #        dplyr::summarise(originated = n())
 
 ### CT-Place Crosswalk ### ---------------------------------------------------------------------
-## pull in 2020 CBF Places ##
-places <- places(state = 'CA', year = 2020, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
-tracts <- tracts(state = 'CA', year = 2020, cb = TRUE) %>% select(-c(STATEFP, TRACTCE, AFFGEOID, NAME, NAMELSAD, STATE_NAME, LSAD, ALAND, AWATER))
-
-## spatial join ##
-places_3310 <- st_transform(places, 3310) # change projection to 3310
-tracts_3310 <- st_transform(tracts, 3310) # change projection to 3310
-# calculate area of tracts and places
-tracts_3310$area <- st_area(tracts_3310)
-places_3310$pl_area <- st_area(places_3310)
-# rename geoid fields
-tracts_3310 <- tracts_3310%>% 
-  rename("ct_geoid" = "GEOID", "county_geoid" = "COUNTYFP", "county_name" = "NAMELSADCO")
-places_3310 <- places_3310%>% 
-  rename("place_geoid" = "GEOID", "place_name" = "NAME")
-# run intersect
-tracts_places <- st_intersection(tracts_3310, places_3310) 
-# create ct_place combo geoid field
-tracts_places$ct_place_geoid <- paste(tracts_places$place_geoid, tracts_places$ct_geoid, sep = "_")
-# calculate area of intersect
-tracts_places$intersect_area <- st_area(tracts_places)
-# calculate percent of intersect out of total place area
-places_tracts <- tracts_places %>% mutate(prc_pl_area = as.numeric(tracts_places$intersect_area/tracts_places$pl_area))
-# calculate percent of intersect out of total tract area
-tracts_places$prc_area <- as.numeric(tracts_places$intersect_area/tracts_places$area)
-# convert to df
-tracts_places <- as.data.frame(tracts_places)
-places_tracts <- as.data.frame(places_tracts)
-# xwalk N = 16,342
-xwalk <- full_join(places_tracts, select(tracts_places, c(ct_place_geoid, prc_area)), by = 'ct_place_geoid')
-# filter xwalk where intersect between tracts and places is equal or greater than X% of tract area OR place area. xwalk_filter N = 9,675
-threshold <- .25
-xwalk_filter <- xwalk %>% filter(prc_area >= threshold | prc_pl_area >= threshold)
-names(xwalk_filter) <- tolower(names(xwalk_filter)) # make col names lowercase
-xwalk_filter <- select(xwalk_filter, ct_place_geoid, ct_geoid, place_geoid, county_geoid, place_name, namelsad, county_name, area, pl_area, intersect_area, prc_area, prc_pl_area)
+# pull in crosswalk
+xwalk_filter <- dbGetQuery(con, "SELECT * FROM crosswalks.ct_place_2020")
 #View(xwalk_filter)
 ############## City #############
 
@@ -296,7 +263,7 @@ df_join$place_geoid <- NA
 
 
 # #get census geonames ----------------------------------------------------
-census_api_key("25fb5e48345b42318ae435e4dcd28ad3f196f2c4", overwrite = TRUE)
+census_api_key(census_key1, overwrite=TRUE)
 ca <- get_acs(geography = "county", 
               variables = c("B01001_001"), 
               state = "CA", 
@@ -354,7 +321,7 @@ df_pct <- combined_df %>%
 
 View(df_pct)
 
-d <- select(df_pct, geoid, geoname, ends_with("_originated"), ends_with("_rate"), ends_with("_raw"), geolevel) 
+d <- select(df_pct, geoid, geoname, ends_with("_originated"), ends_with("_rate"), ends_with("_raw"), geolevel) %>% as.data.frame()  
 
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
@@ -405,4 +372,4 @@ rc_schema <- 'v5'
 
 #send tables to postgres
 # to_postgres()
-city_to_postgres(city_table)
+# city_to_postgres(city_table)
