@@ -428,11 +428,11 @@ if (table_code != "DP05") {
   
   
   # #calculate CITY z-scores
-  # city_table <- calc_z(city_table)
-  # 
-  # ## Calc city ranks##
-  # city_table <- calc_ranks(city_table)
-  # View(city_table)
+  city_table <- calc_z(city_table)
+
+  ## Calc city ranks##
+  city_table <- calc_ranks(city_table)
+  View(city_table)
   
   #rename geoid to state_id, county_id, city_id
   colnames(state_table)[1:2] <- c("state_id", "state_name")
@@ -445,13 +445,14 @@ if (table_code != "DP05") {
   ###update info for postgres tables###
   county_table_name <- "arei_econ_internet_county_2023"            # See most recent RC Workflow/tables for table name (remember to update year)
   state_table_name <- "arei_econ_internet_state_2023"              # See most recent RC Workflow/tables for table name (remember to update year)
-  #city_table_name <- "arei_econ_internet_city_2023"               # See most recent RC Workflow/tables for table name (remember to update year)
+  city_table_name <- "arei_econ_internet_city_2023"               # See most recent RC Workflow/tables for table name (remember to update year)
   indicator <- "Persons with Internet Access (%)"                        # See most recent Indicator Methodology for indicator description
   source <- "2017-2021 ACS 5-Year Estimates, Table S2802, https://data.census.gov/cedsci/"   # See most recent Indicator Methodology for source info
   rc_schema <- "v5"
   
   ####### SEND TO POSTGRES #######
-  to_postgres(county_table,state_table)
+  # to_postgres(county_table,state_table)
+  # city_to_postgres(city_table)
   
 } else {
   

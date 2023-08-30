@@ -1,6 +1,12 @@
 ######### Eviction Filings for RC v5 #########
+<<<<<<< HEAD
 ##install packages if not already installed ------------------------------
 list.of.packages <- c("dplyr","data.table","sf","tigris","readr","tidyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr","usethis")
+=======
+
+##install packages if not already installed ------------------------------
+list.of.packages <- c("dplyr","data.table","sf","tigris","readr","tidyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr")
+>>>>>>> 9da5f2cc7db84badcac683e00cae6e2fb2a7020f
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 
 if(length(new.packages)) install.packages(new.packages)
@@ -12,7 +18,10 @@ library(RPostgreSQL)
 library(stringr)
 library(tidyr)
 library(tigris)
+<<<<<<< HEAD
 library(usethis)
+=======
+>>>>>>> 9da5f2cc7db84badcac683e00cae6e2fb2a7020f
 options(scipen=999)
 
 ###### SET UP WORKSPACE #######
@@ -32,7 +41,11 @@ df_orig <- fread("W:/Data/Housing/Eviction Lab/2000-2018/tract_proprietary_valid
 df <- df_orig %>% dplyr::filter((state == "California") & grepl("2014|2015|2016|2017|2018", year)) %>% 
   mutate(county_id = paste0("0", cofips), county_name = gsub(" County", "", county), fips = paste0("0", fips)) %>% 
   select(fips, county_id, county_name, year, filings) 
+<<<<<<< HEAD
  #View(df)
+=======
+#View(df)
+>>>>>>> 9da5f2cc7db84badcac683e00cae6e2fb2a7020f
 
 ######### Screening / Data Exploration ##########
 # get count of ct's per county for context
@@ -91,7 +104,10 @@ View(ind_df)
 ############# COUNTY CALCS ##################
 
 ###### DEFINE VALUES FOR FUNCTIONS ######
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9da5f2cc7db84badcac683e00cae6e2fb2a7020f
 # set values for weighted average functions - You may need to update these
 year <- c(2017)                   # define your pop data vintage
 subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
@@ -112,7 +128,10 @@ targetgeo_names <- select(as.data.frame(targetgeo_names), target_id = GEOID, tar
 targetgeo_names <- distinct(targetgeo_names, .keep_all = FALSE)                                        # keep only unique rows, 1 per target geo
 #####
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9da5f2cc7db84badcac683e00cae6e2fb2a7020f
 ##### GET SUB GEOLEVEL POP DATA ######
 pop <- update_detailed_table(vars = vars_list_custom, yr = year, srvy = survey)  # subgeolevel pop
 
@@ -122,7 +141,10 @@ pop_wide <- lapply(pop, to_wide)
 pop_wide <- as.data.frame(pop_wide) %>% mutate(target_id = substr(GEOID, 1, 5))  # use left 5 characters as target_id
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID)                              # rename to generic column name for WA functions
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9da5f2cc7db84badcac683e00cae6e2fb2a7020f
 ############### CUSTOMIZED VERSION OF TARGETGEO_POP FUNCTION HERE THAT WORKS WITH RENTER HOUSEHOLDS AS POP BASIS #######
 
 # select pop estimate columns and rename to RC names
@@ -142,12 +164,19 @@ names(e) <- c('sub_id', 'target_id', 'geolevel', 'total_sub_pop', 'black_sub_pop
 pop_df <- e %>% left_join(c, by = "target_id")
 
 ###################################
+<<<<<<< HEAD
+=======
+
+>>>>>>> 9da5f2cc7db84badcac683e00cae6e2fb2a7020f
 ##### EXTRA STEP: Calc avg annual evictions per 100 renter hh's (rate) by tract bc WA avg should be calc'd using this, not avg # of evictions (raw)
 ind_df <- ind_df %>% left_join(pop_df %>% select(sub_id, total_sub_pop), by = "sub_id") %>% 
   mutate(indicator = (avg_eviction / total_sub_pop) * 100)
 ind_df <- ind_df %>% ungroup() %>% select(sub_id, indicator) 
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9da5f2cc7db84badcac683e00cae6e2fb2a7020f
 ##### COUNTY WEIGHTED AVG CALCS ######
 pct_df <- pop_pct(pop_df)   # calc pct of target geolevel pop in each sub geolevel
 wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
@@ -200,6 +229,7 @@ pop_threshold = 200               # define population threshold for screening
 ### CT-Place Crosswalk ### ---------------------------------------------------------------------
 crosswalk <- st_read(con, query = "SELECT * FROM crosswalks.ct_place_2017")
 
+<<<<<<< HEAD
 ## pull in TIGER Places ## -- Commenting out the xwalk calcs after xwalk was exported to postgres
 # places <- places(state = 'CA', year = 2017) %>% select(-c(STATEFP, PLACEFP, PLACENS, LSAD, CLASSFP, PCICBSA, PCINECTA, MTFCC, FUNCSTAT, ALAND, AWATER))
 # tracts <- tracts(state = 'CA', year = 2017) %>% mutate(county_geoid = paste0(STATEFP, COUNTYFP)) %>%
@@ -264,6 +294,8 @@ crosswalk <- st_read(con, query = "SELECT * FROM crosswalks.ct_place_2017")
 #dbSendQuery(conn = con, table_comment)      			
 
 # crosswalk <- xwalk_filter
+=======
+>>>>>>> 9da5f2cc7db84badcac683e00cae6e2fb2a7020f
 
 ##### GET SUB GEOLEVEL POP DATA ######
 census_api_key(census_key1)       # reload census API key
@@ -301,6 +333,7 @@ pct_df <- pop_pct_multi(pop_df_city)  # NOTE: use function for cases where a sub
 city_wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
 city_wa <- city_wa %>% left_join(select(crosswalk, c(place_geoid, place_name)), by = c("target_id" = "place_geoid"))  # add in target geolevel names
 city_wa <- city_wa %>% rename(target_name = place_name) %>% mutate(geolevel = 'city')  # change NAME to target_name, drop geometry, add geolevel
+<<<<<<< HEAD
 
 ############ JOIN CITY, COUNTY & STATE WA TABLES  ##################
 wa_all <- union(wa, ca_wa) %>% union(city_wa)
@@ -309,15 +342,31 @@ wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid) %>% relocate(total
 
 
 #### EXTRA SCREENING BC NA'S SHOULD NOT BE TREATED AS ZEROES IN THIS DATASET ####
+=======
+city_wa<- city_wa %>% unique()
+############ JOIN CITY, COUNTY & STATE WA TABLES  ##################
+wa_all <- union(wa, ca_wa) %>% union(city_wa)
+wa_all <- rename(wa_all, geoid = target_id, geoname = target_name)   # rename columns for RC functions
+wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid) %>% 
+  relocate(total_rate, .after = twoormor_rate) %>% 
+  relocate(total_pop, .after = twoormor_pop)# move geoname column
+
+
+#### EXTRA SCREENING BC NA'S SHOULD NOT BE TREATED AS ZEROES IN THIS DATASET ####
+
+>>>>>>> 9da5f2cc7db84badcac683e00cae6e2fb2a7020f
 library(naniar)
 wa_all <- wa_all %>% 
   replace_with_na_at(.vars = c("total_rate","black_rate", "asian_rate", "aian_rate", "pacisl_rate", "other_rate", "twoormor_rate", "nh_white_rate", "latino_rate"),
                      condition = ~.x == 0.00000000) %>% relocate(total_rate, .after = twoormor_rate) %>% relocate(total_pop, .after = twoormor_pop)
 d <- wa_all
 
+<<<<<<< HEAD
 ####
 View(d)
 
+=======
+>>>>>>> 9da5f2cc7db84badcac683e00cae6e2fb2a7020f
 ############## CALC RACE COUNTS STATS ##############
 ############ To use the following RC Functions, 'd' will need the following columns at minimum: 
 ############ county_id and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
@@ -371,4 +420,10 @@ rc_schema <- 'v5'
 
 #send tables to postgres
 #to_postgres(county_table, state_table)
+<<<<<<< HEAD
 #city_to_postgres(city_table)
+=======
+
+#city_to_postgres(city_table)
+
+>>>>>>> 9da5f2cc7db84badcac683e00cae6e2fb2a7020f
