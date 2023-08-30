@@ -186,7 +186,6 @@ df_final <- df_enroll_staff %>% left_join(districts, by="cdscode") %>% mutate(ge
 
 d <- df_final %>% drop_na(geoid) # drop records without geoids, these are all districts
 
-
 ####################################################################################################################################################
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
@@ -232,7 +231,7 @@ View(city_table)
 ###update info for postgres tables###
 county_table_name <- "arei_educ_staff_diversity_county_2023"
 state_table_name <- "arei_educ_staff_diversity_state_2023"
-city_table_name <- "arei_educ_staff_diversity_district_2023_"
+city_table_name <- "arei_educ_staff_diversity_district_2023"
 rc_schema <- "v5"
 
 indicator <- "Staff and Teacher Diversity Count and Rate. This data is"
