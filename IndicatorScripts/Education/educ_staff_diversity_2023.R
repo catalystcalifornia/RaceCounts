@@ -239,4 +239,4 @@ source <- "CDE 2018-2019 https://www.cde.ca.gov/ds/ad/filesabd.asp"
 
 # send tables to postgres
 # to_postgres(county_table,state_table)
-# city_to_postgres()
+city_to_postgres()
