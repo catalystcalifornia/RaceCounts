@@ -93,7 +93,7 @@ aian <- filter(loans_2019_20, derived_race == "American Indian or Alaska Native"
 pacisl <- filter(loans_2019_20, derived_race == "Native Hawaiian or Other Pacific Islander") %>%
   dplyr::group_by(geoid) %>% dplyr::summarise(pacisl_originated = n())
 
-total <- loans_2019_20 %>% filter(if(any(derived_ethnicity == "Not Hispanic or Latino")) derived_race != "Race Not Available" else TRUE) %>% group_by(geoid) %>% summarise(total_originated = n())
+total <- loans_2019_20 %>% group_by(geoid) %>% summarise(total_originated = n())
 
 # merge all loan county tables
 loans <- left_join(total, nh_black, by = c("geoid")) %>% 
@@ -130,7 +130,7 @@ aian <- filter(denied_2019_20, derived_race == "American Indian or Alaska Native
 pacisl <- filter(denied_2019_20, derived_race == "Native Hawaiian or Other Pacific Islander") %>%
   dplyr::group_by(geoid) %>% dplyr::summarise(pacisl_denied = n())
 
-total <- denied_2019_20 %>% filter(if(any(derived_ethnicity == "Not Hispanic or Latino")) derived_race != "Race Not Available" else TRUE) %>% group_by(geoid) %>% summarise(total_denied = n())
+total <- denied_2019_20  %>% group_by(geoid) %>% summarise(total_denied = n())
 
 # merge all denied county tables
 denied <- left_join(total, nh_black, by = c("geoid")) %>% 
@@ -203,7 +203,7 @@ aian <- filter(loans_2019_20, derived_race == "American Indian or Alaska Native"
 pacisl <- filter(loans_2019_20, derived_race == "Native Hawaiian or Other Pacific Islander") %>%
   dplyr::group_by(place_geoid) %>% dplyr::summarise(pacisl_originated = n())
 
-total <- loans_2019_20 %>% filter(if(any(derived_ethnicity == "Not Hispanic or Latino")) derived_race != "Race Not Available" else TRUE) %>% group_by(place_geoid) %>% summarise(total_originated = n())
+total <- loans_2019_20 %>% group_by(place_geoid) %>% summarise(total_originated = n())
 
 # merge all loan county tables
 loans <- left_join(total, nh_black, by = c("place_geoid")) %>% 
@@ -245,7 +245,7 @@ aian <- filter(denied_2019_20, derived_race == "American Indian or Alaska Native
 pacisl <- filter(denied_2019_20, derived_race == "Native Hawaiian or Other Pacific Islander") %>%
   dplyr::group_by(place_geoid) %>% dplyr::summarise(pacisl_denied = n())
 
-total <- denied_2019_20 %>% filter(if(any(derived_ethnicity == "Not Hispanic or Latino")) derived_race != "Race Not Available" else TRUE) %>% group_by(place_geoid) %>% summarise(total_denied = n())
+total <- denied_2019_20 %>% group_by(place_geoid) %>% summarise(total_denied = n())
 
 # merge all denied county tables
 denied <- left_join(total, nh_black, by = c("place_geoid")) %>% 
