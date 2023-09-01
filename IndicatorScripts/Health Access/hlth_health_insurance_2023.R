@@ -1,4 +1,9 @@
-## Overall ACS script which can be edited to create postgres tables for each RC ACS indicator. Each issue folder has the script(s) edited for its indicators. ##
+## Health Insurance for RC v5 ##
+
+#install packages if not already installed
+list.of.packages <- c("tidyr", "stringr", "tidycensus", "dplyr", "DBI", "RPostgreSQL", "usethis")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
 
 library(tidyr)
 library(stringr)
@@ -6,6 +11,7 @@ library(tidycensus)
 library(dplyr)
 library(DBI)
 library(RPostgreSQL)
+library(usethis)
 
 ############## UPDATE DATA YEAR ##############
 # API Call Info - Shouldn't need to change until next year
@@ -17,7 +23,6 @@ table_code = "S2701"     # YOU MUST UPDATE based on Indicator Methodology 2021 o
 cv_threshold = 40         # YOU MUST UPDATE based on Indicator Methodology 2021
 pop_threshold = 130        # YOU MUST UPDATE based on Indicator Methodology 2021 or set to NA B19301
 asbest = 'min'            # YOU MUST UPDATE based on indicator, set to 'min' if S2701
-
 
 ############## DEFINES RELATIONSHIPS BETWEEN CENSUS TABLE CODES AND RDA SHARED TABLE NAMES - DO NOT MODIFY ##############
 # schema relationships pulled from: W:\\RDA Team\\R\\ACS Updates\\Update ACS Subject Detail Profile Multigeo Tables.R
@@ -596,8 +601,7 @@ indicator <- "Uninsured Population (%)"                         # See Indicator 
 source <- "2017-2021 ACS 5-Year Estimates, Table S2701, https://data.census.gov/cedsci/"   # See Indicator Methodology 2021 for source info
 rc_schema <- "v5"
 #send tables to postgres COMMENTED OUT FOR QA
-# to_postgres(county_table)
-# to_postgres(state_table)
+# to_postgres(county_table, state_table)
 city_to_postgres(city_table)
 
 } else {

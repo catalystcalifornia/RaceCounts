@@ -202,9 +202,6 @@ survey <- "acs5"                  # define which Census survey you want
 pop_threshold = 200               # define population threshold for screening
 
 ### CT-Place Crosswalk ### ---------------------------------------------------------------------
-crosswalk <- st_read(con, query = "SELECT * FROM crosswalks.ct_place_2017")
-
-
 ## pull in TIGER Places ## -- Commenting out the xwalk calcs after xwalk was exported to postgres
 # places <- places(state = 'CA', year = 2017) %>% select(-c(STATEFP, PLACEFP, PLACENS, LSAD, CLASSFP, PCICBSA, PCINECTA, MTFCC, FUNCSTAT, ALAND, AWATER))
 # tracts <- tracts(state = 'CA', year = 2017) %>% mutate(county_geoid = paste0(STATEFP, COUNTYFP)) %>%
@@ -270,6 +267,8 @@ crosswalk <- st_read(con, query = "SELECT * FROM crosswalks.ct_place_2017")
 
 # crosswalk <- xwalk_filter
 
+crosswalk <- st_read(con, query = "SELECT * FROM crosswalks.ct_place_2017") # comment out code above after xwalk is created and pull in postgres table instead.
+
 
 ##### GET SUB GEOLEVEL POP DATA ######
 census_api_key(census_key1)       # reload census API key
@@ -279,9 +278,9 @@ vars_list_custom <- c("B25003_003", "B25003B_003", "B25003C_003", "B25003D_003",
 
 pop <- update_detailed_table(vars = vars_list_custom, yr = year, srvy = survey)  # subgeolevel pop
 
-pop_wide <- pop %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = estimate)
+pop_wide <- pop %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = estimate) # n=8,057
 
-pop_wide_city <- as.data.frame(pop_wide) %>% right_join(select(crosswalk, c(ct_geoid, place_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
+pop_wide_city <- as.data.frame(pop_wide) %>% right_join(select(crosswalk, c(ct_geoid, place_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names, length(unique(pop_wide_city$GEOID)) = 7,753 bc some cts aren't matched to cities in xwalk
 pop_wide_city <- dplyr::rename(pop_wide_city, sub_id = GEOID, target_id = place_geoid) # rename to generic column names for WA functions
 
 ############### CUSTOMIZED VERSION OF TARGETGEO_POP FUNCTION HERE THAT WORKS WITH RENTER HOUSEHOLDS AS POP BASIS #######
@@ -313,13 +312,11 @@ city_wa<- city_wa %>% unique()
 wa_all <- union(wa, ca_wa) %>% union(city_wa)
 wa_all <- rename(wa_all, geoid = target_id, geoname = target_name)   # rename columns for RC functions
 wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid) %>% 
-  dplyr::relocaterelocate(total_rate, .after = twoormor_rate) %>% 
-  dplyr::relocaterelocate(total_pop, .after = twoormor_pop)# move geoname column
+  dplyr::relocate(total_rate, .after = twoormor_rate) %>% 
+  dplyr::relocate(total_pop, .after = twoormor_pop)# move geoname column
 
 
 #### EXTRA SCREENING BC NA'S SHOULD NOT BE TREATED AS ZEROES IN THIS DATASET ####
-
-
 library(naniar)
 wa_all <- wa_all %>% 
   replace_with_na_at(.vars = c("total_rate","black_rate", "asian_rate", "aian_rate", "pacisl_rate", "other_rate", "twoormor_rate", "nh_white_rate", "latino_rate"),
