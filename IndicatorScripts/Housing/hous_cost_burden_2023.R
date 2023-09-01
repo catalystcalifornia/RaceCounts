@@ -1,3 +1,5 @@
+## Housing Cost Burden for RC v5 ##
+
 # Install packages if not already installed
 list.of.packages <- c("data.table", "stringr", "dplyr", "RPostgreSQL", "dbplyr", 
                       "srvyr", "tidycensus", "rpostgis",  "tidyr", "readxl")
@@ -221,10 +223,10 @@ df <- cost_burden_county_rc
 
 # Clean geo names
 df$geoname <- gsub(" County", "", df$geoname)
-df$city_name <- gsub(" city", "", df$geoname)
-df$city_name <- gsub(" town", "", df$geoname)
-df$city_name <- gsub(" CDP", "", df$geoname)
-df$city_name <- gsub(" City", "", df$geoname)
+df$geoname <- gsub(" city", "", df$geoname)
+df$geoname <- gsub(" town", "", df$geoname)
+df$geoname <- gsub(" CDP", "", df$geoname)
+df$geoname <- gsub(" City", "", df$geoname)
 
 # Convert Nan and Inf values to NA
 df[sapply(df, is.nan)] <- NA
