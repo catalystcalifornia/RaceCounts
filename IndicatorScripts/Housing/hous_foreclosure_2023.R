@@ -1,4 +1,4 @@
-## Foreclosures per 10k Owner-Occupied Households (WA) for RC v4
+## Foreclosures per 10k Owner-Occupied Households (WA) for RC v5
 ######## Due to using a different population basis for WA (owner households), this is not a good script to use as a WA template. ##############
 
 ##install packages if not already installed ------------------------------
