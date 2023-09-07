@@ -1,11 +1,10 @@
-## Foreclosures per 10k Owner-Occupied Households (WA) for RC v5
+## Foreclosures per 10k Owner-Occupied Households (WA) for RC v4
 ######## Due to using a different population basis for WA (owner households), this is not a good script to use as a WA template. ##############
 
 ##install packages if not already installed ------------------------------
 list.of.packages <- c("dplyr","data.table","sf","tigris","readr","tidyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 
-if(length(new.packages)) install.packages(new.packages)
 #Load libraries
 library(data.table)
 library(stringr)
@@ -31,23 +30,22 @@ con <- connect_to_db("rda_shared_data")
 #set source for RC Functions script
 source("W:/RDA Team/R/Functions/Cnty_St_Wt_Avg_Functions.R")
 
-
 # export foreclosure to rda shared table ------------------------------------------------------------
 ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 # foreclosure <- read_excel("W:/Data/Housing/Foreclosure/Foreclosure - Dataquick/Original Data/AdvanceProj 081122.xlsx", sheet = 2, skip = 5)
 
+# con2 <- connect_to_db("rda_shared_data")
 # table_schema <- "housing"
 # table_name <- "dataquick_tract_2010_22_foreclosures"
-# table_comment_source <- "Foreclosures (2010-2022) by quarter (W:/Data/Housing/Foreclosure/Foreclosure - Dataquick/Original Data/AdvanceProj 081122.xlsx)."
-# table_source <- "The data was purchased from DQNews."
-# dbWriteTable(con, c(table_schema, table_name), foreclosure, overwrite = FALSE, row.names = FALSE)
+# table_comment_source <- "Foreclosures per 10k owner households by race (WA)."
+# table_source <- "The data is from DataQuick (2010-2022), purchased from DQNews."
+# dbWriteTable(con2, c(table_schema, table_name), foreclosure, overwrite = FALSE, row.names = FALSE)
 
 #load data and clean-----
 foreclosure <- dbGetQuery(con, "SELECT * FROM housing.dataquick_tract_2010_22_foreclosures") # comment out table creation above, and import data from pgadmin
 
-
 num_qtrs = 20   # update depending on how many data yrs you are working with
-foreclosure <- foreclosure %>% select(-matches('2010|2011|2012|2013|2014|2015|2016|2022')) %>% # keep only 2017-2021 data
+foreclosure <- foreclosure %>% select(-matches('2010|2011|2012|2013|2014|2015|2016|2022')) %>%
   mutate(sum_foreclosure = rowSums(.[3:22], na.rm = TRUE)) %>%  # total number of foreclosures over all data quarters
   mutate(avg_foreclosure = sum_foreclosure / num_qtrs) %>%  # avg quarterly number of foreclosures
   select(-matches('Q'))   # remove quarterly foreclosure columns
@@ -128,8 +126,6 @@ names(e) <- c('sub_id', 'target_id', 'geolevel', 'total_sub_pop', 'black_sub_pop
 pop_df <- e %>% left_join(c, by = "target_id")
 
 ###################################
-
-
 ##### EXTRA STEP: Calc avg quarterly foreclosures per 10k pop by tract bc WA avg should be calc'd using this, not avg # of foreclosures
 ind_df <- ind_df %>% left_join(pop_df %>% select(sub_id, total_sub_pop), by = "sub_id") %>% 
   mutate(indicator = (avg_foreclosure / total_sub_pop) * 10000)
@@ -177,12 +173,12 @@ ca_wa <- ca_wt_avg(ca_pct_df) %>% mutate(geolevel = 'state')   # add geolevel ty
 
 ############# CITY ##################
 #merge dfs by geoname then paste the county id to the front of the tract IDs-----
-# ind_df <- left_join(ca, foreclosure, by = c("geoname" = "county")) %>% 
-#   mutate(sub_id = paste0(geoid, census_tract)) %>% 
-#   rename(c("target_id" = "geoid")) %>%
-#   select(target_id, sub_id, geoname, sum_foreclosure, avg_foreclosure)%>% 
-#   as.data.frame()
-# View(ind_df)
+ind_df <- left_join(ca, foreclosure, by = c("geoname" = "county")) %>% 
+  mutate(sub_id = paste0(geoid, census_tract)) %>% 
+  rename(c("target_id" = "geoid")) %>%
+  select(target_id, sub_id, geoname, sum_foreclosure, avg_foreclosure)%>% 
+  as.data.frame()
+View(ind_df)
 # get census place geoids to paste to the front of the tracts from the foreclosure data
 
 ###### DEFINE VALUES FOR FUNCTIONS ######
@@ -210,6 +206,9 @@ pop_wide <- lapply(pop, to_wide)
 pop_wide <- as.data.frame(pop_wide) %>% right_join(select(xwalk_filter, c(ct_geoid, place_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = place_geoid) # rename to generic column names for WA functions
 
+# calc target geolevel pop and number of sub geolevels per target geolevel
+# pop_df <- targetgeo_pop(pop_wide) # function doesn't work for this one so you do it custom for foreclosures and evictions
+
 ############### CUSTOMIZED VERSION OF TARGETGEO_POP FUNCTION HERE THAT WORKS WITH OWNER HOUSEHOLDS AS POP BASIS #######
 
 # select pop estimate columns and rename to RC names
@@ -227,6 +226,13 @@ c <- c %>% left_join(d, by = "target_id")
 e <- select(pop_wide, sub_id, target_id, geolevel, ends_with("e"), -NAME) 
 names(e) <- c('sub_id', 'target_id', 'geolevel', 'total_sub_pop', 'black_sub_pop', 'aian_sub_pop', 'asian_sub_pop', 'pacisl_sub_pop', 'other_sub_pop', 'twoormor_sub_pop', 'nh_white_sub_pop', 'latino_sub_pop')
 pop_df <- e %>% left_join(c, by = "target_id")
+
+###################################
+
+
+##### EXTRA STEP: Calc avg quarterly foreclosures per 10k pop by tract bc WA avg should be calc'd using this, not avg # of foreclosures
+ind_df <- ind_df %>% left_join(pop_df %>% select(sub_id, total_sub_pop), by = "sub_id") %>% 
+  mutate(indicator = (avg_foreclosure / total_sub_pop) * 10000)
 
 ##### CITY WEIGHTED AVG CALCS ######
 pct_df <- pop_pct_multi(pop_df)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
