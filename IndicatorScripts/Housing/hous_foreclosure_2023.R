@@ -296,11 +296,10 @@ county_table_name <- "arei_hous_foreclosure_county_2023"
 state_table_name <- "arei_hous_foreclosure_state_2023"
 city_table_name <- "arei_hous_foreclosure_city_2023"
 indicator <- "Foreclosures per 10k owner households by race (WA). The data is"
-source <- "DataQuick (2017-2021), purchased from DQNews and raced via weighted average using ACS 2016-20 data"
+source <- "DataQuick (2017-2021), purchased from DQNews and raced via weighted average using ACS 2017-21 data (city); ACS 2016-20 (county/state)"
 rc_schema <- 'v5'
 
 #send tables to postgres
-
 #to_postgres(county_table, state_table)
-city_to_postgres(city_table)
+#city_to_postgres(city_table)
 dbDisconnect(con)
