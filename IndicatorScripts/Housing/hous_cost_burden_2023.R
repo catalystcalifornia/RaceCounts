@@ -1,3 +1,5 @@
+## Housing Cost Burden for RC v5 ##
+
 # Install packages if not already installed
 list.of.packages <- c("data.table", "stringr", "dplyr", "RPostgreSQL", "dbplyr", 
                       "srvyr", "tidycensus", "rpostgis",  "tidyr", "readxl")
@@ -19,7 +21,7 @@ library(readxl)
 
 ######################Data set-up######################
 
-setwd("W:/Project/RACE COUNTS/2022_v4/Housing/Data/")
+# setwd("W:/Project/RACE COUNTS/2022_v5/Housing/Data/")
 
 # data file path (for countys)
 root <- "W:/Data/Housing/HUD/CHAS/"
@@ -52,29 +54,28 @@ ppl <- rbind(state_data, county_data, city_data)
 # View(ppl)
 
 
-# export incarceration  to rda shared table ------------------------------------------------------------
+# export housing cost burden  to rda shared table ------------------------------------------------------------
 ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
-# con2 <- connect_to_db("rda_shared_data")
+# con <- connect_to_db("rda_shared_data")
 # table_schema <- "housing"
 # table_name <- "hud_chas_cost_burden_multigeo_2014_18"
 # table_comment_source <- "The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive.  "
 # table_source <- "HUD CHAS (2014-2018) https://www.huduser.gov/portal/datasets/cp.html#2006-2018_data"
 # 
-# dbWriteTable(con2, c(table_schema, table_name), ppl, overwrite = FALSE, row.names = FALSE)
+# dbWriteTable(con, c(table_schema, table_name), ppl, overwrite = FALSE, row.names = FALSE)
 
 
 # data cleaning
 ppl <- ppl %>%
-  mutate(cntyname = gsub("^(.*?),.*", "\\1", ppl$name)) %>% # get county name
+  mutate(geoname = gsub("^(.*?),.*", "\\1", ppl$name)) %>% # get county name
   filter(substr(geoid, start = 1, stop = 2) == "06") %>% # keep only CA counties
-  select(geoid, cntyname, starts_with("T9"), geolevel) # drop unneeded cols
+  select(geoid, geoname, starts_with("T9"), geolevel) # drop unneeded cols
 View(ppl)
 # make longer
 ppl <- pivot_longer(ppl, cols = starts_with("T9"), names_to = "Column Name", 
                     values_to = "housingunits")
 
 # create a separate field to join.
-
 ppl$number <- substring(ppl$`Column Name`, first = 7)
 dict$number <- substring(dict$`Column Name`, first = 7)
 #Move 'number' field to first column
@@ -116,28 +117,27 @@ ppl <- filter(ppl, !str_detect(ppl$`Column Name`, 'moe'))
 
 ### calc by race
 
-
 ## calculate raw number first
 costburden_race <-
   ppl %>%
   # filter(!is.na(cost_burdened)) %>%
-  group_by(geoid, cntyname, race, cost_burdened, Tenure, geolevel) %>%  
+  group_by(geoid, geoname, race, cost_burdened, Tenure, geolevel) %>%  
   summarise(
     raw = sum(housingunits)) %>%       
   
   left_join(ppl %>%                                                   
-              group_by(geoid, cntyname, race, Tenure, geolevel) %>%                                  
+              group_by(geoid, geoname, race, Tenure, geolevel) %>%                                  
               summarise(pop = sum(housingunits)))
 View(costburden_race)
 ## calculate rate moe
 costburden_moe <-
   moe %>%
-  group_by(geoid, cntyname, race, cost_burdened, Tenure, geolevel) %>%  
+  group_by(geoid, geoname, race, cost_burdened, Tenure, geolevel) %>%  
   summarise(
-    num_moe = norm(housingunits, type = "2")) %>%       
+    num_moe = norm(housingunits, type = "2")) %>%   # for info on type, see p51  https://www.census.gov/content/dam/Census/library/publications/2018/acs/acs_general_handbook_2018_ch08.pdf
   
   left_join(moe %>%                                                   
-              group_by(geoid, cntyname, race, Tenure, geolevel) %>%                                  
+              group_by(geoid, geoname, race, Tenure, geolevel) %>%                                  
               summarise(den_moe = norm(housingunits, type = "2")))
 
 ## put it all together
@@ -152,23 +152,23 @@ costburden_race <- costburden_race %>%
 ## calculate proportions first
 costburden_tot <-
   ppl %>%
-  group_by(geoid, cntyname, cost_burdened, Tenure, geolevel) %>%  
+  group_by(geoid, geoname, cost_burdened, Tenure, geolevel) %>%  
   summarise(
     raw = sum(housingunits)) %>%       
   
   left_join(ppl %>%                                                   
-              group_by(geoid, cntyname, Tenure, geolevel) %>%                                  
+              group_by(geoid, geoname, Tenure, geolevel) %>%                                  
               summarise(pop = sum(housingunits)))
 
 ## calculate rate moe
 costburden_moe_tot <-
   moe %>%
-  group_by(geoid, cost_burdened, cntyname, Tenure, geolevel) %>%  
+  group_by(geoid, cost_burdened, geoname, Tenure, geolevel) %>%  
   summarise(
     num_moe = norm(housingunits, type = "2")) %>%       
   
   left_join(moe %>%                                                   
-              group_by(geoid, cntyname, Tenure, geolevel) %>%                                  
+              group_by(geoid, geoname, Tenure, geolevel) %>%                                  
               summarise(den_moe = norm(housingunits, type = "2")))
 
 ## put it all together
@@ -192,7 +192,7 @@ cost_burden_county <-
   filter(cost_burdened == 1) %>%  
   
   # Group by county
-  group_by(geoid, cntyname) %>% 
+  group_by(geoid, geoname) %>% 
   
   as.data.frame()
 
@@ -206,11 +206,11 @@ cost_burden_county_rc <-
   
   
   # convert to wide format
-  pivot_wider(id_cols = c(geoid, cntyname, Tenure, geolevel),
+  pivot_wider(id_cols = c(geoid, geoname, Tenure, geolevel),
               names_from = c(race),
               values_from = c("raw", "pop", "rate", "rate_moe", "rate_cv"),
               names_glue = "{race}_{.value}")%>% 
-              dplyr::rename("geoname" = "cntyname") %>% as.data.frame()
+              as.data.frame()
 # View(cost_burden_county_rc)
 
 ## Screen out values with high CVs and small populations
@@ -219,9 +219,15 @@ cost_burden_county_rc <-
 cv_threshold <- 35
 pop_threshold <- 100
 
-
 df <- cost_burden_county_rc
+
+# Clean geo names
 df$geoname <- gsub(" County", "", df$geoname)
+df$geoname <- gsub(" city", "", df$geoname)
+df$geoname <- gsub(" town", "", df$geoname)
+df$geoname <- gsub(" CDP", "", df$geoname)
+df$geoname <- gsub(" City", "", df$geoname)
+
 # Convert Nan and Inf values to NA
 df[sapply(df, is.nan)] <- NA
 df[sapply(df, is.infinite)] <- NA
@@ -250,7 +256,7 @@ df <- df %>% relocate(ends_with("_raw"), .after = ends_with("_pop")) # reorder f
 owners <- filter(df, Tenure == "owner")
 
 
-############################# Owners #################################################################
+##################### RC CALCS: OWNERS #################################################################
 # assign d so that it runs the calculations with owners data
 d <- owners
 
@@ -273,38 +279,31 @@ state_table <- d[d$geolevel == 'state', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
-state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")%>% select(-c(geolevel, Tenure))
+state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid") %>% select(-c(geolevel, Tenure))
 View(state_table)
 
 #remove state from county table
 county_table <- d[d$geolevel == 'county', ]
 
-
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
-county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")%>% select(-c(geolevel, Tenure))
+county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid") %>% select(-c(geolevel, Tenure))
 View(county_table)
 
 #remove county/state from place table -----
 city_table <- d[d$geolevel == 'city', ]
 
-#calculate DISTRICT z-scores
+#calculate CITY z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
 city_table <- city_table %>% 
-  dplyr::rename("city_id" = "geoid", "city_name" = "geoname")%>% select(-c(geolevel, Tenure))
-# Clean geo names
-city_table$city_name <- gsub(" city", "", city_table$city_name)
-city_table$city_name <- gsub(" town", "", city_table$city_name)
-city_table$city_name <- gsub(" CDP", "", city_table$city_name)
-city_table$city_name <- gsub(" City", "", city_table$city_name)
+  dplyr::rename("city_id" = "geoid", "city_name" = "geoname") %>% select(-c(geolevel, Tenure))
 View(city_table)
 
 ###update info for postgres tables###
 county_table_name <- "arei_hous_cost_burden_owner_county_2023"
 state_table_name <- "arei_hous_cost_burden_owner_state_2023"
-
 city_table_name <- "arei_hous_cost_burden_owner_city_2023"
 rc_schema <- "v5"
 
@@ -312,10 +311,10 @@ indicator <- "The percentage of owner-occupied housing units experiencing cost b
 source <- "HUD CHAS (2014-2018) https://www.huduser.gov/portal/datasets/cp.html#2006-2018_data"
 
 # #send tables to postgres
-# to_postgres()
+# to_postgres(county_table, state_table)
+# city_to_postgres()
 
-city_to_postgres()
-################### Renters ################################################################
+################### RC CALCS: RENTERS ################################################################
 #Create a renters dataframe by filtering out owners so that it creates two sets of graphs for the RC_Functions for each owners and renters
 
 renters <- filter(df, Tenure == "renter")
@@ -342,7 +341,7 @@ state_table <- d[d$geolevel == 'state', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
-state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")%>% select(-c(geolevel, Tenure))
+state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid") %>% select(-c(geolevel, Tenure))
 View(state_table)
 
 #remove state from county table
@@ -361,12 +360,8 @@ city_table <- d[d$geolevel == 'city', ]
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
 city_table <- city_table %>% 
-  dplyr::rename("city_id" = "geoid", "city_name" = "geoname")%>% select(-c(geolevel, Tenure))
-# Clean geo names
-city_table$city_name <- gsub(" city", "", city_table$city_name)
-city_table$city_name <- gsub(" town", "", city_table$city_name)
-city_table$city_name <- gsub(" CDP", "", city_table$city_name)
-city_table$city_name <- gsub(" City", "", city_table$city_name)
+  dplyr::rename("city_id" = "geoid", "city_name" = "geoname") %>% select(-c(geolevel, Tenure))
+
 View(city_table)
 
 ###update info for postgres tables###
@@ -380,7 +375,5 @@ indicator <- "The percentage of rented housing units experiencing cost burden (M
 source <- "HUD CHAS (2014-2018) https://www.huduser.gov/portal/datasets/cp.html#2006-2018_data"
 
 # #send tables to postgres
-# to_postgres()
-
-
-city_to_postgres()
+# to_postgres(county_table, state_table)
+# city_to_postgres()
