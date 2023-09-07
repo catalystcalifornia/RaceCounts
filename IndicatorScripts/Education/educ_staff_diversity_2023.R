@@ -39,7 +39,6 @@ con <- connect_to_db("rda_shared_data")
 
 #######Get enrollment data for population values------
 enrollment <- st_read(con, query = "select * from education.cde_multigeo_enrollment_2018_19")
-
 # # View(enrollment)
 enrollment <- enrollment %>% mutate(districtcode = ifelse(!is.na(districtcode),paste0(enrollment$countycode,enrollment$districtcode), NA))
 
@@ -50,8 +49,6 @@ enrollment_df <- enrollment %>% filter(aggregatelevel %in% c("C", "T", "D") & ch
   #select just fields we need
   select(aggregatelevel, cdscode, countyname, districtname, districtcode, reportingcategory, cumulativeenrollment) 
 enrollment_df$cumulativeenrollment <- as.numeric(enrollment_df$cumulativeenrollment)
-
-
 
 # # View(enrollment_df)
 
