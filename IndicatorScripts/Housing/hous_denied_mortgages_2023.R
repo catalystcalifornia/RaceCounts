@@ -1,4 +1,5 @@
-# Denied Mortgages Applications for RC v4
+## Denied Mortgages Applications for RC v5 ##
+
 list.of.packages <- c("openxlsx","tidyr","dplyr","stringr", "DBI", "RPostgreSQL","data.table", "openxlsx", "tidycensus", "tidyverse", "janitor")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
@@ -23,36 +24,46 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 setwd("W:/Data/Housing/HMDA/Denied Mortgages/2019_20/")
 con2 <- connect_to_db("rda_shared_data")
 
-# # export foreclosure to rda shared table ------------------------------------------------------------
-## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+# export foreclosure to rda shared table ------------------------------------------------------------
+# Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 # source("W:\\RDA Team\\R\\credentials_source.R")
 # denied_2019 <- read.csv("actions_taken_3_state_CA_2019.csv", colClasses = c(county_code = "character", census_tract = "character"))
 # denied_2020 <- read.csv("actions_taken_3_state_CA_2020.csv", colClasses = c(county_code = "character", census_tract = "character"))
 # denied_2019_20 <- bind_rows(denied_2019, denied_2020) %>% plyr::rename(c("county_code" = "geoid"))
-# con2 <- connect_to_db("rda_shared_data")
+# denied_2019_20 <- denied_2019_20 %>% mutate(geoid = ifelse(nchar(geoid) == 4, paste0("0",geoid), geoid)) %>%  # add leading zeros to county/ct fips where missing
+#                                      mutate(census_tract = ifelse(nchar(census_tract) == 10, paste0("0",census_tract), census_tract))
 # table_schema <- "housing"
 # table_name <- "hmda_tract_denied_mortgages_2019_20"
-# table_comment_source <- "Denied Mortgages out of all Loan Applications"
+# table_comment_source <- "Denied Mortgages out of all Loan Applications with cleaned geoid/census_tract fields"
 # table_source <- "HMDA (2019-2020) https://ffiec.cfpb.gov/data-browser/"
 # dbWriteTable(con2, c(table_schema, table_name), denied_2019_20, overwrite = FALSE, row.names = FALSE)
-# 
+# table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
+
+# send table comment to database
+#dbSendQuery(conn = con2, table_comment)  
+
 # loans_2019 <- read.csv("actions_taken_1_state_CA_2019.csv", colClasses = c(county_code = "character", census_tract = "character"))
 # loans_2020 <- read.csv("actions_taken_1_state_CA_2020.csv", colClasses = c(county_code = "character", census_tract = "character"))
 # loans_2019_20 <- bind_rows(loans_2019, loans_2020) %>% plyr::rename(c("county_code" = "geoid"))
+# loans_2019_20 <- loans_2019_20 %>% mutate(geoid = ifelse(nchar(geoid) == 4, paste0("0",geoid), geoid)) %>%  # add leading zeros to county/ct fips where missing
+#                                      mutate(census_tract = ifelse(nchar(census_tract) == 10, paste0("0",census_tract), census_tract))
 # table_name <- "hmda_tract_loans_originated_2019_20"
-# table_comment_source <- "Loans Originated out of all Loan Applications"
+# table_comment_source <- "Loans Originated out of all Loan Applications with cleaned geoid/census_tract fields"
 # table_source <- "HMDA (2019-2020) https://ffiec.cfpb.gov/data-browser/"
+# table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
 # dbWriteTable(con2, c(table_schema, table_name), loans_2019_20, overwrite = FALSE, row.names = FALSE)
 
+# send table comment to database
+#dbSendQuery(conn = con2, table_comment)  
 
 # ### DENIED MORTGAGE APPLICATIONS ----------------------------------------
 #Get data then filter out multifamily housing and subordinate liens. Keep only single family housing and first liens. Replace state_code with FIPS Code.
 denied_2019_20 <- dbGetQuery(con2, "SELECT * FROM housing.hmda_tract_denied_mortgages_2019_20") %>%
            select(activity_year, state_code, geoid, census_tract, loan_purpose, occupancy_type, derived_loan_product_type, derived_dwelling_category, derived_ethnicity, derived_race) %>%
-           filter(derived_dwelling_category != 'Multifamily:Site-Built' & derived_dwelling_category != 'Multifamily:Manufactured' &
-             derived_loan_product_type != 'Conventional:Subordinate Lien' & derived_loan_product_type != 'FHA:Subordinate Lien' &
-             derived_loan_product_type != 'FSA/RHS:Subordinate Lien' & derived_loan_product_type != 'VA:Subordinate Lien' & 
-             loan_purpose == "1" & occupancy_type == "1" & str_detect(geoid, "^06")) %>%      # select records where geoid begins with '06'
+  filter(derived_dwelling_category != 'Multifamily:Site-Built' & derived_dwelling_category != 'Multifamily:Manufactured' &
+           derived_loan_product_type != 'Conventional:Subordinate Lien' & derived_loan_product_type != 'FHA:Subordinate Lien' &
+           derived_loan_product_type != 'FSA/RHS:Subordinate Lien' & derived_loan_product_type != 'VA:Subordinate Lien'  &
+           str_detect(geoid, "^06")) %>%      # select records where geoid begins with '06'
            mutate(state_code = replace(state_code, str_detect(state_code, "CA"), "06")) %>%  # replace state_code in those records with '06'
            select(state_code, geoid, census_tract, derived_ethnicity, derived_race) 
 
@@ -60,10 +71,10 @@ denied_2019_20 <- dbGetQuery(con2, "SELECT * FROM housing.hmda_tract_denied_mort
 #Get downloaded data and subset
 loans_2019_20 <- dbGetQuery(con2, "SELECT * FROM housing.hmda_tract_loans_originated_2019_20") %>%
           select(activity_year, state_code, geoid, census_tract, loan_purpose, occupancy_type, derived_loan_product_type, derived_dwelling_category, derived_ethnicity, derived_race) %>%
-          filter(derived_dwelling_category != 'Multifamily:Site-Built' & derived_dwelling_category != 'Multifamily:Manufactured' &
-            derived_loan_product_type != 'Conventional:Subordinate Lien' & derived_loan_product_type != 'FHA:Subordinate Lien' &
-            derived_loan_product_type != 'FSA/RHS:Subordinate Lien' & derived_loan_product_type != 'VA:Subordinate Lien' &
-            loan_purpose == "1" & occupancy_type == "1" &  str_detect(geoid, "^06")) %>%      # select records where geoid begins with '06'
+  filter(derived_dwelling_category != 'Multifamily:Site-Built' & derived_dwelling_category != 'Multifamily:Manufactured' &
+           derived_loan_product_type != 'Conventional:Subordinate Lien' & derived_loan_product_type != 'FHA:Subordinate Lien' &
+           derived_loan_product_type != 'FSA/RHS:Subordinate Lien' & derived_loan_product_type != 'VA:Subordinate Lien'  &
+           str_detect(geoid, "^06")) %>%      # select records where geoid begins with '06'
           mutate(state_code = replace(state_code, str_detect(state_code, "CA"), "06")) %>%
           select(state_code, geoid, census_tract, derived_ethnicity, derived_race) 
 # head(loans_2019_20)
@@ -144,8 +155,6 @@ denied <- left_join(total, nh_black, by = c("geoid")) %>%
 
 #merge loan and denied dfs
 df_join <- left_join(loans, denied, by = c("geoid")) %>% mutate(geolevel = "county")
-df_join$place_geoid <- NA
-# df_join$place_name <- NA
 # View(df_join)
 
 
@@ -161,13 +170,12 @@ ca$NAME <- gsub(" County, California", "", ca$NAME)
 names(ca) <- c("geoid", "geoname")
 # View(ca)
 
-#add geonames, and state geoid
-df_wide <- merge(x=ca,y=df_join,by="geoid", all=T) %>%  adorn_totals("row")
+#add geonames and state row
+df_wide <- merge(x=ca,y=df_join,by="geoid", all=T) %>% adorn_totals("row")
 df_wide$geoid[df_wide$geoid == 'Total'] <- '06'
 df_wide$geoname[df_wide$geoid == '06'] <- 'California'
-df_wide$geolevel[df_wide$geoid == '06'] <- 'State'
+df_wide$geolevel[df_wide$geoid == '06'] <- 'state'
 #View(df_wide)
-df_wide <- df_wide %>% select(-c(place_geoid))
 
 ### CT-Place Crosswalk ### ---------------------------------------------------------------------
 # pull in crosswalk
@@ -284,7 +292,7 @@ df_pct <- combined_df %>%
           nh_white_pct_denied = ifelse(is.na(nh_white_originated), NA, (nh_white_denied / nh_white_originated)*100),
           nh_twoormor_pct_denied = ifelse(is.na(nh_twoormor_originated), NA, (nh_twoormor_denied / nh_twoormor_originated)*100),
 
-          # calculate _raw column if _raw column is not less than threshold
+          # calculate _raw column if _originated column is not less than threshold
           total_raw = ifelse(total_originated < threshold, NA, total_denied),
           nh_black_raw = ifelse(nh_black_originated < threshold, NA, nh_black_denied),
           aian_raw = ifelse(aian_originated < threshold, NA, aian_denied),
@@ -348,6 +356,7 @@ city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
 city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") 
 View(city_table)
+
 ###update info for postgres tables###
 county_table_name <- "arei_hous_denied_mortgages_county_2023"
 state_table_name <- "arei_hous_denied_mortgages_state_2023"
@@ -357,5 +366,5 @@ source <- "HMDA (2019-2020) https://ffiec.cfpb.gov/data-browser/"
 rc_schema <- 'v5'
 
 #send tables to postgres
-# to_postgres()
+# to_postgres(county_table, state_table)
 # city_to_postgres(city_table)
