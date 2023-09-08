@@ -62,8 +62,8 @@ denied_2019_20 <- dbGetQuery(con2, "SELECT * FROM housing.hmda_tract_denied_mort
            select(activity_year, state_code, geoid, census_tract, loan_purpose, occupancy_type, derived_loan_product_type, derived_dwelling_category, derived_ethnicity, derived_race) %>%
   filter(derived_dwelling_category != 'Multifamily:Site-Built' & derived_dwelling_category != 'Multifamily:Manufactured' &
            derived_loan_product_type != 'Conventional:Subordinate Lien' & derived_loan_product_type != 'FHA:Subordinate Lien' &
-           derived_loan_product_type != 'FSA/RHS:Subordinate Lien' & derived_loan_product_type != 'VA:Subordinate Lien'  &
-           str_detect(geoid, "^06")) %>%      # select records where geoid begins with '06'
+           derived_loan_product_type != 'FSA/RHS:Subordinate Lien' & derived_loan_product_type != 'VA:Subordinate Lien'  & 
+           occupancy_type == "1" & str_detect(geoid, "^06")) %>%      # select records where geoid begins with '06'
            mutate(state_code = replace(state_code, str_detect(state_code, "CA"), "06")) %>%  # replace state_code in those records with '06'
            select(state_code, geoid, census_tract, derived_ethnicity, derived_race) 
 
@@ -74,7 +74,7 @@ loans_2019_20 <- dbGetQuery(con2, "SELECT * FROM housing.hmda_tract_loans_origin
   filter(derived_dwelling_category != 'Multifamily:Site-Built' & derived_dwelling_category != 'Multifamily:Manufactured' &
            derived_loan_product_type != 'Conventional:Subordinate Lien' & derived_loan_product_type != 'FHA:Subordinate Lien' &
            derived_loan_product_type != 'FSA/RHS:Subordinate Lien' & derived_loan_product_type != 'VA:Subordinate Lien'  &
-           str_detect(geoid, "^06")) %>%      # select records where geoid begins with '06'
+           occupancy_type == "1" & str_detect(geoid, "^06")) %>%      # select records where geoid begins with '06'
           mutate(state_code = replace(state_code, str_detect(state_code, "CA"), "06")) %>%
           select(state_code, geoid, census_tract, derived_ethnicity, derived_race) 
 # head(loans_2019_20)
@@ -361,7 +361,7 @@ View(city_table)
 county_table_name <- "arei_hous_denied_mortgages_county_2023"
 state_table_name <- "arei_hous_denied_mortgages_state_2023"
 city_table_name <- "arei_hous_denied_mortgages_city_2023"
-indicator <- "Denied Mortgages out of all Loan Applications (%). Subgroups with fewer than 15 applications (loans originated) are excluded. This data is"
+indicator <- "Denied Mortgages out of all Loan Applications (%). Subgroups with fewer than 15 applications (loans originated) are excluded. County/state tables use v4 methodology, city table uses v5 methodology (owner-occupied only). This data is"
 source <- "HMDA (2019-2020) https://ffiec.cfpb.gov/data-browser/"
 rc_schema <- 'v5'
 

@@ -1,4 +1,4 @@
-## Subprime Mortgage Loans ##
+## Subprime Mortgage Loans for RC v5 ##
 
 ## Set up ----------------------------------------------------------------
 #install packages if not already installed
@@ -23,82 +23,58 @@ library(jsonlite)
 library(rlist)
 library(httr)
 library(curl)
-
 options(scipen = 999) # disable scientific notation
 
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
 con2 <- connect_to_db("rda_shared_data")
-
-
 setwd("W:/Data/Housing/HMDA/Subprime/2013-2017")
 
-
-
-# Data Dictionary: https://files.consumerfinance.gov/hmda-historic-data-dictionaries/lar_record_codes.pdf
-
-## Data-set used in the past for ALL applications: mortgages
-#hmda_2017_5yr_all_applications <- dbGetQuery(con, "SELECT * FROM data.hmda_2017_5yr_all_applications")
-
-
-
-# Import Data -------------------------------------------------------------
-city_list <- dbGetQuery(con, "SELECT * FROM v5.arei_race_multigeo") %>% filter(geolevel == "place") %>% select(geoid, name, geolevel)
+# Import subprime data
 hmda_2017_5yr_subprime_mortgages <- dbGetQuery(con, "SELECT * FROM data.hmda_2017_5yr_subprime_mortgages")
-crosswalk_2017 <- dbGetQuery(con2, "SELECT * FROM crosswalks.ct_place_2017")
 
-# make empty string NA
-#hmda_2017_5yr_all_applications <- hmda_2017_5yr_all_applications %>% mutate_all(na_if,"") 
+# Create rda_shared_data all applications table -------------------------------------------------------------
+# df_2013 <- read_csv("hmda_2013_ca_all-records_codes.csv")
+# df_2014 <- read_csv("hmda_2014_ca_all-records_codes.csv")
+# df_2015 <- read_csv("hmda_2015_ca_all-records_codes.csv")
+# df_2016 <- read_csv("hmda_2016_ca_all-records_codes.csv")
+# df_2017 <- read_csv("hmda_2017_ca_all-records_codes.csv")
+# df_applications <- rbind(df_2013, df_2014,df_2015, df_2016, df_2017)
 
-#df_2013 <- read_csv("hmda_2013_ca_all-records_codes.csv")
-#df_2014 <- read_csv("hmda_2014_ca_all-records_codes.csv")
-#df_2015 <- read_csv("hmda_2015_ca_all-records_codes.csv")
-#df_2016 <- read_csv("hmda_2016_ca_all-records_codes.csv")
-#df_2017 <- read_csv("hmda_2017_ca_all-records_codes.csv")
-
-#df_applications <- rbind(df_2013, df_2014,df_2015, df_2016, df_2017)
-
-# export incarceration  to rda shared table ------------------------------------------------------------
+# export all applications to rda shared table ------------------------------------------------------------
 ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
-table_schema <- "housing"
-table_name <- "hmda_2017_5yr_all_applications"
-table_comment_source <- "ALL Home Mortgage Disclosure Act (HMDA) records including applications, denials, originations, institution purchases "
-table_source <- "HMDA historic Data: https://www.consumerfinance.gov/data-research/hmda/historic-data/"
+# table_schema <- "housing"
+# table_name <- "hmda_2017_5yr_all_applications"
+# table_comment_source <- "ALL Home Mortgage Disclosure Act (HMDA) records including applications, denials, originations, institution purchases"
+# table_source <- "HMDA historic Data: https://www.consumerfinance.gov/data-research/hmda/historic-data/. Raw data: W:/Data/Housing/HMDA/Subprime/2013-2017/hmda_xxxx_ca_all-records_codes.csv."
+# table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
+# dbWriteTable(con2, c(table_schema, table_name), df_applications, overwrite = FALSE, row.names = FALSE)
 
-#dbWriteTable(con2, c(table_schema, table_name), df_applications, overwrite = FALSE, row.names = FALSE)
+# send table comment to database
+# dbSendQuery(conn = con2, table_comment)  
 
-df_applications <- dbGetQuery(con2, "SELECT * FROM housing.hmda_2017_5yr_all_applications")
-
-
-
-
-# Filter for home purchases, first liean, one to four family home, Owner Occupancy, Loan originated --------
+df_applications <- dbGetQuery(con2, "SELECT * FROM housing.hmda_2017_5yr_all_applications")  # comment out above after table created, instead import from postgres
 
 
-### Not Sure about Actions Taken filter. In the past, denied mortgage filters the all applications data to also include denied applications (actions taken == "3") but this filter didn't make sense to me.
-### See Here:https://catalystcalifornia.sharepoint.com/:w:/r/sites/Portal/_layouts/15/guestaccess.aspx?e=JfdyVT&share=Ecss3zc6jEhBjzWmqRp1aA0BdDmcwnx03RJWhp2uROzcCg
-### filter would gives us same observations as this data. data.hmda_2017_5yr_all_applications <- dbGetQuery(con, "SELECT * FROM data.hmda_2017_5yr_all_applications")
-
-df_applications <- df_applications %>% filter(lien_status == "1" & property_type == "1" & loan_purpose == "1" & owner_occupancy == "1") %>% filter(action_taken %in% c("1"))
+# Filter for home purchases, first lien, one-to-four family home, Owner Occupancy, Loan originated --------
+##### Metadata: https://ffiec.cfpb.gov/documentation/publications/loan-level-datasets/lar-data-fields/
+df_applications <- df_applications %>% filter(lien_status == "1" & property_type == "1" & loan_purpose == "1" & owner_occupancy == "1" & action_taken %in% c("1"))
 
 
 # Add Census Tract GEOID Column ------------------------------------------- 
-
-## change text fields to integer, remove period
-df_applications$census_tract_number = as.integer(gsub("\\.", "", df_applications$census_tract_number)) 
-
-
-## paste leading characters to census tract code
-df_applications <- df_applications %>% mutate(length = str_count(county_code, "[0-9]"),
+## paste leading zeros to county_code
+df_applications_ <- df_applications %>% mutate(length = str_count(county_code, "[0-9]"),
                                                                         county_code = case_when(
                                                                           length == 1 ~ paste0("0600", county_code),
                                                                           length == 2 ~ paste0("060", county_code),
                                                                           length == 3 ~ paste0("06", county_code),
                                                                         )) 
-df_applications$census_tract_number <- sprintf("%06d", df_applications$census_tract_number)
 
-df_applications$ct_geoid <- paste(df_applications$county_code, df_applications$census_tract_number, sep= "")
+## create ct_geoid field
+# ct_nchar <- as.data.frame(nchar(df_applications$census_tract_number))  # check if ct numbers are all same length or if some need leading/trailing zeros
+df_applications_$ct_geoid <- paste0(df_applications_$county_code, df_applications_$census_tract_number) 
+df_applications_$ct_geoid = gsub("\\.", "", df_applications_$ct_geoid)
 
 
 # merge with cross-walk
@@ -217,10 +193,11 @@ geoid = place_geoid
 )
 
 # merge with city and name
+city_list <- places(state = 'CA', year = 2017, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, LSAD, ALAND, AWATER)) %>% st_drop_geometry()
+crosswalk_2017 <- dbGetQuery(con2, "SELECT * FROM crosswalks.ct_place_2017")
 df_city<- df_city %>% left_join(city_list) %>% rename(geoname = name) %>% select(geoid,geoname, geolevel, everything())
 
 # filter geoids where city did not match to census tract geoid
-
 df_city <- df_city %>% filter(!is.na(geoid))
 
 # County Calculations -----------------------------------------------------
