@@ -1,5 +1,9 @@
-## Foreclosures per 10k Owner-Occupied Households (WA) for RC v4
+## Foreclosures per 10k Owner-Occupied Households (WA) for RC v5
 ######## Due to using a different population basis for WA (owner households), this is not a good script to use as a WA template. ##############
+
+##install packages if not already installed ------------------------------
+list.of.packages <- c("dplyr","data.table","sf","tigris","readr","tidyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 
 #Load libraries
 library(data.table)
@@ -26,7 +30,6 @@ con <- connect_to_db("rda_shared_data")
 #set source for RC Functions script
 source("W:/RDA Team/R/Functions/Cnty_St_Wt_Avg_Functions.R")
 
-
 # export foreclosure to rda shared table ------------------------------------------------------------
 ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 # foreclosure <- read_excel("W:/Data/Housing/Foreclosure/Foreclosure - Dataquick/Original Data/AdvanceProj 081122.xlsx", sheet = 2, skip = 5)
@@ -39,8 +42,7 @@ source("W:/RDA Team/R/Functions/Cnty_St_Wt_Avg_Functions.R")
 # dbWriteTable(con2, c(table_schema, table_name), foreclosure, overwrite = FALSE, row.names = FALSE)
 
 #load data and clean-----
-foreclosure <- dbGetQuery(con, "SELECT * FROM housing.dataquick_tract_2010_22_foreclosures")
-
+foreclosure <- dbGetQuery(con, "SELECT * FROM housing.dataquick_tract_2010_22_foreclosures") # comment out table creation above, and import data from pgadmin
 
 num_qtrs = 20   # update depending on how many data yrs you are working with
 foreclosure <- foreclosure %>% select(-matches('2010|2011|2012|2013|2014|2015|2016|2022')) %>%
@@ -64,7 +66,6 @@ ca <- ca[,1:2]
 ca$NAME <- gsub(" County, California", "", ca$NAME)
 names(ca) <- c("geoid", "geoname")
 View(ca)
-
 
 
 ############# COUNTY CALCS ##################
@@ -125,8 +126,6 @@ names(e) <- c('sub_id', 'target_id', 'geolevel', 'total_sub_pop', 'black_sub_pop
 pop_df <- e %>% left_join(c, by = "target_id")
 
 ###################################
-
-
 ##### EXTRA STEP: Calc avg quarterly foreclosures per 10k pop by tract bc WA avg should be calc'd using this, not avg # of foreclosures
 ind_df <- ind_df %>% left_join(pop_df %>% select(sub_id, total_sub_pop), by = "sub_id") %>% 
   mutate(indicator = (avg_foreclosure / total_sub_pop) * 10000)
@@ -241,9 +240,6 @@ city_wa <- wt_avg(pct_df)        # calc weighted average and apply reliability s
 city_wa <- city_wa %>% left_join(select(places, c(GEOID, NAME)), by = c("target_id" = "GEOID"))  # add in target geolevel names
 city_wa <- city_wa %>% rename(target_name = NAME) %>% select(-c(geometry)) %>% mutate(geolevel = 'city')  # change NAME to target_name, drop geometry, add geolevel
 
-
-
-
 ############ JOIN CITY, COUNTY & STATE WA TABLES  ##################
 wa_all <- union(wa, ca_wa) %>% union(city_wa)
 wa_all <- rename(wa_all, geoid = target_id, geoname = target_name)   # rename columns for RC functions
@@ -300,11 +296,10 @@ county_table_name <- "arei_hous_foreclosure_county_2023"
 state_table_name <- "arei_hous_foreclosure_state_2023"
 city_table_name <- "arei_hous_foreclosure_city_2023"
 indicator <- "Foreclosures per 10k owner households by race (WA). The data is"
-source <- "DataQuick (2017-2021), purchased from DQNews and raced via weighted average using ACS 2016-20 data"
+source <- "DataQuick (2017-2021), purchased from DQNews and raced via weighted average using ACS 2017-21 data (city); ACS 2016-20 (county/state)"
 rc_schema <- 'v5'
 
 #send tables to postgres
-
 #to_postgres(county_table, state_table)
-city_to_postgres(city_table)
+#city_to_postgres(city_table)
 dbDisconnect(con)
