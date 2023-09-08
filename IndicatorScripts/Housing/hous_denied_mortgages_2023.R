@@ -362,7 +362,7 @@ county_table_name <- "arei_hous_denied_mortgages_county_2023"
 state_table_name <- "arei_hous_denied_mortgages_state_2023"
 city_table_name <- "arei_hous_denied_mortgages_city_2023"
 indicator <- "Denied Mortgages out of all Loan Applications (%). Subgroups with fewer than 15 applications (loans originated) are excluded. This data is"
-source <- "HMDA (2019-2020) https://ffiec.cfpb.gov/data-browser/. County/state uses v4 filtering, city uses v5 filtering"
+source <- "HMDA (2019-2020) https://ffiec.cfpb.gov/data-browser/"
 rc_schema <- 'v5'
 
 #send tables to postgres
