@@ -31,8 +31,6 @@ con <- connect_to_db("racecounts")
 con2 <- connect_to_db("rda_shared_data")
 setwd("W:/Data/Housing/HMDA/Subprime/2013-2017")
 
-# Import subprime data
-hmda_2017_5yr_subprime_mortgages <- dbGetQuery(con, "SELECT * FROM data.hmda_2017_5yr_subprime_mortgages")
 
 # Create rda_shared_data all applications table -------------------------------------------------------------
 # df_2013 <- read_csv("hmda_2013_ca_all-records_codes.csv")
@@ -64,7 +62,7 @@ df_applications <- df_applications %>% filter(lien_status == "1" & property_type
 
 # Add Census Tract GEOID Column ------------------------------------------- 
 ## paste leading zeros to county_code
-df_applications_ <- df_applications %>% mutate(length = str_count(county_code, "[0-9]"),
+df_applications <- df_applications %>% mutate(length = str_count(county_code, "[0-9]"),
                                                                         county_code = case_when(
                                                                           length == 1 ~ paste0("0600", county_code),
                                                                           length == 2 ~ paste0("060", county_code),
@@ -73,101 +71,84 @@ df_applications_ <- df_applications %>% mutate(length = str_count(county_code, "
 
 ## create ct_geoid field
 # ct_nchar <- as.data.frame(nchar(df_applications$census_tract_number))  # check if ct numbers are all same length or if some need leading/trailing zeros
-df_applications_$ct_geoid <- paste0(df_applications_$county_code, df_applications_$census_tract_number) 
-df_applications_$ct_geoid = gsub("\\.", "", df_applications_$ct_geoid)
+df_applications$ct_geoid <- paste0(df_applications$county_code, df_applications$census_tract_number) 
+df_applications$ct_geoid = gsub("\\.", "", df_applications$ct_geoid)
 
 
 # merge with cross-walk
-
 ## There are some duplicates but that's okay because a census tract can belong in multiple places.
-
+crosswalk_2017 <- dbGetQuery(con2, "SELECT * FROM crosswalks.ct_place_2017")
 df_applications_crosswalk <- df_applications %>% left_join(crosswalk_2017)
 
+###### subprime data ### -------------------------------------------------------------------------
+# Import subprime data
+subprime_mortgages <- dbGetQuery(con, "SELECT * FROM data.hmda_2017_5yr_subprime_mortgages")
 
-##### subprime data ###
-
-# Filter for home purchases, first lien, one to four family home, Owner Occupancy, Loan originated --------
-
-hmda_2017_5yr_subprime_mortgages <- hmda_2017_5yr_subprime_mortgages%>% filter(lien_status == "1" & property_type == "1" & loan_purpose == "1" & owner_occupancy == "1") %>% filter(action_taken %in% c("1"))
+# Filter for home purchases, first lien, one-to-four family homea, Owner-Occupancy, Loan originated --------
+subprime_mortgages <- subprime_mortgages %>% filter(lien_status == "1" & property_type == "1" & loan_purpose == "1" & owner_occupancy == "1" & action_taken %in% c("1"))
 
 # Add Census Tract GEOID Column ------------------------------------------- 
-hmda_2017_5yr_subprime_mortgages$census_tract_number = as.integer(gsub("\\.", "", hmda_2017_5yr_subprime_mortgages$census_tract_number)) 
+# ct_nchar <- as.data.frame(nchar(subprime_mortgages$census_tract_number))  # check if ct numbers are all same length or if some need leading/trailing zeros
+subprime_mortgages$ct_nchar <- nchar(subprime_mortgages$census_tract_number)
+temp <- select(subprime_mortgages, census_tract_number, ct_geoid, ct_nchar)
+subprime_mortgages <- subprime_mortgages %>% mutate(length = str_count(census_tract_number, "[0-9]"),
+                                              county_code = case_when(
+                                                length == 2 ~ paste0("00", census_tract_number, "00"),
+                                                length == 2 ~ paste0("060", census_tract_number),
+                                                length == 3 ~ paste0("06", census_tract_number),
+                                              )) 
 
-hmda_2017_5yr_subprime_mortgages$census_tract_number <- sprintf("%06d",hmda_2017_5yr_subprime_mortgages$census_tract_number)
-
-hmda_2017_5yr_subprime_mortgages$ct_geoid <- paste(hmda_2017_5yr_subprime_mortgages$county_fips, hmda_2017_5yr_subprime_mortgages$census_tract_number, sep= "")
+subprime_mortgages$ct_geoid <- paste0(subprime_mortgages$county_fips, subprime_mortgages$census_tract_number) 
+subprime_mortgages$ct_geoid = gsub("\\.", "", subprime_mortgages$ct_geoid)
 
 # merge with cross-walk
-
 ## There are some duplicates but that's okay because a census tract can belong in multiple places.
-
-hmda_2017_5yr_subprime_mortgages_crosswalk <- hmda_2017_5yr_subprime_mortgages %>% left_join(crosswalk_2017)
-
-
+subprime_mortgages_crosswalk <- subprime_mortgages %>% left_join(crosswalk_2017)
 
 # Function to calculate total and race calculations -----------------------
-
-#### Look at data dictionary:https://files.consumerfinance.gov/hmda-historic-data-dictionaries/lar_record_codes.pdf
-
+#### data dictionary: https://files.consumerfinance.gov/hmda-historic-data-dictionaries/lar_record_codes.pdf
 calculations <- function(df,geolevel,column) {
 ## total 
-total <- df %>% filter(!applicant_ethnicity %in% c("3", "4")) %>% group_by(applicant_ethnicity) %>% 
-   filter(if(any(applicant_ethnicity == 2)) applicant_race_1 != 6 else TRUE)  %>% group_by({{geolevel}}) %>% summarize(total_observations = n())
+total <- df %>% group_by(applicant_ethnicity) %>% 
+   filter(if(any(applicant_ethnicity == 2)) applicant_race_1 != 6 else TRUE) %>% group_by({{geolevel}}) %>% summarize(total_observations = n())
     
 ## nh white
-
-nh_white <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "5" & is.na(applicant_race_2))  %>% group_by({{geolevel}}) %>% summarize(nh_white_observations = n())
+nh_white <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "5" & is.na(applicant_race_2)) %>% group_by({{geolevel}}) %>% summarize(nh_white_observations = n())
 
 ## nh asian
-
-nh_asian <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "2" & is.na(applicant_race_2))  %>% group_by({{geolevel}}) %>% summarize(nh_asian_observations = n())
+nh_asian <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "2" & is.na(applicant_race_2)) %>% group_by({{geolevel}}) %>% summarize(nh_asian_observations = n())
 
 ## nh black
+nh_black <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "3" & is.na(applicant_race_2)) %>% group_by({{geolevel}}) %>% summarize(nh_black_observations = n())
 
-nh_black <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "3" & is.na(applicant_race_2))  %>% group_by({{geolevel}}) %>% summarize(nh_black_observations = n())
+## all pacisl 
+pacisl <- df %>% filter(applicant_race_1 == "4") %>% group_by({{geolevel}}) %>% summarize(pacisl_observations  = n())
 
-## pacisl 
-
-pacisl <- df %>% filter(applicant_race_1 == "4" & is.na(applicant_race_2))  %>% group_by({{geolevel}}) %>% summarize(pacisl_observations  = n())
-
-## aian
-
-aian <- df %>% filter(applicant_race_1 == "1" & is.na(applicant_race_2))  %>% group_by({{geolevel}}) %>% summarize(aian_observations = n())
+## all aian
+aian <- df %>% filter(applicant_race_1 == "1") %>% group_by({{geolevel}}) %>% summarize(aian_observations = n())
 
 ## nh two or more
-
-nh_twoormor  <- df %>% filter(applicant_ethnicity == "2" & !is.na(applicant_race_1) & !is.na(applicant_race_2))  %>% group_by({{geolevel}}) %>% summarize(nh_twoormor_observations = n())
+nh_twoormor <- df %>% filter(applicant_ethnicity == "2" & !is.na(applicant_race_1) & !is.na(applicant_race_2)) %>% group_by({{geolevel}}) %>% summarize(nh_twoormor_observations = n())
 
 ## latino
+latino <- df %>% filter(applicant_ethnicity == "1") %>% group_by({{geolevel}}) %>% summarize(latino_observations = n())
 
-latino <- df %>% filter(applicant_ethnicity == "1")  %>% group_by({{geolevel}}) %>% summarize(latino_observations = n())
-
-
-z <- total %>% full_join(nh_white) %>% full_join(nh_asian) %>% full_join(nh_black) %>% full_join(pacisl) %>% full_join(aian) %>% full_join(nh_twoormor) %>% full_join(latino)  %>% rename_all(
-      funs(
-        stringr::str_replace_all(., 'observations', column)
+z <- total %>% full_join(nh_white) %>% full_join(nh_asian) %>% full_join(nh_black) %>% full_join(pacisl) %>% full_join(aian) %>% full_join(nh_twoormor) %>% full_join(latino) %>% rename_all(
+      funs(stringr::str_replace_all(., 'observations', column)
       ))
 
 return(z)
 }
 
 
-
 # City Calculations -------------------------------------------------------
-
-## Function ## 
-
 applications_city <- calculations(df = df_applications_crosswalk, geolevel =  place_geoid, column = 'applications')
-
-subprime_city <- calculations(df = hmda_2017_5yr_subprime_mortgages_crosswalk, geolevel = place_geoid,  column = 'subprime')
-
+subprime_city <- calculations(df = subprime_mortgages_crosswalk, geolevel = place_geoid,  column = 'subprime')
 
 ## Combine applications with subprime
-
 df_city_merged <- applications_city %>% full_join(subprime_city)
 
 ## screen for <75 applications then calculate rates
-
 threshold <- 75
 
 df_city <- df_city_merged %>% mutate(
@@ -207,7 +188,7 @@ df_city <- df_city %>% filter(!is.na(geoid))
 ### not using cross-walk data-frame because of potential duplicates. Using original which already has county code
 applications_county <- calculations(df = df_applications, geolevel = county_code, column = 'applications') 
 
-subprime_county <- calculations(df = hmda_2017_5yr_subprime_mortgages, geolevel = county_fips,  column = 'subprime') %>% rename(county_code = county_fips)
+subprime_county <- calculations(df = subprime_mortgages, geolevel = county_fips,  column = 'subprime') %>% rename(county_code = county_fips)
 
 ## Combine applications with subprime
 
@@ -218,7 +199,7 @@ df_county <- applications_county %>% full_join(subprime_county) %>% rename(geoid
 
 applications_state <- calculations(df = df_applications, geolevel = state_code, column = 'applications') %>% mutate(state_code = as.character(paste("0",state_code, sep= "")))
 
-subprime_state <- calculations(df = hmda_2017_5yr_subprime_mortgages, geolevel = state_fips,  column = 'subprime') %>% rename(state_code = state_fips)
+subprime_state <- calculations(df = subprime_mortgages, geolevel = state_fips,  column = 'subprime') %>% rename(state_code = state_fips)
 
 df_state <- applications_state %>% full_join(subprime_state) %>% rename(geoid = state_code)
 
