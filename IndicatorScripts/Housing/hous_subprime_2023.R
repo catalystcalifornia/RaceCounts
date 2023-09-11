@@ -84,22 +84,64 @@ df_applications_crosswalk <- df_applications %>% left_join(crosswalk_2017)
 # Import subprime data
 subprime_mortgages <- dbGetQuery(con, "SELECT * FROM data.hmda_2017_5yr_subprime_mortgages")
 
-# Filter for home purchases, first lien, one-to-four family homea, Owner-Occupancy, Loan originated --------
-subprime_mortgages <- subprime_mortgages %>% filter(lien_status == "1" & property_type == "1" & loan_purpose == "1" & owner_occupancy == "1" & action_taken %in% c("1"))
-
 # Add Census Tract GEOID Column ------------------------------------------- 
-# ct_nchar <- as.data.frame(nchar(subprime_mortgages$census_tract_number))  # check if ct numbers are all same length or if some need leading/trailing zeros
-subprime_mortgages$ct_nchar <- nchar(subprime_mortgages$census_tract_number)
-temp <- select(subprime_mortgages, census_tract_number, ct_geoid, ct_nchar)
-subprime_mortgages <- subprime_mortgages %>% mutate(length = str_count(census_tract_number, "[0-9]"),
-                                              county_code = case_when(
-                                                length == 2 ~ paste0("00", census_tract_number, "00"),
-                                                length == 2 ~ paste0("060", census_tract_number),
-                                                length == 3 ~ paste0("06", census_tract_number),
-                                              )) 
+### first explored subprime tract numbers ### For ex: check if ct numbers are all same length or if some need leading/trailing zeros, some cts have decimals etc.
+# tracts <- tracts(state = 'CA', year = 2017, cb = TRUE) %>% select(-c(STATEFP, TRACTCE, AFFGEOID, NAME, LSAD, ALAND, AWATER)) %>% st_drop_geometry()
 
-subprime_mortgages$ct_geoid <- paste0(subprime_mortgages$county_fips, subprime_mortgages$census_tract_number) 
-subprime_mortgages$ct_geoid = gsub("\\.", "", subprime_mortgages$ct_geoid)
+# relocate ct column and calc length of ct column
+subprime_clean <- subprime_mortgages %>% relocate(census_tract_number, .after = last_col()) %>% mutate(ct_nchar = str_count(census_tract_number, "[0-9]")) 
+
+# split census_tract_number: digits before "." and digits after "."
+subprime_clean[c('ct_1', 'ct_2')] <- str_split_fixed(subprime_clean$census_tract_number, '\\.', 2)  
+
+# add leading zeroes to cts WITHOUT decimals
+subprime_clean <- subprime_clean %>% mutate(ct_geoid = case_when(ct_2 == '' & ct_nchar == 1 ~ paste0("0000", census_tract_number),
+                                             ct_2 == '' & ct_nchar == 2 ~ paste0("000", census_tract_number),
+                                             ct_2 == '' & ct_nchar == 3 ~ paste0("00", census_tract_number),
+                                             ct_2 == '' & ct_nchar == 4 ~ paste0("0", census_tract_number),
+                                             ct_2 == '' & ct_nchar == 5 ~ paste0("0", census_tract_number),
+                                             )) # there are 115 rows where ct_geoid is NA where ct_2 == '', this is bc census_tract_number is NA
+# add leading zeroes to cts WITH decimals
+subprime_clean <- subprime_clean %>% mutate(ct_geoid = case_when(is.na(ct_geoid) & nchar(ct_1) == 1 ~ paste0("0000", ct_1),
+                                             is.na(ct_geoid) & nchar(ct_1) == 2 ~ paste0("000", ct_1),
+                                             is.na(ct_geoid) & nchar(ct_1) == 3 ~ paste0("00", ct_1),
+                                             is.na(ct_geoid) & nchar(ct_1) == 4 ~ paste0("0", ct_1),
+                                             is.na(ct_geoid) & nchar(ct_1) == 5 ~ paste0("0", ct_1),
+                                             .default = as.character(subprime_clean$ct_geoid)
+                                             )) 
+# add trailing zeroes
+subprime_clean <- subprime_clean %>% mutate(ct_geoid = case_when(nchar(ct_2) == 1 ~ paste0(ct_geoid, ct_2, "0"),
+                                             nchar(ct_2) == 2 ~ paste0(ct_geoid, ct_2),
+                                             ct_2 == "" & !is.na(ct_geoid) ~ paste0(ct_geoid, "00"),
+                                             .default = as.character(subprime_clean$ct_geoid)
+                            ))
+
+# add county fips prefix
+subprime_clean <- subprime_clean %>% mutate(ct_geoid = case_when(nchar(ct_geoid) == 7 ~ paste0(county_fips, ct_geoid),
+                                             .default = as.character(subprime_clean$ct_geoid)
+                 )) # there are 115 rows where ct_geoid is NA bc census_tract_number is NA
+
+subprime_clean <- subprime_clean %>% select(-c(ct_nchar, ct_1, ct_2))
+
+# export clean subprime rda_shared_data table
+## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+# table_schema <- "housing"
+# table_name <- "hmda_tract_subprime_mortgages_2013_17"
+# table_comment_source <- "This table is the same as racecounts.hmda_2017_5yr_subprime_mortgages, but with a newly added ct_geoid field which is cleaned up/properly formatted tract fips codes. See: W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\IndicatorScripts\\Housing\\hous_subprime_2023.R. Raw data was originally downloaded from this URL which is no longer available: https://www.consumerfinance.gov/data-research/hmda/explore#!/as_of_year=2017,2016,2015,2014,2013&state_code-1=6&action_taken=1&rate_spread!=null&section=filters. On that page just added years 2013-17, chose the state of California, left loan originated selected (under loan), and chose YES to is it a higher-priced loan? (also under loan). Saved as W:\\Project\\RACE COUNTS\\Data\\Postgres Tables and Views\\county and state views\\2017\\subprime_county_2017\\hmda_2013_17_subprime.csv"
+# table_source <- "HMDA 2013-2017"
+# table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
+# dbWriteTable(con2, c(table_schema, table_name), subprime_clean, overwrite = FALSE, row.names = FALSE)
+
+# send table comment to database
+# dbSendQuery(conn = con2, table_comment)  
+
+df_subprime <- dbGetQuery(con2, "SELECT * FROM housing.hmda_tract_subprime_mortgages_2013_17")  # comment out above after table created, instead import from postgres
+
+
+
+# Filter for home purchases, first lien, one-to-four family home, Owner-Occupancy, Loan originated --------
+subprime_clean <- subprime_clean %>% filter(lien_status == "1" & property_type == "1" & loan_purpose == "1" & owner_occupancy == "1" & action_taken %in% c("1"))
+
 
 # merge with cross-walk
 ## There are some duplicates but that's okay because a census tract can belong in multiple places.
