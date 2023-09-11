@@ -37,10 +37,13 @@ education_tables <- lapply(setNames(paste0("select * from v5.", education_list),
 # create column with indicator name
 education_tables  <- map2(education_tables, names(education_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
 
+```{r}
+education_tables$arei_educ_suspension_district_2023
+```
 
 
 # rename column 
-education_tables_short <- lapply(education_tables, function(x) x%>% select(dist_geoid, district_name, disparity_z, performance_z, indicator))
+education_tables_short <- lapply(education_tables, function(x) x%>% select(dist_id, district_name, disparity_z, performance_z, indicator))
 
 
 education_tables_updated <-
@@ -55,7 +58,7 @@ education_tables_updated <-
 
 
 # only select columns we want
-education_tables_updated <- lapply(education_tables_updated, function(x) x%>% select(dist_geoid, district_name, ends_with("disp_z"), ends_with("perf_z")))
+education_tables_updated <- lapply(education_tables_updated, function(x) x%>% select(dist_id, district_name, ends_with("disp_z"), ends_with("perf_z")))
 
 
 # make into df
@@ -66,7 +69,7 @@ education_tables_df <- education_tables_updated  %>% reduce(full_join) %>% arran
 crosswalk <- dbGetQuery(con, "SELECT * FROM v5.arei_city_county_district_table")
 
 # merge cross-walk
-education_tables_df_crosswalk <- crosswalk %>% select(city_id, city_name, dist_geoid, district_name) %>% left_join(education_tables_df, by = "dist_geoid") %>% select(city_id, city_name, ends_with("z"))
+education_tables_df_crosswalk <- crosswalk %>% select(city_id, city_name, dist_geoid, district_name) %>% rename(dist_id = dist_geoid) %>% left_join(education_tables_df, by = "dist_id") %>% select(city_id, city_name, ends_with("z"))
 
 # pivot longer and wider
 education_tables_avg <- education_tables_df_crosswalk  %>% pivot_longer(
@@ -120,6 +123,18 @@ arei_race_multigeo <- dbGetQuery(con, "SELECT geoid, name, geolevel  FROM v5.are
 city_tables_df <- city_tables_updated  %>% reduce(full_join) %>% arrange(city_id) %>% distinct(city_id, .keep_all = TRUE) %>% left_join(education_tables_avg) %>% left_join(arei_race_multigeo) %>% select(city_id, city_name, everything())
 
 
+
+# cap perf_z and disp_z values  at 3.5 
+city_tables_capped <- city_tables_df %>% mutate(across(ends_with("disp_z"), 
+             ~ case_when(. > 3.5 ~ 3.5, 
+                       . < -3.5 ~ -3.5,
+                       TRUE ~ .))) %>% 
+  
+  mutate(across(ends_with("perf_z"), 
+             ~ case_when(. > 3.5 ~ 3.5, 
+                       . < -3.5 ~ -3.5,
+                       TRUE ~ .)))
+
 # 6 indicators don't have a city name
 #arei_race_multigeo %>% filter(
 #city_id %in% c("0607379", "0610559", "0633633", "0662868", "0675168", "0675588")
@@ -153,15 +168,14 @@ hous_count <- length(grep("hous", indicators$.))
 educ_count <- length(grep("educ", educ_indicators$.))
 
 
-
 # make separate data-frames for all
-crim <- city_tables_df %>% select(city_id, city_name, starts_with("arei_crim"), perf_na, disp_na) %>% mutate(crim_count = crim_count) 
-demo <- city_tables_df %>% select(city_id, city_name, starts_with("arei_demo"), perf_na, disp_na) %>% mutate(demo_count = demo_count) 
-econ <- city_tables_df %>% select(city_id, city_name, starts_with("arei_econ"), perf_na, disp_na) %>% mutate(econ_count = econ_count) 
-hben <- city_tables_df %>% select(city_id, city_name, starts_with("arei_hben"), perf_na, disp_na) %>% mutate(hben_count = hben_count) 
-hlth <- city_tables_df %>% select(city_id, city_name, starts_with("arei_hlth"), perf_na, disp_na) %>% mutate(hlth_count = hlth_count) 
-hous <- city_tables_df %>% select(city_id, city_name, starts_with("arei_hous"), perf_na, disp_na) %>% mutate(hous_count = hous_count) 
-educ <- city_tables_df %>% select(city_id, city_name, starts_with("arei_educ"), perf_na, disp_na)   %>% mutate(educ_count = educ_count) 
+crim <- city_tables_capped %>% select(city_id, city_name, starts_with("arei_crim")) %>% mutate(crim_count = crim_count) 
+demo <- city_tables_capped %>% select(city_id, city_name, starts_with("arei_demo")) %>% mutate(demo_count = demo_count) 
+econ <- city_tables_capped %>% select(city_id, city_name, starts_with("arei_econ")) %>% mutate(econ_count = econ_count) 
+hben <- city_tables_capped %>% select(city_id, city_name, starts_with("arei_hben")) %>% mutate(hben_count = hben_count) 
+hlth <- city_tables_capped %>% select(city_id, city_name, starts_with("arei_hlth")) %>% mutate(hlth_count = hlth_count) 
+hous <- city_tables_capped %>% select(city_id, city_name, starts_with("arei_hous")) %>% mutate(hous_count = hous_count) 
+educ <- city_tables_capped %>% select(city_id, city_name, starts_with("arei_educ"))   %>% mutate(educ_count = educ_count) 
 
 # now calculate average disparity/performance z-score and use weight
 
@@ -189,6 +203,21 @@ calculate_city_weighted_z <- function(x,y,z) {
       disp_z =  ends_with("disp_z"),
       perf_z = ends_with("perf_z")
     )
+    
+     
+  # Cap Issue Index z-scores at |2| More info: https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=feyI80
+  x <- x %>% mutate(
+          disp_z = case_when(
+            disp_z > 2 ~ 2,
+            disp_z < -2 ~ -2,
+            TRUE ~ disp_z)
+        ) %>%
+        mutate (
+          perf_z = case_when(
+            perf_z > 2 ~ 2,
+            perf_z < -2 ~ -2,
+            TRUE ~ perf_z)
+        )
     
     return(x)
   }
@@ -222,13 +251,27 @@ calculate_city_weighted_z <- function(x,y,z) {
   
   x <- x %>% left_join(perf_avg, by="city_id")
   
-  ## IF THERE IS AN INDICATOR THRESHOLD, APPL THIS HERE ( USE IFELSE STATEMENT: LOOK AT LINE 162 OF RC_INDEX_FUNCTIONS)
+  ##ISSUE THRESHOLD
   x <-  x %>% mutate(
-    disp_z =  ifelse(disp_values_count < z, NA, disp_avg * (1/y)),
-    perf_z = ifelse(perf_values_count < z, NA,perf_avg * (1/y)),
+    disp_z =  ifelse(disp_values_count < z, NA, disp_avg),
+    perf_z = ifelse(perf_values_count < z, NA,perf_avg),
     
   )
   
+  # Cap Issue Index z-scores at |2| More info: https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=feyI80
+  x <- x %>% mutate(
+          disp_z = case_when(
+            disp_z > 2 ~ 2,
+            disp_z < -2 ~ -2,
+            TRUE ~ disp_z)
+        ) %>%
+        mutate (
+          perf_z = case_when(
+            perf_z > 2 ~ 2,
+            perf_z < -2 ~ -2,
+            TRUE ~ perf_z)
+        )
+ 
   # select columns with average weighted z-score, then rename to reflect issue area
   x %>% select(city_id, ends_with("count"), disp_z, perf_z) 
   
@@ -269,9 +312,6 @@ all_index <- crim_index %>% select(city_id, ends_with("z")) %>% left_join(
 
 
 # Final function: overall index
-issue_area_threshold <- 3 # place must have at least 3 perf/disp z-scores or it will be supressed
-indicator_threshold <- 12
-
 calculate_city_index <- function(x,y,z) {
   
   # count performance z-scores
@@ -302,22 +342,42 @@ calculate_city_index <- function(x,y,z) {
   
   x <- x %>% left_join(perf_avg, by="city_id")
   
-  ## IF THERE IS AN INDICATOR THRESHOLD, APPLY THIS HERE ( USE IFELSE STATEMENT: LOOK AT LINE 162 OF RC_INDEX_FUNCTIONS)
+  ## ISSUE AREA THRESHOLD, INDICATOR THRESHOLD AND cap
   x <-  x %>% mutate(
     disparity_z =  ifelse(disp_values_count < y, NA, disp_avg),
-    performance_z = ifelse(perf_values_count < y, NA, perf_avg),
-    screening =  ifelse(all_indicators_disp_count >=z, 1, 0) 
-    
-  )
+    performance_z = ifelse(perf_values_count < y, NA, perf_avg)) %>%
+     mutate(
+    disparity_z =  ifelse(all_indicators_disp_count <=z, NA, disp_avg),
+    performance_z = ifelse(all_indicators_disp_count <=z, NA, perf_avg)
+) %>%
+    mutate(
+          disparity_z = case_when(
+            disparity_z > 1 ~ 1,
+            disparity_z < -1 ~ -1,
+            TRUE ~ disparity_z)
+        ) %>%
+        mutate (
+          performance_z = case_when(
+             performance_z > 1 ~ 1,
+             performance_z < -1 ~ -1,
+            TRUE ~  performance_z)
+        )
+
+  
+ 
+  
   
   # select columns with average weighted z-score, then rename to reflect issue area
-  x %>% select(city_id, city_name, screening, ends_with("count"), disparity_z, performance_z, ends_with("disp_z"), ends_with("perf_z")) 
+  x %>% select(city_id, city_name, ends_with("count"), disparity_z, performance_z, ends_with("disp_z"), ends_with("perf_z")) 
   
 }
 
+
+issue_area_threshold <- 3 # place must have at least 3 perf/disp z-scores or it will be supressed
+indicator_threshold <- 12
+
 index_table_final_screen <-  calculate_city_index(all_index, issue_area_threshold, indicator_threshold) 
 
-`
 
 # Export to postgres ------------------------------------------------------
 table_name <- "arei_composite_index_city_2023"
