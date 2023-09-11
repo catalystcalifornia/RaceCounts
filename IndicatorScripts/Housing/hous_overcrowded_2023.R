@@ -492,7 +492,7 @@ if (!is.na(pop_threshold) & is.na(cv_threshold)) {
 }
 
 df <- select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"))
-
+df <- distinct(df, geoid, .keep_all = TRUE)
 ############## CALCULATE RACE COUNTS STATS AND SEND FINAL TABLES TO POSTGRES##############
 
 #set source for RC Functions script

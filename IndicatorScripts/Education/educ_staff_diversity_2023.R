@@ -116,7 +116,7 @@ df_district <- df %>% group_by(countycode, countyname, districtcode, districtnam
 
 #create rows for county and state
 df_district$aggregatelevel <- "D"
-df_county <- df_district %>% ungroup() %>% group_by(countycode, countyname, ethnicgroup) %>%  select(-c(districtcode,districtname,aggregatelevel))%>%  mutate(raw = n()) %>% unique()
+df_county <- df_district %>% ungroup() %>% group_by(countycode, countyname, ethnicgroup) %>%  select(-c(districtcode,districtname,aggregatelevel))%>%  mutate(raw = sum(raw, na.rm=TRUE)) %>% unique()
 df_county$districtcode <- NA
 df_county$districtname <- NA
 df_county$aggregatelevel <- "C"
@@ -128,7 +128,7 @@ df_district_county <- left_join(x=df_district_county,y=ca,by=c("countyname"="geo
 # View(df_district_county)
 
 # add the state data -----
-df_state <- df_district %>% ungroup() %>% group_by(ethnicgroup) %>% select(-c(countycode,districtcode,countyname,districtname,aggregatelevel)) %>% mutate(raw = n()) %>% unique()
+df_state <- df_district %>% ungroup() %>% group_by(ethnicgroup) %>% select(-c(countycode,districtcode,countyname,districtname,aggregatelevel)) %>% mutate(raw = sum(raw)) %>% unique()
 df_state$districtcode <- NA
 df_state$districtname <- NA
 df_state$countycode <- NA
