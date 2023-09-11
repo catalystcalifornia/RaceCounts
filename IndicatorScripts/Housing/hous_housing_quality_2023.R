@@ -90,13 +90,13 @@ df_calcs <- df %>% rename(
   moe_num_incomplete_kitchen = B25052_003m) %>%
   
   mutate(
-    pct_incomplete_heating = ifelse(total_universe == 0, 0, num_incomplete_heating/ total_universe * 100),
+    pct_incomplete_heating = ifelse(total_universe == 0, NA, num_incomplete_heating/ total_universe * 100),
     
-    pct_incomplete_plumbing= ifelse(total_universe == 0, 0, num_incomplete_plumbing/ total_universe * 100),
+    pct_incomplete_plumbing= ifelse(total_universe == 0, NA, num_incomplete_plumbing/ total_universe * 100),
     
-    pct_incomplete_kitchen= ifelse(total_universe == 0, 0, num_incomplete_kitchen/ total_universe * 100))
-
-
+    pct_incomplete_kitchen= ifelse(total_universe == 0, NA, num_incomplete_kitchen/ total_universe * 100))
+ 
+  
 ### Commented out: no longer need this because we are not calculating MOE anymore
 # Calculate places tenure and low quality housing
 
@@ -489,9 +489,10 @@ rc_schema <- 'v5'
 
 indicator <- "Average percent of households that lack kitchen, plumbing, and heat in comparison to total households."
 
-source <- "American Community Survey 5-Year Estimates Tables B25048, B25052, B25003B-I, B25040     Created 7-20-23"
+source <- "American Community Survey 5-Year Estimates (2017-21) Tables B25048, B25052, B25003B-I, B25040     Created 7-20-23
+W:/Project/RACE COUNTS/2023_v5/Housing/Documentation/QA_Housing_Quality_City.docx"
 
-#city_to_postgres(city_table)
+# city_to_postgres(city_table)
 
 
 # Previous City Views ------------------------------------------------------
