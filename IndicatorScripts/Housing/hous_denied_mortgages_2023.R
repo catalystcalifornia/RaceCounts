@@ -361,7 +361,7 @@ View(city_table)
 county_table_name <- "arei_hous_denied_mortgages_county_2023"
 state_table_name <- "arei_hous_denied_mortgages_state_2023"
 city_table_name <- "arei_hous_denied_mortgages_city_2023"
-indicator <- "Denied Mortgages out of all Loan Applications (%). Subgroups with fewer than 15 applications (loans originated) are excluded. County/state tables use v4 methodology, city table uses v5 methodology (owner-occupied only). This data is"
+indicator <- "Denied Mortgages out of all Loan Applications (%). Subgroups with fewer than 15 loans originated are excluded. County/state tables use v4 methodology, city table uses v5 methodology (owner-occupied only). This data is"
 source <- "HMDA (2019-2020) https://ffiec.cfpb.gov/data-browser/"
 rc_schema <- 'v5'
 
