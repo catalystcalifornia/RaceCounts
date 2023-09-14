@@ -221,7 +221,7 @@ df_city <- df_city %>% left_join(city_list, by=c("geoid" = "GEOID")) %>% rename(
 ### not using data-frames joined to xwalks because of duplicates. Use imported postgres tables: df_applications / df_subprime
 ### County ###
 applications_county <- calculations(df = df_applications, geoid = county_code, column = 'applications') 
-subprime_county <- calculations(df = subprime_mortgages, geoid = county_fips,  column = 'subprime') %>% rename(county_code = county_fips)
+subprime_county <- calculations(df = df_subprime, geoid = county_fips,  column = 'subprime') %>% rename(county_code = county_fips)
 
 ## Combine applications with subprime
 df_county <- applications_county %>% full_join(subprime_county) %>% rename(geoid = county_code) %>% drop_na(geoid)
@@ -229,7 +229,7 @@ df_county <- applications_county %>% full_join(subprime_county) %>% rename(geoid
 
 ### State ###
 applications_state <- calculations(df = df_applications, geoid = state_code, column = 'applications') %>% mutate(state_code = as.character(paste("0",state_code, sep= "")))
-subprime_state <- calculations(df = subprime_mortgages, geoid = state_fips,  column = 'subprime') %>% rename(state_code = state_fips)
+subprime_state <- calculations(df = df_subprime, geoid = state_fips,  column = 'subprime') %>% rename(state_code = state_fips)
 
 ## Combine applications with subprime
 df_state <- applications_state %>% full_join(subprime_state) %>% rename(geoid = state_code)

@@ -107,6 +107,7 @@ officials <- dbGetQuery(con, "SELECT * FROM economic.acs_eeo_2014_18") %>% selec
 
 #### Please note: the documentation says that its using not hispanic or Latino race alone variables
 officials <- officials %>% dplyr::rename("geoid" = "GEOID", "geoname" = "GEONAME", 
+
                            "total_raw" = "Total_Number",
                            "latino_raw" = "Latinx, Any Race_Number",
                            "white_raw" = "Non-Latinx White Alone_Number",
@@ -124,6 +125,7 @@ officials <- officials %>% dplyr::rename("geoid" = "GEOID", "geoname" = "GEONAME
                            "asian_moe" = "MG_ERROR_NH_Asian_Number",
                            "pacisl_moe" = "MG_ERROR_NH_PI_Number", 
                            "other_moe" = "MG_ERROR_NH_Remainder_Number")
+
 officials_1 <- officials %>% select(-c(ends_with("_moe"))) %>% pivot_longer(cols=c(ends_with("_raw")), names_to="raceeth", values_to='raw')
 officials_1$raceeth <- gsub("_raw", "", officials_1$raceeth)
 
@@ -190,6 +192,7 @@ df <- df %>% group_by(geoid, geoname, raceeth) %>%
   mutate(rate = ((raw/pop) * pop_base),
          rate_moe = moe_prop(raw, pop, raw_moe, pop_moe) * pop_base,
          rate_cv = ((rate_moe/1.645)/rate) * pop_base) # calculate the coefficient of variation for the rate
+
 View(df)
 
 ############## CV CALCS AND EXPORT TO RDA_SHARED_DATA ##############
@@ -203,8 +206,9 @@ df_screened <- df %>%
 mutate(rate = ifelse(pop < pop_threshold, NA, rate),
        raw = ifelse(pop < pop_threshold, NA, raw))
 
+
 df_wide <- df_screened %>% ungroup() %>% 
-pivot_wider(names_from = raceeth, values_from = c(raw, pop, rate, raw_moe, pop_moe, rate_moe, rate_cv), names_glue = "{raceeth}_{.value}")
+  pivot_wider(names_from = raceeth, values_from = c(raw, pop, rate, raw_moe, pop_moe, rate_moe, rate_cv), names_glue = "{raceeth}_{.value}")
 
 
 d <- select(df_wide, geoid, geoname, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), ends_with("_cv"), everything(), -ends_with("_moe"))
@@ -242,4 +246,6 @@ rc_schema <- "v5"
 
 
 #send tables to postgres
+
 # city_to_postgres()
+
