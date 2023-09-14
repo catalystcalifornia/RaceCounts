@@ -107,23 +107,23 @@ officials <- dbGetQuery(con, "SELECT * FROM economic.acs_eeo_2014_18") %>% selec
 
 #### Please note: the documentation says that its using not hispanic or Latino race alone variables
 officials <- officials %>% dplyr::rename("geoid" = "GEOID", "geoname" = "GEONAME", 
-                           "Total_raw" = "Total_Number",
-                           "Latino_raw" = "Latinx, Any Race_Number",
-                           "White_raw" = "Non-Latinx White Alone_Number",
-                           "Black_raw" = "Non-Latinx Black Alone_Number",
-                           "AIAN_raw" = "Non-Latinx AIAN Alone_Number",
-                           "Asian_raw" = "Non-Latinx Asian_Number",
-                           "NHPI_raw" = "Non-Latinx PI_Number",
-                           "Other_raw" = "Remainder Non-Latinx Pop_Number",
-                           
-                           "Total_moe" = "MG_ERROR_Total_Number", 
-                           "Latino_moe" = "MG_ERROR_Latinx, Any Race_Number",
-                           "White_moe" = "MG_ERROR_NH_White_Number",
-                           "Black_moe" = "MG_ERROR_NH_Black_Number",
-                           "AIAN_moe" = "MG_ERROR_NH_AIAN_Number",
-                           "Asian_moe" = "MG_ERROR_NH_Asian_Number",
-                           "NHPI_moe" = "MG_ERROR_NH_PI_Number", 
-                           "Other_moe" = "MG_ERROR_NH_Remainder_Number")
+                                         "Total_raw" = "Total_Number",
+                                         "Latino_raw" = "Latinx, Any Race_Number",
+                                         "White_raw" = "Non-Latinx White Alone_Number",
+                                         "Black_raw" = "Non-Latinx Black Alone_Number",
+                                         "AIAN_raw" = "Non-Latinx AIAN Alone_Number",
+                                         "Asian_raw" = "Non-Latinx Asian_Number",
+                                         "NHPI_raw" = "Non-Latinx PI_Number",
+                                         "Other_raw" = "Remainder Non-Latinx Pop_Number",
+                                         
+                                         "Total_moe" = "MG_ERROR_Total_Number", 
+                                         "Latino_moe" = "MG_ERROR_Latinx, Any Race_Number",
+                                         "White_moe" = "MG_ERROR_NH_White_Number",
+                                         "Black_moe" = "MG_ERROR_NH_Black_Number",
+                                         "AIAN_moe" = "MG_ERROR_NH_AIAN_Number",
+                                         "Asian_moe" = "MG_ERROR_NH_Asian_Number",
+                                         "NHPI_moe" = "MG_ERROR_NH_PI_Number", 
+                                         "Other_moe" = "MG_ERROR_NH_Remainder_Number")
 officials_1 <- officials %>% select(-c(ends_with("_moe"))) %>% pivot_longer(cols=c(ends_with("_raw")), names_to="raceeth", values_to='raw')
 officials_1$raceeth <- gsub("_raw", "", officials_1$raceeth)
 
@@ -192,8 +192,8 @@ df <- df %>% group_by(geoid, geoname, raceeth) %>%
 
 df <- df %>% 
   mutate(rate_moe = ifelse(is.na(pop_moe), NA, ifelse(df$raw_moe^2 - (df$raw / df$pop)^2 * df$pop_moe^2 < 0, #removed this part  | is.na(raw_moe)
-         (df$raw_moe^2 + (df$raw/df$pop)^2 * df$pop_moe^2)^(1/2)/ df$pop * 100,
-         (df$raw_moe^2 - (df$raw / df$pop)^2 * df$pop_moe^2)^(1/2) / df$pop * 100)))
+                                                      (df$raw_moe^2 + (df$raw/df$pop)^2 * df$pop_moe^2)^(1/2)/ df$pop * 100,
+                                                      (df$raw_moe^2 - (df$raw / df$pop)^2 * df$pop_moe^2)^(1/2) / df$pop * 100)))
 
 df <- df %>% 
   mutate(rate_cv = ifelse(rate==0, NA, rate_moe/1.645/rate*100)) # calculate the coefficient of variation for the rate
@@ -206,11 +206,11 @@ View(df)
 
 #Screen data: Convert rate to NA if its greater than the cv_threshold or less than the pop_threshold
 df_screened <- df %>% 
-mutate(rate = ifelse(rate_cv > cv_threshold, NA, ifelse(pop < pop_threshold, NA, rate)),
-       raw = ifelse(rate_cv > cv_threshold, NA, ifelse(pop < pop_threshold, NA, raw))) 
+  mutate(rate = ifelse(rate_cv > cv_threshold, NA, ifelse(pop < pop_threshold, NA, rate)),
+         raw = ifelse(rate_cv > cv_threshold, NA, ifelse(pop < pop_threshold, NA, raw))) 
 
 df_wide <- df_screened %>% ungroup() %>% 
-pivot_wider(names_from = raceeth, values_from = c(raw, pop, rate, raw_moe, pop_moe, rate_moe, rate_cv), names_glue = "{raceeth}_{.value}")
+  pivot_wider(names_from = raceeth, values_from = c(raw, pop, rate, raw_moe, pop_moe, rate_moe, rate_cv), names_glue = "{raceeth}_{.value}")
 
 d <- select(df_wide, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"))
 
@@ -265,4 +265,3 @@ rc_schema <- "v5"
 
 #send tables to postgres
 to_postgres()
-
