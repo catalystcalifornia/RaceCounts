@@ -1,4 +1,4 @@
-#### Composite Index Index (z-score) for RC v5 ####
+#### Composite Index (z-score) for RC v5 ####
 
 #install packages if not already installed
 list.of.packages <- c("tidyverse","RPostgreSQL","sf")
@@ -19,19 +19,15 @@ con <- connect_to_db("racecounts")
 
 
 # Education Section -------------------------------------------------------
-
+## These indicators require extra prep bc they are at school district not city level
 # pull in list of tables in racecounts.v5
 rc_list = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(schema = "v5"))$table, function(x) slot(x, 'name'))))
 
-## Pull in education indicators (ends with school district)
-
-# filter for only city level indicator tables
+## Pull in city (or district) level education indicators (ends with school district)
 education_list <- filter(rc_list, grepl("_district_2023",table))
 education_list <- education_list [order(education_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
 
-
-
-# import all tables on city_list
+# import all tables on education_list
 education_tables <- lapply(setNames(paste0("select * from v5.", education_list), education_list), DBI::dbGetQuery, conn = con)
 
 # create column with indicator name
@@ -41,10 +37,8 @@ education_tables  <- map2(education_tables, names(education_tables), ~ mutate(.x
 education_tables$arei_educ_suspension_district_2023
 ```
 
-
 # rename column 
 education_tables_short <- lapply(education_tables, function(x) x%>% select(dist_id, district_name, disparity_z, performance_z, indicator))
-
 
 education_tables_updated <-
   lapply(names(education_tables_short), function(i){
@@ -56,30 +50,26 @@ education_tables_updated <-
     x
   })
 
-
 # only select columns we want
 education_tables_updated <- lapply(education_tables_updated, function(x) x%>% select(dist_id, district_name, ends_with("disp_z"), ends_with("perf_z")))
 
-
 # make into df
 education_tables_df <- education_tables_updated  %>% reduce(full_join) %>% arrange(district_name)
-
 
 # pull in cross-walk
 crosswalk <- dbGetQuery(con, "SELECT * FROM v5.arei_city_county_district_table")
 
 # merge cross-walk
-education_tables_df_crosswalk <- crosswalk %>% select(city_id, city_name, dist_geoid, district_name) %>% rename(dist_id = dist_geoid) %>% left_join(education_tables_df, by = "dist_id") %>% select(city_id, city_name, ends_with("z"))
+education_tables_df_crosswalk <- crosswalk %>% select(city_id, city_name, dist_id, district_name) %>% left_join(education_tables_df, by = "dist_id") %>% select(city_id, city_name, ends_with("z"))
 
 # pivot longer and wider
-education_tables_avg <- education_tables_df_crosswalk  %>% pivot_longer(
-  cols = ends_with("z"),
-  names_to = "indicator",
-  values_to = "value"
-) %>% group_by(city_id, city_name, indicator)  %>% mutate(mean = mean(value, na.rm=TRUE)) %>% select(-value) %>% ungroup() %>% distinct(city_id, indicator, mean) %>% pivot_wider(names_from = "indicator", values_from = "mean") %>% mutate_all(~ifelse(is.nan(.), NA, .))
-
-
-
+education_tables_avg <- education_tables_df_crosswalk %>% pivot_longer(
+                                                                        cols = ends_with("z"),
+                                                                        names_to = "indicator",
+                                                                        values_to = "value" ) %>%
+                        group_by(city_id, city_name, indicator) %>% mutate(mean = mean(value, na.rm=TRUE)) %>% 
+                        select(-value) %>% ungroup() %>% distinct(city_id, city_name, indicator, mean) %>% 
+                        pivot_wider(names_from = "indicator", values_from = "mean") %>% mutate_all(~ifelse(is.nan(.), NA, .))
 
 
 ## Add the rest of the indicators  ------------------------------------------------------

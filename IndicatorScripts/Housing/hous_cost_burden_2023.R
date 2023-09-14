@@ -2,7 +2,7 @@
 
 # Install packages if not already installed
 list.of.packages <- c("data.table", "stringr", "dplyr", "RPostgreSQL", "dbplyr", 
-                      "srvyr", "tidycensus", "rpostgis",  "tidyr", "readxl")
+                      "srvyr", "tidycensus", "rpostgis",  "tidyr", "readxl", "httr", "jsonlite")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
@@ -18,16 +18,24 @@ library(tidycensus)
 library(rpostgis)
 library(tidyr)
 library(readxl)
+library(httr2)
+library(jsonlite)
+library(curl)
 
 ######################Data set-up######################
 
-# setwd("W:/Project/RACE COUNTS/2022_v5/Housing/Data/")
+# Use CHAS API to pull data See more: https://www.huduser.gov/portal/dataset/chas-api.html
+source("W:\\RDA Team\\R\\credentials_source.R")
+Sys.getenv("hud_chas_api_key") # confirms value saved to .renviron
+state_url <- paste0("https://www.huduser.gov/hudapi/public/chas?type=2&year=2016-2020&stateId=6?apiKey=",hud_chas_api_key)
+state_data <- curl_fetch_memory(state_url)
+(myjsondata <- jsonlite::prettify(rawToChar(state_data$content)))
+(myjsondata_df <- jsonlite::fromJSON(myjsondata) %>% 
+    as.data.frame())
+state_data <- httr2::request(state_url)
 
-# data file path (for countys)
-root <- "W:/Data/Housing/HUD/CHAS/"
-
-# Load the CHAS data and dictionary
-
+"https://www.huduser.gov/hudapi/public/chas?type=5&year=2016-2020&stateId=6&entityId=chas/listCities/{6}"
+  
 state_data <- fread(paste0(root, "2014thru2018-040-csv/040/Table9.csv"), header = TRUE, data.table = FALSE)
 state_data$geoid <- substring(state_data$geoid,8)
 state_data$geolevel <- "state"
