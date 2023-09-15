@@ -2,7 +2,7 @@
 
 # Install packages if not already installed
 list.of.packages <- c("data.table", "stringr", "dplyr", "RPostgreSQL", "dbplyr", 
-                      "srvyr", "tidycensus", "rpostgis",  "tidyr", "readxl", "httr", "jsonlite")
+                      "srvyr", "tidycensus", "rpostgis",  "tidyr", "readxl", "httr", "jsonlite", "sf")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
@@ -18,79 +18,88 @@ library(tidycensus)
 library(rpostgis)
 library(tidyr)
 library(readxl)
-library(httr2)
-library(jsonlite)
-library(curl)
-
-######################Data set-up######################
-
-# Use CHAS API to pull data See more: https://www.huduser.gov/portal/dataset/chas-api.html
-source("W:\\RDA Team\\R\\credentials_source.R")
-Sys.getenv("hud_chas_api_key") # confirms value saved to .renviron
-state_url <- paste0("https://www.huduser.gov/hudapi/public/chas?type=2&year=2016-2020&stateId=6?apiKey=",hud_chas_api_key)
-state_data <- curl_fetch_memory(state_url)
-(myjsondata <- jsonlite::prettify(rawToChar(state_data$content)))
-(myjsondata_df <- jsonlite::fromJSON(myjsondata) %>% 
-    as.data.frame())
-state_data <- httr2::request(state_url)
-
-"https://www.huduser.gov/hudapi/public/chas?type=5&year=2016-2020&stateId=6&entityId=chas/listCities/{6}"
-  
-state_data <- fread(paste0(root, "2014thru2018-040-csv/040/Table9.csv"), header = TRUE, data.table = FALSE)
-state_data$geoid <- substring(state_data$geoid,8)
-state_data$geolevel <- "state"
-# View(state_data)
-
-county_data <- fread(paste0(root, "2014thru2018-050-csv/050/Table9.csv"), header = TRUE, data.table = FALSE)
-county_data$geoid <- substring(county_data$geoid,8)
-county_data$geolevel <- "county"
-# View(county_data)
-
-city_data <- fread(paste0(root, "2014thru2018-160-csv/160/Table9.csv"), header = TRUE, data.table = FALSE)
-city_data$geoid <- substring(city_data$geoid,8)
-city_data$geolevel <- "city"
-# View(city_data)
-
-dict <- read_excel(paste0(root, "2014thru2018-050-csv/050/CHAS data dictionary 14-18.xlsx"), sheet = "Table 9")
-# View(dict)
-
-state_data['cnty'] <- NA
-state_data['place'] <-  NA
-county_data['place'] <-  NA
-city_data['cnty'] <- NA
-ppl <- rbind(state_data, county_data, city_data)
-# View(ppl)
+library(sf)
 
 
-# export housing cost burden  to rda shared table ------------------------------------------------------------
+############# Prep rda_shared_data table ######################
+# root <- "W:/Data/Housing/HUD/CHAS/2016-2020/"
+# 
+# state_data <- fread(paste0(root, "2016thru2020-040-csv/Table9.csv"), header = TRUE, data.table = FALSE)
+# state_data$geolevel <- "state"
+# # View(state_data)
+# 
+# county_data <- fread(paste0(root, "2016thru2020-050-csv/Table9.csv"), header = TRUE, data.table = FALSE)
+# county_data$geolevel <- "county"
+# # View(county_data)
+# 
+# city_data <- fread(paste0(root, "2016thru2020-160-csv/Table9.csv"), header = TRUE, data.table = FALSE)
+# city_data$geolevel <- "city"
+# # View(city_data)
+# 
+# tract_data <- fread(paste0(root, "2016thru2020-140-csv/Table9.csv"), header = TRUE, data.table = FALSE)
+# tract_data$geolevel <- "tract"
+# # View(tract_data)
+# 
+# dict <- read_excel(paste0(root, "/CHAS-data-dictionary-16-20.xlsx"), sheet = "Table 9")
+# # View(dict)
+# 
+# state_data['cnty'] <- NA
+# state_data['place'] <- NA
+# state_data['tract'] <- NA
+# county_data['place'] <- NA
+# county_data['tract'] <- NA
+# tract_data['place'] <- NA
+# city_data['cnty'] <- NA
+# city_data['tract'] <- NA
+# 
+# chas <- rbind(state_data, county_data, city_data, tract_data) %>% relocate(geolevel, .after = "name")
+# chas_ca <- filter(chas, (grepl("US06",geoid))) # keep only CA: census tracts, cities, counties, state
+# 
+# # clean geoids
+# chas_ca <- chas_ca %>% mutate(geoid = case_when(
+#                                                 geolevel == 'state' ~ str_sub(chas_ca$geoid, start= -2),
+#                                                 geolevel == 'county' ~ str_sub(chas_ca$geoid, start= -5),
+#                                                 geolevel == 'city' ~ str_sub(chas_ca$geoid, start= -7),
+#                                                 geolevel == 'tract' ~ str_sub(chas_ca$geoid, start= -11)
+#                                               ))
+# View(chas_ca)
+
+# export chas data to rda shared table ------------------------------------------------------------
 ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+# source("W:\\RDA Team\\R\\credentials_source.R")
 # con <- connect_to_db("rda_shared_data")
 # table_schema <- "housing"
-# table_name <- "hud_chas_cost_burden_multigeo_2014_18"
-# table_comment_source <- "The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive.  "
-# table_source <- "HUD CHAS (2014-2018) https://www.huduser.gov/portal/datasets/cp.html#2006-2018_data"
+# table_name <- "hud_chas_cost_burden_multigeo_2016_20"
+# table_comment_source <- "Multigeo table including CA tracts, cities, counties, state. The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. Raw data saved here: W:\\Data\\Housing\\HUD\\CHAS\\2016-2020"
+# table_source <- "HUD CHAS (2016-2020) https://www.huduser.gov/portal/datasets/cp.html#data_2006-2020"
+# table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
 # 
-# dbWriteTable(con, c(table_schema, table_name), ppl, overwrite = FALSE, row.names = FALSE)
+# # send table and comment to postgres
+# dbWriteTable(con, c(table_schema, table_name), chas_ca, overwrite = FALSE, row.names = FALSE)
+# dbSendQuery(conn = con, table_comment)
+
+chas_data <- st_read(con, query = "SELECT * FROM housing.hud_chas_cost_burden_multigeo_2016_20 WHERE geolevel <> 'tract'")  # comment out above after table is created
 
 
+###################### Begin Analysis ######################
 # data cleaning
-ppl <- ppl %>%
-  mutate(geoname = gsub("^(.*?),.*", "\\1", ppl$name)) %>% # get county name
-  filter(substr(geoid, start = 1, stop = 2) == "06") %>% # keep only CA counties
-  select(geoid, geoname, starts_with("T9"), geolevel) # drop unneeded cols
-View(ppl)
+chas_data <- chas_data %>%
+  mutate(geoname = gsub("^(.*?),.*", "\\1", chas_data$name)) %>% # clean geonames
+  select(geoid, geoname, geolevel, starts_with("T9")) # drop unneeded cols
+View(chas_data)
+
 # make longer
-ppl <- pivot_longer(ppl, cols = starts_with("T9"), names_to = "Column Name", 
+chas_data <- pivot_longer(chas_data, cols = starts_with("T9"), names_to = "Column Name", 
                     values_to = "housingunits")
 
 # create a separate field to join.
-ppl$number <- substring(ppl$`Column Name`, first = 7)
+chas_data$number <- substring(chas_data$`Column Name`, first = 7)
 dict$number <- substring(dict$`Column Name`, first = 7)
 #Move 'number' field to first column
 dict <- select(dict, number, everything())
 
 # join race and cost burden information from data dictionary and recode
-ppl <-ppl %>% 
+chas_data <- chas_data %>% 
   left_join(dict[,c(1,4:6)], by = c("number")) %>%
   mutate(`Race/ethnicity` = recode(`Race/ethnicity`, 
                                    "Black or African-American alone, non-Hispanic" = "nh_black",
@@ -108,32 +117,28 @@ ppl <-ppl %>%
   rename(race = `Race/ethnicity`, burden = `Cost burden`)
 
 
-
-######################Begin Analysis######################
-
-# filter what you want here.
-
-ppl <- filter(ppl, burden %in% c("0.30", "30.50", "50.100"), # exclude records where burden = not_computed
+# keep rows for cost burden numeric groupings
+chas_data <- filter(chas_data, !(burden %in% c('not_computed','All')), 
               !(race %in% c("All"))) 
 
-ppl$cost_burdened <- ifelse(ppl$burden == "0.30", 0, 1) #set your definition of cost burden here
+chas_data$cost_burdened <- ifelse(chas_data$burden == "0.30", 0, 1) #set definition of cost burden here at >30%
 
-# we will need moe later.
-moe <- filter(ppl, substring(`Column Name`, 4, 6) == "moe")
+# save margins of error for later
+moe <- filter(chas_data, substring(`Column Name`, 4, 6) == "moe")
 
-ppl <- filter(ppl, !str_detect(ppl$`Column Name`, 'moe'))
+chas_data <- filter(chas_data, !str_detect(chas_data$`Column Name`, 'moe'))
 
 ### calc by race
 
 ## calculate raw number first
 costburden_race <-
-  ppl %>%
+  chas_data %>%
   # filter(!is.na(cost_burdened)) %>%
   group_by(geoid, geoname, race, cost_burdened, Tenure, geolevel) %>%  
   summarise(
     raw = sum(housingunits)) %>%       
   
-  left_join(ppl %>%                                                   
+  left_join(chas_data %>%                                                   
               group_by(geoid, geoname, race, Tenure, geolevel) %>%                                  
               summarise(pop = sum(housingunits)))
 View(costburden_race)
@@ -157,18 +162,18 @@ costburden_race <- costburden_race %>%
 
 ### calc by total
 
-## calculate proportions first
+## calculate raw number first
 costburden_tot <-
-  ppl %>%
+  chas_data %>%
   group_by(geoid, geoname, cost_burdened, Tenure, geolevel) %>%  
   summarise(
     raw = sum(housingunits)) %>%       
   
-  left_join(ppl %>%                                                   
+  left_join(chas_data %>%                                                   
               group_by(geoid, geoname, Tenure, geolevel) %>%                                  
               summarise(pop = sum(housingunits)))
 
-## calculate rate moe
+## calculate raw moe
 costburden_moe_tot <-
   moe %>%
   group_by(geoid, cost_burdened, geoname, Tenure, geolevel) %>%  
@@ -190,11 +195,11 @@ costburden_tot <- costburden_tot %>%
 ######## Prepare data for RACE COUNTS
 
 ## merge datasets
-cost_burden_county <- bind_rows(costburden_race, costburden_tot)
+cost_burden_calcs <- bind_rows(costburden_race, costburden_tot)
 
 ### get the count of non-NA values
-cost_burden_county <- 
-  cost_burden_county %>% 
+cost_burden_calcs <- 
+  cost_burden_calcs %>% 
   
   # filter only records for housing units with cost burden: change if need be
   filter(cost_burdened == 1) %>%  
@@ -204,13 +209,13 @@ cost_burden_county <-
   
   as.data.frame()
 
-cost_burden_county$Tenure <- ifelse(cost_burden_county$Tenure == "Owner occupied",
+cost_burden_calcs$Tenure <- ifelse(cost_burden_calcs$Tenure == "Owner occupied",
                                    "owner", "renter")
 
 # convert long format to wide
-cost_burden_county_rc <- 
+cost_burden_calcs_rc <- 
   
-  cost_burden_county %>% 
+  cost_burden_calcs %>% 
   
   
   # convert to wide format
@@ -219,7 +224,7 @@ cost_burden_county_rc <-
               values_from = c("raw", "pop", "rate", "rate_moe", "rate_cv"),
               names_glue = "{race}_{.value}")%>% 
               as.data.frame()
-# View(cost_burden_county_rc)
+# View(cost_burden_calcs_rc)
 
 ## Screen out values with high CVs and small populations
 
@@ -227,7 +232,7 @@ cost_burden_county_rc <-
 cv_threshold <- 35
 pop_threshold <- 100
 
-df <- cost_burden_county_rc
+df <- cost_burden_calcs_rc
 
 # Clean geo names
 df$geoname <- gsub(" County", "", df$geoname)
@@ -241,22 +246,23 @@ df[sapply(df, is.nan)] <- NA
 df[sapply(df, is.infinite)] <- NA
 
 #Screen data: Convert rate to NA if its greater than the cv_threshold or less than the pop_threshold
-df$total_rate <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_rate))
-df$nh_asian_rate <- ifelse(df$nh_asian_rate_cv > cv_threshold, NA, ifelse(df$nh_asian_pop < pop_threshold, NA, df$nh_asian_rate))
-df$nh_black_rate <- ifelse(df$nh_black_rate_cv > cv_threshold, NA, ifelse(df$nh_black_pop < pop_threshold, NA, df$nh_black_rate))
-df$nh_white_rate <- ifelse(df$nh_white_rate_cv > cv_threshold, NA, ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_rate))
-df$latino_rate <- ifelse(df$latino_rate_cv > cv_threshold, NA, ifelse(df$latino_pop < pop_threshold, NA, df$latino_rate))
-df$nh_other_rate <- ifelse(df$nh_other_rate_cv > cv_threshold, NA, ifelse(df$nh_other_pop < pop_threshold, NA, df$nh_other_rate))
-df$nh_pacisl_rate <- ifelse(df$nh_pacisl_rate_cv > cv_threshold, NA, ifelse(df$nh_pacisl_pop < pop_threshold, NA, df$nh_pacisl_rate))
-df$nh_aian_rate <- ifelse(df$nh_aian_rate_cv > cv_threshold, NA, ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_rate))
-df$total_raw <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_raw))
-df$nh_asian_raw <- ifelse(df$nh_asian_rate_cv > cv_threshold, NA, ifelse(df$nh_asian_pop < pop_threshold, NA, df$nh_asian_raw))
-df$nh_black_raw <- ifelse(df$nh_black_rate_cv > cv_threshold, NA, ifelse(df$nh_black_pop < pop_threshold, NA, df$nh_black_raw))
-df$nh_white_raw <- ifelse(df$nh_white_rate_cv > cv_threshold, NA, ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_raw))
-df$latino_raw <- ifelse(df$latino_rate_cv > cv_threshold, NA, ifelse(df$latino_pop < pop_threshold, NA, df$latino_raw))
-df$nh_other_raw <- ifelse(df$nh_other_rate_cv > cv_threshold, NA, ifelse(df$nh_other_pop < pop_threshold, NA, df$nh_other_raw))
-df$nh_pacisl_raw <- ifelse(df$nh_pacisl_rate_cv > cv_threshold, NA, ifelse(df$nh_pacisl_pop < pop_threshold, NA, df$nh_pacisl_raw))
-df$nh_aian_raw <- ifelse(df$nh_aian_rate_cv > cv_threshold, NA, ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_raw))
+    df$total_rate <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_rate))
+    df$nh_asian_rate <- ifelse(df$nh_asian_rate_cv > cv_threshold, NA, ifelse(df$nh_asian_pop < pop_threshold, NA, df$nh_asian_rate))
+    df$nh_black_rate <- ifelse(df$nh_black_rate_cv > cv_threshold, NA, ifelse(df$nh_black_pop < pop_threshold, NA, df$nh_black_rate))
+    df$nh_white_rate <- ifelse(df$nh_white_rate_cv > cv_threshold, NA, ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_rate))
+    df$latino_rate <- ifelse(df$latino_rate_cv > cv_threshold, NA, ifelse(df$latino_pop < pop_threshold, NA, df$latino_rate))
+    df$nh_other_rate <- ifelse(df$nh_other_rate_cv > cv_threshold, NA, ifelse(df$nh_other_pop < pop_threshold, NA, df$nh_other_rate))
+    df$nh_pacisl_rate <- ifelse(df$nh_pacisl_rate_cv > cv_threshold, NA, ifelse(df$nh_pacisl_pop < pop_threshold, NA, df$nh_pacisl_rate))
+    df$nh_aian_rate <- ifelse(df$nh_aian_rate_cv > cv_threshold, NA, ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_rate))
+    
+    df$total_raw <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_raw))
+    df$nh_asian_raw <- ifelse(df$nh_asian_rate_cv > cv_threshold, NA, ifelse(df$nh_asian_pop < pop_threshold, NA, df$nh_asian_raw))
+    df$nh_black_raw <- ifelse(df$nh_black_rate_cv > cv_threshold, NA, ifelse(df$nh_black_pop < pop_threshold, NA, df$nh_black_raw))
+    df$nh_white_raw <- ifelse(df$nh_white_rate_cv > cv_threshold, NA, ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_raw))
+    df$latino_raw <- ifelse(df$latino_rate_cv > cv_threshold, NA, ifelse(df$latino_pop < pop_threshold, NA, df$latino_raw))
+    df$nh_other_raw <- ifelse(df$nh_other_rate_cv > cv_threshold, NA, ifelse(df$nh_other_pop < pop_threshold, NA, df$nh_other_raw))
+    df$nh_pacisl_raw <- ifelse(df$nh_pacisl_rate_cv > cv_threshold, NA, ifelse(df$nh_pacisl_pop < pop_threshold, NA, df$nh_pacisl_raw))
+    df$nh_aian_raw <- ifelse(df$nh_aian_rate_cv > cv_threshold, NA, ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_raw))
 
 df <- df %>% relocate(ends_with("_raw"), .after = ends_with("_pop")) # reorder fields so raw/rate cols are next to each other
 
@@ -316,7 +322,7 @@ city_table_name <- "arei_hous_cost_burden_owner_city_2023"
 rc_schema <- "v5"
 
 indicator <- "The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. This data is"
-source <- "HUD CHAS (2014-2018) https://www.huduser.gov/portal/datasets/cp.html#2006-2018_data"
+source <- "HUD CHAS (2016-2020) for city, (2014-2018) for county from https://www.huduser.gov/portal/datasets/cp.html#data_2006-2020"
 
 # #send tables to postgres
 # to_postgres(county_table, state_table)
@@ -375,12 +381,11 @@ View(city_table)
 ###update info for postgres tables###
 county_table_name <- "arei_hous_cost_burden_renter_county_2023"
 state_table_name <- "arei_hous_cost_burden_renter_state_2023"
-
 city_table_name <- "arei_hous_cost_burden_renter_city_2023"
 rc_schema <- "v5"
 
 indicator <- "The percentage of rented housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. This data is"
-source <- "HUD CHAS (2014-2018) https://www.huduser.gov/portal/datasets/cp.html#2006-2018_data"
+source <- "HUD CHAS (2016-2020) for city, (2014-2018) for county from https://www.huduser.gov/portal/datasets/cp.html#data_2006-2020"
 
 # #send tables to postgres
 # to_postgres(county_table, state_table)
