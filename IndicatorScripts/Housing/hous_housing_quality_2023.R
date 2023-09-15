@@ -76,8 +76,8 @@ df_calcs <- df %>% rename(
   twoormor_moe = B25003G_001m,
   nh_white_universe = B25003H_001e,
   nh_white_universe_moe = B25003H_001m ,
-  latinx_universe = B25003I_001e,
-  latinx_universe_moe = B25003I_001m,
+  latino_universe = B25003I_001e,
+  latino_universe_moe = B25003I_001m,
   
   num_incomplete_heating = B25040_010e,
   moe_num_incomplete_heating = B25040_010m,
@@ -131,8 +131,8 @@ df_calcs <- df %>% rename(
 #twoormor_moe = B25003G_001m,
 #nh_white_universe = B25003H_001e,
 #nh_white_universe_moe = B25003H_001m ,
-#latinx_universe = B25003I_001e,
-#latinx_universe_moe = B25003I_001m,
+#latino_universe = B25003I_001e,
+#latino_universe_moe = B25003I_001m,
 
 #num_incomplete_heating = B25040_010e,
 #moe_num_incomplete_heating = B25040_010m,
@@ -358,7 +358,7 @@ df_average <- df %>% mutate(
   
   aian_rate = ifelse(!is.na(aian_heating) & is.na(aian_kitchen) & is.na(aian_plumbing) | is.na(aian_heating) & !is.na(aian_kitchen) & is.na(aian_plumbing) | is.na(aian_heating) & is.na(aian_kitchen) & !is.na(aian_plumbing), NA, (aian_heating + aian_kitchen + aian_plumbing) / 3),
   
-  latinx_rate = ifelse(!is.na(latinx_heating) & is.na(latinx_kitchen) & is.na(latinx_plumbing) | is.na(latinx_heating) & !is.na(latinx_kitchen) & is.na(latinx_plumbing) | is.na(latinx_heating) & is.na(latinx_kitchen) & !is.na(latinx_plumbing), NA, (latinx_heating + latinx_kitchen + latinx_plumbing) / 3),
+  latino_rate = ifelse(!is.na(latino_heating) & is.na(latino_kitchen) & is.na(latino_plumbing) | is.na(latino_heating) & !is.na(latino_kitchen) & is.na(latino_plumbing) | is.na(latino_heating) & is.na(latino_kitchen) & !is.na(latino_plumbing), NA, (latino_heating + latino_kitchen + latino_plumbing) / 3),
   
   
   asian_rate = ifelse(!is.na(asian_heating) & is.na(asian_kitchen) & is.na(asian_plumbing) | is.na(asian_heating) & !is.na(asian_kitchen) & is.na(asian_plumbing) | is.na(asian_heating) & is.na(asian_kitchen) & !is.na(asian_plumbing), NA, (asian_heating + asian_kitchen + asian_plumbing) / 3),
@@ -388,7 +388,7 @@ df_average <- df %>% mutate(
 
 #load_variables(year = yr, dataset = survey, cache = TRUE)  %>% filter (name %in% c("B01001_001", "B01001B_001", "B01001C_001", "B01001D_001", "B01001E_001", "B01001F_001", "B01001G_001", "B01001H_001", "B01001I_001"))
 
-# Load population estimates that match our data: total, black, aian, asian, nhpi, other, two or more, latinx, nh white ------------------------------
+# Load population estimates that match our data: total, black, aian, asian, nhpi, other, two or more, latino, nh white ------------------------------
 
 yr = 2021
 survey = "acs5"
@@ -419,7 +419,7 @@ pop2 <- pop2 %>% rename(geoid = GEOID,
                         other_count = B01001F_001e,
                         twoormor_count = B01001G_001e,
                         nh_white_count = B01001H_001e,
-                        latinx_count = B01001I_001e) %>% select(geoid, ends_with("count"))
+                        latino_count = B01001I_001e) %>% select(geoid, ends_with("count"))
 
 population_threshold = 250
 
@@ -436,7 +436,7 @@ df_screen <- df_average %>% left_join(
     pacisl_rate = ifelse(nhpi_count < population_threshold, NA, pacisl_rate),
     other_rate = ifelse(other_count < population_threshold, NA, other_rate),
     twoormor_rate = ifelse(twoormor_count < population_threshold, NA, twoormor_rate),
-    latinx_rate = ifelse(latinx_count < population_threshold, NA, latinx_rate)
+    latino_rate = ifelse(latino_count < population_threshold, NA, latino_rate)
   )
 
 # count number of rates
