@@ -19,8 +19,107 @@ library(sf)
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
+##### County Calculations ####
+##### GET PUMA-COUNTYCROSSWALK ######
+crosswalk <- st_read(con, query = "select county_id AS geoid, county_name AS geoname, puma, num_county from crosswalks.puma_county_2020")
 
 
+# Get PUMS Data -----------------------------------------------------------
+# path where my data lives (not pulling pums data from the postgres db, takes too long to run calcs that way) 
+root <- "W:/Data/Demographics/PUMS/"
+
+# Load the people PUMS data
+ppl <- fread(paste0(root, "CA_2016_2020/psam_p06.csv"), header = TRUE, data.table = FALSE, 
+             colClasses = list(character = c("PUMA", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH", "SOCP", "ESR", "AGEP")))
+
+
+
+# For this project we only wanted data for people in labor market - ages between 18 and 64
+ppl <- ppl[ppl$AGEP >= 18 & ppl$AGEP <= 64 , ]
+
+# Add state_geoid to ppl, add state_geoid to PUMA id, so it aligns with crosswalks.puma_county_2020
+ppl$state_geoid <- "06"
+ppl$puma_id <- paste0(ppl$state_geoid, ppl$PUMA)
+
+# create list of replicate weights
+repwlist = rep(paste0("PWGTP", 1:80))
+
+# join county crosswalk using left join function
+ppl <- left_join(ppl, crosswalk, by=c("puma_id" = "puma"))    # specify the field join
+
+############## Data Dictionary: W:\Data\Demographics\PUMS\CA_2016_2020\PUMS_Data_Dictionary_2016-2020.pdf ###############
+
+##### Reclassify Race/Ethnicity ########
+# check how many records there are for RACAIAN (AIAN alone/combo) versus RAC1P (AIAN alone) and same for NHPI
+#View(subset(ppl, RACAIAN =="1"))
+#View(subset(ppl, RAC1P >= 3 & ppl$RAC1P <=5))
+#View(subset(ppl, RACNH =="1" | RACPI =="1"))
+#View(subset(ppl, RAC1P == 7))
+
+source("W:/RDA Team/R/Functions/PUMS_Functions.R")
+ppl <- race_reclass(ppl)
+
+# review data 
+# table(ppl$race, useNA = "always")
+# table(ppl$race, ppl$latino, useNA = "always")
+# table(ppl$race, ppl$aian, useNA = "always")
+# table(ppl$race, ppl$pacisl, useNA = "always")
+# #table(ppl$aian, useNA = "always")
+# #table(ppl$pacisl, useNA = "always")
+
+##### Define Officials and Managers ###########
+## Tag people who are officials or managers: SOCP value starts with "11" 
+###### See p107 in W:\Data\Demographics\PUMS\CA_2016_2020\PUMS_Data_Dictionary_2016-2020.pdf
+ppl$offmgr <- 
+  case_when(
+    grepl('^11', ppl$SOCP) ~ as.integer(1),
+    TRUE ~ as.integer(0))
+
+# review
+summary(ppl$offmgr)
+
+## Code for labor force status: ESR on p53 of PUMS_Data_Dictionary_2016-2020.pdf
+table(ppl$ESR, useNA = "always")
+
+# NOTE: 'This includes 4-Armed forces, at work' and '5-Armed forces, with a job but not at work'. It excludes '6-Not in labor force'.
+ppl$emply <- as.factor(ifelse(ppl$ESR %in% c(1, 2, 3, 4, 5), "in labor force", "not in labor force")) 
+ppl <- filter(ppl, emply=='in labor force')
+
+## Factor for Officials & Managers
+ppl$indicator <- as.factor(ifelse(ppl$offmgr == 1, "officials", "not official"))
+
+## check race and officials results
+table(ppl$race, useNA ="always")
+table(ppl$indicator, useNA = "always")
+
+############### CALC COUNTY AND STATE ESTIMATES/CVS ETC. ############### 
+# Define indicator and weight variables for function
+key_indicator <- 'officials'  # update this to the indicator you are working with
+# You must use to WGTP (if you are using psam_h06.csv and want housing units, like for Low Quality Housing) or PWGTP (if you want person units, like for Connected Youth)
+weight <- 'PWGTP'           
+# You must specify the population base you want to use for the rate calc. Ex. 100 for percents, or 1000 for rate per 1k.
+pop_base <- 1000
+
+rc_state <- state_pums(ppl)
+View(rc_state)
+
+rc_county <- county_pums(ppl)
+View(rc_county)
+
+
+############ COMBINE & SCREEN COUNTY/STATE DATA ############# 
+# Define threshold variables for function
+cv_threshold <- 20          # threshold and CV must be displayed as a percentage (not decimal)
+raw_rate_threshold <- 0
+pop_threshold <- 400
+
+screened <- pums_screen(rc_state, rc_county) 
+View(screened)
+
+d <- screened %>% mutate(geolevel = ifelse(geoname=="California","State", "County"))
+
+
+##### City Calculations #####
 ## Exploring EEOC 2014-18 Place Data csv file ----
 ### NOTE: Table EEOALL4R is NOT available thru Census API, though other EEOC tables are.
 # csv <- read.csv('https://www2.census.gov/EEO_2014_2018/EEO_Tables_By_Geographic_Area_By_State/State_Place/California/EEOALL4R_160_CA.csv') # pull in data from Census FTP
@@ -107,23 +206,26 @@ officials <- dbGetQuery(con, "SELECT * FROM economic.acs_eeo_2014_18") %>% selec
 
 #### Please note: the documentation says that its using not hispanic or Latino race alone variables
 officials <- officials %>% dplyr::rename("geoid" = "GEOID", "geoname" = "GEONAME", 
-                                         "Total_raw" = "Total_Number",
-                                         "Latino_raw" = "Latinx, Any Race_Number",
-                                         "White_raw" = "Non-Latinx White Alone_Number",
-                                         "Black_raw" = "Non-Latinx Black Alone_Number",
-                                         "AIAN_raw" = "Non-Latinx AIAN Alone_Number",
-                                         "Asian_raw" = "Non-Latinx Asian_Number",
-                                         "NHPI_raw" = "Non-Latinx PI_Number",
-                                         "Other_raw" = "Remainder Non-Latinx Pop_Number",
-                                         
-                                         "Total_moe" = "MG_ERROR_Total_Number", 
-                                         "Latino_moe" = "MG_ERROR_Latinx, Any Race_Number",
-                                         "White_moe" = "MG_ERROR_NH_White_Number",
-                                         "Black_moe" = "MG_ERROR_NH_Black_Number",
-                                         "AIAN_moe" = "MG_ERROR_NH_AIAN_Number",
-                                         "Asian_moe" = "MG_ERROR_NH_Asian_Number",
-                                         "NHPI_moe" = "MG_ERROR_NH_PI_Number", 
-                                         "Other_moe" = "MG_ERROR_NH_Remainder_Number")
+
+                           "total_raw" = "Total_Number",
+                           "latino_raw" = "Latinx, Any Race_Number",
+                           "white_raw" = "Non-Latinx White Alone_Number",
+                           "black_raw" = "Non-Latinx Black Alone_Number",
+                           "aian_raw" = "Non-Latinx AIAN Alone_Number",
+                           "asian_raw" = "Non-Latinx Asian_Number",
+                           "pacisl_raw" = "Non-Latinx PI_Number",
+                           "other_raw" = "Remainder Non-Latinx Pop_Number",
+                           
+                           "total_moe" = "MG_ERROR_Total_Number", 
+                           "latino_moe" = "MG_ERROR_Latinx, Any Race_Number",
+                           "white_moe" = "MG_ERROR_NH_White_Number",
+                           "black_moe" = "MG_ERROR_NH_Black_Number",
+                           "aian_moe" = "MG_ERROR_NH_AIAN_Number",
+                           "asian_moe" = "MG_ERROR_NH_Asian_Number",
+                           "pacisl_moe" = "MG_ERROR_NH_PI_Number", 
+                           "other_moe" = "MG_ERROR_NH_Remainder_Number")
+
+# pivot longer to simplify later calculations
 officials_1 <- officials %>% select(-c(ends_with("_moe"))) %>% pivot_longer(cols=c(ends_with("_raw")), names_to="raceeth", values_to='raw')
 officials_1$raceeth <- gsub("_raw", "", officials_1$raceeth)
 
@@ -132,45 +234,45 @@ officials_2$raceeth <- gsub("_moe", "", officials_2$raceeth)
 officials_2$raw_moe <- gsub("[^[:alnum:] ]", "", officials_2$raw_moe)
 
 officials_mngrs <- full_join(officials_1, officials_2, by=c("geoid", "geoname", "raceeth"))
-View(officials_mngrs)
+# View(officials_mngrs)
 
 ### Download place data for labor force (used as the pop values) ------
-# Please Note: I downloaded the data again b/c economics.acs_5yr_2301_multigeo_2021 in rda_shared does not contain labor force data (data that starts with S2301_C02)
-#Get population estimates from Census API
-#check race variables
-# v18 <- load_variables(2018, "acs5/subject", cache = TRUE)
-# View(v18)
+#Get labor force population estimates from Census API
+#check variables
+v18_subject <- load_variables(2018, "acs5/subject", cache = TRUE) # Table DP03
+View(v18_subject)
 
 # race variables all INCLUDE Hispanic except for White which is non-hispanic
 
 cities <- get_acs(geography = "place",
-                  variables = c("S2301_C02_001", "S2301_C02_014", "S2301_C02_013","S2301_C02_019", #,"S2301_C02_012" removed white and just used nh_white
-                                "S2301_C02_018", "S2301_C02_017","S2301_C02_016","S2301_C02_015", "S2301_C02_020"), 
+                  variables = c("S2301_C01_001", "S2301_C01_014", "S2301_C01_013","S2301_C01_019", 
+                                "S2301_C01_017","S2301_C01_016","S2301_C01_015", "S2301_C01_020"), 
                   state = "CA",
                   survey = "acs5",
                   year = 2018, cache_table = TRUE)
+
+
+#total employment variables
+cities$variable <- gsub("S2301_C01_001", "total", cities$variable) 
+cities$variable <- gsub("S2301_C01_019", "latino", cities$variable) 
+cities$variable <- gsub("S2301_C01_013",  "black", cities$variable)
+cities$variable <- gsub("S2301_C01_014", "aian", cities$variable)
+cities$variable <- gsub("S2301_C01_015", "asian", cities$variable)
+cities$variable <- gsub("S2301_C01_016", "pacisl", cities$variable) #NHPI
+cities$variable <- gsub("S2301_C01_017", "other", cities$variable)
+cities$variable <- gsub("S2301_C01_020", "white", cities$variable) #white used for the calculation is going to be nh_white
+
 ##### start cleaning the data ----
 cities$NAME <- gsub(" City, California", "", cities$NAME)
 cities$NAME <- gsub(" city, California", "", cities$NAME)
 cities$NAME <- gsub(" town, California", "", cities$NAME)
 cities$NAME <- gsub(" CDP, California", "", cities$NAME)
 
-# cities$variable <- gsub("B01001H_001", "NH_White", cities$variable)
-cities$variable <- gsub("S2301_C02_001", "Total", cities$variable) 
-# cities$variable <- gsub("S2301_C02_012", "White", cities$variable) #this is white including Hispanic
-cities$variable <- gsub("S2301_C02_019", "Latino", cities$variable)
-cities$variable <- gsub("S2301_C02_013",  "Black", cities$variable)
-cities$variable <- gsub("S2301_C02_014", "AIAN", cities$variable)
-cities$variable <- gsub("S2301_C02_015", "Asian", cities$variable)
-cities$variable <- gsub("S2301_C02_016", "NHPI", cities$variable)
-cities$variable <- gsub("S2301_C02_017", "Other", cities$variable)
-cities$variable <- gsub("S2301_C02_018", "Two or More Races", cities$variable)
-cities$variable <- gsub("S2301_C02_020", "White", cities$variable) #white used for the calcuation is going to be nh_white
-
-
 cities <- cities %>% dplyr::rename("geoid" = "GEOID", "geoname" = "NAME", "raceeth" = "variable", "pop" = "estimate", "pop_moe" = "moe")
-View(cities)
+# View(cities)
 
+#since labor force is a rate make it a count
+#continue calculations
 #combine cities and officials df to calculate rate and rate moe ----
 
 #set population base
@@ -178,43 +280,46 @@ pop_base <- 1000
 
 # set thresholds     #methodology only said that it was screened for low reliability but not what number so I might remove this screening
 
-cv_threshold <- 35
-pop_threshold <- 150
-
 df <- left_join(officials_mngrs, cities, by=c("geoid", "geoname", "raceeth")) 
 
 # convert to numeric to make sure that it can be used in calculations
+df$raw <- gsub(",", "", df$raw)   #first get rid of the commas
+df$raw_moe <- gsub(",", "", df$raw_moe)  
+
+df$raw <- as.factor(df$raw) #a commenter on stackoverflow recommended converting it to factor first so that it would not creacte NAs through coercion
+df$raw_moe <- as.factor(df$raw_moe)
 df$raw <- as.numeric(df$raw)
 df$raw_moe <- as.numeric(df$raw_moe)
 
 df <- df %>% group_by(geoid, geoname, raceeth) %>%
-  mutate(rate = ((raw/pop) * pop_base)) 
+  mutate(rate = ((raw/pop) * pop_base),
+         rate_moe = moe_prop(raw, pop, raw_moe, pop_moe) * pop_base,
+         rate_cv = ((rate_moe/1.645)/rate) * pop_base) # calculate the coefficient of variation for the rate
 
-df <- df %>% 
-  mutate(rate_moe = ifelse(is.na(pop_moe), NA, ifelse(df$raw_moe^2 - (df$raw / df$pop)^2 * df$pop_moe^2 < 0, #removed this part  | is.na(raw_moe)
-                                                      (df$raw_moe^2 + (df$raw/df$pop)^2 * df$pop_moe^2)^(1/2)/ df$pop * 100,
-                                                      (df$raw_moe^2 - (df$raw / df$pop)^2 * df$pop_moe^2)^(1/2) / df$pop * 100)))
-
-df <- df %>% 
-  mutate(rate_cv = ifelse(rate==0, NA, rate_moe/1.645/rate*100)) # calculate the coefficient of variation for the rate
 View(df)
 
 ############## CV CALCS AND EXPORT TO RDA_SHARED_DATA ##############
-
+# cv_threshold <- 40 #cv screening was taken out b/c it wasn't done in the previous city update, also the cv screening screened out all of the data.
+pop_threshold <- 150
 ### calc cv's
 ## Calculate CV values for all rates - store in columns as cv_[race]_rate
 
 #Screen data: Convert rate to NA if its greater than the cv_threshold or less than the pop_threshold
 df_screened <- df %>% 
-  mutate(rate = ifelse(rate_cv > cv_threshold, NA, ifelse(pop < pop_threshold, NA, rate)),
-         raw = ifelse(rate_cv > cv_threshold, NA, ifelse(pop < pop_threshold, NA, raw))) 
+mutate(rate = ifelse(pop < pop_threshold, NA, rate),
+       raw = ifelse(pop < pop_threshold, NA, raw))
+
 
 df_wide <- df_screened %>% ungroup() %>% 
-  pivot_wider(names_from = raceeth, values_from = c(raw, pop, rate, raw_moe, pop_moe, rate_moe, rate_cv), names_glue = "{raceeth}_{.value}")
+  pivot_wider(names_from = raceeth, values_from = c(raw, pop, rate, raw_moe, pop_moe, rate_moe, rate_cv), names_glue = "{raceeth}_{.value}") %>% 
+select(geoid, geoname, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), ends_with("_cv"), everything(), -ends_with("pop_moe"), -ends_with("raw_moe")) %>% 
+  mutate(geolevel = "City")
 
-d <- select(df_wide, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"))
+d <- d %>% full_join(df_wide, by=c("geoid", "geoname", "geolevel", "total_raw", "total_rate", "latino_raw", "latino_rate", 
+                                         "pacisl_rate", "pacisl_raw", "aian_raw", "aian_rate"))
 
 ############## CALC RACE COUNTS STATS ##############
+
 #set source for RC Functions script
 source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
 
@@ -228,30 +333,45 @@ d <- calc_p_var(d) #calculate (row wise) population or sample variance. be sure 
 d <- calc_id(d) #calculate index of disparity
 View(d)
 
+
 #split STATE into separate table and format id, name columns
-state_table <- d[d$geoname == 'California', ]
+state_table <- d[d$geolevel == 'State', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
-state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
+state_table <- state_table %>% 
+  dplyr::rename("state_name" = "geoname", "state_id" = "geoid") %>% 
+  select(-c(ends_with("rate_moe"), ends_with("rate_cv"), ends_with("pop"), 
+            white_raw, black_raw, asian_raw, other_raw, 
+            white_rate, black_rate, asian_rate, other_rate, 
+            white_diff, black_diff, asian_diff, other_diff,
+            white_disparity_z, black_disparity_z, asian_disparity_z, other_disparity_z, geolevel))
 View(state_table)
 
 #remove state from county table
-county_table <- d[d$geoname != 'California', ]
+county_table <- d[d$geolevel == 'County', ]
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
-county_table <- rename(county_table, "county_id" = "geoid", "county_name" = "geoname")
+county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")%>% 
+  select(-c(ends_with("rate_moe"), ends_with("rate_cv"), ends_with("pop"), 
+            white_raw, black_raw, asian_raw, other_raw, 
+            white_rate, black_rate, asian_rate, other_rate, 
+            white_diff, black_diff, asian_diff, other_diff,
+            white_disparity_z, black_disparity_z, asian_disparity_z, other_disparity_z, 
+            white_performance_z, black_performance_z, asian_performance_z, other_performance_z,geolevel))
 View(county_table)
 
+
 #split CITY into separate table and format id, name columns
-city_table <- d[d$geolevel == 'city', ] %>% select(-c(geolevel))
+city_table <- d[d$geolevel == 'City', ]
 
 #calculate CITY z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
-city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") 
+city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") %>% 
+  select(-c(starts_with("nh_"), starts_with("num_"), starts_with("pop_"), starts_with("rate_"), starts_with("officials_"), geolevel))
 View(city_table)
 
 ###update info for postgres tables###
@@ -264,4 +384,6 @@ rc_schema <- "v5"
 
 
 #send tables to postgres
-to_postgres()
+# to_postgres()
+# city_to_postgres()
+
