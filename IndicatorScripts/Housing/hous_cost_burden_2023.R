@@ -2,7 +2,7 @@
 
 # Install packages if not already installed
 list.of.packages <- c("data.table", "stringr", "dplyr", "RPostgreSQL", "dbplyr", 
-                      "srvyr", "tidycensus", "rpostgis",  "tidyr", "readxl", "httr", "jsonlite", "sf")
+                      "srvyr", "tidycensus", "rpostgis",  "tidyr", "readxl", "sf")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
