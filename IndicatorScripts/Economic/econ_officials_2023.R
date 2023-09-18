@@ -239,8 +239,8 @@ officials_mngrs <- full_join(officials_1, officials_2, by=c("geoid", "geoname", 
 ### Download place data for labor force (used as the pop values) ------
 #Get labor force population estimates from Census API
 #check variables
-v18_subject <- load_variables(2018, "acs5/subject", cache = TRUE) # Table DP03
-View(v18_subject)
+# v18_subject <- load_variables(2018, "acs5/subject", cache = TRUE) # Table DP03
+# View(v18_subject)
 
 # race variables all INCLUDE Hispanic except for White which is non-hispanic
 
@@ -271,8 +271,6 @@ cities$NAME <- gsub(" CDP, California", "", cities$NAME)
 cities <- cities %>% dplyr::rename("geoid" = "GEOID", "geoname" = "NAME", "raceeth" = "variable", "pop" = "estimate", "pop_moe" = "moe")
 # View(cities)
 
-#since labor force is a rate make it a count
-#continue calculations
 #combine cities and officials df to calculate rate and rate moe ----
 
 #set population base
@@ -291,12 +289,13 @@ df$raw_moe <- as.factor(df$raw_moe)
 df$raw <- as.numeric(df$raw)
 df$raw_moe <- as.numeric(df$raw_moe)
 
+#calculate rate values 
 df <- df %>% group_by(geoid, geoname, raceeth) %>%
   mutate(rate = ((raw/pop) * pop_base),
          rate_moe = moe_prop(raw, pop, raw_moe, pop_moe) * pop_base,
          rate_cv = ((rate_moe/1.645)/rate) * pop_base) # calculate the coefficient of variation for the rate
 
-View(df)
+# View(df)
 
 ############## CV CALCS AND EXPORT TO RDA_SHARED_DATA ##############
 # cv_threshold <- 40 #cv screening was taken out b/c it wasn't done in the previous city update, also the cv screening screened out all of the data.
