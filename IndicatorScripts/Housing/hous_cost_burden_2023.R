@@ -19,7 +19,8 @@ library(rpostgis)
 library(tidyr)
 library(readxl)
 library(sf)
-
+source("W:\\RDA Team\\R\\credentials_source.R")
+con <- connect_to_db("rda_shared_data")
 
 ############# Prep rda_shared_data table ######################
 # root <- "W:/Data/Housing/HUD/CHAS/2016-2020/"
@@ -66,8 +67,7 @@ library(sf)
 
 # export chas data to rda shared table ------------------------------------------------------------
 ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
-# source("W:\\RDA Team\\R\\credentials_source.R")
-# con <- connect_to_db("rda_shared_data")
+
 # table_schema <- "housing"
 # table_name <- "hud_chas_cost_burden_multigeo_2016_20"
 # table_comment_source <- "Multigeo table including CA tracts, cities, counties, state. The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. Raw data saved here: W:\\Data\\Housing\\HUD\\CHAS\\2016-2020"
