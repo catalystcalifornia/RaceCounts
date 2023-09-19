@@ -34,8 +34,6 @@ asbest = 'min'            # YOU MUST UPDATE based on indicator, set to 'min' if 
 df_wide_multigeo <- st_read(con, query = "SELECT * FROM housing.acs_5yr_b25014_multigeo_2021 WHERE geolevel IN ('place', 'county', 'state')") #%>% select(-c(starts_with("b25014_")))
 
 
-
-
 ############## PRE-CALCULATION: TABLE-SPECIFIC DATA PREP ##############
 
 total_table_code = paste(table_code, "_", sep="")
@@ -70,7 +68,7 @@ names(df_wide_multigeo) <- gsub("003m", "_raw_moe", names(df_wide_multigeo))
 
 ### Extract total values to perform the various calculations needed
 totals <- df_wide_multigeo %>%
-  select(geoid, starts_with("total"))
+          select(geoid, starts_with("total"))
 
 totals <- totals %>% pivot_longer(total005e:total013e, names_to="var_name", values_to = "estimate")
 totals <- totals %>% pivot_longer(total005m:total013m, names_to="var_name2", values_to = "moe")
@@ -81,9 +79,9 @@ totals <- select(totals, -c(var_name, var_name2))
 
 ### sum the numerator columns 005e-013e (total_raw):
 total_raw_values <- totals %>%
-  select(geoid, estimate) %>%
-  group_by(geoid) %>%
-  summarise(total_raw = sum(estimate))
+          select(geoid, estimate) %>%
+          group_by(geoid) %>%
+          summarise(total_raw = sum(estimate))
 
 #### join these calculations back to df_wide_multigeo
 df_wide_multigeo <- left_join(df_wide_multigeo, total_raw_values, by = "geoid")
@@ -91,12 +89,12 @@ df_wide_multigeo <- left_join(df_wide_multigeo, total_raw_values, by = "geoid")
 ### calculate the total_raw_moe using moe_sum (need to sort MOE values first to make sure highest MOE is used in case of multiple zero estimates)
 ### methodology source is text under table on slide 52 here: https://www.census.gov/content/dam/Census/programs-surveys/acs/guidance/training-presentations/20180418_MOE.pdf
 total_raw_moes <- totals %>%
-  select(geoid, estimate, moe) %>%
-  group_by(geoid) %>%
-  arrange(desc(moe), .by_group = TRUE) %>%
-  summarise(total_raw_moe = moe_sum(moe, estimate, na.rm=TRUE))   # https://walker-data.com/tidycensus/reference/moe_sum.html
+          select(geoid, estimate, moe) %>%
+          group_by(geoid) %>%
+          arrange(desc(moe), .by_group = TRUE) %>%
+          summarise(total_raw_moe = moe_sum(moe, estimate, na.rm=TRUE))   # https://walker-data.com/tidycensus/reference/moe_sum.html
 
-#### Spot checking moe_sum() -- still need to test that the arrange function is properly sorting moes 
+#### Spot checking moe_sum() -- test that the arrange function is properly sorting moes 
 #### resulting in the right calculation if multiple zero estimates present
 
 #####  test_moe_sum <- totals[1:6, c(1, 4:5)]
@@ -104,7 +102,7 @@ total_raw_moes <- totals %>%
 ##### [1] 8632.893
 
 #####  norm(test_moe_sum$moe, type ="2")
-#####[1] 8632.893
+##### [1] 8632.893
 
 #### join these calculations back to df_wide_multigeo
 df_wide_multigeo <- left_join(df_wide_multigeo, total_raw_moes, by = "geoid")
@@ -113,24 +111,24 @@ df_wide_multigeo <- left_join(df_wide_multigeo, total_raw_moes, by = "geoid")
 total_rates <- left_join(total_raw_values, totals[, 1:2])
 total_rates$total_rate <- total_rates$total_raw/total_rates$total_pop*100
 total_rates <- total_rates %>%
-  select(geoid, total_rate) %>%
-  distinct()
+                    select(geoid, total_rate) %>%
+                    distinct()
 
 #### join these calculations back to df_wide_multigeo
 df_wide_multigeo <- left_join(df_wide_multigeo, total_rates, by = "geoid")
 
 ### calculate the moe for total_rate
 total_pop_data <- totals %>%
-  select(geoid, total_pop, total_pop_moe) %>%
-  distinct()
+                        select(geoid, total_pop, total_pop_moe) %>%
+                        distinct()
 total_rate_moes <- left_join(total_raw_values, total_raw_moes, by='geoid') %>%
-  left_join(., total_pop_data, by='geoid')
+                          left_join(., total_pop_data, by='geoid')
 total_rate_moes$total_rate_moe <- moe_prop(total_rate_moes$total_raw,    # https://walker-data.com/tidycensus/reference/moe_prop.html
                                            total_rate_moes$total_pop, 
                                            total_rate_moes$total_raw_moe, 
                                            total_rate_moes$total_pop_moe)*100
 total_rate_moes <- total_rate_moes %>%
-  select(geoid, total_rate_moe)
+                                      select(geoid, total_rate_moe)
 
 #### join these calculations back to df_wide_multigeo
 df_wide_multigeo <- left_join(df_wide_multigeo, total_rate_moes, by = "geoid")
@@ -200,8 +198,6 @@ df_wide_multigeo <- df_wide_multigeo %>%
   select(-starts_with("total0"), -ends_with("_pop_moe"))
 
 
-
-
 ############## PRE-CALCULATION: FINAL DATA PREP ##############
 # Finish up data cleaning
 # make colnames lower case
@@ -251,7 +247,6 @@ df$pacisl_raw <- ifelse(df$pacisl_rate_cv > cv_threshold, NA, ifelse(df$pacisl_p
 df$twoormor_raw <- ifelse(df$twoormor_rate_cv > cv_threshold, NA, ifelse(df$twoormor_pop < pop_threshold, NA, df$twoormor_raw))
 df$aian_raw <- ifelse(df$aian_rate_cv > cv_threshold, NA, ifelse(df$aian_pop < pop_threshold, NA, df$aian_raw))  
 
-
 df <- select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"))
 
 ############## CALCULATE RACE COUNTS STATS AND SEND FINAL TABLES TO POSTGRES##############
@@ -260,13 +255,12 @@ df <- select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), en
 source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
 d <- df[df$geolevel %in% c('state', 'county', 'place'), ]
 
-
 # Adds asbest value for RC Functions
-d$asbest = asbest
+d$asbest = asbest   # defined earlier
 
 d <- count_values(d)
 d <- calc_best(d)
-d <- calc_diff(d) #something is going wrong here or in next step
+d <- calc_diff(d) 
 d <- calc_avg_diff(d) 
 d <- calc_s_var(d)
 d <- calc_id(d)
@@ -294,6 +288,7 @@ city_table <- calc_z(city_table)
 
 ## Calc city ranks##
 city_table <- calc_ranks(city_table) %>% select(-c(geolevel))
+View(city_table)
 
 
 #rename geoid to state_id, county_id, city_id
@@ -302,8 +297,6 @@ colnames(county_table)[1:2] <- c("county_id", "county_name")
 colnames(city_table)[1:2] <- c("city_id", "city_name")
 
 
-city_table %>% filter(city_id %in% c("0603708", "0607316", "0608506"))
-View(city_table)
 # ############## SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
 
 ###update info for postgres tables###
@@ -315,12 +308,9 @@ source <- "2017-2021 ACS 5-Year Estimates, Tables B25014B-I, https://data.census
 rc_schema <- "v5"
 
 
-
-
 ####### SEND TO POSTGRES #######
 # to_postgres(county_table,state_table)
-city_to_postgres()
-
+# city_to_postgres()
 
 
 ############## CHECK COVERAGE WITH CV_THRESHOLD = 40 AND POP_THRESHOLD = 100##############
