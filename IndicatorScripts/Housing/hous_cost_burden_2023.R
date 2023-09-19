@@ -19,7 +19,7 @@ library(rpostgis)
 library(tidyr)
 library(readxl)
 library(sf)
-source("W:\\RDA Team\\R\\credentials_source.R")
+
 con <- connect_to_db("rda_shared_data")
 
 ############# Prep rda_shared_data table ######################
@@ -63,11 +63,12 @@ con <- connect_to_db("rda_shared_data")
 #                                                 geolevel == 'city' ~ str_sub(chas_ca$geoid, start= -7),
 #                                                 geolevel == 'tract' ~ str_sub(chas_ca$geoid, start= -11)
 #                                               ))
+# names(chas_ca) <- tolower(names(chas_ca))
 # View(chas_ca)
 
 # export chas data to rda shared table ------------------------------------------------------------
 ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
-
+# source("W:\\RDA Team\\R\\credentials_source.R")
 # table_schema <- "housing"
 # table_name <- "hud_chas_cost_burden_multigeo_2016_20"
 # table_comment_source <- "Multigeo table including CA tracts, cities, counties, state. The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. Raw data saved here: W:\\Data\\Housing\\HUD\\CHAS\\2016-2020"
@@ -77,6 +78,30 @@ con <- connect_to_db("rda_shared_data")
 # # send table and comment to postgres
 # dbWriteTable(con, c(table_schema, table_name), chas_ca, overwrite = FALSE, row.names = FALSE)
 # dbSendQuery(conn = con, table_comment)
+
+############# Prep rda_shared_data table metadata ######################
+# clean metadata col names and combine tenure/race/cost into 1 column comment each
+# names(dict) <- gsub(x = names(dict), pattern = "\\/", replacement = "_")  
+# names(dict) <- gsub(x = names(dict), pattern = " ", replacement = "_")  
+# names(dict) <- tolower(names(dict))
+# dict$variable <- paste(dict$tenure, dict$race_ethnicity, dict$cost_burden, sep=", ")
+# names(dict)[1] <- "label"
+
+# colcomments <- dict
+# colcomments_charvar <- colcomments$variable
+# colname_charvar <- colcomments$label
+# 
+# # loop through the columns that will change depending on the table. This loop writes comments for all columns, then sends to the postgres db. 
+# for (i in seq_along(colname_charvar)){
+#   sqlcolcomment <-
+#     paste0("COMMENT ON COLUMN ", table_schema, ".", table_name, ".",
+#            colname_charvar[[i]], " IS '", colcomments_charvar[[i]], "'; COMMENT ON COLUMN ", table_schema, ".", table_name, ".",
+#            colname_charvar[[i]], " IS '", colcomments_charvar[[i]], "';" )
+#   
+#   # send sql comment to database
+#   dbSendQuery(conn = con, sqlcolcomment)
+# }
+
 
 chas_data <- st_read(con, query = "SELECT * FROM housing.hud_chas_cost_burden_multigeo_2016_20 WHERE geolevel <> 'tract'")  # comment out above after table is created
 
@@ -90,7 +115,7 @@ View(chas_data)
 
 # make longer
 chas_data <- pivot_longer(chas_data, cols = starts_with("T9"), names_to = "Column Name", 
-                    values_to = "housingunits")
+                          values_to = "housingunits")
 
 # create a separate field to join.
 chas_data$number <- substring(chas_data$`Column Name`, first = 7)
@@ -119,7 +144,7 @@ chas_data <- chas_data %>%
 
 # keep rows for cost burden numeric groupings
 chas_data <- filter(chas_data, !(burden %in% c('not_computed','All')), 
-              !(race %in% c("All"))) 
+                    !(race %in% c("All"))) 
 
 chas_data$cost_burdened <- ifelse(chas_data$burden == "0.30", 0, 1) #set definition of cost burden here at >30%
 
@@ -223,7 +248,7 @@ cost_burden_calcs_rc <-
               names_from = c(race),
               values_from = c("raw", "pop", "rate", "rate_moe", "rate_cv"),
               names_glue = "{race}_{.value}")%>% 
-              as.data.frame()
+  as.data.frame()
 # View(cost_burden_calcs_rc)
 
 ## Screen out values with high CVs and small populations
@@ -246,23 +271,23 @@ df[sapply(df, is.nan)] <- NA
 df[sapply(df, is.infinite)] <- NA
 
 #Screen data: Convert rate to NA if its greater than the cv_threshold or less than the pop_threshold
-    df$total_rate <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_rate))
-    df$nh_asian_rate <- ifelse(df$nh_asian_rate_cv > cv_threshold, NA, ifelse(df$nh_asian_pop < pop_threshold, NA, df$nh_asian_rate))
-    df$nh_black_rate <- ifelse(df$nh_black_rate_cv > cv_threshold, NA, ifelse(df$nh_black_pop < pop_threshold, NA, df$nh_black_rate))
-    df$nh_white_rate <- ifelse(df$nh_white_rate_cv > cv_threshold, NA, ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_rate))
-    df$latino_rate <- ifelse(df$latino_rate_cv > cv_threshold, NA, ifelse(df$latino_pop < pop_threshold, NA, df$latino_rate))
-    df$nh_other_rate <- ifelse(df$nh_other_rate_cv > cv_threshold, NA, ifelse(df$nh_other_pop < pop_threshold, NA, df$nh_other_rate))
-    df$nh_pacisl_rate <- ifelse(df$nh_pacisl_rate_cv > cv_threshold, NA, ifelse(df$nh_pacisl_pop < pop_threshold, NA, df$nh_pacisl_rate))
-    df$nh_aian_rate <- ifelse(df$nh_aian_rate_cv > cv_threshold, NA, ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_rate))
-    
-    df$total_raw <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_raw))
-    df$nh_asian_raw <- ifelse(df$nh_asian_rate_cv > cv_threshold, NA, ifelse(df$nh_asian_pop < pop_threshold, NA, df$nh_asian_raw))
-    df$nh_black_raw <- ifelse(df$nh_black_rate_cv > cv_threshold, NA, ifelse(df$nh_black_pop < pop_threshold, NA, df$nh_black_raw))
-    df$nh_white_raw <- ifelse(df$nh_white_rate_cv > cv_threshold, NA, ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_raw))
-    df$latino_raw <- ifelse(df$latino_rate_cv > cv_threshold, NA, ifelse(df$latino_pop < pop_threshold, NA, df$latino_raw))
-    df$nh_other_raw <- ifelse(df$nh_other_rate_cv > cv_threshold, NA, ifelse(df$nh_other_pop < pop_threshold, NA, df$nh_other_raw))
-    df$nh_pacisl_raw <- ifelse(df$nh_pacisl_rate_cv > cv_threshold, NA, ifelse(df$nh_pacisl_pop < pop_threshold, NA, df$nh_pacisl_raw))
-    df$nh_aian_raw <- ifelse(df$nh_aian_rate_cv > cv_threshold, NA, ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_raw))
+df$total_rate <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_rate))
+df$nh_asian_rate <- ifelse(df$nh_asian_rate_cv > cv_threshold, NA, ifelse(df$nh_asian_pop < pop_threshold, NA, df$nh_asian_rate))
+df$nh_black_rate <- ifelse(df$nh_black_rate_cv > cv_threshold, NA, ifelse(df$nh_black_pop < pop_threshold, NA, df$nh_black_rate))
+df$nh_white_rate <- ifelse(df$nh_white_rate_cv > cv_threshold, NA, ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_rate))
+df$latino_rate <- ifelse(df$latino_rate_cv > cv_threshold, NA, ifelse(df$latino_pop < pop_threshold, NA, df$latino_rate))
+df$nh_other_rate <- ifelse(df$nh_other_rate_cv > cv_threshold, NA, ifelse(df$nh_other_pop < pop_threshold, NA, df$nh_other_rate))
+df$nh_pacisl_rate <- ifelse(df$nh_pacisl_rate_cv > cv_threshold, NA, ifelse(df$nh_pacisl_pop < pop_threshold, NA, df$nh_pacisl_rate))
+df$nh_aian_rate <- ifelse(df$nh_aian_rate_cv > cv_threshold, NA, ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_rate))
+
+df$total_raw <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_raw))
+df$nh_asian_raw <- ifelse(df$nh_asian_rate_cv > cv_threshold, NA, ifelse(df$nh_asian_pop < pop_threshold, NA, df$nh_asian_raw))
+df$nh_black_raw <- ifelse(df$nh_black_rate_cv > cv_threshold, NA, ifelse(df$nh_black_pop < pop_threshold, NA, df$nh_black_raw))
+df$nh_white_raw <- ifelse(df$nh_white_rate_cv > cv_threshold, NA, ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_raw))
+df$latino_raw <- ifelse(df$latino_rate_cv > cv_threshold, NA, ifelse(df$latino_pop < pop_threshold, NA, df$latino_raw))
+df$nh_other_raw <- ifelse(df$nh_other_rate_cv > cv_threshold, NA, ifelse(df$nh_other_pop < pop_threshold, NA, df$nh_other_raw))
+df$nh_pacisl_raw <- ifelse(df$nh_pacisl_rate_cv > cv_threshold, NA, ifelse(df$nh_pacisl_pop < pop_threshold, NA, df$nh_pacisl_raw))
+df$nh_aian_raw <- ifelse(df$nh_aian_rate_cv > cv_threshold, NA, ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_raw))
 
 df <- df %>% relocate(ends_with("_raw"), .after = ends_with("_pop")) # reorder fields so raw/rate cols are next to each other
 
