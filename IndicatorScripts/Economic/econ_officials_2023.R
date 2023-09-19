@@ -119,12 +119,12 @@ View(screened)
 d <- screened %>% mutate(geolevel = ifelse(geoname=="California","State", "County"))
 
 
-##### City Calculations #####
-## Exploring EEOC 2014-18 Place Data csv file ----
-### NOTE: Table EEOALL4R is NOT available thru Census API, though other EEOC tables are.
+# ##### City Calculations #####
+# # Exploring EEOC 2014-18 Place Data csv file ----
+# ## NOTE: Table EEOALL4R is NOT available thru Census API, though other EEOC tables are.
 # csv <- read.csv('https://www2.census.gov/EEO_2014_2018/EEO_Tables_By_Geographic_Area_By_State/State_Place/California/EEOALL4R_160_CA.csv') # pull in data from Census FTP
 # 
-# # temp <- unique(csv[ , c("PROFLN", "TITLE")])   
+# # temp <- unique(csv[ , c("PROFLN", "TITLE")])
 # step1 <- filter(csv, PROFLN < 6.1) # filter for rows re: Officials and Managers
 # 
 # step2 <- filter(step1, PROFLN == 1 | PROFLN == 2) %>% select(-c(TBLID, PROFLN)) # filter for rows re: raw/rate for male+female, drop unneeded columns
@@ -196,9 +196,11 @@ d <- screened %>% mutate(geolevel = ifelse(geoname=="California","State", "Count
 # con2 <- connect_to_db("rda_shared_data")
 # table_schema <- "economic"
 # table_name <- "acs_eeo_2014_18"
-# table_comment_source <- "officials & Managers"
-# table_source <- "The data is from ACS EEO (2014-2018), https://www.census.gov/acs/www/data/eeo-data/."
-# dbWriteTable(con2, c(table_schema, table_name), step3, overwrite = TRUE, row.names = FALSE)
+# table_comment_source <- "Officials & Managers"
+# table_source <- "This place level data is ACS EEO (2014-2018) EEO 4r. EEO-1 Job Categories by Sex, and Race/Ethnicity for Residence Geography, Total Population. It was downloaded from https://www2.census.gov/EEO_2014_2018/EEO_Tables_By_Geographic_Area_By_State/State_Place/California/ via FTP and selecting EEOALL4R_160_CA.csv. The documentation can be found via FTP EEOTabulation2014-2018-Documentation-1.31.2022.xlsx, https://www2.census.gov/EEO_2014_2018/EEO_FTP_Site_Documentation/."
+# dbWriteTable(con2, c(table_schema, table_name), c(step3, table_comment_source, table_source), overwrite = TRUE, row.names = FALSE)
+# dbDisconnect()
+#dictionary <- read.xlsx("W:/Project/RACE COUNTS/2023_v5/Economic/EEOTabulation2014-2018 Documentation-1.31.2022.xlsx")
 
 ########## City Calcs #########
 officials <- dbGetQuery(con, "SELECT * FROM economic.acs_eeo_2014_18") %>% select(-c(ends_with("_Percent")))
@@ -239,8 +241,8 @@ officials_mngrs <- full_join(officials_1, officials_2, by=c("geoid", "geoname", 
 ### Download place data for labor force (used as the pop values) ------
 #Get labor force population estimates from Census API
 #check variables
-# v18_subject <- load_variables(2018, "acs5/subject", cache = TRUE) # Table DP03
-# View(v18_subject)
+# v15_subject <- load_variables(2015, "acs5", cache = TRUE) # Table DP03
+# View(v15_subject)
 
 # race variables all INCLUDE Hispanic except for White which is non-hispanic
 
@@ -378,7 +380,7 @@ county_table_name <- "arei_econ_officials_county_2023"
 state_table_name <- "arei_econ_officials_state_2023"
 city_table_name <- "arei_econ_officials_city_2023"
 indicator <- "Number of Officials & Managers per 1k People by Race. Only people ages 18-64 who are in the labor force are included. We also screened by pop and CV. White, Black, Asian, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN and NHPI are Latinx-inclusive so they are also included in Latinx counts. AIAN and NHPI include AIAN and NHPI Alone and in Combo, so non-Latinx AIAN and NHPI in combo are also included in Two or More. This data is"
-source <- "ACS EEO (2014-2018)"
+source <- "ACS EEO (2014-2018), https://www.census.gov/acs/www/data/eeo-data/"
 rc_schema <- "v5"
 
 
