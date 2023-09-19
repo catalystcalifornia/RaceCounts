@@ -20,6 +20,7 @@ library(tidyr)
 library(readxl)
 library(sf)
 
+con <- connect_to_db("rda_shared_data")
 
 ############# Prep rda_shared_data table ######################
 # root <- "W:/Data/Housing/HUD/CHAS/2016-2020/"
@@ -62,12 +63,12 @@ library(sf)
 #                                                 geolevel == 'city' ~ str_sub(chas_ca$geoid, start= -7),
 #                                                 geolevel == 'tract' ~ str_sub(chas_ca$geoid, start= -11)
 #                                               ))
+# names(chas_ca) <- tolower(names(chas_ca))
 # View(chas_ca)
 
 # export chas data to rda shared table ------------------------------------------------------------
 ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 # source("W:\\RDA Team\\R\\credentials_source.R")
-# con <- connect_to_db("rda_shared_data")
 # table_schema <- "housing"
 # table_name <- "hud_chas_cost_burden_multigeo_2016_20"
 # table_comment_source <- "Multigeo table including CA tracts, cities, counties, state. The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. Raw data saved here: W:\\Data\\Housing\\HUD\\CHAS\\2016-2020"
@@ -77,6 +78,30 @@ library(sf)
 # # send table and comment to postgres
 # dbWriteTable(con, c(table_schema, table_name), chas_ca, overwrite = FALSE, row.names = FALSE)
 # dbSendQuery(conn = con, table_comment)
+
+############# Prep rda_shared_data table metadata ######################
+# clean metadata col names and combine tenure/race/cost into 1 column comment each
+# names(dict) <- gsub(x = names(dict), pattern = "\\/", replacement = "_")  
+# names(dict) <- gsub(x = names(dict), pattern = " ", replacement = "_")  
+# names(dict) <- tolower(names(dict))
+# dict$variable <- paste(dict$tenure, dict$race_ethnicity, dict$cost_burden, sep=", ")
+# names(dict)[1] <- "label"
+
+# colcomments <- dict
+# colcomments_charvar <- colcomments$variable
+# colname_charvar <- colcomments$label
+# 
+# # loop through the columns that will change depending on the table. This loop writes comments for all columns, then sends to the postgres db. 
+# for (i in seq_along(colname_charvar)){
+#   sqlcolcomment <-
+#     paste0("COMMENT ON COLUMN ", table_schema, ".", table_name, ".",
+#            colname_charvar[[i]], " IS '", colcomments_charvar[[i]], "'; COMMENT ON COLUMN ", table_schema, ".", table_name, ".",
+#            colname_charvar[[i]], " IS '", colcomments_charvar[[i]], "';" )
+#   
+#   # send sql comment to database
+#   dbSendQuery(conn = con, sqlcolcomment)
+# }
+
 
 chas_data <- st_read(con, query = "SELECT * FROM housing.hud_chas_cost_burden_multigeo_2016_20 WHERE geolevel <> 'tract'")  # comment out above after table is created
 
