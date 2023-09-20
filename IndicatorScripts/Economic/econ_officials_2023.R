@@ -116,12 +116,12 @@ pop_threshold <- 400
 screened <- pums_screen(rc_state, rc_county) 
 View(screened)
 
-d <- screened %>% mutate(geolevel = ifelse(geoname=="California","State", "County"))
+d_county_state <- screened %>% mutate(geolevel = ifelse(geoname=="California","State", "County"))
 
 
 # ##### City Calculations #####
-# # Exploring EEOC 2014-18 Place Data csv file ----
-# ## NOTE: Table EEOALL4R is NOT available thru Census API, though other EEOC tables are.
+# Exploring EEOC 2014-18 Place Data csv file ----
+## NOTE: Table EEOALL4R is NOT available thru Census API, though other EEOC tables are.
 # csv <- read.csv('https://www2.census.gov/EEO_2014_2018/EEO_Tables_By_Geographic_Area_By_State/State_Place/California/EEOALL4R_160_CA.csv') # pull in data from Census FTP
 # 
 # # temp <- unique(csv[ , c("PROFLN", "TITLE")])
@@ -196,11 +196,13 @@ d <- screened %>% mutate(geolevel = ifelse(geoname=="California","State", "Count
 # con2 <- connect_to_db("rda_shared_data")
 # table_schema <- "economic"
 # table_name <- "acs_eeo_2014_18"
-# table_comment_source <- "Officials & Managers"
-# table_source <- "This place level data is ACS EEO (2014-2018) EEO 4r. EEO-1 Job Categories by Sex, and Race/Ethnicity for Residence Geography, Total Population. It was downloaded from https://www2.census.gov/EEO_2014_2018/EEO_Tables_By_Geographic_Area_By_State/State_Place/California/ via FTP and selecting EEOALL4R_160_CA.csv. The documentation can be found via FTP EEOTabulation2014-2018-Documentation-1.31.2022.xlsx, https://www2.census.gov/EEO_2014_2018/EEO_FTP_Site_Documentation/."
-# dbWriteTable(con2, c(table_schema, table_name), c(step3, table_comment_source, table_source), overwrite = TRUE, row.names = FALSE)
-# dbDisconnect()
-#dictionary <- read.xlsx("W:/Project/RACE COUNTS/2023_v5/Economic/EEOTabulation2014-2018 Documentation-1.31.2022.xlsx")
+# table_comment_source <- "ACS EEO (2014-2018)"
+# table_source <- "This place level data is EEO 4r Job Categories by Sex, and Race/Ethnicity for Residence Geography, Total Population, downloaded from https://www2.census.gov/EEO_2014_2018/EEO_Tables_By_Geographic_Area_By_State/State_Place/California/ via FTP and selecting EEOALL4R_160_CA.csv"
+# table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
+# dbWriteTable(con2, c(table_schema, table_name), step3, overwrite = TRUE, row.names = FALSE)
+# dbSendQuery(conn = con2, table_comment)
+# dbDisconnect(con2)
+### Data dictionary "W:/Project/RACE COUNTS/2023_v5/Economic/EEOTabulation2014-2018 Documentation-1.31.2022.xlsx"
 
 ########## City Calcs #########
 officials <- dbGetQuery(con, "SELECT * FROM economic.acs_eeo_2014_18") %>% select(-c(ends_with("_Percent")))
@@ -238,11 +240,15 @@ officials_2$raw_moe <- gsub("[^[:alnum:] ]", "", officials_2$raw_moe)
 officials_mngrs <- full_join(officials_1, officials_2, by=c("geoid", "geoname", "raceeth"))
 # View(officials_mngrs)
 
+# convert to numeric to make sure that it can be used in calculations
+officials_mngrs$raw <- gsub(",", "", officials_mngrs$raw)   #first get rid of the commas
+officials_mngrs$raw_moe <- gsub(",", "", officials_mngrs$raw_moe)  
+
+officials_mngrs$raw <- as.numeric(officials_mngrs$raw)
+officials_mngrs$raw_moe <- as.numeric(officials_mngrs$raw_moe)
+
 ### Download place data for labor force (used as the pop values) ------
 #Get labor force population estimates from Census API
-#check variables
-# v15_subject <- load_variables(2015, "acs5", cache = TRUE) # Table DP03
-# View(v15_subject)
 
 # race variables all INCLUDE Hispanic except for White which is non-hispanic
 
@@ -282,14 +288,7 @@ pop_base <- 1000
 
 df <- left_join(officials_mngrs, cities, by=c("geoid", "geoname", "raceeth")) 
 
-# convert to numeric to make sure that it can be used in calculations
-df$raw <- gsub(",", "", df$raw)   #first get rid of the commas
-df$raw_moe <- gsub(",", "", df$raw_moe)  
 
-df$raw <- as.factor(df$raw) #a commenter on stackoverflow recommended converting it to factor first so that it would not creacte NAs through coercion
-df$raw_moe <- as.factor(df$raw_moe)
-df$raw <- as.numeric(df$raw)
-df$raw_moe <- as.numeric(df$raw_moe)
 
 #calculate rate values 
 df <- df %>% group_by(geoid, geoname, raceeth) %>%
@@ -316,8 +315,48 @@ df_wide <- df_screened %>% ungroup() %>%
 select(geoid, geoname, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), ends_with("_cv"), everything(), -ends_with("pop_moe"), -ends_with("raw_moe")) %>% 
   mutate(geolevel = "City")
 
-d <- d %>% full_join(df_wide, by=c("geoid", "geoname", "geolevel", "total_raw", "total_rate", "latino_raw", "latino_rate", 
+d <- full_join(d_county_state, df_wide, by=c("geoid", "geoname", "geolevel", "total_raw", "total_rate", "latino_raw", "latino_rate", 
                                          "pacisl_rate", "pacisl_raw", "aian_raw", "aian_rate"))
+
+col_order <- c(  "geoid",                   "geoname",                 "geolevel",  
+                 "total_raw",               "latino_raw",              "aian_raw",                
+                 "pacisl_raw",              "black_raw",               "asian_raw",               
+                 "other_raw",               "white_raw",               "nh_white_raw",            
+                 "nh_black_raw",            "nh_asian_raw",            "nh_other_raw",            
+                 "nh_twoormor_raw",    
+                 
+                 "total_rate",              "latino_rate",             "aian_rate",      
+                 "pacisl_rate",             "black_rate",              "asian_rate", 
+                 "other_rate",              "white_rate",              "nh_white_rate",           
+                 "nh_black_rate",           "nh_asian_rate",           "nh_other_rate",           
+                 "nh_twoormor_rate",                  
+                          
+                 "total_pop",               "latino_pop",              "aian_pop",             
+                 "pacisl_pop",              "black_pop",                "asian_pop",              
+                 "other_pop",               "white_pop",                  
+                               
+                 "total_rate_cv",           "latino_rate_cv",          "aian_rate_cv",      
+                 "pacisl_rate_cv",          "black_rate_cv",           "asian_rate_cv",
+                 "other_rate_cv",           "white_rate_cv",         
+                 "total_rate_moe",          "latino_rate_moe",         "white_rate_moe",         
+                 "black_rate_moe",          "aian_rate_moe",           "asian_rate_moe",         
+                 "pacisl_rate_moe",         "other_rate_moe",           "num_nh_asian",           
+                 "num_nh_black",            "num_nh_other",            "num_nh_twoormor",        
+                 "num_nh_white",            "num_latino",              "num_aian",               
+                 "num_pacisl",              "num_total",               "pop_nh_asian",           
+                 "pop_nh_black",            "pop_nh_other",            "pop_nh_twoormor",        
+                 "pop_nh_white",            "pop_latino",              "pop_aian",               
+                 "pop_pacisl",              "pop_total",               "officials_rate_nh_asian",
+                 "officials_rate_nh_black", "officials_rate_nh_other", "officials_rate_nh_twoormor",
+                 "officials_rate_nh_white", "officials_rate_latino",   "officials_rate_aian",    
+                 "officials_rate_pacisl",   "officials_rate_total",    "rate_moe_nh_asian",      
+                 "rate_moe_nh_black",       "rate_moe_nh_other",       "rate_moe_nh_twoormor",   
+                 "rate_moe_nh_white",       "rate_moe_latino",         "rate_moe_aian",          
+                 "rate_moe_pacisl",         "rate_moe_total",          "rate_cv_nh_asian",       
+                 "rate_cv_nh_black",        "rate_cv_nh_other",        "rate_cv_nh_twoormor",    
+                 "rate_cv_nh_white",        "rate_cv_latino",          "rate_cv_aian",           
+                 "rate_cv_pacisl",          "rate_cv_total")
+d <- d[,col_order]
 
 ############## CALC RACE COUNTS STATS ##############
 
