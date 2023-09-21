@@ -136,8 +136,8 @@ d_county_state <- screened %>% mutate(geolevel = ifelse(geoname=="California","S
 # 		## ESTIMATE_3 = Non-Latinx White Alone
 # 		## ESTIMATE_4 = Non-Latinx Black Alone
 # 		## ESTIMATE_5 = Non-Latinx AIAN Alone
-# 		## ESTIMATE_6 = Non-Latinx Asian
-# 		## ESTIMATE_7 = Non-Latinx PI
+# 		## ESTIMATE_6 = Non-Latinx Asian Alone
+# 		## ESTIMATE_7 = Non-Latinx PI Alone
 # 		## ESTIMATE_8 = Remainder Non-Latinx Pop -- NOTE: We will not use this category bc it is hard to say what it corresponds to. It's sort of a combo Non-Latinx Two+ Races and Non-Latinx Other Race...
 # ## UNIVERSE -- See W:\Project\RACE COUNTS\2023_v5\Economic\EEOTabulation2014-2018-Documentation-1.31.2022.xlsx > Universe tab for info on that. The Universe for this table is "Civilian labor force 16 years and over".
 # 
@@ -147,8 +147,8 @@ d_county_state <- screened %>% mutate(geolevel = ifelse(geoname=="California","S
 #   "Non-Latinx White Alone" = "ESTIMATE_3",
 #   "Non-Latinx Black Alone" = "ESTIMATE_4",
 #   "Non-Latinx AIAN Alone" = "ESTIMATE_5",
-#   "Non-Latinx Asian" = "ESTIMATE_6",
-#   "Non-Latinx PI" = "ESTIMATE_7",
+#   "Non-Latinx Asian Alone" = "ESTIMATE_6",
+#   "Non-Latinx PI Alone" = "ESTIMATE_7",
 #   "Remainder Non-Latinx Pop" = "ESTIMATE_8",
 # 
 # 
@@ -247,37 +247,75 @@ officials_mngrs$raw_moe <- gsub(",", "", officials_mngrs$raw_moe)
 officials_mngrs$raw <- as.numeric(officials_mngrs$raw)
 officials_mngrs$raw_moe <- as.numeric(officials_mngrs$raw_moe)
 
+# export  data to rda shared table ------------------------------------------------------------
+#since the tidycensus dataset does not have B08301 data by race, down it manually then upload it to pgadmin
 ### Download place data for labor force (used as the pop values) ------
-#Get labor force population estimates from Census API
+# library(readxl)
+# # library(DBI)
+# # using 2017-21 b/c only 2010,2015, and 2021 avialable and it was the only one withthe race match with the eeo data but just two years overlap w/ the eeo data
+# # go to https://data.census.gov/
+# # select the filters: 
+# # under survey: ACS 5-Year Estimates Selected Population Detailed Tables, 
+# # under race/ethnicity: Total Population, Hispanic or Latino (of any race), Black alone, not Hispanic or Latino,  American Indian and Alaskan Native alone, not Hispanic or Latino, White alone, not Hispanic or Latino,  Asian alone, not Hispanic or Latino,  Some Other Race alone, not Hispanic or Latino,  Native Hawaiian and Other Pacific Islander alone, not Hispanic or Latino
+# # under Geography: All Places within California,
+# workers_data <- read.csv("W:/Project/RACE COUNTS/2023_v5/Economic/ACSDT5YSPT2021.B08301_2023-09-20T210308/ACSDT5YSPT2021.B08301-Data.csv") 
+# names(workers_data) <- workers_data[1,]
+# workers_data <- workers_data[-1,]
+# 
+# workers_data <- workers_data %>% select(Geography, `Geographic Area Name`, `Population Groups`, `Estimate!!Total:`, `Margin of Error!!Total:`)  
+#
+## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+# source("W:\\RDA Team\\R\\credentials_source.R")
+# con2 <- connect_to_db("rda_shared_data")
+# table_schema <- "economic"
+# table_name <- "acs_5yr_b08301_place_2021"
+# table_comment_source <- "Means of Transportation for workers 16 years and over by race/ethnicity and census place"
+# table_source <- "ACS 5 Year (2027-2021) https://data.census.gov/table?t=-0C:400:463&g=040XX00US06$1600000&y=2021&d=ACS+5-Year+Estimates+Selected+Population+Detailed+Tables&tid=ACSDT5YSPT2021.B08301"
+# table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
+# 
+# # send table and comment to postgres
+# dbWriteTable(con2, c(table_schema, table_name), workers_data, overwrite = TRUE, row.names = FALSE) #, overwrite = FALSE, row.names = FALSE
+# dbSendQuery(conn = con2, table_comment)
+# dbDisconnect(con2)
 
-# race variables all INCLUDE Hispanic except for White which is non-hispanic
-
-cities <- get_acs(geography = "place",
-                  variables = c("S2301_C01_001", "S2301_C01_014", "S2301_C01_013","S2301_C01_019", 
-                                "S2301_C01_017","S2301_C01_016","S2301_C01_015", "S2301_C01_020"), 
-                  state = "CA",
-                  survey = "acs5",
-                  year = 2018, cache_table = TRUE)
+###### Load in Denominator Variable -----
+#read in data from 
+cities <- st_read(con, query = "SELECT * FROM economic.acs_5yr_b08301_place_2021") %>% 
+  ##### start cleaning the data ----
+  rename("geoid" = "Geography", "geoname" = "Geographic Area Name", 
+         "raceeth" = "Population Groups", 
+         "pop" = "Estimate!!Total:", 
+         "pop_moe" = "Margin of Error!!Total:")
 
 
 #total employment variables
-cities$variable <- gsub("S2301_C01_001", "total", cities$variable) 
-cities$variable <- gsub("S2301_C01_019", "latino", cities$variable) 
-cities$variable <- gsub("S2301_C01_013",  "black", cities$variable)
-cities$variable <- gsub("S2301_C01_014", "aian", cities$variable)
-cities$variable <- gsub("S2301_C01_015", "asian", cities$variable)
-cities$variable <- gsub("S2301_C01_016", "pacisl", cities$variable) #NHPI
-cities$variable <- gsub("S2301_C01_017", "other", cities$variable)
-cities$variable <- gsub("S2301_C01_020", "white", cities$variable) #white used for the calculation is going to be nh_white
+cities$geoid <- str_sub(cities$geoid, 10) #remove the first characters from a string
 
-##### start cleaning the data ----
-cities$NAME <- gsub(" City, California", "", cities$NAME)
-cities$NAME <- gsub(" city, California", "", cities$NAME)
-cities$NAME <- gsub(" town, California", "", cities$NAME)
-cities$NAME <- gsub(" CDP, California", "", cities$NAME)
+#rename race variables
+cities$raceeth <- gsub("Total population", "total", cities$raceeth) 
+cities$raceeth <- gsub("Hispanic or Latino [[:punct:]]of any race[[:punct:]]", "latino", cities$raceeth) 
+cities$raceeth <- gsub("Black or African American alone, not Hispanic or Latino",  "black", cities$raceeth)
+cities$raceeth <- gsub("American Indian and Alaskan Native alone, not Hispanic or Latino", "aian", cities$raceeth)
+cities$raceeth <- gsub("Asian alone, not Hispanic or Latino", "asian", cities$raceeth)
+cities$raceeth <- gsub("Native Hawaiian and Other Pacific Islander alone, not Hispanic or Latino", "pacisl", cities$raceeth) #NHPI
+cities$raceeth <- gsub("Some Other Race alone, not Hispanic or Latino", "other", cities$raceeth)
+cities$raceeth <- gsub("White alone, not Hispanic or Latino", "white", cities$raceeth)
 
-cities <- cities %>% dplyr::rename("geoid" = "GEOID", "geoname" = "NAME", "raceeth" = "variable", "pop" = "estimate", "pop_moe" = "moe")
+#standardize place naming convention
+cities$geoname <- gsub("[[:punct:]].*","",cities$geoname) #remove anything after the punctuation mark 
+cities$geoname <- gsub(" City", "", cities$geoname)
+cities$geoname <- gsub(" city", "", cities$geoname)
+cities$geoname <- gsub(" town", "", cities$geoname)
+cities$geoname <- gsub(" CDP", "", cities$geoname)
 # View(cities)
+
+#make columns numeric
+cities$pop <- as.numeric(cities$pop)
+cities$pop_moe <- as.numeric(cities$pop_moe)
+
+#change names back that got altered w/ punctuation gsub
+cities$geoname <- gsub("Arden", "Arden-Arcade", cities$geoname)
+cities$geoname <- gsub("Florence", "Florence-Graham", cities$geoname)
 
 #combine cities and officials df to calculate rate and rate moe ----
 
@@ -285,10 +323,7 @@ cities <- cities %>% dplyr::rename("geoid" = "GEOID", "geoname" = "NAME", "racee
 pop_base <- 1000
 
 # set thresholds     #methodology only said that it was screened for low reliability but not what number so I might remove this screening
-
 df <- left_join(officials_mngrs, cities, by=c("geoid", "geoname", "raceeth")) 
-
-
 
 #calculate rate values 
 df <- df %>% group_by(geoid, geoname, raceeth) %>%
