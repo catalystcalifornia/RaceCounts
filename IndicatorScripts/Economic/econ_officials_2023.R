@@ -14,7 +14,7 @@ library(rpostgis)
 library(tidyr)
 library(here)
 library(sf)
-
+library(readxl)
 
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
@@ -250,14 +250,7 @@ officials_mngrs$raw_moe <- as.numeric(officials_mngrs$raw_moe)
 # export  data to rda shared table ------------------------------------------------------------
 #since the tidycensus dataset does not have B08301 data by race, down it manually then upload it to pgadmin
 ### Download place data for labor force (used as the pop values) ------
-# library(readxl)
-# # library(DBI)
-# # using 2017-21 b/c only 2010,2015, and 2021 avialable and it was the only one withthe race match with the eeo data but just two years overlap w/ the eeo data
-# # go to https://data.census.gov/
-# # select the filters: 
-# # under survey: ACS 5-Year Estimates Selected Population Detailed Tables, 
-# # under race/ethnicity: Total Population, Hispanic or Latino (of any race), Black alone, not Hispanic or Latino,  American Indian and Alaskan Native alone, not Hispanic or Latino, White alone, not Hispanic or Latino,  Asian alone, not Hispanic or Latino,  Some Other Race alone, not Hispanic or Latino,  Native Hawaiian and Other Pacific Islander alone, not Hispanic or Latino
-# # under Geography: All Places within California,
+
 # workers_data <- read.csv("W:/Project/RACE COUNTS/2023_v5/Economic/ACSDT5YSPT2021.B08301_2023-09-20T210308/ACSDT5YSPT2021.B08301-Data.csv") 
 # names(workers_data) <- workers_data[1,]
 # workers_data <- workers_data[-1,]
