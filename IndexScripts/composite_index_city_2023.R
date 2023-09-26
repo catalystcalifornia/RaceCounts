@@ -156,7 +156,6 @@ arei_race_multigeo <- dbGetQuery(con, "SELECT geoid, name, geolevel  FROM v5.are
 
 city_tables_df <- city_tables_updated  %>% reduce(full_join) %>% arrange(city_id) %>% distinct(city_id, .keep_all = TRUE) %>% left_join(education_tables_agg) %>% left_join(arei_race_multigeo) %>% select(city_id, city_name, everything())
 
-
 # cap perf_z and disp_z values  at 3.5 
 city_tables_capped <- city_tables_df %>% mutate(across(ends_with("disp_z"), 
              ~ case_when(. > 3.5 ~ 3.5, 
@@ -181,11 +180,16 @@ city_screen <- dbGetQuery(con, "SELECT * FROM v5.api_city_list")
 # city_tables_screened <- city_screen %>% left_join(city_tables_df, by = c("city_id"))
 
 # Look at perf_na and disp_na across all indicators. We will need this later
-all_indicators_perf_count<- city_tables_df %>% select(city_id, ends_with("perf_z")) %>%
-  mutate(all_indicators_perf_count = rowSums(!is.na(.))) %>% select(city_id, all_indicators_perf_count)
 
-all_indicators_disp_count <- city_tables_df %>% select(city_id, ends_with("disp_z")) %>%
-  mutate(all_indicators_disp_count = rowSums(!is.na(.))) %>% select(city_id, all_indicators_disp_count)
+all_indicators_perf_count <- city_tables_df %>% select(city_id)
+indicators_perf_count <- city_tables_df %>% select(ends_with("perf_z")) %>%
+  mutate(all_indicators_perf_count = rowSums(!is.na(.))) %>% select(all_indicators_perf_count)
+all_indicators_perf_count$all_indicators_perf_count = indicators_perf_count$all_indicators_perf_count
+
+all_indicators_disp_count <- city_tables_df %>% select(city_id)
+indicators_disp_count <- city_tables_df %>% select(ends_with("disp_z")) %>%
+  mutate(all_indicators_disp_count = rowSums(!is.na(.))) %>% select(all_indicators_disp_count)
+all_indicators_disp_count$all_indicators_disp_count = indicators_disp_count$all_indicators_disp_count
 
 
 # count number of indicators per issue area
