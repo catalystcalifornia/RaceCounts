@@ -5,7 +5,6 @@ list.of.packages <- c("tidyverse","RPostgreSQL","sf")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
-
 # Packages ----------------------------------------------------------------
 library(tidyverse)
 library(RPostgreSQL)
@@ -156,6 +155,9 @@ arei_race_multigeo <- dbGetQuery(con, "SELECT geoid, name, geolevel  FROM v5.are
 
 city_tables_df <- city_tables_updated  %>% reduce(full_join) %>% arrange(city_id) %>% distinct(city_id, .keep_all = TRUE) %>% left_join(education_tables_agg) %>% left_join(arei_race_multigeo) %>% select(city_id, city_name, everything())
 
+# remove cities: there are 6 of them
+city_tables_df <- city_tables_df %>% filter(!grepl('University', city_name))
+
 
 # cap perf_z and disp_z values  at 3.5 
 city_tables_capped <- city_tables_df %>% mutate(across(ends_with("disp_z"), 
@@ -221,10 +223,10 @@ educ <- city_tables_capped %>% select(city_id, city_name, starts_with("arei_educ
 crim_threshold <- 1
 demo_threshold <- 1
 econ_threshold <- 2 # could be 3
-educ_threshold <- 3
+educ_threshold <- 2
 hlth_threshold <- 1
 hben_threshold <- 2
-hous_threshold <- 5
+hous_threshold <- 3
 
 
 
@@ -411,9 +413,6 @@ indicator_threshold <- 12
 
 index_table_final_screen <-  calculate_city_index(all_index, issue_area_threshold, indicator_threshold) 
 
-
-
-
 # Export to postgres ------------------------------------------------------
 table_name <- "arei_composite_index_city_2023"
 table_schema <- "v5"
@@ -438,5 +437,7 @@ names(charvect) <- colnames(index_table_final_screen)
 table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ".", "';")
 
 ## send table comment to database
-#dbSendQuery(conn = con, table_comment)      		
+#dbSendQuery(conn = con, table_comment)      	
+
+
 
