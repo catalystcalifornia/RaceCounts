@@ -19,6 +19,7 @@ library(readxl)
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
+
 ##### County Calculations ####
 ##### GET PUMA-COUNTYCROSSWALK ######
 crosswalk <- st_read(con, query = "select county_id AS geoid, county_name AS geoname, puma, num_county from crosswalks.puma_county_2020")
@@ -248,7 +249,7 @@ officials_mngrs$raw <- as.numeric(officials_mngrs$raw)
 officials_mngrs$raw_moe <- as.numeric(officials_mngrs$raw_moe)
 
 # export  data to rda shared table ------------------------------------------------------------
-#since the tidycensus dataset does not have B08301 data by race, down it manually then upload it to pgadmin
+#since the tidycensus dataset does not have B08301 data by race, download it manually then upload it to pgadmin
 ### Download place data for labor force (used as the pop values) ------
 
 # workers_data <- read.csv("W:/Project/RACE COUNTS/2023_v5/Economic/ACSDT5YSPT2021.B08301_2023-09-20T210308/ACSDT5YSPT2021.B08301-Data.csv") 
@@ -279,7 +280,7 @@ cities <- st_read(con, query = "SELECT * FROM economic.acs_5yr_b08301_place_2021
          "raceeth" = "Population Groups", 
          "pop" = "Estimate!!Total:", 
          "pop_moe" = "Margin of Error!!Total:")
-
+dbDisconnect(con)
 
 #total employment variables
 cities$geoid <- str_sub(cities$geoid, 10) #remove the first characters from a string
@@ -293,6 +294,9 @@ cities$raceeth <- gsub("Asian alone, not Hispanic or Latino", "asian", cities$ra
 cities$raceeth <- gsub("Native Hawaiian and Other Pacific Islander alone, not Hispanic or Latino", "pacisl", cities$raceeth) #NHPI
 cities$raceeth <- gsub("Some Other Race alone, not Hispanic or Latino", "other", cities$raceeth)
 cities$raceeth <- gsub("White alone, not Hispanic or Latino", "white", cities$raceeth)
+
+#remove other_race b/c numbers look weird for this one
+cities <- cities %>% filter(raceeth!="other")
 
 #standardize place naming convention
 cities$geoname <- gsub("[[:punct:]].*","",cities$geoname) #remove anything after the punctuation mark 
@@ -309,6 +313,7 @@ cities$pop_moe <- as.numeric(cities$pop_moe)
 #change names back that got altered w/ punctuation gsub
 cities$geoname <- gsub("Arden", "Arden-Arcade", cities$geoname)
 cities$geoname <- gsub("Florence", "Florence-Graham", cities$geoname)
+
 
 #combine cities and officials df to calculate rate and rate moe ----
 
@@ -439,7 +444,7 @@ city_table <- d[d$geolevel == 'City', ]
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
 city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") %>% 
-  select(-c(starts_with("nh_"), starts_with("num_"), starts_with("pop_"), starts_with("rate_"), starts_with("officials_"), geolevel))
+  select(-c(starts_with("nh_"), starts_with("num_"), starts_with("pop_"), starts_with("rate_"), starts_with("officials_"), starts_with("other_"), geolevel))
 View(city_table)
 
 ###update info for postgres tables###
