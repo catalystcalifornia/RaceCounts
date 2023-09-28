@@ -20,10 +20,13 @@ library(tidyr)
 library(readxl)
 library(sf)
 
+source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
 ############# Prep rda_shared_data table ######################
-# root <- "W:/Data/Housing/HUD/CHAS/2016-2020/"
+root <- "W:/Data/Housing/HUD/CHAS/2016-2020/"
+dict <- read_excel(paste0(root, "/CHAS-data-dictionary-16-20.xlsx"), sheet = "Table 9")
+# View(dict)
 # 
 # state_data <- fread(paste0(root, "2016thru2020-040-csv/Table9.csv"), header = TRUE, data.table = FALSE)
 # state_data$geolevel <- "state"
@@ -41,8 +44,6 @@ con <- connect_to_db("rda_shared_data")
 # tract_data$geolevel <- "tract"
 # # View(tract_data)
 # 
-# dict <- read_excel(paste0(root, "/CHAS-data-dictionary-16-20.xlsx"), sheet = "Table 9")
-# # View(dict)
 # 
 # state_data['cnty'] <- NA
 # state_data['place'] <- NA
@@ -68,7 +69,6 @@ con <- connect_to_db("rda_shared_data")
 
 # export chas data to rda shared table ------------------------------------------------------------
 ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
-# source("W:\\RDA Team\\R\\credentials_source.R")
 # table_schema <- "housing"
 # table_name <- "hud_chas_cost_burden_multigeo_2016_20"
 # table_comment_source <- "Multigeo table including CA tracts, cities, counties, state. The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. Raw data saved here: W:\\Data\\Housing\\HUD\\CHAS\\2016-2020"
