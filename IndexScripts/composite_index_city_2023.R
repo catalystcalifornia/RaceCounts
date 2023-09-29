@@ -408,7 +408,7 @@ calculate_city_index <- function(x,y,z) {
 }
 
 
-issue_area_threshold <- 3 # place must have at least 3 perf/disp z-scores or it will be supressed
+issue_area_threshold <- 4 # place must have at least 3 perf/disp z-scores or it will be supressed
 indicator_threshold <- 12
 
 index_table_final_screen <-  calculate_city_index(all_index, issue_area_threshold, indicator_threshold) 
