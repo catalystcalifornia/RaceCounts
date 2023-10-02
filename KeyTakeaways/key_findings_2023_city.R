@@ -472,10 +472,8 @@ best_table2 <- #subset(df_lf, (!race_generic %in% c('filipino', 'other', 'twoorm
 best_table2 <- best_table2 %>% mutate(count = ifelse(is.na(count) & rate_count > 0, 0, count))
 
 
-
 best_rate_count <- filter(best_table2, !is.na(rate_count)) %>% mutate(geo_name = gsub(' County', '', geo_name), finding_type = 'best count', findings_pos = 1) %>%
   mutate(finding = ifelse(rate_count > 5, paste0(geo_name, "'s ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for this analysis."))) %>%   mutate(geo_name = gsub(' City', '', geo_name))
-
 
 ### Bind worst and best tables - RACE PAGE ### ----------------------------------------------
 worst_best_counts <- bind_rows(worst_rate_count, best_rate_count)
