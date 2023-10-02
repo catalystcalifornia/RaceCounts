@@ -477,17 +477,12 @@ best_rate_count <- filter(best_table2, !is.na(rate_count)) %>% mutate(geo_name =
   mutate(finding = ifelse(rate_count > 5, paste0(geo_name, "'s ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for this analysis."))) %>%   mutate(geo_name = gsub(' City', '', geo_name))
 
 
-
-
-
 ### Bind worst and best tables - RACE PAGE ### ----------------------------------------------
 worst_best_counts <- bind_rows(worst_rate_count, best_rate_count)
 worst_best_counts <- rename(worst_best_counts, race = race_generic) %>% select(-long_name, -rate_count, -count)
 worst_best_counts <- worst_best_counts  %>%
   # mutate(geo_level = ifelse(geo_name == 'California', 'state', 'county')) 
   filter(!race %in% c('filipino', 'other', 'twoormor')) # filter out races that don't have RC Race Pages
-
-
 
 ### Most impacted - PLACE PAGE ### ---------------------------------------------------
 
@@ -507,8 +502,6 @@ most_impacted <- most_impacted %>% select(c(geoid, geo_name, geo_level, finding_
 most_impacted$geo_name <- gsub(" County", "", most_impacted$geo_name) 
 most_impacted$geo_name <- gsub(" City", "", most_impacted$geo_name) 
 most_impacted <- most_impacted[-c(1)]
-
-
 
 ### This section creates findings for Race pages - most disparate indicator by race & place. 
 ##Example:"Denied Mortgages is the most disparate indicator for American Indian/Alaska Native residents of San Francisco." ------------------------------------------------------------------
@@ -611,8 +604,6 @@ most_disp_by_race <- function(x, y, d) {
     return(z)
   }
 }
-
-
 
 # copy df before running any code
 # Most Disparate Indicator by Race - RACE PAGE
@@ -737,7 +728,6 @@ print(comment)
 disp_long <- df %>% filter(race == "total" & geo_level %in% c("county", "city") & !is.na(disparity_z_score) & !disparity_z_score == "0") %>% select(geoid, geo_name, indicator, disparity_z_score, geo_level) %>% rename(variable = indicator, value = disparity_z_score) %>% mutate(geo_name = gsub('County', '', geo_name),
                                                                                                                                                                                                                                                                                      geo_name = gsub('City', '', geo_name))
 
-
 ## Worst Disparity - PLACE PAGE ----
 
 #### Rank indicators by disp_z with worst/highest disp_z = 1
@@ -820,9 +810,6 @@ worst_disp4 <- worst_disp3 %>% mutate(
       paste0("Data for ", long_name, " is too limited for this analysis."), 
       finding)
 ) %>% select(-long_disp_indicator)
-
-
-
 
 ------    
   ## Worst Performance - PLACE PAGE ----
@@ -975,7 +962,6 @@ perf_avg_statement <- sum_statement_df  %>%
 ### replace null statements with "finding is too limited for geo_name"
 perf_avg_statement <- perf_avg_statement %>% mutate(finding = 
                                                       ifelse(is.na(finding), paste0("Data for ", geo_name, " ", geo_level, " is too limited for this analysis."), finding))
-
 
 ## bind everything together
 rda_places_findings <- rbind(most_impacted, disp_avg_statement, perf_avg_statement, worst_disp_perf) %>%
