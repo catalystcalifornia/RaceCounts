@@ -612,8 +612,6 @@ most_disp_by_race <- function(x, y, d) {
   }
 }
 
-
-
 # copy df before running any code
 # Most Disparate Indicator by Race - RACE PAGE
 df_ds <- filter(df, race != 'total')    # remove total rates bc all findings in this section are raced
@@ -737,7 +735,6 @@ print(comment)
 disp_long <- df %>% filter(race == "total" & geo_level %in% c("county", "city") & !is.na(disparity_z_score) & !disparity_z_score == "0") %>% select(geoid, geo_name, indicator, disparity_z_score, geo_level) %>% rename(variable = indicator, value = disparity_z_score) %>% mutate(geo_name = gsub('County', '', geo_name),
                                                                                                                                                                                                                                                                                      geo_name = gsub('City', '', geo_name))
 
-
 ## Worst Disparity - PLACE PAGE ----
 
 #### Rank indicators by disp_z with worst/highest disp_z = 1
@@ -820,9 +817,6 @@ worst_disp4 <- worst_disp3 %>% mutate(
       paste0("Data for ", long_name, " is too limited for this analysis."), 
       finding)
 ) %>% select(-long_disp_indicator)
-
-
-
 
 ------    
   ## Worst Performance - PLACE PAGE ----
@@ -975,7 +969,6 @@ perf_avg_statement <- sum_statement_df  %>%
 ### replace null statements with "finding is too limited for geo_name"
 perf_avg_statement <- perf_avg_statement %>% mutate(finding = 
                                                       ifelse(is.na(finding), paste0("Data for ", geo_name, " ", geo_level, " is too limited for this analysis."), finding))
-
 
 ## bind everything together
 rda_places_findings <- rbind(most_impacted, disp_avg_statement, perf_avg_statement, worst_disp_perf) %>%
