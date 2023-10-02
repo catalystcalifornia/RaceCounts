@@ -18,7 +18,7 @@ options(scipen=999)
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
-#set source for RC Functions script
+#set source for Weighted Average Functions script
 source("W:/RDA Team/R/Functions/Cnty_St_Wt_Avg_Functions.R")
 
 
