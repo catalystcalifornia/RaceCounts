@@ -119,16 +119,17 @@ df <- within(df, geoid[geoname == 'California'] <- '06')
 #View(df)
 
 ####### clean and transform the raw csv data #######
+threshold <- 50
 df <- df %>% 
-  mutate( total_raw = ifelse(enroll_total < 50, NA, homeless_total),   #pop screen for _raw columns where a group's enrollment is less than 50
-          nh_black_raw = ifelse(enroll_nh_black < 50, NA, homeless_nh_black),
-          nh_aian_raw = ifelse(enroll_nh_aian < 50, NA, homeless_nh_aian),
-          nh_asian_raw = ifelse(enroll_nh_asian < 50, NA, homeless_nh_asian),
-          nh_filipino_raw = ifelse(enroll_nh_filipino < 50, NA, homeless_nh_filipino),
-          latino_raw = ifelse(enroll_latino < 50, NA, homeless_latino),
-          nh_pacisl_raw = ifelse(enroll_nh_nhpi < 50, NA, homeless_nh_nhpi),
-          nh_white_raw = ifelse(enroll_nh_white < 50, NA, homeless_nh_white),
-          nh_twoormor_raw = ifelse(enroll_nh_twoormor < 50, NA, homeless_nh_twoormor),
+  mutate( total_raw = ifelse(enroll_total < threshold, NA, homeless_total),   #pop screen for _raw columns where a group's enrollment is less than 50
+          nh_black_raw = ifelse(enroll_nh_black < threshold, NA, homeless_nh_black),
+          nh_aian_raw = ifelse(enroll_nh_aian < threshold, NA, homeless_nh_aian),
+          nh_asian_raw = ifelse(enroll_nh_asian < threshold, NA, homeless_nh_asian),
+          nh_filipino_raw = ifelse(enroll_nh_filipino < threshold, NA, homeless_nh_filipino),
+          latino_raw = ifelse(enroll_latino < threshold, NA, homeless_latino),
+          nh_pacisl_raw = ifelse(enroll_nh_nhpi < threshold, NA, homeless_nh_nhpi),
+          nh_white_raw = ifelse(enroll_nh_white < threshold, NA, homeless_nh_white),
+          nh_twoormor_raw = ifelse(enroll_nh_twoormor < threshold, NA, homeless_nh_twoormor),
           
           # calculate _rate column if _raw column does not equal NA
           total_rate = ifelse(is.na(total_raw), NA, (total_raw / enroll_total)*100),
@@ -156,7 +157,7 @@ df <- df %>%
 # colnames(df) This line is used to view column names so that you can select the appropriate column names when creating the df_subset. Un-comment this line if you intend to use it
 
 ########## create a df with only the newly calculated columns #######
-df_subset <- select(df, geoid, geoname, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"))
+df_subset <- select(df, geoid, geoname, ends_with("_pop"), ends_with("_raw"), ends_with("_rate")) %>% mutate(geolevel = ifelse(geoid == '06', 'state', 'county'))
   
 View(df_subset)
 
@@ -261,11 +262,14 @@ calculations_enr <- function(x,geoid,geoname) {
   ## nh asian
   nh_asian_enroll <- x %>% group_by({{geoid}}, {{geoname}}) %>% summarize(nh_asian_enroll = sum(nh_asian_enroll*prc_area, na.rm=TRUE))
   
+  ## nh filipino
+  nh_filipino_enroll <- x %>% group_by({{geoid}}, {{geoname}}) %>% summarize(nh_filipino_enroll = sum(nh_filipino_enroll*prc_area, na.rm=TRUE))
+  
   ## nh black
   nh_black_enroll <- x %>% group_by({{geoid}}, {{geoname}}) %>% summarize(nh_black_enroll = sum(nh_black_enroll*prc_area, na.rm=TRUE))
   
   ## nh pacisl 
-  nh_pacisl_enroll <- x %>% group_by({{geoid}}, {{geoname}})%>% summarize(nh_nhpi_enroll = sum(nh_nhpi_enroll*prc_area, na.rm=TRUE))
+  nh_pacisl_enroll <- x %>% group_by({{geoid}}, {{geoname}})%>% summarize(nh_pacisl_enroll = sum(nh_nhpi_enroll*prc_area, na.rm=TRUE))
   
   ## nh aian
   nh_aian_enroll <- x %>% group_by({{geoid}}, {{geoname}})%>% summarize(nh_aian_enroll = sum(nh_aian_enroll*prc_area, na.rm=TRUE))
@@ -276,7 +280,7 @@ calculations_enr <- function(x,geoid,geoname) {
   ## latino
   latino_enroll <- x %>% group_by({{geoid}}, {{geoname}}) %>% summarize(latino_enroll = sum(latino_enroll*prc_area, na.rm=TRUE))
   
-  z <- total_enroll %>% full_join(nh_white_enroll) %>% full_join(nh_asian_enroll) %>% full_join(nh_black_enroll) %>% full_join(nh_pacisl_enroll) %>% full_join(nh_aian_enroll) %>% full_join(nh_twoormor_enroll) %>% full_join(latino_enroll) 
+  z <- total_enroll %>% full_join(nh_white_enroll) %>% full_join(nh_asian_enroll) %>% full_join(nh_filipino_enroll) %>% full_join(nh_black_enroll) %>% full_join(nh_pacisl_enroll) %>% full_join(nh_aian_enroll) %>% full_join(nh_twoormor_enroll) %>% full_join(latino_enroll) 
   
   return(z)
 }
@@ -290,11 +294,14 @@ calculations_homeless <- function(x,geoid,geoname) {
   ## nh asian
   nh_asian_homeless <- x %>% group_by({{geoid}}, {{geoname}}) %>% summarize(nh_asian_homeless = sum(nh_asian_homeless*prc_area, na.rm=TRUE))
   
+  ## nh filipino
+  nh_filipino_homeless <- x %>% group_by({{geoid}}, {{geoname}}) %>% summarize(nh_filipino_homeless = sum(nh_filipino_homeless*prc_area, na.rm=TRUE))
+    
   ## nh black
   nh_black_homeless <- x %>% group_by({{geoid}}, {{geoname}}) %>% summarize(nh_black_homeless = sum(nh_black_homeless*prc_area, na.rm=TRUE))
   
   ## nh pacisl 
-  nh_pacisl_homeless <- x %>% group_by({{geoid}}, {{geoname}})%>% summarize(nh_nhpi_homeless = sum(nh_nhpi_homeless*prc_area, na.rm=TRUE))
+  nh_pacisl_homeless <- x %>% group_by({{geoid}}, {{geoname}})%>% summarize(nh_pacisl_homeless = sum(nh_nhpi_homeless*prc_area, na.rm=TRUE))
   
   ## nh aian
   nh_aian_homeless <- x %>% group_by({{geoid}}, {{geoname}})%>% summarize(nh_aian_homeless = sum(nh_aian_homeless*prc_area, na.rm=TRUE))
@@ -305,38 +312,47 @@ calculations_homeless <- function(x,geoid,geoname) {
   ## latino
   latino_homeless <- x %>% group_by({{geoid}}, {{geoname}}) %>% summarize(latino_homeless = sum(latino_homeless*prc_area, na.rm=TRUE))
   
-  z <- total_homeless %>% full_join(nh_white_homeless) %>% full_join(nh_asian_homeless) %>% full_join(nh_black_homeless) %>% full_join(nh_pacisl_homeless) %>% full_join(nh_aian_homeless) %>% full_join(nh_twoormor_homeless) %>% full_join(latino_homeless) 
+  z <- total_homeless %>% full_join(nh_white_homeless) %>% full_join(nh_asian_homeless) %>% full_join(nh_filipino_homeless) %>% full_join(nh_black_homeless) %>% full_join(nh_pacisl_homeless) %>% full_join(nh_aian_homeless) %>% full_join(nh_twoormor_homeless) %>% full_join(latino_homeless) 
   
   return(z)
 }
 
 city_enr <- calculations_enr(dist_df_xwalk,place_geoid,place_name)
 city_homeless <- calculations_homeless(dist_df_xwalk,place_geoid,place_name)
+df_city <- city_enr %>% left_join(city_homeless, by=c("place_geoid", "place_name"))
 
-# screen data and calc rates
-threshold <- 20
-df_city <- df_city_merged %>% mutate(
-  total_raw = ifelse(total_applications < threshold, NA, total_subprime), # 90 obs filtered
-  nh_white_raw = ifelse(nh_white_applications < threshold, NA, nh_white_subprime), # 184 obs filtered
-  nh_asian_raw = ifelse(nh_asian_applications < threshold, NA, nh_asian_subprime), # 211 obs filtered
-  nh_black_raw = ifelse(nh_black_applications < threshold, NA, nh_black_subprime), # 290 obs filtered
-  pacisl_raw = ifelse(pacisl_applications < threshold, NA, pacisl_subprime), # 240 obs filtered
-  aian_raw = ifelse(aian_applications < threshold, NA, aian_subprime), #271 obs filtered
-  nh_twoormor_raw = ifelse(nh_twoormor_applications < threshold, NA, nh_twoormor_subprime), #178 obs filtered
-  latino_raw = ifelse(latino_applications < threshold, NA, latino_subprime), #328 obs filtered
+# screen data and calc rates; n = 1,612 cities. threshold is defined in county/state section.
+threshold_2 <- 1 # extra screen for city data only on count of homeless students
+df_city_screen <- df_city %>% mutate(
+  total_raw = ifelse(total_enroll < threshold | total_homeless < threshold_2, NA, total_homeless), 
+  nh_white_raw = ifelse(nh_white_enroll < threshold | nh_white_homeless < threshold_2, NA, nh_white_homeless), 
+  nh_asian_raw = ifelse(nh_asian_enroll < threshold | nh_asian_homeless < threshold_2, NA, nh_asian_homeless), 
+  nh_filipino_raw = ifelse(nh_filipino_enroll < threshold | nh_filipino_homeless < threshold_2, NA, nh_filipino_homeless), 
+  nh_black_raw = ifelse(nh_black_enroll < threshold | nh_black_homeless < threshold_2, NA, nh_black_homeless), 
+  nh_pacisl_raw = ifelse(nh_pacisl_enroll < threshold | nh_pacisl_homeless < threshold_2, NA, nh_pacisl_homeless), 
+  nh_aian_raw = ifelse(nh_aian_enroll < threshold | nh_aian_homeless < threshold_2, NA, nh_aian_homeless), 
+  nh_twoormor_raw = ifelse(nh_twoormor_enroll < threshold | nh_twoormor_homeless < threshold_2, NA, nh_twoormor_homeless), 
+  latino_raw = ifelse(latino_enroll < threshold | latino_homeless < threshold_2, NA, latino_homeless), 
   
-  total_rate = (total_raw/total_applications) * 100,
-  nh_white_rate = (nh_white_raw/nh_white_applications) * 100,
-  nh_asian_rate = (nh_asian_raw/nh_asian_applications) * 100,
-  nh_black_rate = (nh_black_raw/nh_black_applications) * 100,
-  pacisl_rate = (pacisl_raw/pacisl_applications) * 100,
-  aian_rate = (aian_raw/aian_applications) * 100,
-  nh_twoormor_rate = (nh_twoormor_raw/nh_twoormor_applications) * 100,
-  latino_rate = (latino_raw/latino_applications) * 100,
-  
-  geolevel = 'place') %>% rename(geoid = place_geoid)
+  total_rate = (total_raw/total_enroll) * 100,                   # 603 values
+  nh_white_rate = (nh_white_raw/nh_white_enroll) * 100,          # 348 values
+  nh_asian_rate = (nh_asian_raw/nh_asian_enroll) * 100,          # 171 values
+  nh_filipino_rate = (nh_filipino_raw/nh_filipino_enroll) * 100, # 97 values
+  nh_black_rate = (nh_black_raw/nh_black_enroll) * 100,          # 232 values
+  nh_pacisl_rate = (nh_pacisl_raw/nh_pacisl_enroll) * 100,       # 41 values
+  nh_aian_rate = (nh_aian_raw/nh_aian_enroll) * 100,             # 18 values 
+  nh_twoormor_rate = (nh_twoormor_raw/nh_twoormor_enroll) * 100, # 197 values
+  latino_rate = (latino_raw/latino_enroll) * 100,                # 533 values
+  # colSums(!is.na(df_city_screen)) # to check how many non-null values we get after screening
+  geolevel = 'place') %>% rename(geoid = place_geoid, geoname = place_name)
 
+# update city df to match county/state df
+names(df_city_screen) <- gsub(x = names(df_city_screen), pattern = "_enroll", replacement = "_pop")  
+df_city_screen <- df_city_screen %>% select(-contains("homeless"))
 
+## Combine county/state with city data ##
+final_df <- rbind(df_subset, df_city_screen)
+d <- final_df
 
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
@@ -353,8 +369,9 @@ d <- calc_id(d) #calculate index of disparity
 
 
 #split STATE into separate table and format id, name columns
-state_table <- d[d$geoname == 'California', ]
-county_table <- d[d$geoname != 'California', ]
+state_table <- d[d$geolevel == 'state', ]
+county_table <- d[d$geolevel == 'county', ]
+city_table <- d[d$geolevel == 'place', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
@@ -367,13 +384,23 @@ county_table <- calc_ranks(county_table)
 county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
 View(county_table)
 
+#calculate CITY z-scores
+city_table <- calc_z(city_table)
+city_table <- calc_ranks(city_table)
+city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") 
+View(city_table)
+
+
 ###update info for postgres tables###
-county_table_name <- "arei_hous_student_homelessness_county_2022"
-state_table_name <- "arei_hous_student_homelessness_state_2022"
-#indicator <- "Student Homelessness"
-indicator <- "Student homelessness rates 2021-22. Subgroups with total enrollment under 50 are excluded from the calculations. Homelessness rate calculated as percent of enrollment for each subgroup"
-source <- "CDE 2021-22 https://dq.cde.ca.gov/dataquest/"
+county_table_name <- "arei_hous_student_homelessness_county_2023"
+state_table_name <- "arei_hous_student_homelessness_state_2023"
+city_table_name <- "arei_hous_student_homelessness_city_2023"
+indicator <- "Student homelessness rates. Data for groups with enrollment under 50 are excluded from the calculations. Homelessness rate calculated as a percent of enrollment for each group"
+source <- "CDE 2021-22 (county/state), CDE 2022-23 (city) https://dq.cde.ca.gov/dataquest/"
+rc_schema <- 'v5'
+
 
 #send tables to postgres
-to_postgres()
+#to_postgres(county_table, state_tabe)
+#city_to_postgres(city_table)
 
