@@ -25,8 +25,6 @@ crosswalk <- dbGetQuery(con, "SELECT  city_id, city_name, dist_id, total_enroll 
 # pull in list of tables in racecounts.v5
 rc_list = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(schema = "v5"))$table, function(x) slot(x, 'name'))))
 
-
-
 # pull in list of tables in racecounts.v5
 
 # filter for only city level indicator tables
@@ -41,8 +39,6 @@ city_tables <- map2(city_tables, names(city_tables), ~ mutate(.x, indicator = .y
 
 
 # call columns we want
-
-
 
 # you need to pivot wider
 city_tables_disparity <- lapply(city_tables, function(x) x%>% select(city_id, asbest,ends_with("disparity_z"), indicator, values_count))
@@ -153,9 +149,6 @@ education_rate <- imap_dfr(education_tables_rate , ~
 df_merged_education <- education_disparity %>% full_join(education_performance) %>% full_join(education_rate)
 
 dist_name <- df_merged_education %>% group_by(dist_id, district_name) %>% summarize(count = n()) %>% select(-count) # unique dist id and district name to use later
-
-
-
 
 # pull in cross-walk
 # crosswalk <- dbGetQuery(con, "SELECT * FROM v5.arei_city_county_district_table")
@@ -378,8 +371,6 @@ indicator_short  <- unique(df$indicator)
 
 indicator <- data.frame(indicator, indicator_short)
 
-
-
 ### This section creates findings like: -----------------------------------------------------
 ## Race page: "Kern's Latinx residents have the worst rates for 7 of the 42 RACE COUNTS indicators." 
 ## and Place pages: "Across indicators, Contra Costa County Black residents are most impacted by racial disparity."
@@ -446,8 +437,6 @@ best_table <- #subset(df_lf, (!race_generic %in% c('filipino', 'other', 'twoormo
   mutate(best_rate = ifelse(best_rank == 1, race_generic, ""))    # identify race with best rate using best_rank
 best_table <- best_table %>% left_join(filter_nonRC) %>% filter(is.na(remove)) %>% select(-geo_name, -remove) # remove non-RC best group rates. Total of 2 obs
 
-
-
 best_table <- # subset(df_lf, (!race_generic %in% c('filipino', 'other', 'twoormor')) & values_count > 1 & !is.na(rate)) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate
   subset(df_lf, values_count > 1 & !is.na(rate)) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate              
   select(c(geoid, issue, indicator, values_count, geo_level, asbest, rate, race_generic)) %>% 
@@ -455,9 +444,6 @@ best_table <- # subset(df_lf, (!race_generic %in% c('filipino', 'other', 'twoorm
   mutate(best_rank = ifelse(asbest == 'min', dense_rank(rate), dense_rank(-rate)))  %>% # use dense_rank to give ties the same rank, and all integer ranks
   mutate(best_rate = ifelse(best_rank == 1, race_generic, ""))    # identify race with best rate using best_rank
 best_table <- best_table %>% left_join(filter_nonRC) %>% filter(is.na(remove)) %>% select(-geo_name, -remove) # remove non-RC best group rates. Total of 2 obs
-
-
-
 
 
 best_table2 <- #subset(df_lf, (!race_generic %in% c('filipino', 'other', 'twoormor')) & values_count > 1) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate 
