@@ -362,9 +362,6 @@ df <- bind_rows(df_city, df_education_city, df_county, df_state) %>% select(
 # remove universities: there are 6 of them
 df <- df %>% filter(!grepl('University', geo_name))
 
-
-
-
 # NOTE: when you call this df in your code chunk(s), rename it before running code on it bc it takes a LONG time to run again...
 
 # Get long form race names for findings ------------------------------------------------
@@ -374,13 +371,14 @@ race_names <- data.frame(race_generic, long_name)
 
 
 # Create indicator long name df -------------------------------------------
-indicator <- c("Incarceration", "Use of Force", "Census Participation", "Diversity of Electeds", "Employment","Internet Access", "Officials and Managers", "Per Capita Income", "Drinking Water Contaminants", "Proximity to Hazards", "Lack of Greenspace", "Toxic Releases from Facilities", "Health Insurance", "Homeowner Cost Burden", "Renter Cost Burden", "Denied Mortgages","Evictions","Foreclosures","Homeownership","Housing Quality","Overcrowded Housing","Subprime Mortgages", "3rd Grade English Proficiency","3rd Grade Math Proficiency","High School Graduation","Teacher & Staff Diversity", "Chronic Absenteeism", "Suspensions","Perception of Safety","Arrests for Status Offenses","Diversity of Candidates","Voter Registration", "Voting in Midterm Elections","Voting in Presidential Elections", "Connected Youth","Living Wage","Cost-of-Living Adjusted Poverty","Early Childhood Education Access","Asthma", "Food Access", "Got Help", "Life Expectancy","Low Birthweight", "Preventable Hospitalizations", "Usual Source of Care", "Student Homelessness")
+indicator <- c("Incarceration", "Use of Force", "Census Participation", "Diversity of Electeds", "Employment","Internet Access", "Officials and Managers", "Per Capita Income", "Drinking Water Contaminants", "Proximity to Hazards", "Lack of Greenspace", "Toxic Releases from Facilities", "Health Insurance", "Homeowner Cost Burden", "Renter Cost Burden", "Denied Mortgages","Evictions","Foreclosures","Homeownership","Housing Quality","Overcrowded Housing","Subprime Mortgages", "3rd Grade English Proficiency","3rd Grade Math Proficiency","High School Graduation","Teacher & Staff Diversity", "Chronic Absenteeism","Student Homelessness", "Suspensions","Perception of Safety","Arrests for Status Offenses","Diversity of Candidates","Voter Registration", "Voting in Midterm Elections","Voting in Presidential Elections", "Connected Youth","Living Wage","Cost-of-Living Adjusted Poverty","Early Childhood Education Access","Asthma", "Food Access", "Got Help", "Life Expectancy","Low Birthweight", "Preventable Hospitalizations", "Usual Source of Care")
 
 
 indicator_short  <- unique(df$indicator)
 
-
 indicator <- data.frame(indicator, indicator_short)
+
+
 
 ### This section creates findings like: -----------------------------------------------------
 ## Race page: "Kern's Latinx residents have the worst rates for 7 of the 42 RACE COUNTS indicators." 
@@ -637,12 +635,6 @@ most_disp <- final_findings %>% mutate(geo_level = case_when(
 
 ## Extra step: add city council district finding to findings related to education
 
-educ_indicators <- unique(df_education_city$indicator)
-educ_indicators <- indicator %>% filter(
-  indicator_short %in% educ_indicators
-)
-educ_indicators <- unique(educ_indicators$indicator)
-
 ## most disparate district by race and city. This should have 1 district and 1 indicator per race and geo for education though there may be ties.
 top_disparate_district_race <- df_education_district_weighted %>% filter(!race_generic %in% c("total", "filipino", "twoormor") & issue == "educ" & !is.na(disparity_z_score)) %>% select(geoid, geo_name, dist_id, district_name, race_generic, total_enroll, indicator, disparity_z_score) %>% group_by(geoid, race_generic) %>%  mutate(rk = min_rank(-disparity_z_score)) %>%  filter(rk == "1") %>% select(geoid, dist_id, district_name, race_generic, total_enroll) %>% rename(race = race_generic) %>% group_by(geoid, race) %>% 
   mutate(perf_ties = n())  %>% 
@@ -686,6 +678,15 @@ most_disp3 <- most_disp2 %>% mutate(
 ## Look at education findings
 #education_findings <- most_disp3 %>% filter(
 #indicator %in% educ_indicators & geo_level == "city" & !grepl('too limited', finding))  %>% arrange(geoid)
+
+```{r}
+education_findings <- most_disp3 %>% filter(
+indicator %in% educ_indicators & geo_level == "city" & !grepl('too limited', finding))  %>% arrange(geoid)
+
+most_disp3 %>% filter(geoid == "0600135")
+
+```
+
 
 # Save most_disp, best_rate_counts, worst_rate_counts as 1 csv
 rda_race_door_findings <- bind_rows(most_disp3, worst_best_counts)
@@ -810,22 +811,10 @@ worst_disp4 <- worst_disp3 %>% mutate(
 ) %>% select(-long_disp_indicator)
 
 ------    
-  ## Worst Performance - PLACE PAGE ----
-
-# Keep only perf_z columns
-#select_cols <- lapply(data_list, select, county_id,
-#                      county_name,
-#                      ends_with(c("perf_z")))
-
-# Merge into 1 matrix, removing duplicative county_id columns
-#merged_perf <- reduce(select_cols, inner_join, by = c("county_name", "county_id"))
-
-### Convert table from wide to long format
-#perf_long <- reshape2::melt(merged_perf, id.vars=c("county_id", "county_name"))
-#perf_long <- rename(perf_long, geo_name = county_name, geoid = county_id) %>% mutate(geo_level = "county")
+## Worst Performance - PLACE PAGE ----
 
 perf_long <- df %>% filter(race == "total" & geo_level %in% c("county", "city") & !is.na(performance_z_score) & !performance_z_score == "0") %>% select(geoid, geo_name, indicator, performance_z_score, geo_level) %>% rename(variable = indicator, value = performance_z_score) %>% mutate(geo_name = gsub('County', '', geo_name),
-                                                                                                                                                                                                                                                                                             geo_name = gsub('City', '', geo_name))
+geo_name = gsub('City', '', geo_name))
 
 #### Rank indicators by perf_z with worst/lowest perf_z = 1
 
@@ -968,12 +957,12 @@ rda_places_findings <- rbind(most_impacted, disp_avg_statement, perf_avg_stateme
 
 
 ## compare with v4 findings 
-arei_findings_places_multigeo <- dbGetQuery(con, "SELECT * FROM v5.arei_findings_places_multigeo")
+#arei_findings_places_multigeo <- dbGetQuery(con, "SELECT * FROM v5.arei_findings_places_multigeo")
 
 
 ## Create postgres table
-#dbWriteTable(con, c("v5", "arei_findings_places_multigeo_test"), rda_places_findings,
-#             overwrite = FALSE, row.names = FALSE)
+dbWriteTable(con, c("v5", "arei_findings_places_multigeo_test"), rda_places_findings,
+             overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
 comment <- paste0("COMMENT ON TABLE v5.arei_findings_places_multigeo_test IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023_city.R.';",
