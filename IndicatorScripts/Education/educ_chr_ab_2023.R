@@ -76,8 +76,9 @@ df_subset$reportingcategory <- gsub("RT", "nh_twoormor", df_subset$reportingcate
 df_subset$reportingcategory <- gsub("RW", "nh_white", df_subset$reportingcategory)
 
 #pop screen on number of chronically absent students (raw)
-df_subset <- df_subset %>% mutate(raw = ifelse(raw < 20, NA, raw)) %>%
-  mutate(rate = ifelse(raw < 20, NA, rate))
+threshold <- 20
+df_subset <- df_subset %>% mutate(raw = ifelse(raw < threshold, NA, raw)) %>%
+  mutate(rate = ifelse(raw < threshold, NA, rate))
 # View(df_subset)
 
 #pivot
