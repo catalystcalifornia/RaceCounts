@@ -1,5 +1,10 @@
-# Race Counts
+# RACE COUNTS
+### Fall 2023
+
 <base target="_blank">
+<!-- NOTE: Need to replace homepage image, findings images
+-->
+
 <img src="images/RC.png" alt="Race Counts Logo">
 
 
@@ -31,7 +36,7 @@
 
 ## About The Project
 
-The website [RACECOUNTS.org](https://www.racecounts.org?target=_blank) is one part of the larger RACE COUNTS initiative created by [Catalyst California](https://www.catalystcalifornia.org/) (formerly Advancement Project California) and partners. At Catalyst California, we strategize with community partners to identify funding, services and opportunities in our public systems that can be redistributed for more just outcomes for all. Our goal is to promote racial equity and build a foundation so that every Californian may thrive. The RACE COUNTS website includes an analysis of racial disparity, overall performance or outcomes, and impact based on population size. This repo is meant to make the methods we use more transparent and duplicable. The repo is a work in progress and we will continue to add more documentation around indicators, indexes, and more as we continue to update the website.
+The website [RACECOUNTS.org](https://www.racecounts.org?target=_blank) is one part of the larger RACE COUNTS initiative created by [Catalyst California](https://www.catalystcalifornia.org/) (formerly Advancement Project California) and partners. At Catalyst California, we strategize with community partners to identify funding, services and opportunities in our public systems that can be redistributed for more just outcomes for all. Our goal is to promote racial equity and build a foundation so that every Californian may thrive. The RACE COUNTS website includes an analysis of racial disparity, overall outcomes, and impact based on population size. This repo is meant to make the methods we use more transparent and duplicable. The repo is a work in progress and we will continue to add more documentation around indicators, indexes, and more as we continue to update the website.
 
 Note: The code does not include lines relating to importing of the data. We pull tables from our private PostgreSQL database using credentials accessed through a separate script before running any of the code below. The database is accessible only by our Research & Data Analysis team. However, we do plan to share a public file with the complete data for each RACE COUNTS indicator, where possible, here soon.
 
@@ -131,7 +136,7 @@ indicator <- data.frame(indicator, indicator_short)
 
 ### Count of Worst/Best Rate Findings
 
-Create findings identifying the number of times each race has the worst and best rates in each geography. These findings are found on Race pages and in [rda_race_door_findings.csv](https://github.com/advancementprojectca-rda/RaceCounts/blob/main/rda_race_door_findings.csv).
+Create findings identifying the number of times each race has the worst and best rates in each geography. These findings are found on Race pages.
 
 <details>
 <summary>Code Explanation</summary>
@@ -233,7 +238,7 @@ worst_best_counts <- worst_best_counts %>% mutate(geo_level = ifelse(geo_name ==
 
 ### Most Impacted Finding
 
-Create findings identifying the race most impacted by racial disparity in each geography using counts from the Worst Rate Findings. The most impacted race in a geography is the group that has the highest count of worst rates. These findings are found on Place pages and in [most_impacted_race_v2.csv](https://github.com/advancementprojectca-rda/RaceCounts/blob/main/most_impacted_race_v2.csv).
+Create findings identifying the race most impacted by racial disparity in each geography using counts from the Worst Rate Findings. The most impacted race in a geography is the group that has the highest count of worst rates. These findings are found on Place pages.
 
 <details>
 <summary>Code Explanation</summary>
@@ -269,7 +274,7 @@ This finding is generated with the following steps:
 
 ### Most Disparate Indicator by Race & Place
 
-Create findings identifying the indicator with the most racial disparity (highest disparity z-score) for each race in each geography. These findings are found on Race pages and in [rda_race_door_findings.csv](https://github.com/advancementprojectca-rda/RaceCounts/blob/main/rda_race_door_findings.csv).
+Create findings identifying the indicator with the most racial disparity (highest disparity z-score) for each race in each geography. These findings are found on Race pages.
 
 <details>
 
@@ -408,9 +413,9 @@ Create findings identifying the indicator with the most racial disparity (highes
 <img src="images/Most Disparate.png" alt="Most Disparate">
 
 
-### Lowest Performance Indicator by Geography
+### Lowest Outcome Indicator by Geography
 
-Create findings identifying the indicator with the worst outcomes (lowest overall performance z-score) in each geography. These findings are found on Place pages and in [worst_disp_perf_by_county.csv](https://github.com/advancementprojectca-rda/RaceCounts/blob/main/worst_disp_perf_by_county.csv).
+Create findings identifying the indicator with the worst outcomes (lowest overall outcome z-score) in each geography. These findings are found on Place pages.
 
 <details>
 
@@ -426,7 +431,7 @@ data_list <- list(c_1, c_2, c_3, c_4, c_5, c_6, c_7)
 
 ```
 
-* Step 2: Select just the necessary columns including the county name and overall performance z-scores. Then merge into one matrix, removing duplicated county_id columns. Convert new matrix from 'wide' to 'long' format.
+* Step 2: Select just the necessary columns including the county name and overall outcome z-scores. Then merge into one matrix, removing duplicated county_id columns. Convert new matrix from 'wide' to 'long' format.
 
 ```
 
@@ -437,7 +442,7 @@ perf_long <- melt(merged_perf, id.vars=c("county_name"))
 
 ```
 
-* Step 3: Rank indicators with worst outcomes (lowest performance z-score) equal to a rank of 1. Select the indicator with the worst outcome in each geography. Rename variable and value fields.
+* Step 3: Rank indicators with worst outcomes (lowest outcome z-score) equal to a rank of 1. Select the indicator with the worst outcome in each geography. Rename variable and value fields.
 
 ```
 
@@ -464,7 +469,7 @@ worst_perf <- select(perf_final, -c(rk, worst_perf_z)) %>%   # drop rank and z-s
 
 ```
 
-* Step 5: Make adjustments for geographies with two or more indicators tied for worst outcome (performance).
+* Step 5: Make adjustments for geographies with two or more indicators tied for worst outcome.
 
 ```
 
@@ -475,14 +480,14 @@ worst_perf2 <- worst_perf %>%
 
 ```
 
-* Step 6: Generate Worst Performance key findings.
+* Step 6: Generate Worst Outcome key findings.
 
 ```
 
 worst_perf2 <- worst_perf2 %>% 
   mutate(Lowest_Performing_Indicator = ifelse(perf_ties > 1, 
-                                      paste0(county_name, " County's low overall performance in ", long_perf_indicator," stand out most compared to other counties."),
-                                      paste0(county_name, " County's low overall performance in ", long_perf_indicator," stands out most compared to other counties."))) %>% 
+                                      paste0(county_name, " County's low overall outcome in ", long_perf_indicator," stand out most compared to other counties."),
+                                      paste0(county_name, " County's low overall outcome in ", long_perf_indicator," stands out most compared to other counties."))) %>% 
   select(county_name, Lowest_Performing_Indicator)
 
 ```
@@ -494,7 +499,7 @@ worst_perf2 <- worst_perf2 %>%
 
 ### Highest Disparity Indicator by Geography
 
-Create key findings identifying the indicator with the largest racial disparities in each geography. These findings are found on Place pages and in [worst_disp_perf_by_county.csv](https://github.com/advancementprojectca-rda/RaceCounts/blob/main/worst_disp_perf_by_county.csv).
+Create key findings identifying the indicator with the largest racial disparities in each geography. These findings are found on Place pages.
 
 <details>
 
@@ -577,16 +582,16 @@ worst_disp2 <- worst_disp2 %>%
 
 <img src="images/Highest Disparity.png" alt="Highest Disparity">
 
-### Above or Below Average Racial Disparity and Performance by Geography
+### Above or Below Average Racial Disparity and Outcomes by Geography
 
-Create key findings identifying whether a geography has above or below average disparity and outcomes (performance) as compared to other geographies of the same type. These findings are based on the average disparity z-score and average performance z-score across all indicators for each geography. When the average disparity or performance z-score across all indicators is below zero, we say that the disparity or performance is below average. If the average disparity or performance z-score is above zero, we say that the disparity or performance is above above average. These findings are found on Place pages and in [summary_statements_by_county.csv](https://github.com/advancementprojectca-rda/RaceCounts/blob/main/summary_statements_by_county.csv).
+Create key findings identifying whether a geography has above or below average disparity and outcomes as compared to other geographies of the same type. These findings are based on the average disparity z-score and average outcome z-score across all indicators for each geography. When the average disparity or outcome z-score across all indicators is below zero, we say that the disparity or outcome is below average. If the average disparity or outcome z-score is above zero, we say that the disparity or outcome is above above average. These findings are found on Place pages.
 
 <details>
 
 <summary>Code Explanation</summary>
 The code below pulls tables from our private PostgreSQL database using credentials accessed through a separate script. This database is accessible only by our Research & Data Analysis team. However, we do plan to share a public file with the complete data for each RACE COUNTS indicator, where possible, here soon.
 
-* Step 1: After importing dataframe containing composite index data imported from private database, select only needed fields. Then reclassify performance and disparity z-scores as above or below average.
+* Step 1: After importing dataframe containing composite index data imported from private database, select only needed fields. Then reclassify outcome and disparity z-scores as above or below average.
 
 ```
 
@@ -597,11 +602,11 @@ sum_statement_df <- c_1 %>%
 
 ```
 
-* Step 2: Generate Above and Below Average key findings for disparity and performance (outcomes).
+* Step 2: Generate Above and Below Average key findings for disparity and outcomes.
 
 ```
 sum_statement_df <- sum_statement_df  %>% 
-  mutate(Perf_Level_Statement = ifelse(is.na(perf_type), NA, paste0(county_name, " County's performance across indicators is ", perf_type, " average for California counties.")),
+  mutate(Perf_Level_Statement = ifelse(is.na(perf_type), NA, paste0(county_name, " County's outcomes across indicators are ", perf_type, " average for California counties.")),
                       Disp_Level_Statement = ifelse(is.na(disp_type), NA, paste0(county_name, " County's racial disparity across indicators is ", disp_type, " average for California counties."))) %>% 
   select(county_name, Perf_Level_Statement, Disp_Level_Statement) 
 
@@ -622,19 +627,19 @@ sum_statement_df <- sum_statement_df[order(sum_statement_df$county_name),]
 
 ## Data Methodology
 
-[RACE COUNTS: Indicator Methodology (2022)](https://www.racecounts.org/wp-content/uploads/2022/11/2022-Indicator-Methodology-County-State-20221129.pdf) <br>
-
+[RACE COUNTS: Indicator Methodology for County and State (2023)](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/IndicatorMethodology_CountyState.pdf) <br>
+<!-- [RACE COUNTS: Indicator Methodology for City (2023)](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/IndicatorMethodology_City.pdf) <br> -->
  
 ## Contributors
 
-* [Alexandra Baker](https://github.com/bakeralexan)
-* [Chris Ringewald](https://github.com/cringewald)
-* [David Segovia](https://github.com/davidseg1997)
-* [Elycia Graves](https://github.com/elyciamg)
-* [Hillary Khan](https://github.com/hillarykhan)
-* [Jennifer Zhang](https://github.com/jzhang514)
-* [Leila Forouzan](https://github.com/lforouzan)
-* [Maria Khan](https://github.com/mariatkhan)
+* [Alexandra Baker, Research & Data Analyst I](https://github.com/bakeralexan)
+* [Chris Ringewald, Senior Director of Research & Data Analysis](https://github.com/cringewald)
+* [David Segovia, Research & Data Analyst I](https://github.com/davidseg1997)
+* [Elycia Graves, Associate Director of Research & Data Analysis](https://github.com/elyciamg)
+* [Hillary Khan, Database Architect](https://github.com/hillarykhan)
+* [Jennifer Zhang, Senior Research & Data Analyst](https://github.com/jzhang514)
+* [Leila Forouzan, Senior Manager of Research & Data Analysis](https://github.com/lforouzan)
+* [Maria Khan, Research & Data Analyst II](https://github.com/mariatkhan)
 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
