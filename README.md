@@ -657,7 +657,7 @@ sum_statement_df <- sum_statement_df[order(sum_statement_df$county_name),]
 
 ## Github Link
 
-[Click here to view the RACE COUNTS Github Repo](https://github.com/advancementprojectca-rda/RaceCounts)
+[Click here to view the RACE COUNTS Github Repo](https://github.com/catalystcalifornia/RaceCounts)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
