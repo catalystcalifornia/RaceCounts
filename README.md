@@ -91,6 +91,7 @@ Clone the repo
 
 ## Generate Key Findings
 
+<!-- Will need to update to say key_findings_2023.R-->
 **This section is an explanation of the key_findings_2022.R script.**
 
 ### Data Loading and Set Up
@@ -98,7 +99,7 @@ Import the cleaned and standardized data for each indicator from our private dat
 <details>
 <summary>Code Explanation</summary>
 
-Join issue area dataframes together into one final dataframe. This process is time-consuming because of the amount of data pulled in from the database and the amount of reformatting done. So once you have this large dataframe, it's a good idea to work with a copy of it. That way, you will not have to reimport and clean the data again if you need to change the code that comes after these steps. As mentioned above, we plan to make a file with complete clean indicator data, where possible, available here soon. 
+Join issue area dataframes together into one final dataframe. This process is time-consuming because of the amount of data pulled in from the database and the amount of reformatting done. So once you have this large dataframe, it's a good idea to work with a copy of it. That way, you will not have to re-import and clean the data again if you need to change the code that comes after these steps. As mentioned above, we plan to make a file with complete clean indicator data, where possible, available here soon. 
 
 
 ```
@@ -117,7 +118,7 @@ race_names <- data.frame(race_generic, long_name)
 
 # Create indicator name crosswalk -------------------------------------------
 
-indicator <- c("Employment","Living Wage","Per Capita Income","Cost-of-Living Adjusted Poverty","Overcrowded Housing", "Connected Youth","Officials and Managers",
+indicator <- c("Employment","Living Wage","Per Capita Income","Cost-of-Living Adjusted Poverty","Overcrowded Housing","Connected Youth","Officials and Managers",
                "Internet Access","Life Expectancy","Health Insurance","Preventable Hospitalizations","Low Birthweight","Usual Source of Care","Got Help",
                "High School Graduation","3rd Grade English Proficiency","3rd Grade Math Proficiency","Suspensions","Early Childhood Education Access",
                "Teacher & Staff Diversity","Chronic Absenteeism","Subprime Mortgages","Housing Quality","Renter Cost Burden","Homeowner Cost Burden","Foreclosures",
@@ -146,7 +147,7 @@ Create findings identifying the number of times each race has the worst and best
 df_lf <- filter(df, race != 'total')
 ```
 
-Not all data sources report Asian and Pacific Islander data separately. Duplicate the rows that contain combined Asian-Pacific Islander (API) data, then relabel one set of the duplicated rows as Asian, and the other as Pacific Islander. Delete the original API rows, and bind the newly created Asian and Pacific Islander rows back to the main dataframe.
+Not all data sources report Asian and Pacific Islander data separately. Duplicate the rows that contain combined Asian-Pacific Islander (API) data, then relabel one set of the duplicated rows as Asian, and the other as Native Hawaiian / Pacific Islander. Delete the original API rows, and bind the newly created Asian and Native Hawaiian / Pacific Islander rows back to the main dataframe.
 ```
 # duplicate API rows, assigning one set race_generic Asian and the other set PacIsl
   api_asian <- filter(df_lf, race_generic == 'api') %>% mutate(race_generic = 'asian')
@@ -182,7 +183,7 @@ Create final df used for Worst Count key finding, drop indicators where only one
 worst_table2 <- subset(df_lf, values_count > 1) %>%  
                 left_join(select(worst_table, geoid, indicator, worst_rate), by = c("geoid", "indicator")) %>%
                 mutate(worst = ifelse((race_generic == worst_rate), 1, 0)) %>%         # identify which race has the worst rate for each geo    
-                group_by(geoid, geoname, race_generic) %>% summarise(count = sum(worst, na.rm = TRUE)) %>%   # count the number of times each race has best rate in each geo
+                group_by(geoid, geoname, race_generic) %>% summarise(count = sum(worst, na.rm = TRUE)) %>%   # count the number of times each race has worst rate in each geo
                 left_join(race_names, by = "race_generic") %>%          # pull in long race labels for key findings                              
                 left_join(bestworst_screen, by = c("geoid", "race_generic")) 
 worst_table2 <- worst_table2 %>% mutate(count = ifelse(is.na(count) & rate_count > 0, 0, count)) 
@@ -224,6 +225,7 @@ worst_rate_count <- filter(worst_table2, !is.na(rate_count)) %>% mutate(geoname 
 ```
 
 Step 5: Bind the Worst and Best Rate findings, drop findings for groups that do not have Race pages on RACECOUNTS.org.
+<!-- Insert reference to Race & Ethnicity Methodology doc once it's created. -->
 
 ```
 worst_best_counts <- bind_rows(worst_rate_count, best_rate_count)
@@ -252,12 +254,12 @@ This finding is generated with the following steps:
   impact_screen <- filter(impact_screen, count > 1) %>% group_by(geoid, geoname) %>% summarise(id_count = n())    
 ```
 
-* Step 2: Pull in final df from Worst Rate Findings: <i>worst_table2</i>. Generate key findings identifying which race(s) faces the most racial disparity in each geography. Suppress findings for counties with too few Indexes of Disparity for a substantial analysis.
+* Step 2: Pull in final dataframe from Worst Rate findings: <i>worst_table2</i>. Generate key findings identifying which race(s) faces the most racial disparity in each geography. Suppress findings for counties with too few Indexes of Disparity for a substantial analysis.
   
 ```
   impact_table <- worst_table2 %>% select(-rate_count) %>% group_by(geoid, geoname) %>% top_n(1, count) %>%    # get race most impacted by racial disparity by geo
   left_join(select(impact_screen, geoid, id_count), by = "geoid")
-  # 5 counties have ties for group with the most worst rates: Amador, Madera, Mono, San Mateo, Tulare
+  # Some counties may have ties for group with the most worst rates
 
   ## the next few lines concatenate the names of the tied groups to prep for key findings
   impact_table2 <- impact_table %>% 
@@ -280,7 +282,7 @@ Create findings identifying the indicator with the most racial disparity (highes
 
 <summary>Code Explanation</summary>
 
-* Create one long function to generate Most Disparate by Race findings. Below we break down the custom function "most_disp_by_race" into three steps.
+* Create one long function to generate Most Disparate by Race & Place findings. Below we break down the custom function "most_disp_by_race" into three steps.
 
 ```
 # Function to prep raced most_disparate tables
@@ -295,9 +297,9 @@ Create findings identifying the indicator with the most racial disparity (highes
       head(which(row== max(row, na.rm=TRUE)), 1)[1]
     }
 ```
-* Step 2: This first half of the function applies only to American Indian and Alaska Native, Black, Latinx, and White data. First we reformat the data from 'wide' to 'long' format. Then count the number of indicators with data and identify the indicator with the highest disparity z-score for each race in each geography. Finally, we generate a key finding based on the most disparate indicator by race for each geography.  
+* Step 2: This first half of the function applies only to American Indian / Alaska Native, Black, Latinx, and White data. First we reformat the data from 'wide' to 'long' format. Then count the number of indicators with data and identify the indicator with the highest disparity z-score for each race in each geography. Finally, we generate a key finding based on the most disparate indicator by race for each geography.  
 ```
-    if(is.null(d)) {       ## For races excluding Asian and PacIsl
+    if(is.null(d)) {       ## For races excluding Asian and NatHaw / PacIsl
       # filter by race, pivot_wider, select the columns we want, get race long_name
       z <- x %>% filter(race_generic == y) %>% pivot_wider(names_from = indicator, values_from = disparity_z_score) %>% group_by(geoid, geoname) %>% 
         fill(incarceration:subprime, .direction = 'updown') %>% 
@@ -313,7 +315,7 @@ Create findings identifying the indicator with the most racial disparity (highes
       z <- z %>% select(geoid, geoname, race, long_name, indicator_count, everything())
       
       # unique indicators that apply to race
-      indicator_col <- z %>% ungroup %>% select(7:ncol(z))
+      indicator_col <- z %>% ungroup %>% select(6:ncol(z))
       indicator_col <- names(indicator_col)
       
       # pull the column name with the maximum value
@@ -338,10 +340,10 @@ Create findings identifying the indicator with the most racial disparity (highes
       return(z)
     }
 ```
-* Step 3: Use a similar but slightly different process as Step 2. This chunk applies only to Asian and Pacific Islander data because not all data sources report Asian and Pacific Islander data separately. Combine Asian and Asian-Pacific Islander data into Asian, combine Pacific Islander and Asian-Pacific Islander data into Pacific Islander.  
+* Step 3: Use a similar but slightly different process as Step 2. This chunk applies only to Asian and Native Hawaiian / Pacific Islander data because not all data sources report Asian and Pacific Islander data separately. Combine Asian and Asian-Pacific Islander data into Asian, combine Native Hawaiian / Pacific Islander and Asian-Pacific Islander data into Native Hawaiian / Pacific Islander.  
 
 ```
-    else {       ## For Asian and PacIsl only bc we count Asian+API and PacIsl+API
+    else {       ## For Asian and PacIsl only bc we count Asian+API and NatHaw/PacIsl+API
       # filter by race, pivot_wider, select the columns we want, get race long_name
       z <- x %>% filter(race_generic == y | race_generic == d) %>% pivot_wider(names_from = indicator, values_from = disparity_z_score) %>% group_by(geoid, geoname) %>% 
         fill(incarceration:subprime, .direction = 'updown') %>% 
@@ -382,7 +384,7 @@ Create findings identifying the indicator with the most racial disparity (highes
     }
   }
 ```
-* Step 4: Apply the function to subsets of the dataframe filtered for Asian (and API), Pacific Islander (and API), American Indian and Alaska Native, Black, Latinx, and White data.
+* Step 4: Apply the function to subsets of the dataframe filtered for Asian (and API), Native Hawaiian / Pacific Islander (and API), American Indian / Alaska Native, Black, Latinx, and White data.
 ```
   # copy df before running any code
   df_ds <- filter(df, race != 'total')    # remove total rates bc all findings in this section are raced
@@ -413,7 +415,7 @@ Create findings identifying the indicator with the most racial disparity (highes
 <img src="images/Most Disparate.png" alt="Most Disparate">
 
 
-### Lowest Outcome Indicator by Geography
+### Lowest Outcome Indicator by Place
 
 Create findings identifying the indicator with the worst outcomes (lowest overall outcome z-score) in each geography. These findings are found on Place pages.
 
@@ -469,7 +471,7 @@ worst_perf <- select(perf_final, -c(rk, worst_perf_z)) %>%   # drop rank and z-s
 
 ```
 
-* Step 5: Make adjustments for geographies with two or more indicators tied for worst outcome.
+* Step 5: Make adjustments for geographies with two or more indicators tied for Worst Outcome.
 
 ```
 
@@ -486,7 +488,7 @@ worst_perf2 <- worst_perf %>%
 
 worst_perf2 <- worst_perf2 %>% 
   mutate(Lowest_Performing_Indicator = ifelse(perf_ties > 1, 
-                                      paste0(county_name, " County's low overall outcome in ", long_perf_indicator," stand out most compared to other counties."),
+                                      paste0(county_name, " County's low overall outcomes in ", long_perf_indicator," stand out most compared to other counties."),
                                       paste0(county_name, " County's low overall outcome in ", long_perf_indicator," stands out most compared to other counties."))) %>% 
   select(county_name, Lowest_Performing_Indicator)
 
@@ -497,7 +499,7 @@ worst_perf2 <- worst_perf2 %>%
 
 <img src="images/Lowest Performance.png" alt="Lowest Performance">
 
-### Highest Disparity Indicator by Geography
+### Highest Disparity Indicator by Place
 
 Create key findings identifying the indicator with the largest racial disparities in each geography. These findings are found on Place pages.
 
@@ -515,7 +517,7 @@ data_list <- list(c_1, c_2, c_3, c_4, c_5, c_6, c_7)
 
 ```
 
-* Step 2: Select just the necessary columns including the county name and overall disparity z-scores. Then merge into one matrix, removing duplicated county_id columns. Convert new matrix from 'wide' to 'long' format.
+* Step 2: Select just the necessary columns including the county name and overall disparity z-scores. Then merge into one matrix, removing duplicate county_id columns. Convert new matrix from 'wide' to 'long' format.
 
 ```
 
@@ -582,9 +584,9 @@ worst_disp2 <- worst_disp2 %>%
 
 <img src="images/Highest Disparity.png" alt="Highest Disparity">
 
-### Above or Below Average Racial Disparity and Outcomes by Geography
+### Above or Below Average Racial Disparity and Outcomes by Place
 
-Create key findings identifying whether a geography has above or below average disparity and outcomes as compared to other geographies of the same type. These findings are based on the average disparity z-score and average outcome z-score across all indicators for each geography. When the average disparity or outcome z-score across all indicators is below zero, we say that the disparity or outcome is below average. If the average disparity or outcome z-score is above zero, we say that the disparity or outcome is above above average. These findings are found on Place pages.
+Create key findings identifying whether a geography has above or below average disparity and outcomes as compared to other geographies of the same type. These findings are based on the average disparity z-score and average outcome z-score across all indicators for each geography. When the average disparity or outcome z-score across all indicators is below zero, we say that the disparity is or outcomes are below average. If the average disparity or outcome z-score is above zero, we say that the disparity is or outcomes are above above average. These findings are found on Place pages.
 
 <details>
 
