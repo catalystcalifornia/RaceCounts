@@ -78,7 +78,7 @@ Reliability of data is often low for groups that have smaller populations such a
 
 
 ## Race Pages on RACECOUNTS Website
-The "Other Race" and "Two or More Races" groups can include people with very different lived experiences, making it less meaningful to compare across indicators. This is the main reason we do not have a Race page for those two groups. Additional groups with unique experiences, such as those with origins in the Middle East, Southwest Asia and North Africa (MENA or SWANA) who are not represented on a race page due to limited data availability.
+We currently have Race pages for Asian, American Indian / Alaska Native, Black, Latinx, and Native Hawaiian / Pacific Islander Californians on the website. These groups have data for most RACE COUNTS indicators for many places. We do not have pages for other groups including Other Race, Two or More Races, Filipinx and more. The "Other Race" and "Two or More Races" groups can be hard to define and often include people with very different lived experiences, making it less meaningful to compare across indicators. Additional groups with unique experiences, such as Filipinx Californians or those with origins in the Middle East, Southwest Asia and North Africa (MENA or SWANA) are not represented on a race page due to limited data availability. At the same time, we are always working to expand our methodologies and include data for some of the groups without Race pages on the Place and Issue pages on the website.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
