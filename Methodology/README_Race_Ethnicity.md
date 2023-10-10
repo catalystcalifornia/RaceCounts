@@ -18,7 +18,7 @@
     <li><a href="#race-and-ethnicity">Race and Ethnicity</a></li>
     <li><a href="#labels-and-definitions-used-in-race-counts">Labels and Definitions Used in RACE COUNTS</a></li>
     <li><a href="#data-source-limitations-and-flexibility">Data Source Limitations and Flexibility</a></li>
-    <li><a href="#race-pages-on-racecounts-.-org">Race Pages on RACECOUNTS.org</a></li>
+    <li><a href="#race-pages-on-racecounts-website">Race Pages on RACECOUNTS Website</a></li>
   </ol>
 </details>
 
@@ -77,7 +77,7 @@ Reliability of data is often low for groups that have smaller populations such a
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
-## Race Pages on RACECOUNTS.org
+## Race Pages on RACECOUNTS Website
 The "Other Race" and "Two or More Races" groups can include people with very different lived experiences, making it less meaningful to compare across indicators. This is the main reason we do not have a Race page for those two groups. Additional groups with unique experiences, such as those with origins in the Middle East, Southwest Asia and North Africa (MENA or SWANA) who are not represented on a race page due to limited data availability.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
