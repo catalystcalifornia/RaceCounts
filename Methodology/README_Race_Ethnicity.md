@@ -17,7 +17,7 @@
       <a href="#about-the-project">About The Project</a></li>
     <li><a href="#race-and-ethnicity">Race and Ethnicity</a></li>
     <li><a href="#labels-and-definitions-used-in-race-counts">Labels and Definitions Used in RACE COUNTS</a></li>
-    <li><a href="#data-source-limitations-and-flexibility">Data Source Limitations and Flexibility</a></li>
+    <li><a href="#data-source-limitations-and-flexibility">Data Source Limitations</a></li>
     <li><a href="#race-pages-on-racecounts-website">Race Pages on RACECOUNTS Website</a></li>
   </ol>
 </details>
@@ -61,7 +61,7 @@ The specific definition of each race / ethnicity for each indicator can be found
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
-## Data Source Limitations and Flexibility
+## Data Source Limitations
 
 There are three main data source limitations in relation to data cut by race: variation in how groups are defined, which groups are included in the data, and reliability of statistics. Each data source uses different definitions and includes statistics for a different list of groups. This becomes especially challenging when datasets include a category named "Other", "Some Other Race", "Another Race". Often metadata is lacking so it is not possible to fully understand who is included in that group. That group includes vastly different people depending on the data source. When data include a very broad group with varied experiences such as "Other Race", it can render statistics for that group less meaningful. 
 
