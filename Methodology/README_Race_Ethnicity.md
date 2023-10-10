@@ -15,37 +15,28 @@
   <ol>
     <li>
       <a href="#about-the-project">About The Project</a></li>
-    <li><a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
-      </ul>
-    </li>
-    <li><a href="#generate-key-findings">Generate Key Findings</a></li>
-    <li><a href="#draft-findings-and-visuals">Draft Findings and Visuals</a></li>
-    <li><a href="#data-methodology">Data Methodology</a></li>
-    <li><a href="#contributors">Contributors</a></li>
-    <li><a href="#contact-us">Contact Us</a></li>
-    <li><a href="#github-link">Github Link</a></li>
-    <li><a href="#citation">Citation</a></li>
-    <li><a href="#license">License</a></li>
-    <li><a href="#race-counts-partners">RACE COUNTS Partners</a></li>
+    <li><a href="#race-and-ethnicity">Race and Ethnicity</a></li>
+    <li><a href="#labels-and-definitions-used-in-race-counts">Labels and Definitions Used in RACE COUNTS</a></li>
+    <li><a href="#data-source-limitations-and-flexibility">Data Source Limitations and Flexibility</a></li>
   </ol>
 </details>
 
 
 ## About The Project
 
-The website [RACECOUNTS.org](https://www.racecounts.org) is one part of the larger RACE COUNTS initiative created by [Catalyst California](https://www.catalystcalifornia.org/) (formerly Advancement Project California) and partners. At Catalyst California, we strategize with community partners to identify funding, services and opportunities in our public systems that can be redistributed for more just outcomes for all. Our goal is to promote racial equity and build a foundation so that every Californian may thrive. The RACE COUNTS website includes an analysis of racial disparity, overall outcomes, and impact based on population size. This repo is meant to make the methods we use more transparent and duplicable. The repo is a work in progress and we will continue to add more documentation as we continue to update the website.
+The website [RACECOUNTS.org](https://www.racecounts.org) is one part of the larger RACE COUNTS initiative created by [Catalyst California](https://www.catalystcalifornia.org/) (formerly Advancement Project California) and partners. At Catalyst California, we strategize with community partners to identify funding, services and opportunities in our public systems that can be redistributed for more just outcomes for all. Our goal is to promote racial equity and build a foundation so that every Californian may thrive. The RACE COUNTS website includes an analysis of racial disparity, overall outcomes, and impact based on population size. This repo is meant to make the methods we use more transparent and duplicable. The repo is a work in progress and we will continue to add more documentation as we continue to update the website. For more information about the project overall, please see the overall [RACE COUNTS README](https://github.com/catalystcalifornia/RaceCounts/blob/main/README.md).
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
-## Race / Ethnicity
+## Race and Ethnicity
 
 In RACE COUNTS, we measure outcomes, racial disparity, and population impacts for indicators across seven issue areas. Race is a social and a biological construct, neither of which are discussed in depth in our analysis. Thus, we use a simplified view of race to portray data to a broader audience. Ethnicity is also treated lightly, and while Latinx is an ethnicity, it is generally treated and spoken about as a race, even though Latinxs can be of any race. 
 
-### Labels and Definitions Used in RACE COUNTS
+<p align="right">(<a href="#top">back to top</a>)</p>
+
+
+## Labels and Definitions Used in RACE COUNTS
 
 We use one simplified set of terms for the RACE COUNTS website and publications, with a few exceptions. We have standard labels and definitions for each of those groups that we use in our calculations, or match as closely as possible given data limitations. We selected the terms and definitions listed below as our standard based on conversations with our partners and advocates from these communities.
 
@@ -66,22 +57,29 @@ There are instances where we use different terms, or definitions, due to conside
 <!-- Need to add in City Methodology doc -->
 The specific definition of each race / ethnicity for each indicator can be found in the [County & State Indicator Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/IndicatorMethodology_CountyState.pdf) document.
 
-### Data Source Limitations and Flexibility
+<p align="right">(<a href="#top">back to top</a>)</p>
 
-There are three main data source limitations in relation to data cut by race: variation in how groups are defined, which groups are included in the data, and reliability of statistics. Each data source uses different definitions and includes statistics for a differing number of groups. This becomes especially challenging when datasets include a category named "Other", "Some Other Race", "Another Race". Often metadata is lacking so it is not possible to fully understand who is included in that group. That group includes vastly different people depending on the data source. When data include a very broad group with varied experiences such as "Other Race", it can render statistics for that group less meaningful. 
+
+## Data Source Limitations and Flexibility
+
+There are three main data source limitations in relation to data cut by race: variation in how groups are defined, which groups are included in the data, and reliability of statistics. Each data source uses different definitions and includes statistics for a different list of groups. This becomes especially challenging when datasets include a category named "Other", "Some Other Race", "Another Race". Often metadata is lacking so it is not possible to fully understand who is included in that group. That group includes vastly different people depending on the data source. When data include a very broad group with varied experiences such as "Other Race", it can render statistics for that group less meaningful. 
 
 Examples:
-* American Community Survey tables do include many that are cut by race/ethnicity. However, these tables provide separate statistics for non-Latinx White residents and all White residents (Latinx and non-Latinx combined) more often than for they do for other groups.
-* California Department of Education data includes statistics for Filipinx students, while most other data sources do not. However, their data includes a much more limited definition of American Indian / Alaska Natives and Native Hawaiian / Pacific Islanders than our standard RACE COUNTS definitions do.
+* American Community Survey tables do include many that are cut by race/ethnicity. However, while these tables provide separate statistics for non-Latinx White residents and all White residents (Latinx and non-Latinx combined) more often than for they do not do the same for other groups.
+* California Department of Education data includes statistics for Filipinx students, while most other data sources do not include disaggregated data for Filipinx people. At the same time, their data includes a much more limited definition of American Indian / Alaska Natives and Native Hawaiian / Pacific Islanders than our standard RACE COUNTS definitions do. They include only those who identify as either of those two groups alone, not in combination with another group, and also exclude Latinxs from those groups.
 
 * California Department of Justice and others include statistics for a combined Asian and Pacific Islander group that masks varied experiences.
 * Other datasets, such as American Community Survey Public Use Microdata (PUMS) include rich detail allowing us to calculate statistics for our standard RACE COUNTS race/ethnicity groupings.
 
-Reliability of data is low for groups that have smaller populations... need for better sampling...
+Reliability of data is often low for groups that have smaller populations such as American Indian / Alaska Natives due to data collectors having inadequate sample sizes. As a result, we do our best to strike a balance between including data for as many groups as possible, while also only presenting statistics that we are confident are strong enough for advocacy and policymaking. At times this may mean that we suppress data for one or more groups.
 
-### Race Pages on RACECOUNTS.org
-The "Other Race" and "Two or More Races" groups can include people with very different lived experiences, making it less meaningful to compare across indicators. This is the main reason we do not have a Race page for those two groups. 
+<p align="right">(<a href="#top">back to top</a>)</p>
 
+
+## Race Pages on RACECOUNTS.org
+The "Other Race" and "Two or More Races" groups can include people with very different lived experiences, making it less meaningful to compare across indicators. This is the main reason we do not have a Race page for those two groups. Additional groups with unique experiences, such as those with origins in the Middle East, Southwest Asia and North Africa (MENA or SWANA) who are not represented on a race page due to limited data availability.
+
+<p align="right">(<a href="#top">back to top</a>)</p>
 
 
 
