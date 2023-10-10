@@ -5,7 +5,7 @@
 <!-- NOTE: Need to replace homepage image, findings images
 -->
 
-<img src="images/RC.png" alt="Race Counts Logo">
+<img src="RACECOUNTS/images/RC.png" alt="Race Counts Logo">
 
 
 
