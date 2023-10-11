@@ -252,11 +252,15 @@ dist_df <- st_read(con2, query = "SELECT * FROM education.cde_dataquest_district
 crosswalk_2021 <- st_read(con2, query = "SELECT place_geoid, place_name, district_geoid, cdscode, prc_area FROM crosswalks.district_place_2021") # we use 2021 shapes bc 2022 shapes are avail. yet
 dist_df_xwalk <- dist_df %>% left_join(crosswalk_2021, by=("cdscode"))
 
+## extra step: weighted averages 
+
+# Option 1: Calculate weighted averages based on percent of district intersection in city
+
 calculations_enr <- function(x,geoid,geoname) {
-  ## total 
+#  ## total 
   total_enroll <- x %>% group_by({{geoid}}, {{geoname}}) %>% summarize(total_enroll = sum(total_enroll*prc_area, na.rm=TRUE))
   
-  ## nh white
+#  ## nh white
   nh_white_enroll <- x %>% group_by({{geoid}}, {{geoname}}) %>% summarize(nh_white_enroll = sum(nh_white_enroll*prc_area, na.rm=TRUE))
   
   ## nh asian
@@ -284,6 +288,7 @@ calculations_enr <- function(x,geoid,geoname) {
   
   return(z)
 }
+
 calculations_homeless <- function(x,geoid,geoname) {
   ## total 
   total_homeless <- x %>% group_by({{geoid}}, {{geoname}}) %>% summarize(total_homeless = sum(total_homeless*prc_area, na.rm=TRUE))
@@ -319,7 +324,78 @@ calculations_homeless <- function(x,geoid,geoname) {
 
 city_enr <- calculations_enr(dist_df_xwalk,place_geoid,place_name)
 city_homeless <- calculations_homeless(dist_df_xwalk,place_geoid,place_name)
-df_city <- city_enr %>% left_join(city_homeless, by=c("place_geoid", "place_name"))
+
+df_city_lf <- city_enr %>% left_join(city_homeless, by=c("place_geoid", "place_name"))
+
+
+# Option 2: Calculate weighted averages based on total and raced enrollment size
+
+```{r}
+dist_df_xwalk
+```
+
+
+enrollment_weights <- dist_df_xwalk %>% group_by(place_geoid) %>% mutate(
+sum_total_enroll = sum(total_enroll, na.rm = T), 
+prc_total_enroll = (total_enroll/sum_total_enroll),
+
+sum_nh_black_enroll = sum(nh_black_enroll, na.rm = T), 
+prc_nh_black_enroll = (nh_black_enroll/sum_nh_black_enroll),
+
+sum_nh_aian_enroll = sum(nh_aian_enroll, na.rm = T), 
+prc_nh_aian_enroll = (nh_aian_enroll/sum_nh_aian_enroll),
+
+sum_nh_pacisl_enroll = sum(nh_nhpi_enroll, na.rm = T), 
+prc_nh_pacisl_enroll = (nh_nhpi_enroll/sum_nh_pacisl_enroll),
+
+sum_nh_asian_enroll = sum(nh_asian_enroll, na.rm = T), 
+prc_nh_asian_enroll = (nh_asian_enroll/sum_nh_asian_enroll),
+                                                                                                      
+sum_nh_filipino_enroll = sum(nh_filipino_enroll, na.rm = T), 
+prc_nh_filipino_enroll = (nh_filipino_enroll/sum_nh_filipino_enroll), 
+
+sum_latino_enroll = sum(latino_enroll, na.rm = T), 
+prc_latino_enroll = (latino_enroll/sum_latino_enroll),
+
+sum_nh_white_enroll = sum(nh_white_enroll, na.rm = T), 
+prc_nh_white_enroll = (nh_white_enroll/sum_nh_white_enroll),
+
+sum_nh_twoormor_enroll = sum(nh_twoormor_enroll, na.rm = T), 
+prc_nh_twoormor_enroll = (nh_twoormor_enroll/sum_nh_twoormor_enroll))
+
+
+## calculate weighted enrollment and homelessness
+
+total_enroll <- enrollment_weights %>% group_by(place_geoid,place_name) %>% summarize(total_enroll = sum(total_enroll*prc_total_enroll, na.rm = TRUE)) 
+total_homeless <- enrollment_weights %>% group_by(place_geoid,place_name) %>% summarize(total_homeless = sum(total_homeless*prc_total_enroll, na.rm = TRUE))
+
+nh_black_enroll <- enrollment_weights %>% group_by(place_geoid,place_name) %>% summarize(nh_black_enroll = sum(nh_black_enroll*prc_nh_black_enroll, na.rm = TRUE))
+nh_black_homeless <- enrollment_weights %>% group_by(place_geoid,place_name) %>% summarize(nh_black_homeless = sum(nh_black_homeless*prc_nh_black_enroll, na.rm = TRUE))
+
+nh_aian_enroll <- enrollment_weights %>% group_by(place_geoid,place_name) %>% summarize(nh_aian_enroll = sum(nh_aian_enroll*prc_nh_aian_enroll, na.rm = TRUE))
+nh_aian_homeless <- enrollment_weights %>% group_by(place_geoid,place_name) %>% summarize(nh_aian_homeless = sum(nh_aian_homeless*prc_nh_aian_enroll, na.rm = TRUE))
+
+nh_asian_enroll <- enrollment_weights %>% group_by(place_geoid,place_name) %>% summarize(nh_asian_enroll = sum(nh_asian_enroll*prc_nh_asian_enroll, na.rm = TRUE)) 
+nh_asian_homeless <- enrollment_weights %>% group_by(place_geoid,place_name) %>% summarize(nh_asian_homeless = sum(nh_asian_homeless*prc_nh_asian_enroll, na.rm = TRUE))
+
+nh_filipino_enroll <- enrollment_weights %>% group_by(place_geoid,place_name) %>% summarize(nh_filipino_enroll = sum(nh_filipino_enroll*prc_nh_filipino_enroll, na.rm = TRUE)) 
+nh_filipino_homeless <- enrollment_weights %>% group_by(place_geoid,place_name) %>% summarize(nh_filipino_homeless = sum(nh_filipino_homeless*prc_nh_filipino_enroll, na.rm = TRUE))
+
+latino_enroll <- enrollment_weights %>% group_by(place_geoid,place_name) %>% summarize(latino_enroll = sum(latino_enroll*prc_latino_enroll, na.rm = TRUE)) 
+latino_homeless <- enrollment_weights %>% group_by(place_geoid,place_name) %>% summarize(latino_homeless = sum(latino_homeless*prc_latino_enroll, na.rm = TRUE))
+
+nh_pacisl_enroll <- enrollment_weights %>% group_by(place_geoid,place_name) %>% summarize(nh_pacisl_enroll = sum(nh_nhpi_enroll*prc_nh_pacisl_enroll, na.rm = TRUE)) 
+nh_pacisl_homeless <- enrollment_weights %>% group_by(place_geoid,place_name) %>% summarize(nh_pacisl_homeless = sum(nh_nhpi_homeless*prc_nh_pacisl_enroll, na.rm = TRUE))
+
+nh_white_enroll <- enrollment_weights %>% group_by(place_geoid,place_name) %>% summarize(nh_white_enroll = sum(nh_white_enroll*prc_nh_white_enroll, na.rm = TRUE)) 
+nh_white_homeless <- enrollment_weights %>% group_by(place_geoid,place_name) %>% summarize(nh_white_homeless = sum(nh_white_homeless*prc_nh_white_enroll, na.rm = TRUE))
+
+nh_twoormor_enroll <- enrollment_weights %>% group_by(place_geoid,place_name) %>% summarize(nh_twoormor_enroll = sum(nh_twoormor_enroll*prc_nh_twoormor_enroll, na.rm = TRUE)) 
+nh_twoormor_homeless <- enrollment_weights %>% group_by(place_geoid,place_name) %>% summarize(nh_twoormor_homeless = sum(nh_twoormor_homeless*prc_nh_twoormor_enroll, na.rm = TRUE))
+
+# merge enroll and homeless together
+df_city <- total_enroll %>% full_join(total_homeless) %>% full_join(nh_black_enroll) %>% full_join(nh_black_homeless) %>% full_join(nh_aian_enroll) %>% full_join(nh_aian_homeless) %>% full_join(nh_asian_enroll) %>% full_join(nh_asian_homeless) %>% full_join(nh_filipino_enroll) %>% full_join(nh_filipino_homeless) %>% full_join(latino_enroll) %>% full_join(latino_homeless) %>% full_join(nh_pacisl_enroll) %>% full_join(nh_pacisl_homeless) %>% full_join(nh_white_enroll) %>% full_join(nh_white_homeless) %>% full_join(nh_twoormor_enroll) %>% full_join(nh_twoormor_homeless)
+
 
 # screen data and calc rates; n = 1,612 cities. threshold is defined in county/state section.
 threshold_2 <- 1 # extra screen for city data only on count of homeless students
@@ -334,15 +410,15 @@ df_city_screen <- df_city %>% mutate(
   nh_twoormor_raw = ifelse(nh_twoormor_enroll < threshold | nh_twoormor_homeless < threshold_2, NA, nh_twoormor_homeless), 
   latino_raw = ifelse(latino_enroll < threshold | latino_homeless < threshold_2, NA, latino_homeless), 
   
-  total_rate = (total_raw/total_enroll) * 100,                   # 603 values
-  nh_white_rate = (nh_white_raw/nh_white_enroll) * 100,          # 348 values
-  nh_asian_rate = (nh_asian_raw/nh_asian_enroll) * 100,          # 171 values
-  nh_filipino_rate = (nh_filipino_raw/nh_filipino_enroll) * 100, # 97 values
-  nh_black_rate = (nh_black_raw/nh_black_enroll) * 100,          # 232 values
-  nh_pacisl_rate = (nh_pacisl_raw/nh_pacisl_enroll) * 100,       # 41 values
-  nh_aian_rate = (nh_aian_raw/nh_aian_enroll) * 100,             # 18 values 
-  nh_twoormor_rate = (nh_twoormor_raw/nh_twoormor_enroll) * 100, # 197 values
-  latino_rate = (latino_raw/latino_enroll) * 100,                # 533 values
+  total_rate = (total_raw/total_enroll) * 100,                   # 
+  nh_white_rate = (nh_white_raw/nh_white_enroll) * 100,          # 
+  nh_asian_rate = (nh_asian_raw/nh_asian_enroll) * 100,          # 
+  nh_filipino_rate = (nh_filipino_raw/nh_filipino_enroll) * 100, #
+  nh_black_rate = (nh_black_raw/nh_black_enroll) * 100,          # 
+  nh_pacisl_rate = (nh_pacisl_raw/nh_pacisl_enroll) * 100,       # 
+  nh_aian_rate = (nh_aian_raw/nh_aian_enroll) * 100,             #  
+  nh_twoormor_rate = (nh_twoormor_raw/nh_twoormor_enroll) * 100, # 
+  latino_rate = (latino_raw/latino_enroll) * 100,                # 
   # colSums(!is.na(df_city_screen)) # to check how many non-null values we get after screening
   geolevel = 'place') %>% rename(geoid = place_geoid, geoname = place_name)
 
@@ -401,6 +477,7 @@ rc_schema <- 'v5'
 
 
 #send tables to postgres
-#to_postgres(county_table, state_tabe)
+#to_postgres(county_table, state_table)
+
 #city_to_postgres(city_table)
 
