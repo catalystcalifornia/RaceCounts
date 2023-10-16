@@ -413,6 +413,11 @@ indicator_threshold <- 12
 
 index_table_final_screen <-  calculate_city_index(all_index, issue_area_threshold, indicator_threshold) 
 
+```{r}
+index_table_final_screen %>% filter(!is.na(disparity_z))
+```
+
+
 # Export to postgres ------------------------------------------------------
 table_name <- "arei_composite_index_city_2023"
 table_schema <- "v5"
