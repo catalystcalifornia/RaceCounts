@@ -211,3 +211,4 @@ rc_schema <- 'v5'
 #send tables to postgres
 #to_postgres(county_table, state_table)
 #city_to_postgres(city_table)
+
