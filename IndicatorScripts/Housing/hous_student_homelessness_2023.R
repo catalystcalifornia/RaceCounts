@@ -165,59 +165,68 @@ View(df_subset)
 ### District-Place Crosswalk ### ---------------------------------------------------------------------
 #  commented out after table is exported to postgres  #
 ## pull in 2021 CBF Places and Districts ##
-# places <- places(state = 'CA', year = 2021, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
-# unified <- school_districts(state = 'CA', type = "unified", year = 2021, cb = TRUE) %>% select(-c(STATEFP, UNSDLEA, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
-# elementary <- school_districts(state = 'CA', type = "elementary", year = 2021, cb = TRUE) %>% select(-c(STATEFP, ELSDLEA, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
-# secondary <- school_districts(state = 'CA', type = "secondary", year = 2021, cb = TRUE) %>% select(-c(STATEFP, SCSDLEA, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
+places <- places(state = 'CA', year = 2021, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
+unified <- school_districts(state = 'CA', type = "unified", year = 2021, cb = TRUE) %>% select(-c(STATEFP, UNSDLEA, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
+elementary <- school_districts(state = 'CA', type = "elementary", year = 2021, cb = TRUE) %>% select(-c(STATEFP, ELSDLEA, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
+secondary <- school_districts(state = 'CA', type = "secondary", year = 2021, cb = TRUE) %>% select(-c(STATEFP, SCSDLEA, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
 # 
-# crosswalk <- function(x, y, threshold) {
+crosswalk <- function(x, y, threshold) {
 #   
-#   x_3310 <- st_transform(x, 3310) # change projection to 3310
-#   y_3310 <- st_transform(y, 3310) # change projection to 3310
+x_3310 <- st_transform(x, 3310) # change projection to 3310
+y_3310 <- st_transform(y, 3310) # change projection to 3310
 #   # calculate area of tracts and places
-#   x_3310$area <- st_area(x_3310)
-#   y_3310$y_area <- st_area(y_3310)
+x_3310$area <- st_area(x_3310)
+y_3310$y_area <- st_area(y_3310)
 #   # rename geoid fields
-#   x_3310 <- x_3310%>% 
-#     rename("x_geoid" = "GEOID", "x_name" = "NAME")
-#   y_3310 <- y_3310%>% 
-#     rename("y_geoid" = "GEOID", "y_name" = "NAME")
+x_3310 <- x_3310%>% 
+rename("x_geoid" = "GEOID", "x_name" = "NAME")
+y_3310 <- y_3310%>% 
+rename("y_geoid" = "GEOID", "y_name" = "NAME")
 #   # run intersect
-#   x_y <- st_intersection(x_3310, y_3310) 
+   x_y <- st_intersection(x_3310, y_3310) 
 #   # create combo geoid field
-#   x_y$x_y_geoid <- paste(x_y$y_geoid, x_y$x_geoid, sep = "_")
+   x_y$x_y_geoid <- paste(x_y$y_geoid, x_y$x_geoid, sep = "_")
 #   # calculate area of intersect
-#   x_y$intersect_area <- st_area(x_y)
+   x_y$intersect_area <- st_area(x_y)
 #   # calculate percent of intersect out of total place area
-#   y_x <- x_y %>% mutate(prc_y_area = as.numeric(x_y$intersect_area/x_y$y_area))
+   y_x <- x_y %>% mutate(prc_y_area = as.numeric(x_y$intersect_area/x_y$y_area))
 #   # calculate percent of intersect out of total tract area
-#   x_y$prc_area <- as.numeric(x_y$intersect_area/x_y$area)
+   x_y$prc_area <- as.numeric(x_y$intersect_area/x_y$area)
 #   # convert to df
-#   x_y <- as.data.frame(x_y)
-#   y_x <- as.data.frame(y_x)
-#   
-#   xwalk <- full_join(y_x, select(x_y, c(x_y_geoid, prc_area)), by = 'x_y_geoid')
-#   # filter xwalk where intersect between is equal or greater than Z% of x area OR y area. 
-#   xwalk_filter <- xwalk %>% filter(prc_area >= threshold | prc_y_area >= threshold)
-#   names(xwalk_filter) <- tolower(names(xwalk_filter)) # make col names lowercase
-#   xwalk_filter <- select(xwalk_filter, x_y_geoid, x_geoid, y_geoid, y_name, x_name, namelsad, area, y_area, intersect_area, prc_area, prc_y_area)
-#   
-#   colnames(xwalk_filter) <- gsub("x", "district", colnames(xwalk_filter))  # rename fields to specific geographies involved
-#   colnames(xwalk_filter) <- gsub("y", "place", colnames(xwalk_filter))  
-#   xwalk_filter <- data.frame(xwalk_filter)
-#   
-# }
+   x_y <- as.data.frame(x_y)
+   y_x <- as.data.frame(y_x)
+  
+xwalk <- full_join(y_x, select(x_y, c(x_y_geoid, prc_area)), by = 'x_y_geoid')
+   # filter xwalk where intersect between is equal or greater than Z% of x area OR y area. 
+  xwalk_filter <- xwalk %>% filter(prc_area >= threshold | prc_y_area >= threshold)
+  names(xwalk_filter) <- tolower(names(xwalk_filter)) # make col names lowercase
+xwalk_filter <- select(xwalk_filter, x_y_geoid, x_geoid, y_geoid, y_name, x_name, namelsad, area, y_area, intersect_area, prc_area, prc_y_area)
+   
+colnames(xwalk_filter) <- gsub("x", "district", colnames(xwalk_filter))  # rename fields to specific geographies involved
+colnames(xwalk_filter) <- gsub("y", "place", colnames(xwalk_filter))  
+xwalk_filter <- data.frame(xwalk_filter)
+   
+ }
 
 # run xwalk function on all 3 district types
-# threshold <- .30
-# unified_places <- crosswalk(unified, places, threshold) %>% mutate(district_type = 'Unified')
-# elementary_places <- crosswalk(elementary, places, threshold) %>% mutate(district_type = 'Elementary')
-# secondary_places <- crosswalk(secondary, places, threshold) %>% mutate(district_type = 'Secondary')
+threshold <- .30
+unified_places <- crosswalk(unified, places, threshold) %>% mutate(district_type = 'Unified')
+ 
+elementary_places <- crosswalk(elementary, places, threshold) %>% mutate(district_type = 'Elementary')
+secondary_places <- crosswalk(secondary, places, threshold) %>% mutate(district_type = 'Secondary')
 # 
-# xwalk_filter <- rbind(unified_places, elementary_places, secondary_places) %>% relocate(district_type, .before = area)
-# cds_codes <- st_read(con2, query = "SELECT DISTINCT ncesdist AS district_geoid, left(cdscode,7), district FROM education.cde_public_schools_2022_23") %>% # pull dist_ids
-                  # mutate(cdscode = paste0(left,"0000000"))  # create district cdscodes
-# xwalk_filter <- xwalk_filter %>% left_join(select(cds_codes, c(district_geoid, cdscode)), by = ("district_geoid")) %>% relocate(cdscode, .before = place_geoid) # n=2,373
+xwalk_filter <- rbind(unified_places, elementary_places, secondary_places) %>% relocate(district_type, .before = area)
+ 
+cds_codes <- st_read(con2, query = "SELECT DISTINCT ncesdist AS district_geoid, left(cdscode,7), district FROM education.cde_public_schools_2022_23") %>% # pull dist_ids
+                   mutate(cdscode = paste0(left,"0000000"))  # create district cdscodes
+  
+
+
+                  
+xwalk_filter <- xwalk_filter %>% left_join(select(cds_codes, c(district_geoid, cdscode)), by = ("district_geoid")) %>% relocate(cdscode, .before = place_geoid) # n=2,373
+
+
+
 
 # export xwalk table -------------------------------------------------------------------------
 
@@ -251,6 +260,10 @@ View(df_subset)
 dist_df <- st_read(con2, query = "SELECT * FROM education.cde_dataquest_district_homeless_2022_23")
 crosswalk_2021 <- st_read(con2, query = "SELECT place_geoid, place_name, district_geoid, cdscode, prc_area FROM crosswalks.district_place_2021") # we use 2021 shapes bc 2022 shapes are avail. yet
 dist_df_xwalk <- dist_df %>% left_join(crosswalk_2021, by=("cdscode"))
+
+## extra step: filter out observations with missing total homeless data. Normally this is because these districts don't report this data.
+
+dist_df_xwalk <- dist_df_xwalk %>% filter(!is.na(total_homeless))
 
 ## extra step: weighted averages 
 
@@ -330,10 +343,7 @@ df_city_lf <- city_enr %>% left_join(city_homeless, by=c("place_geoid", "place_n
 
 # Option 2: Calculate weighted averages based on total and raced enrollment size
 
-```{r}
-dist_df_xwalk
-```
-
+## Filter out total homeless but check if race
 
 enrollment_weights <- dist_df_xwalk %>% group_by(place_geoid) %>% mutate(
 sum_total_enroll = sum(total_enroll, na.rm = T), 
@@ -474,6 +484,7 @@ city_table_name <- "arei_hous_student_homelessness_city_2023"
 indicator <- "Student homelessness rates. Data for groups with enrollment under 50 are excluded from the calculations. Homelessness rate calculated as a percent of enrollment for each group"
 source <- "CDE 2021-22 (county/state), CDE 2022-23 (city) https://dq.cde.ca.gov/dataquest/"
 rc_schema <- 'v5'
+
 
 
 #send tables to postgres
