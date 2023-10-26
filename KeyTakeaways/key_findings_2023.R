@@ -638,11 +638,11 @@ df_ds <- filter(df, race != 'total')    # remove total rates bc all findings in 
 aian_ <- most_disp_by_race(df_ds, 'aian', d = NULL)
 asian_ <- most_disp_by_race(df_ds, 'asian', 'api')
 black_ <- most_disp_by_race(df_ds, 'black', d = NULL)
-latinx_ <- most_disp_by_race(df_ds, 'latino', d = NULL)
+latino_ <- most_disp_by_race(df_ds, 'latino', d = NULL)
 pacisl_ <- most_disp_by_race(df_ds, 'pacisl', 'api')
 white_ <- most_disp_by_race(df_ds, 'white', d = NULL)
 
-final_findings <- bind_rows(aian_, asian_, black_, latinx_, pacisl_, white_) 
+final_findings <- bind_rows(aian_, asian_, black_, latino_, pacisl_, white_) 
 final_findings <- final_findings %>% select(-indicator_count, -long_name)
 most_disp <- final_findings %>% mutate(geo_level = ifelse(geoname == 'California', 'state', 'county'),
                                        finding_type = 'most disparate',
@@ -652,7 +652,7 @@ most_disp <- final_findings %>% mutate(geo_level = ifelse(geoname == 'California
 # Save most_disp, best_rate_counts, worst_rate_counts
 rda_race_door_findings <- bind_rows(most_disp, worst_best_counts)
 rda_race_door_findings <- rda_race_door_findings %>% relocate(geo_level, .after = geoname) %>% relocate(finding_type, .after = race) %>% mutate( src = 'rda', citations = '') %>%
-  mutate(race = ifelse(race == 'latino', 'latinx', ifelse(race == 'pacisl', 'nhpi', race)))  # rename latino to latinx, and pacisl to nhpi to feed API - will change API later so we can use RC standard latino/pacisl
+  mutate(race = ifelse(race == 'latino', 'latinx', ifelse(race == 'pacisl', 'nhpi', race)))  # rename latino to latinx and pacisl to nhpi to feed API - will change API later so we can use RC standard latino/pacisl
 
 ## Create postgres table
 # dbWriteTable(con, c("v5", "arei_findings_races_multigeo"), rda_race_door_findings,
