@@ -16,7 +16,7 @@
       <a href="#about-the-project">About The Project</a></li>
     <li><a href="#race-and-ethnicity">Race and Ethnicity</a></li>
     <li><a href="#labels-and-definitions-used-in-race-counts">Labels and Definitions Used in RACE COUNTS</a></li>
-    <li><a href="#data-source-limitations-and-flexibility">Data Source Limitations</a></li>
+    <li><a href="#data-source-limitations">Data Source Limitations</a></li>
     <li><a href="#race-pages-on-racecounts-website">Race Pages on RACECOUNTS Website</a></li>
   </ol>
 </details>
@@ -41,50 +41,50 @@ In RACE COUNTS, we measure outcomes, racial disparity, and population impacts fo
 We use one simplified set of terms for the RACE COUNTS website and publications, with a few exceptions. We have standard labels and definitions for each of those groups that we use in our calculations, or match as closely as possible given data limitations. We selected the terms and definitions listed below as our standard based on conversations with our partners and advocates from these communities.
 
 
-```
-# Table #
-library(dplyr)
-library(flextable)
-library(officer)
-
-aian <- c("American Indian / Alaska Native (AIAN)", "Alone or in combination with another race", "Includes Latinxs")
-asian <- c("Asian", "Alone", "Excludes Latinxs")
-black <- c("Black", "Alone", "Excludes Latinxs")
-filipinx <- c("Filipinx", "Alone", "Excludes Latinxs")
-latinx <- c("Latinx", "Alone or in combination with another race", "Includes Latinxs of all races")
-nhpi <- c("Native Hawaiian / Pacific Islander (NHPI)", "Alone or in combination", "Latinx inclusive")
-other <- c("Other Race", "Alone", "Excludes Latinxs")
-twoormor <- c("Two or More Races", "Combination of two or more races", "Excludes Latinxs")
-white <- c("White", "Alone", "Excludes Latinxs")
-
-ft_data <- as.data.frame(rbind(aian, asian, black, filipinx, latinx, nhpi, other, twoormor, white)) %>% 
-            rename("Label" = "V1", "One Race Alone or In Combination" = "V2", "Latinx Inclusion" = "V3") %>%
-            flextable() 
-
-```
-
-```{r tabbed-chart3, ft.align="left"}
-fpp <- officer::fp_par(padding = 6,
-                       line_spacing = 1.5
-                       )
-ft <- ft_data %>% set_caption(
-    as_paragraph(
- as_chunk("RACE COUNTS",
-               props = fp_text_default(font.size=15.75, bold=TRUE)),"<br>",
-      as_chunk("Standard Labels and Details",
-               props = fp_text_default(font.size=10.5))
-      ), word_stylename = "Table Caption", align_with_table=F,
-    fp_p = fpp)
-    
-ft<-bold(ft, bold = TRUE, j="Label",part="all")
-
-# set width
-ft<-autofit(ft)
-
-# display
-ft
-
-```
+<!-- ```
+# # Table #
+# library(dplyr)
+# library(flextable)
+# library(officer)
+# 
+# aian <- c("American Indian / Alaska Native (AIAN)", "Alone or in combination with another race", "Includes Latinxs")
+# asian <- c("Asian", "Alone", "Excludes Latinxs")
+# black <- c("Black", "Alone", "Excludes Latinxs")
+# filipinx <- c("Filipinx", "Alone", "Excludes Latinxs")
+# latinx <- c("Latinx", "Alone or in combination with another race", "Includes Latinxs of all races")
+# nhpi <- c("Native Hawaiian / Pacific Islander (NHPI)", "Alone or in combination", "Latinx inclusive")
+# other <- c("Other Race", "Alone", "Excludes Latinxs")
+# twoormor <- c("Two or More Races", "Combination of two or more races", "Excludes Latinxs")
+# white <- c("White", "Alone", "Excludes Latinxs")
+# 
+# ft_data <- as.data.frame(rbind(aian, asian, black, filipinx, latinx, nhpi, other, twoormor, white)) %>% 
+#             rename("Label" = "V1", "One Race Alone or In Combination" = "V2", "Latinx Inclusion" = "V3") %>%
+#             flextable() 
+# 
+# ```
+# 
+# ```{r tabbed-chart3, ft.align="left"}
+# fpp <- officer::fp_par(padding = 6,
+#                        line_spacing = 1.5
+#                        )
+# ft <- ft_data %>% set_caption(
+#     as_paragraph(
+#  as_chunk("RACE COUNTS",
+#                props = fp_text_default(font.size=15.75, bold=TRUE)),"<br>",
+#       as_chunk("Standard Labels and Details",
+#                props = fp_text_default(font.size=10.5))
+#       ), word_stylename = "Table Caption", align_with_table=F,
+#     fp_p = fpp)
+#     
+# ft<-bold(ft, bold = TRUE, j="Label",part="all")
+# 
+# # set width
+# ft<-autofit(ft)
+# 
+# # display
+# ft
+# 
+``` -->
 There are instances where we use different terms, or definitions, due to considerations like the preferences of our partners on a specific project or data limitations.
 
 <!-- Need to add in City Methodology doc later -->
