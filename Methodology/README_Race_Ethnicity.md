@@ -2,10 +2,9 @@
 ### Fall 2023
 
 <base target="_blank">
-<!-- NOTE: Need to replace homepage image, findings images
--->
 
-<img src="https://github.com/catalystcalifornia/RaceCounts/blob/main/images/RC.png" alt="Race Counts Logo">
+
+<img src="https://github.com/catalystcalifornia/RaceCounts/blob/main/images/rc_homepage.PNG" alt="RACE COUNTS Homepage">
 
 
 
@@ -41,21 +40,54 @@ In RACE COUNTS, we measure outcomes, racial disparity, and population impacts fo
 
 We use one simplified set of terms for the RACE COUNTS website and publications, with a few exceptions. We have standard labels and definitions for each of those groups that we use in our calculations, or match as closely as possible given data limitations. We selected the terms and definitions listed below as our standard based on conversations with our partners and advocates from these communities.
 
-<!-- Convert the below into a table with 3 cols: Term / Alone of in Combo / Latinx -->
-RACE COUNTS Standard Labels and Definitions:
-* American Indian / Alaska Native (AIAN): Includes those who identify with this group alone or in combination with another race, Latinx-inclusive
-* Asian: Includes those who identify with this group alone, Latinx-exclusive
-* Black: Includes those who identify with this group alone, Latinx-exclusive
-* Latinx: Includes those who identify as Latinx of any race(s)
-* Native Hawaiian / Pacific Islander (NHPI): Includes those who identify with this group alone or in combination with another race, Latinx-inclusive
-* Other Race: Includes those who identify with this group alone, Latinx-exclusive
-* Filipinx: Includes those who identify with this group alone, Latinx-exclusive
-* Two or More Races: Includes those who identify with more than one group (overlaps with AIAN and NHPI), Latinx-exclusive
-* White: Includes those who identify with this group alone, Latinx-exclusive
 
+```
+# Table #
+library(dplyr)
+library(flextable)
+library(officer)
+
+aian <- c("American Indian / Alaska Native (AIAN)", "Alone or in combination with another race", "Includes Latinxs")
+asian <- c("Asian", "Alone", "Excludes Latinxs")
+black <- c("Black", "Alone", "Excludes Latinxs")
+filipinx <- c("Filipinx", "Alone", "Excludes Latinxs")
+latinx <- c("Latinx", "Alone or in combination with another race", "Includes Latinxs of all races")
+nhpi <- c("Native Hawaiian / Pacific Islander (NHPI)", "Alone or in combination", "Latinx inclusive")
+other <- c("Other Race", "Alone", "Excludes Latinxs")
+twoormor <- c("Two or More Races", "Combination of two or more races", "Excludes Latinxs")
+white <- c("White", "Alone", "Excludes Latinxs")
+
+ft_data <- as.data.frame(rbind(aian, asian, black, filipinx, latinx, nhpi, other, twoormor, white)) %>% 
+            rename("Label" = "V1", "One Race Alone or In Combination" = "V2", "Latinx Inclusion" = "V3") %>%
+            flextable() 
+
+```
+
+```{r tabbed-chart3, ft.align="left"}
+fpp <- officer::fp_par(padding = 6,
+                       line_spacing = 1.5
+                       )
+ft <- ft_data %>% set_caption(
+    as_paragraph(
+ as_chunk("RACE COUNTS",
+               props = fp_text_default(font.size=15.75, bold=TRUE)),"<br>",
+      as_chunk("Standard Labels and Details",
+               props = fp_text_default(font.size=10.5))
+      ), word_stylename = "Table Caption", align_with_table=F,
+    fp_p = fpp)
+    
+ft<-bold(ft, bold = TRUE, j="Label",part="all")
+
+# set width
+ft<-autofit(ft)
+
+# display
+ft
+
+```
 There are instances where we use different terms, or definitions, due to considerations like the preferences of our partners on a specific project or data limitations.
 
-<!-- Need to add in City Methodology doc -->
+<!-- Need to add in City Methodology doc later -->
 The specific definition of each race / ethnicity for each indicator can be found in the [County & State Indicator Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/IndicatorMethodology_CountyState.pdf) document.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
