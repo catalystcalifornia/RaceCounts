@@ -3,7 +3,7 @@
 
 <base target="_blank">
 
-<img src="images/rc_homepage.png" alt="RACE COUNTS Homepage">
+<img src="https://github.com/catalystcalifornia/RaceCounts/blob/main/images/rc_homepage.PNG" alt="RACE COUNTS Homepage">
 
 
 
@@ -13,7 +13,6 @@
   <ol>
     <li>
       <a href="#about-the-project">About The Project</a></li>
-    <li><a href="#draft-findings-and-visuals">Draft Findings and Visuals</a></li>
     <li><a href="#data-methodology">Data Methodology</a></li>
     <li><a href="#contributors">Contributors</a></li>
     <li><a href="#contact-us">Contact Us</a></li>
