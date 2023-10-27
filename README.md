@@ -20,7 +20,7 @@
         <li><a href="#data-methodology">Data Methodology</a></li>
         <li><a href="#measuring-outcomes,-impact-&-racial-disparity">Measuring Outcomes, Impact & Disparity</a></li>
         <li><a href="#summarizing-racial-disparity">Summarizing Racial Disparity</a></li>
-        <li><a href="#key-limitation">Key Limitations</a></li>
+        <li><a href="#key-limitations">Key Limitations</a></li>
       </ul>
     <li><a href="#contributors">Contributors</a></li>
     <li><a href="#contact-us">Contact Us</a></li>
@@ -60,7 +60,7 @@ Racial disparity is more complicated. We calculate disparity in RACE COUNTS for 
 
 Racial groups are directly compared with a straightforward rate difference. To compare high school graduation rates of Latinx and Whites in a county would simply be subtracting the Latinx high school graduation rate from the White high school graduation rate, with a result of 0 implying total equity. In Figure 1, the rate difference between Latinx and Whites is 16% in Los Angeles County (89.6% – 84.9% = 4.7%).
 
-<img src="images/racecounts--high-school-graduation-california.jpeg" alt="LA County HS Graduation by Race Bar Chart">
+<img src="images/high-school-graduation-california.jpg" alt="LA County HS Graduation by Race Bar Chart">
 
 ## Summarizing Racial Disparity
 We use a metric called the Index of Disparity (ID) to summarize overall equity in outcomes. The ID is the average of the absolute rate differences between each group rate and a reference rate. This average is expressed as a percentage of the reference rate (Pearcy and Keppel 2002, Harper et al. 2010, Harper 2011). For RACE COUNTS we use the best rate out of all racial groups as the reference rate for IDs to prioritize both equity and progress. Note: In rare cases where the best rate cannot be used because of data limitations, we have substituted the total population rate or the best non-zero rate. The Los Angeles County high school graduation ID is 86.1%. In other words, the average difference in high school graduation rates of each race from the best rate – the Filipinx graduation rate of 96.1% – is 11.2%. This is more than double Orange County’s high school graduation ID of 4.6%.
@@ -83,7 +83,7 @@ Finally, while RACE COUNTS is the most comprehensive compilation of data about r
 * [Alexandra Baker, Research & Data Analyst I](https://github.com/bakeralexan)
 * [Chris Ringewald, Senior Director of Research & Data Analysis](https://github.com/cringewald)
 * [David Segovia, Research & Data Analyst I](https://github.com/davidseg1997)
-* [Elycia Graves, Associate Director of Research & Data Analysis](https://github.com/elyciamg)
+* [Elycia Mulholland Graves, Associate Director of Research & Data Analysis](https://github.com/elyciamg)
 * [Hillary Khan, Database Architect](https://github.com/hillarykhan)
 * [Jennifer Zhang, Senior Research & Data Analyst](https://github.com/jzhang514)
 * [Leila Forouzan, Senior Manager of Research & Data Analysis](https://github.com/lforouzan)
