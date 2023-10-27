@@ -83,7 +83,7 @@ Finally, while RACE COUNTS is the most comprehensive compilation of data about r
 * [Alexandra Baker, Research & Data Analyst I](https://github.com/bakeralexan)
 * [Chris Ringewald, Senior Director of Research & Data Analysis](https://github.com/cringewald)
 * [David Segovia, Research & Data Analyst I](https://github.com/davidseg1997)
-* [Elycia Graves, Associate Director of Research & Data Analysis](https://github.com/elyciamg)
+* [Elycia Mulholland Graves, Associate Director of Research & Data Analysis](https://github.com/elyciamg)
 * [Hillary Khan, Database Architect](https://github.com/hillarykhan)
 * [Jennifer Zhang, Senior Research & Data Analyst](https://github.com/jzhang514)
 * [Leila Forouzan, Senior Manager of Research & Data Analysis](https://github.com/lforouzan)
