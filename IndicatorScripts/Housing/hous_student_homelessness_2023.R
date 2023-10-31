@@ -29,31 +29,31 @@ county_enrollment_df = read.xlsx("W:/Data/Education/California Department of Edu
 # colnames(county_enrollment_df)
 
 county_enrollment_df <- dplyr::rename(county_enrollment_df, c("geoname" = "Name",                             
-                                                              "enroll_total" = "Total",                            
-                                                              "enroll_nh_black" = "African.American",            
-                                                              "enroll_nh_aian" = "American.Indian.or.Alaska.Native", 
-                                                              "enroll_nh_asian" = "Asian",                            
-                                                              "enroll_nh_filipino" = "Filipino",                        
-                                                              "enroll_latino" = "Hispanic.or.Latino",               
-                                                              "enroll_nh_nhpi" = "Pacific.Islander",                 
-                                                              "enroll_nh_white" = "White",                           
-                                                              "enroll_nh_twoormor" = "Two.or.More.Races",                
-                                                              "enroll_not_reported" = "Not.Reported"))  
+                                                        "enroll_total" = "Total",                            
+                                                       "enroll_nh_black" = "African.American",            
+                                                       "enroll_nh_aian" = "American.Indian.or.Alaska.Native", 
+                                                       "enroll_nh_asian" = "Asian",                            
+                                                       "enroll_nh_filipino" = "Filipino",                        
+                                                       "enroll_latino" = "Hispanic.or.Latino",               
+                                                       "enroll_nh_nhpi" = "Pacific.Islander",                 
+                                                       "enroll_nh_white" = "White",                           
+                                                       "enroll_nh_twoormor" = "Two.or.More.Races",                
+                                                       "enroll_not_reported" = "Not.Reported"))  
 
 
 state_enrollment_df = read.xlsx("W:/Data/Education/California Department of Education/Student_Homelessness/2021-22/enrollment_total_by_county_2021_22.xlsx", sheet=1, startRow=61, rows=c(61:62), cols=c(1:11))
 # head(state_enrollment_df)
 state_enrollment_df <- dplyr::rename(state_enrollment_df, c("geoname" = "Name",                             
-                                                            "enroll_total" = "Total",                            
-                                                            "enroll_nh_black" = "African.American",            
-                                                            "enroll_nh_aian" = "American.Indian.or.Alaska.Native", 
-                                                            "enroll_nh_asian" = "Asian",                            
-                                                            "enroll_nh_filipino" = "Filipino",                        
-                                                            "enroll_latino" = "Hispanic.or.Latino",               
-                                                            "enroll_nh_nhpi" = "Pacific.Islander",                 
-                                                            "enroll_nh_white" = "White",                           
-                                                            "enroll_nh_twoormor" = "Two.or.More.Races",                
-                                                            "enroll_not_reported" = "Not.Reported"))  
+                                                     "enroll_total" = "Total",                            
+                                                     "enroll_nh_black" = "African.American",            
+                                                     "enroll_nh_aian" = "American.Indian.or.Alaska.Native", 
+                                                     "enroll_nh_asian" = "Asian",                            
+                                                     "enroll_nh_filipino" = "Filipino",                        
+                                                     "enroll_latino" = "Hispanic.or.Latino",               
+                                                     "enroll_nh_nhpi" = "Pacific.Islander",                 
+                                                     "enroll_nh_white" = "White",                           
+                                                     "enroll_nh_twoormor" = "Two.or.More.Races",                
+                                                     "enroll_not_reported" = "Not.Reported"))  
 state_enrollment_df$geoname[state_enrollment_df$geoname =='Statewide'] <- 'California'
 
 # head(state_enrollment_df)
@@ -61,30 +61,30 @@ state_enrollment_df$geoname[state_enrollment_df$geoname =='Statewide'] <- 'Calif
 county_homeless_df = read.xlsx("W:/Data/Education/California Department of Education/Student_Homelessness/2021-22/homeless_enrollment_by_county_2021_22.xlsx", sheet=1, startRow=1, rows=c(1:59), cols=c(1:11))
 # head(county_homeless_df)
 county_homeless_df <- dplyr::rename(county_homeless_df, c("geoname" = "Name",                             
-                                                          "homeless_total" = "Total",                            
-                                                          "homeless_nh_black" = "African.American",            
-                                                          "homeless_nh_aian" = "American.Indian.or.Alaska.Native", 
-                                                          "homeless_nh_asian" = "Asian",                            
-                                                          "homeless_nh_filipino" = "Filipino",                        
-                                                          "homeless_latino" = "Hispanic.or.Latino",               
-                                                          "homeless_nh_nhpi" = "Pacific.Islander",                 
-                                                          "homeless_nh_white" = "White",                           
-                                                          "homeless_nh_twoormor" = "Two.or.More.Races",                
-                                                          "homeless_not_reported" = "Not.Reported"))  
+                                                   "homeless_total" = "Total",                            
+                                                   "homeless_nh_black" = "African.American",            
+                                                   "homeless_nh_aian" = "American.Indian.or.Alaska.Native", 
+                                                   "homeless_nh_asian" = "Asian",                            
+                                                   "homeless_nh_filipino" = "Filipino",                        
+                                                   "homeless_latino" = "Hispanic.or.Latino",               
+                                                   "homeless_nh_nhpi" = "Pacific.Islander",                 
+                                                   "homeless_nh_white" = "White",                           
+                                                   "homeless_nh_twoormor" = "Two.or.More.Races",                
+                                                   "homeless_not_reported" = "Not.Reported"))  
 
 state_homeless_df = read.xlsx("W:/Data/Education/California Department of Education/Student_Homelessness/2021-22/homeless_enrollment_by_county_2021_22.xlsx", sheet=1, startRow=61, rows=c(61:62), cols=c(1:11))
 
 state_homeless_df <- dplyr::rename(state_homeless_df, c("geoname" = "Name",                             
-                                                        "homeless_total" = "Total",                            
-                                                        "homeless_nh_black" = "African.American",            
-                                                        "homeless_nh_aian" = "American.Indian.or.Alaska.Native", 
-                                                        "homeless_nh_asian" = "Asian",                            
-                                                        "homeless_nh_filipino" = "Filipino",                        
-                                                        "homeless_latino" = "Hispanic.or.Latino",               
-                                                        "homeless_nh_nhpi" = "Pacific.Islander",                 
-                                                        "homeless_nh_white" = "White",                           
-                                                        "homeless_nh_twoormor" = "Two.or.More.Races",                
-                                                        "homeless_not_reported" = "Not.Reported"))  
+                                                 "homeless_total" = "Total",                            
+                                                 "homeless_nh_black" = "African.American",            
+                                                 "homeless_nh_aian" = "American.Indian.or.Alaska.Native", 
+                                                 "homeless_nh_asian" = "Asian",                            
+                                                 "homeless_nh_filipino" = "Filipino",                        
+                                                 "homeless_latino" = "Hispanic.or.Latino",               
+                                                 "homeless_nh_nhpi" = "Pacific.Islander",                 
+                                                 "homeless_nh_white" = "White",                           
+                                                 "homeless_nh_twoormor" = "Two.or.More.Races",                
+                                                 "homeless_not_reported" = "Not.Reported"))  
 state_homeless_df$geoname[state_homeless_df$geoname =='Statewide'] <- 'California'
 # head(state_homeless_df)
 
@@ -152,16 +152,15 @@ df <- df %>%
           nh_pacisl_pop = enroll_nh_nhpi,
           nh_white_pop = enroll_nh_white,
           nh_twoormor_pop = enroll_nh_twoormor
-  )
+          )
 # View(df)   #This line is used to see a pop-out view of the df. Un-comment this line if you intend to use it
 # colnames(df) This line is used to view column names so that you can select the appropriate column names when creating the df_subset. Un-comment this line if you intend to use it
 
 ########## create a df with only the newly calculated columns #######
 df_subset <- select(df, geoid, geoname, ends_with("_pop"), ends_with("_raw"), ends_with("_rate")) %>% mutate(geolevel = ifelse(geoid == '06', 'state', 'county'))
-
 View(df_subset)
 
-d <- df_subset
+d <- final_df
 
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
@@ -193,21 +192,16 @@ county_table <- calc_ranks(county_table)
 county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
 View(county_table)
 
-# #calculate CITY z-scores
-# city_table <- calc_z(city_table)
-# city_table <- calc_ranks(city_table)
-# city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") 
-# View(city_table)
-
 
 ###update info for postgres tables###
 county_table_name <- "arei_hous_student_homelessness_county_2023"
 state_table_name <- "arei_hous_student_homelessness_state_2023"
-# city_table_name <- "arei_hous_student_homelessness_city_2023"
 indicator <- "Student homelessness rates. Data for groups with enrollment under 50 are excluded from the calculations. Homelessness rate calculated as a percent of enrollment for each group"
 source <- "CDE 2021-22 https://dq.cde.ca.gov/dataquest/"
 rc_schema <- 'v5'
 
+
+
 #send tables to postgres
 #to_postgres(county_table, state_table)
-#city_to_postgres(city_table)
+
