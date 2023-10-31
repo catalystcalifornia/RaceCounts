@@ -40,7 +40,7 @@ In RACE COUNTS, we measure outcomes, racial disparity, and population impacts fo
 
 We use one simplified set of terms for the RACE COUNTS website and publications, with a few exceptions. We have standard labels and definitions for each of those groups that we use in our calculations, or match as closely as possible given data limitations. We selected the terms and definitions listed below as our standard based on conversations with our partners and advocates from these communities.
 
-<img src="https://github.com/catalystcalifornia/RaceCounts/blob/main/images/race_labels.PNG" alt="race labels">
+<img src="https://github.com/catalystcalifornia/RaceCounts/blob/main/images/race_labels.png" alt="race labels">
 
 There are instances where we use different terms, or definitions, due to considerations like the preferences of our partners on a specific project or data limitations.
 
