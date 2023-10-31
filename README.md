@@ -53,6 +53,8 @@ Catalyst California calculates one index for each of the seven issue area indexe
 
 [RACE COUNTS: Race & Ethnicity Methodology (2023)](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md) <br>
 
+<!--[RACE COUNTS: Key Takeaways Methodology (2023)](https://github.com/catalystcalifornia/RaceCounts/blob/main/KeyTakeaways/README_Key_Takeaways.md) <br>-->
+
 ## Measuring Outcomes, Impact & Racial Disparity
 Measuring outcomes and impact are straightforward. An outcome is the rate for the total population on an indicator, across an issue area, or across all issues. For example, when we compare outcomes in high school graduation rates between Los Angeles and Orange counties, we are comparing their overall graduation rates. Impact is the size of the total population. Following this example, Los Angeles has a population of nearly 10 million people, more than three times the size of Orange, with a population of nearly 3.1 million people. All else being equal, expected impacts of disparities are thus expected to be larger in Los Angeles than Orange county based on population size.
 
@@ -83,7 +85,7 @@ Finally, while RACE COUNTS is the most comprehensive compilation of data about r
 * [Alexandra Baker, Research & Data Analyst I](https://github.com/bakeralexan)
 * [Chris Ringewald, Senior Director of Research & Data Analysis](https://github.com/cringewald)
 * [David Segovia, Research & Data Analyst I](https://github.com/davidseg1997)
-* [Elycia Mulholland Graves, Associate Director of Research & Data Analysis](https://github.com/elyciamg)
+* [Elycia Mulholland Graves, Director of Research & Data Analysis](https://github.com/elyciamg)
 * [Hillary Khan, Database Architect](https://github.com/hillarykhan)
 * [Jennifer Zhang, Senior Research & Data Analyst](https://github.com/jzhang514)
 * [Leila Forouzan, Senior Manager of Research & Data Analysis](https://github.com/lforouzan)
