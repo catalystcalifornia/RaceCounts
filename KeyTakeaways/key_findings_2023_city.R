@@ -1,3 +1,5 @@
+### Key Takeaways RC v5 ###
+
 # Packages ----------------------------------------------------------------
 library(tidyverse)
 library(RPostgreSQL)
@@ -36,46 +38,6 @@ city_tables <- lapply(setNames(paste0("select * from v5.", city_list), city_list
 
 # create column with indicator name
 city_tables <- map2(city_tables, names(city_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
-
-# Packages ----------------------------------------------------------------
-library(tidyverse)
-library(RPostgreSQL)
-library(sf)
-
-
-# Load PostgreSQL driver and databases --------------------------------------------------
-# create connection for rda database
-source("W:\\RDA Team\\R\\credentials_source.R")
-con <- connect_to_db("racecounts")
-
-
-# pull in geo level ids with name. I don't do this directly in the data in case names differ and we have issues merging later
-arei_race_multigeo_city <- dbGetQuery(con, "SELECT geoid, name, geolevel  FROM v5.arei_race_multigeo") %>% filter(geolevel == "place") %>% rename(city_id = geoid, city_name = name) %>% select(-geolevel)
-
-arei_race_multigeo_county <- dbGetQuery(con, "SELECT geoid, name, geolevel  FROM v5.arei_race_multigeo") %>% filter(geolevel == "county") %>% rename(county_id = geoid, county_name = name) %>% select(-geolevel)
-
-arei_race_multigeo_state <- dbGetQuery(con, "SELECT geoid, name, geolevel  FROM v5.arei_race_multigeo") %>% filter(geolevel == "state") %>% rename(state_id = geoid, state_name = name) %>% select(-geolevel)
-
-# pull in cross-walk to go from district to city
-crosswalk <- dbGetQuery(con, "SELECT  city_id, city_name, dist_id, total_enroll FROM v5.arei_city_county_district_table")
-
-# City --------------------------------------------------------------------
-
-# pull in list of tables in racecounts.v5
-rc_list = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(schema = "v5"))$table, function(x) slot(x, 'name'))))
-
-# pull in list of tables in racecounts.v5
-
-# filter for only city level indicator tables
-city_list <- filter(rc_list, grepl("_city_2023",table)) %>% filter(table!= "arei_composite_index_city_2023")
-city_list <- city_list[order(city_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
-
-# import all tables on city_list
-city_tables <- lapply(setNames(paste0("select * from v5.", city_list), city_list), DBI::dbGetQuery, conn = con)
-
-# create column with indicator name
-city_tables <- map2(city_tables, names(city_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
-
 
 # call columns we want
 
@@ -141,7 +103,7 @@ df_city <- df_merged %>% mutate(
 city_name <- distinct(df_city, geoid, geo_name) # distinct city name to merge with education later
 
 
-# education tables 
+# education tables: must be handled separately bc they are school district not city-level
 education_list <- filter(rc_list, grepl("_district_2023",table))
 education_list <- education_list[order(education_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
 
@@ -207,9 +169,8 @@ df_education_district <- df_merged_education %>% mutate(
 
 # pull in list of tables in racecounts.v5
 
-# filter for only county level indicator tables
-
-county_list <- filter(rc_list, grepl("_county_2023",table))
+# filter for only county level indicator tables, drop all others including api_*_county_2023 tables
+county_list <- filter(rc_list, grepl("^arei_.*\\county_2023$", table))
 county_list <- county_list[order(county_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
 
 # import all tables on county_list
@@ -222,7 +183,7 @@ county_tables <- map2(county_tables, names(county_tables), ~ mutate(.x, indicato
 # call columns we want
 
 # you need to pivot wider
-county_tables_disparity <- lapply(county_tables, function(x) x%>% select(county_id, asbest,ends_with("disparity_z"), indicator, values_count))
+county_tables_disparity <- lapply(county_tables, function(x) x%>% select(county_id, asbest, ends_with("disparity_z"), indicator, values_count))
 
 
 county_disparity <- imap_dfr(county_tables_disparity, ~
@@ -343,11 +304,11 @@ df_state <- df_merged_state %>% mutate(
 
 
 df <- bind_rows(df_city, df_county, df_state) %>% select(
-  geoid, geo_name,issue, indicator, race, asbest, rate, disparity_z_score, performance_z_score, values_count,geolevel, race_generic) %>% rename(geo_level = geolevel)
+  geoid, geo_name, issue, indicator, race, asbest, rate, disparity_z_score, performance_z_score, values_count, geolevel, race_generic) %>% rename(geo_level = geolevel)
 
 
 
-# remove universities: there are 6 of them
+# remove records where city name is actually a university: there are cities like this
 df <- df %>% filter(!grepl('University', geo_name))
 
 
@@ -355,23 +316,33 @@ df <- df %>% filter(!grepl('University', geo_name))
 
 # Get long form race names for findings ------------------------------------------------
 race_generic <- unique(df$race_generic)
-long_name <- c("Total", "American Indian / Alaska Native","Latinx", "Asian", "Black", "Other Race","Two or More Races", "White", "Native Hawaiian / Pacific Islander","API", "Filipinx")
+long_name <- c("Total", "American Indian / Alaska Native", "Latinx", "Asian", "Black", "Other Race", "Two or More Races", "White", "Native Hawaiian / Pacific Islander", "Asian / Pacific Islander", "Filipinx")
 race_names <- data.frame(race_generic, long_name)
 
 
 
-# Create indicator long name df -------------------------------------------
-indicator <- c("Incarceration", "Use of Force", "Census Participation", "Diversity of Electeds", "Employment","Internet Access", "Officials and Managers", "Per Capita Income", "Drinking Water Contaminants", "Proximity to Hazards", "Lack of Greenspace", "Toxic Releases from Facilities", "Health Insurance", "Homeowner Cost Burden", "Renter Cost Burden", "Denied Mortgages","Evictions","Foreclosures","Homeownership","Housing Quality","Overcrowded Housing","Student Homelessness", "Subprime Mortgages", "Chronic Absenteeism","3rd Grade English Proficiency","3rd Grade Math Proficiency","High School Graduation","Teacher & Staff Diversity",  "Suspensions","Perception of Safety","Arrests for Status Offenses","Diversity of Candidates","Voter Registration", "Voting in Midterm Elections","Voting in Presidential Elections", "Connected Youth","Living Wage","Cost-of-Living Adjusted Poverty","Early Childhood Education Access","Asthma", "Food Access", "Got Help", "Life Expectancy","Low Birthweight", "Preventable Hospitalizations", "Usual Source of Care")
+# Create indicator long name df. -------------------------------------------
+### NOTE: This list may need to be updated or re-ordered. ###
+indicator <- c("Incarceration", "Use of Force", "Census Participation", "Diversity of Electeds", "Employment", 
+               "Internet Access", "Officials and Managers", "Per Capita Income", "Drinking Water Contaminants", "Proximity to Hazards", 
+               "Lack of Greenspace", "Toxic Releases from Facilities", "Health Insurance", "Homeowner Cost Burden", "Renter Cost Burden", 
+               "Denied Mortgages", "Evictions", "Foreclosures", "Homeownership", "Housing Quality", 
+               "Overcrowded Housing", "Subprime Mortgages", "Chronic Absenteeism", "3rd Grade English Proficiency", "3rd Grade Math Proficiency", 
+               "High School Graduation","Teacher & Staff Diversity", "Suspensions", "Perception of Safety", "Arrests for Status Offenses", 
+               "Diversity of Candidates", "Voter Registration", "Voting in Midterm Elections", "Voting in Presidential Elections", "Connected Youth", 
+               "Living Wage", "Cost-of-Living Adjusted Poverty", "Early Childhood Education Access", "Asthma", "Food Access", 
+               "Got Help", "Life Expectancy", "Low Birthweight", "Preventable Hospitalizations", "Usual Source of Care", "Student Homelessness")
 
 # get unique indicators but don't use this in analysis
 df_indicator <- bind_rows(df_city, df_education_district, df_county, df_state)
 
-indicator_short  <- unique(df_indicator$indicator)
-
+indicator_short <- unique(df_indicator$indicator)
 
 indicator <- data.frame(indicator, indicator_short)
+## Always check this table to confirm short and long indicator names are matched correctly. ##
+#View(indicator)  
 
-# unique indicators as it applies to education
+# unique education indicators at school district level, for city key takeaways analysis later
 educ_indicators <- unique(df_education_district$indicator)
 
 educ_indicators <- indicator %>% filter(indicator_short %in% educ_indicators) %>% select(indicator)
@@ -488,7 +459,7 @@ best_table2 <- #subset(df_lf, (!race_generic %in% c('filipino', 'other', 'twoorm
 best_table2 <- best_table2 %>% mutate(count = ifelse(is.na(count) & rate_count > 0, 0, count))
 
 
-best_rate_count <- filter(best_table2, !is.na(rate_count)) %>% mutate(geo_name = gsub(' County', '', geo_name), geo_name = gsub(' City', '', geo_name), finding_type = 'best count', findings_pos = 1) %>%
+best_rate_count <- filter(best_table2, !is.na(rate_count)) %>% mutate(geo_name = geo_name = gsub(' City', '', geo_name), finding_type = 'best count', findings_pos = 1) %>%
   mutate(finding = ifelse(rate_count > 5, paste0(geo_name, "'s ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for this analysis.")))
 
 ## Bind worst and best tables - RACE PAGE ## ----------------------------------------------
@@ -521,7 +492,7 @@ most_impacted <- most_impacted[-c(1)]
 # Finding 2: Most disparate indicator by race & place ---------------------
 
 ## This section creates findings for Race pages - most disparate indicator by race & place. 
-## Example:"Denied Mortgages is the most disparate indicator for American Indian/Alaska Native residents of San Francisco."
+## Example:"Denied Mortgages is the most disparate indicator for American Indian / Alaska Native residents of San Francisco."
 
 # Function to prep raced most_disparate tables 
 

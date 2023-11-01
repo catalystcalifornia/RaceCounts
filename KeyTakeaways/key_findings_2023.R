@@ -425,7 +425,7 @@ df <- bind_rows(crime, democracy, economic, education, hbe, health, housing)
 
 # Get long form race names for findings ------------------------------------------------
 race_generic <- unique(df$race_generic)
-long_name <- c("Total", "API", "Black", "Latinx", "American Indian / Alaska Native", "White", "Asian", "Two or More Races", "Native Hawaiian / Pacific Islander", "Other Race", "Filipinx")
+long_name <- c("Total", "Asian / Pacific Islander", "Black", "Latinx", "American Indian / Alaska Native", "White", "Asian", "Two or More Races", "Native Hawaiian / Pacific Islander", "Other Race", "Filipinx")
 race_names <- data.frame(race_generic, long_name)
 
 # Create indicator long name df -------------------------------------------
@@ -652,7 +652,7 @@ most_disp <- final_findings %>% mutate(geo_level = ifelse(geoname == 'California
 # Save most_disp, best_rate_counts, worst_rate_counts
 rda_race_door_findings <- bind_rows(most_disp, worst_best_counts)
 rda_race_door_findings <- rda_race_door_findings %>% relocate(geo_level, .after = geoname) %>% relocate(finding_type, .after = race) %>% mutate( src = 'rda', citations = '') %>%
-  mutate(race = ifelse(race == 'latino', 'latinx', ifelse(race == 'pacisl', 'nhpi', race)))  # rename latino to latinx and pacisl to nhpi to feed API - will change API later so we can use RC standard latino/pacisl
+  mutate(race = ifelse(race == 'pacisl', 'nhpi', race))  # rename pacisl to nhpi to feed API - will need to change API/front-end later so we can use RC standard pacisl
 
 ## Create postgres table
 # dbWriteTable(con, c("v5", "arei_findings_races_multigeo"), rda_race_door_findings,
