@@ -308,7 +308,7 @@ df <- bind_rows(df_city, df_county, df_state) %>% select(
 
 
 
-# remove records where city name is actually a university: there are cities like this
+# remove records where city name is actually a university: there are 6 'cities' like this making up 898 rows
 df <- df %>% filter(!grepl('University', geo_name))
 
 
@@ -323,32 +323,10 @@ race_names <- data.frame(race_generic, long_name)
 
 # Create indicator long name df. -------------------------------------------
 ### NOTE: This list may need to be updated or re-ordered. ###
-indicator <- c("Incarceration", "Use of Force", "Census Participation", "Diversity of Electeds", "Employment", 
-               "Internet Access", "Officials and Managers", "Per Capita Income", "Drinking Water Contaminants", "Proximity to Hazards", 
-               "Lack of Greenspace", "Toxic Releases from Facilities", "Health Insurance", "Homeowner Cost Burden", "Renter Cost Burden", 
-               "Denied Mortgages", "Evictions", "Foreclosures", "Homeownership", "Housing Quality", 
-               "Overcrowded Housing", "Subprime Mortgages", "Chronic Absenteeism", "3rd Grade English Proficiency", "3rd Grade Math Proficiency", 
-               "High School Graduation","Teacher & Staff Diversity", "Suspensions", "Perception of Safety", "Arrests for Status Offenses", 
-               "Diversity of Candidates", "Voter Registration", "Voting in Midterm Elections", "Voting in Presidential Elections", "Connected Youth", 
-               "Living Wage", "Cost-of-Living Adjusted Poverty", "Early Childhood Education Access", "Asthma", "Food Access", 
-               "Got Help", "Life Expectancy", "Low Birthweight", "Preventable Hospitalizations", "Usual Source of Care", "Student Homelessness")
-
-# get unique indicators but don't use this in analysis
-df_indicator <- bind_rows(df_city, df_education_district, df_county, df_state)
-
-indicator_short <- unique(df_indicator$indicator)
-
-indicator <- data.frame(indicator, indicator_short)
-## Always check this table to confirm short and long indicator names are matched correctly. ##
-#View(indicator)  
+indicator <- st_read(con, query = "SELECT arei_indicator AS indicator, api_name AS indicator_short, arei_issue_area FROM v5.arei_indicator_list_cntyst")
 
 # unique education indicators at school district level, for city key takeaways analysis later
-educ_indicators <- unique(df_education_district$indicator)
-
-educ_indicators <- indicator %>% filter(indicator_short %in% educ_indicators) %>% select(indicator)
-
-educ_indicators <- unique(educ_indicators$indicator)
-
+educ_indicators <- filter(indicator, arei_issue_area == 'Education')
 
 ## Use San Jose to compare: filter(geoid == "0668000")
 # Finding 1: Worst  and best rates by geoid and race -------------------------------------------------------------
