@@ -5,6 +5,7 @@ library(tidyverse)
 library(RPostgreSQL)
 library(sf)
 
+options(scipen=999) # disable scientific notation
 
 # Load PostgreSQL driver and databases --------------------------------------------------
 # create connection for rda database
@@ -344,110 +345,119 @@ educ_indicators <- filter(indicator, arei_issue_area == 'Education')
 ### Step 6: Decide if we need to suppress/screen out findings for counties with few ID's like Alpine
 
 ### EXTRA STEP: find the most disparate school district for education indicators, then merge this with the long df later
-df_education_district_disparate <-  df_education_district %>% filter(!is.na(geoid)) %>% group_by(geoid, race_generic) %>%  mutate(rk = min_rank(-disparity_z_score)) %>%  filter(rk == "1") %>% select(-rk) 
+df_education_district_disparate <-  df_education_district %>% filter(!is.na(geoid)) %>% group_by(geoid, race_generic) %>% 
+                                    mutate(rk = min_rank(-disparity_z_score)) %>% filter(rk == "1") %>% select(-rk) 
 
 # bind most disparate district with main df
-
 df_lf <- bind_rows(df, df_education_district_disparate) 
-
-# copy df before running any code
 df_lf <- filter(df_lf, race != 'total')   # remove total rates bc all findings in this section are raced
 
-
 # duplicate API rows, assigning one set race_generic Asian and the other set PacIsl
-api_asian <- filter(df_lf, race_generic == 'api') %>% mutate(race_generic = 'asian')
-api_pacisl <- filter(df_lf, race_generic == 'api') %>% mutate(race_generic = 'pacisl')
-df_lf <- filter(df_lf, race_generic != 'api')       # remove api rows
-df_lf <- bind_rows(df_lf, api_asian, api_pacisl)    # add back api rows as asian AND pacisl rows
+api_split <- function(x) {
+  
+    api_asian <- filter(x, race_generic == 'api') %>% mutate(race_generic = 'asian')
+    api_pacisl <- filter(x, race_generic == 'api') %>% mutate(race_generic = 'pacisl')
+    temp <- filter(x, race_generic != 'api')       # remove api rows
+    x <- bind_rows(temp, api_asian, api_pacisl)    # add back api rows as asian AND pacisl rows
 
+  return(x)
+}
 
+df_lf <- api_split(df_lf) # duplicate/split api rates as asian and pacisl
 
 ### Table counting number of non-NA rates per race+geo combo, used for screening best/worst counts later ### 
-bestworst_screen <- #subset(df_lf, !race_generic %in% c('filipino', 'other', 'twoormor')) %>%           # keep only races we have RACE pages for on RC.org
-  df_lf %>% group_by(geoid, race_generic) %>% summarise(rate_count = sum(!is.na(rate)))
+bestworst_screen <- df_lf %>% group_by(geoid, race_generic) %>% summarise(rate_count = sum(!is.na(rate)))
 
 
 ### Table counting number of indicators with ID's (multiple raced disp_z scores) per geo, used for screening most impacted later ### 
-impact_screen <- df_lf %>% group_by(geoid, geo_name, indicator) %>% summarise(count = sum(!is.na(disparity_z_score)))
-impact_screen <- filter(impact_screen, count > 1) %>% group_by(geoid, geo_name) %>% summarise(id_count = n()) 
+impact_screen <- df_lf %>% group_by(geoid, geo_name, indicator) %>% summarise(rate_count = sum(!is.na(disparity_z_score))) 
+impact_screen <- filter(impact_screen, rate_count > 1) %>% group_by(geoid, geo_name) %>% summarise(id_count = n())
 
 ### Worst rates - RACE PAGE ###
-filter_nonRC <- #df_lf %>% filter(race_generic %in% c('filipino', 'other', 'twoormor') & values_count == "2" & !is.na(rate)) %>%
-  df_lf %>% filter(values_count == "2" & !is.na(rate)) %>%
-  select(geoid, geo_name, issue, indicator) %>% mutate(remove = 1) ## create df2 of observations with non-RC groups as one of the only two rates. There are 2 observations
+worst_table <- df_lf %>% 
+  group_by(geoid, geo_level, indicator) %>% top_n(1, disparity_z_score) %>% # get worst raced disparity z-score by geo+indicator combo
+  rename(worst_rate = race_generic) %>% filter(values_count > 1) # filter out geo+indicator combos with only 1 raced rate
 
 
-
-worst_table  <- df_lf %>% left_join(filter_nonRC) %>%   
-  #filter(is.na(remove) & !race_generic %in% c('filipino', 'other', 'twoormor') & values_count > 1) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate AND where 1 of 2 raced rates is a non-RC Race page group
-  filter(is.na(remove) & values_count > 1) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate AND where 1 of 2 raced rates is a non-RC Race page group
-  group_by(geoid, geo_level, indicator) %>% top_n(1, disparity_z_score) %>% # get worst raced disparity z-score by geo+indicator
-  rename(worst_rate = race_generic) %>% select(-remove)
-
-
-
-worst_table2 <- #subset(df_lf, (!race_generic %in% c('filipino', 'other', 'twoormor')) & values_count > 1) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate
-  subset(df_lf, values_count > 1) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate
+worst_table2 <- df_lf %>% 
   left_join(select(worst_table, geoid, indicator, worst_rate, geo_level), by = c("geoid", "indicator", "geo_level")) %>%
-  mutate(worst = ifelse((race_generic == worst_rate), 1, 0)) %>%             
-  group_by(geoid, geo_name, geo_level, race_generic) %>% summarise(count = sum(worst, na.rm = TRUE)) %>%
+  mutate(worst = ifelse((race_generic == worst_rate), 1, 0)) %>% # worst = binary indicating whether the race+geo combo is the worst rate             
+  group_by(geoid, geo_name, geo_level, race_generic) %>% summarise(count = sum(worst, na.rm = TRUE)) %>% # count = num of worst rates for race+geo combo
   left_join(race_names, by = "race_generic") %>%
   left_join(bestworst_screen, by = c("geoid", "race_generic")) 
-worst_table2 <- worst_table2 %>% mutate(count = ifelse(is.na(count) & rate_count > 0, 0, count)) 
 
+# Clean geo_names where 'City' isn't part of city's name and fix geo_names that include "City City"
+clean_city_names <- function(x) {
+    clean_city_names1 <- x %>% filter(!grepl('City City', geo_name) & grepl(' City', geo_name)) %>%
+                                mutate(geo_name = gsub(' City', '', geo_name))
+    
+    clean_city_names2 <- x %>% filter(grepl('City City', geo_name)) %>%
+                                mutate(geo_name = gsub('City City', 'City', geo_name))		
 
-worst_rate_count <- filter(worst_table2, !is.na(rate_count)) %>% mutate(geo_name = gsub(' County', '', geo_name), geo_name = gsub(' City', '', geo_name),  finding_type = 'worst count', findings_pos = 2) %>% 
+    clean_city_names_ <- rbind(clean_city_names1, clean_city_names2)	%>% ungroup() %>% select(geoid, geo_name)	%>% unique()
+
+    library(easyr)
+    x <- jrepl(
+      x,
+      clean_city_names_,
+      by = c('geoid' = 'geoid'),
+      replace.cols = c('geo_name' = 'geo_name'),
+      na.only = FALSE,
+      only.rows = NULL,
+      verbose = FALSE)
+
+  return(x)
+}
+
+worst_table2 <- clean_city_names(worst_table2)
+
+# NOTE: This df does include findings for non-RC race pg grps, however they won't appear on the site
+worst_rate_count <- filter(worst_table2, !is.na(rate_count)) %>% mutate(finding_type = 'worst count', findings_pos = 2) %>% 
   mutate(finding = ifelse(rate_count > 5, paste0(geo_name, "'s ", long_name, " residents have the worst rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for this analysis.")))
-
 
 
 # Part 2: Best rates ---------------------------------------------------
 
 ## Note: Code differs from Worst rates to account for when min is best and there is raced rate = 0, so we cannot use disparity_z for min asbest indicators
 
-
 ## First, find school district with the worst rate per city and indicator
 df_education_district_best_rate <- df_education_district %>% filter(values_count >1 & !is.na(rate) & !is.na(geoid)) %>% group_by(geoid, issue, indicator,  geo_level, asbest) %>% 
   mutate(best_rank = ifelse(asbest == 'min', dense_rank(rate), dense_rank(-rate))) %>% filter(best_rank == "1") %>% select(-best_rank)
 
-
-
 ## Now, bind this back with the df
-
 df_lf2 <- bind_rows(df, df_education_district_best_rate) 
-
 df_lf2 <- filter(df_lf2, race != 'total')   # remove total rates bc all findings in this section are raced
 
+df_lf2 <- api_split(df_lf2) # duplicate api rates as asian and pacisl
+
+
 #### Note: Code differs from Worst rates to account for when min is best and there is raced rate = 0, so we cannot use disparity_z for min asbest indicators ####
-best_table <- #subset(df_lf, (!race_generic %in% c('filipino', 'other', 'twoormor')) & values_count > 1 & !is.na(rate)) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate
-  subset(df_lf, values_count > 1 & !is.na(rate)) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate              
-  select(c(geoid, issue, indicator, values_count, geo_level, asbest, rate, race_generic)) %>% 
+best_table <- df_lf2 %>% select(c(geoid, geo_name, issue, indicator, values_count, geo_level, asbest, rate, race_generic, dist_id, district_name, total_enroll)) %>% 
   group_by(geoid, issue, indicator, values_count, geo_level, asbest) %>% 
   mutate(best_rank = ifelse(asbest == 'min', dense_rank(rate), dense_rank(-rate)))  %>% # use dense_rank to give ties the same rank, and all integer ranks
   mutate(best_rate = ifelse(best_rank == 1, race_generic, ""))    # identify race with best rate using best_rank
-best_table <- best_table %>% left_join(filter_nonRC) %>% filter(is.na(remove)) %>% select(-geo_name, -remove) # remove non-RC best group rates. Total of 2 obs
 
-best_table2 <- #subset(df_lf, (!race_generic %in% c('filipino', 'other', 'twoormor')) & values_count > 1) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate 
-  subset(df_lf, values_count > 1) %>%  # keep only races we have RACE pages for on RC.org, drop indicators with only 1 raced rate 
+best_table2 <- subset(df_lf2, values_count > 1) %>%  # filter out indicators with only 1 raced rate 
   left_join(select(best_table, geoid, indicator, best_rate, geo_level), by = c("geoid", "indicator", "geo_level")) %>%
   mutate(best = ifelse((race_generic == best_rate), 1, 0)) %>%             
   group_by(geoid, geo_name, geo_level, race_generic) %>% summarise(count = sum(best, na.rm = TRUE)) %>%
   left_join(race_names, by = c("race_generic")) %>%
   left_join(bestworst_screen, by = c("geoid", "race_generic"))
-best_table2 <- best_table2 %>% mutate(count = ifelse(is.na(count) & rate_count > 0, 0, count))
+
+best_table2 <- clean_city_names(best_table2)
 
 
-best_rate_count <- filter(best_table2, !is.na(rate_count)) %>% mutate(geo_name = geo_name = gsub(' City', '', geo_name), finding_type = 'best count', findings_pos = 1) %>%
+best_rate_count <- filter(best_table2, !is.na(rate_count)) %>% mutate(finding_type = 'best count', findings_pos = 1) %>%
   mutate(finding = ifelse(rate_count > 5, paste0(geo_name, "'s ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for this analysis.")))
+
+
 
 ## Bind worst and best tables - RACE PAGE ## ----------------------------------------------
 worst_best_counts <- bind_rows(worst_rate_count, best_rate_count)
 worst_best_counts <- rename(worst_best_counts, race = race_generic) %>% select(-long_name, -rate_count, -count)
-worst_best_counts <- worst_best_counts  %>%
-  filter(!race %in% c('filipino', 'other', 'twoormor')) # filter out races that don't have RC Race Pages
 
 
-# Part 3: Most Impacted- PLACE PAGE ---------------------------------------
+# Finding 2: Most Impacted Group - PLACE PAGE ---------------------------------------
 
 impact_table <- worst_table2 %>% select(-rate_count) %>% group_by(geoid, geo_name) %>% top_n(1, count) %>% # get race most impacted by racial disparity by geo
   left_join(select(impact_screen, geoid, id_count), by = "geoid")
@@ -455,7 +465,7 @@ impact_table <- worst_table2 %>% select(-rate_count) %>% group_by(geoid, geo_nam
 ## the next few lines concatenate the names of the tied groups to prep for findings
 
 impact_table2 <- impact_table %>% 
-  group_by(geoid, geo_name, count) %>% 
+  group_by(geoid, geo_name, count) %>%
   mutate(long_name2 = paste0(long_name, collapse = " and ")) %>%  select(-c(long_name, race_generic)) %>% unique()
 most_impacted <- impact_table2 %>% mutate(finding_type = 'most impacted', finding = ifelse(id_count > 4, paste0("Across indicators, ", geo_name, " ", long_name2, " residents are most impacted by racial disparity."), paste0("Data for residents of ", geo_name, " is too limited for this analysis.")),
                                           findings_pos = 1)
@@ -467,7 +477,7 @@ most_impacted$geo_name <- gsub(" City", "", most_impacted$geo_name)
 most_impacted <- most_impacted[-c(1)]
 
 
-# Finding 2: Most disparate indicator by race & place ---------------------
+# Finding 2: Most disparate indicator by race & place - RACE PAGE ---------------------
 
 ## This section creates findings for Race pages - most disparate indicator by race & place. 
 ## Example:"Denied Mortgages is the most disparate indicator for American Indian / Alaska Native residents of San Francisco."
@@ -557,13 +567,11 @@ most_disp_by_race <- function(x, y, d) {
 ## Extra step: find most disparate indicator by geo_name and indicator
 
 # we already pulled the most disparate school district for each school in the previous analysis.Use this
-
 df_ds <- bind_rows(df,df_education_district_disparate)
 # df_ds %>% filter(is.na(geo_name)) # why do some geo_names in housing don't have a geo_name? Some of them belong to census designated places with very low pop counts-- we'll filter this out later
 df_ds <- filter(df_ds, race != 'total')    # remove total rates bc all findings in this section are raced
 
 aian_ <- most_disp_by_race(df_ds, 'aian', d = NULL)
-
 
 asian_ <- most_disp_by_race(df_ds, 'asian', 'api')
 
@@ -625,12 +633,9 @@ most_disp_final <- most_disp  %>% mutate(
 rda_race_door_findings <- bind_rows(most_disp_final, worst_best_counts)
 rda_race_door_findings <- rda_race_door_findings %>% relocate(geo_level, .after = geo_name) %>% relocate(finding_type, .after = race) %>% mutate( src = 'rda', citations = '') %>%
   mutate(race = ifelse(race == 'latino', 'latinx', ifelse(race == 'pacisl', 'nhpi', race)))  # rename latino to latinx, and pacisl to nhpi to feed API - will change API later so we can use RC standard latino/pacisl
-  
-
-  
 
 
-# these findings were wrong in V4 and need to be re-QA'ed because Incarceration was not accounted for as an indicator in the previous function
+# these findings were wrong in v4 and need to be re-QA'ed because Incarceration was not accounted for as an indicator in the previous function
 
 ##  findings_changed <- rda_race_door_findings %>% filter(geo_level %in% c("county", "state") & indicator == "Incarceration" & !grepl('limited', finding)) %>% select(geoid, geo_name, race, #finding)
 
@@ -643,12 +648,9 @@ rda_race_door_findings <- rda_race_door_findings %>% relocate(geo_level, .after 
 #arei_findings_races_multigeo %>% arrange(geoid)
 
 
-
 ## Create postgres table
 #dbWriteTable(con, c("v5", "arei_racedoor_findings_multigeo_test"), rda_race_door_findings,
 #            overwrite = FALSE, row.names = FALSE)
-
-
 
 # comment on table and columns
 comment <- paste0("COMMENT ON TABLE v5.arei_racedoor_findings_multigeo_test IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023_city.R.';",
