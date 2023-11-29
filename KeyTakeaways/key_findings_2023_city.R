@@ -495,7 +495,7 @@ most_impacted$geo_name <- gsub(" City", "", most_impacted$geo_name)
 most_impacted <- most_impacted[-c(1)]
 
 
-# Finding 2: Most disparate indicator by race & place - RACE PAGE ---------------------
+# Finding 3: Most disparate indicator by race & place - RACE PAGE ---------------------
 
 ## This section creates findings for Race pages - most disparate indicator by race & place. 
 ## Example:"Denied Mortgages is the most disparate indicator for American Indian / Alaska Native residents of San Francisco."
@@ -683,7 +683,7 @@ comment <- paste0("COMMENT ON TABLE v5.arei_racedoor_findings_multigeo_test IS '
 print(comment)
 #dbSendQuery(con, comment)
 
-# Compare with V4
+# Compare with v4
 arei_racedoor_findings_multigeo_todelete <- dbGetQuery(con, "SELECT * FROM v5.arei_racedoor_findings_multigeo_todelete")
 
 
