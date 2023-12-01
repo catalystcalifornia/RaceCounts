@@ -322,7 +322,7 @@ race_names <- data.frame(race_generic, long_name)
 
 
 
-# Create indicator long name df. -------------------------------------------
+# Create indicator long name df -------------------------------------------
 ### NOTE: This list may need to be updated or re-ordered. ###
 indicator <- st_read(con, query = "SELECT arei_indicator AS indicator, api_name AS indicator_short, arei_issue_area FROM v5.arei_indicator_list_cntyst")
 
@@ -422,7 +422,7 @@ worst_rate_count <- filter(worst_table2, !is.na(rate_count)) %>% mutate(finding_
 
 ## First, find school district with the worst rate per city and indicator
 df_education_district_best_rate <- df_education_district %>% filter(values_count >1 & !is.na(rate) & !is.na(geoid)) %>% group_by(geoid, issue, indicator,  geo_level, asbest) %>% 
-  mutate(best_rank = ifelse(asbest == 'min', dense_rank(rate), dense_rank(-rate))) %>% filter(best_rank == "1") %>% select(-best_rank)
+                                   mutate(best_rank = ifelse(asbest == 'min', dense_rank(rate), dense_rank(-rate))) %>% filter(best_rank == "1") %>% select(-best_rank)
 
 ## Now, bind this back with the df
 df_lf2 <- bind_rows(df, df_education_district_best_rate) 
@@ -502,123 +502,91 @@ most_impacted <- most_impacted[-c(1)]
 
 # Function to prep raced most_disparate tables 
 
-most_disp_by_race <- function(x, y, d) {
-  # Nested function to pull the column with the madf_dsimum value ----------------------
+most_disp_by_race <- function(x, y) {
+  # Nested function to pull the column with the max disp_z value ----------------------
   find_first_max_index_na <- function(row) {
     
-    head(which(row== max(row, na.rm=TRUE)), 1)[1]
-  }
+    head(which(row == max(row, na.rm=TRUE)), 1)[1]
+  }  
   
-  if(is.null(d)) {       ## For races excluding Asian and PacIsl
-    
-    # filter by race, pivot_wider, select the columns we want, get race long_name
-    z <- x %>% filter(race_generic == y) %>% mutate(indicator = paste0(indicator, "_ind")) %>% pivot_wider(names_from = indicator, values_from = disparity_z_score) %>% group_by(geoid, geo_name) %>%  ## change
-      fill(ends_with("ind"), dist_id, district_name, total_enroll, .direction = 'updown')  %>% 
-      filter (!duplicated(geo_name)) %>% select(-race) %>% rename(race = race_generic) %>% select(geoid, geo_name, race, dist_id, district_name, total_enroll, ends_with("ind"))
-    z <- z %>% inner_join(race_names, by = c('race' = 'race_generic')) %>% select(geoid, geo_name, race,  dist_id, district_name, total_enroll, long_name, everything()) 
-    
-    # count indicators
-    indicator_count <- z %>% ungroup %>% select(-geoid:-total_enroll)
-    indicator_count$indicator_count <- rowSums(!is.na(indicator_count))
-    z$indicator_count <- indicator_count$indicator_count 
-    
-    # select columns we need
-    z <- z %>% select(geoid, geo_name, dist_id, district_name, total_enroll, race, long_name, indicator_count, everything()) ## change
-    
-    # remove "ind" in columns
-    colnames(z) <- gsub("_ind", "", colnames(z))
-    
-    # unique indicators that apply to race
-    indicator_col <- z %>% ungroup %>% select(9:ncol(z))
-    indicator_col <- names(indicator_col)
-    
-    # pull the column name with the maximum value
-    z$max_col <- colnames(z[indicator_col]) [
-      apply(
-        z[indicator_col],
-        MARGIN = 1,
-        find_first_max_index_na )
-    ]
-    
-    ## merge with indicator
-    z <- left_join(z, indicator, by = c("max_col"="indicator_short"))
-    
-    return(z)
-  }
+  # filter by race, pivot_wider, select the columns we want, get race long_name
+  z <- x %>% filter(race_generic == y) %>% mutate(indicator = paste0(indicator, "_ind")) %>% pivot_wider(names_from = indicator, values_from = disparity_z_score) %>% group_by(geoid, geo_name) %>%  
+    fill(ends_with("ind"), dist_id, district_name, total_enroll, .direction = 'updown')  %>% 
+    filter(!duplicated(geo_name)) %>% select(-race) %>% rename(race = race_generic) %>% select(geoid, geo_name, race, dist_id, district_name, total_enroll, ends_with("ind"))
+  z <- z %>% inner_join(race_names, by = c('race' = 'race_generic')) %>% select(geoid, geo_name, race,  dist_id, district_name, total_enroll, long_name, everything()) # add race long names
   
-  else {       ## For Asian and PacIsl only bc we count Asian+API and PacIsl+API
-    # filter by race, pivot_wider, select the columns we want, get race long_name
-    z <- x %>% filter(race_generic == y | race_generic == d) %>% mutate(indicator = paste0(indicator, "_ind")) %>% pivot_wider(names_from = indicator, values_from = disparity_z_score) %>% group_by(geoid, geo_name) %>% 
-      fill(ends_with("ind"), dist_id, district_name, total_enroll,.direction = 'updown')  %>% 
-      filter (!duplicated(geo_name)) %>% select(-race_generic) %>% mutate(race = y) %>% select(geoid, geo_name, race, dist_id, district_name, total_enroll, ends_with("ind"))
-    z <- z %>% inner_join(race_names, by = c('race' = 'race_generic')) %>% select(geoid, geo_name, race, dist_id, district_name, total_enroll, long_name, everything()) 
+  # count indicators
+  indicator_count <- z %>% ungroup %>% select(-geo_name:-total_enroll)
+  indicator_count2 <- z %>% ungroup %>% select(-geoid:-total_enroll)
+  
+  indicator_count$indicator_count <- rowSums(!is.na(indicator_count))
+  #indicator_count2 <- indicator_count2 %>% mutate(indicator_count = rowSums(select_if(., is.numeric), na.rm = TRUE))
+  #indicator_count2$indicator_count <- rowSums(is.numeric(!is.na(indicator_count2)))
+  indicator_count2 <- indicator_count2 %>% mutate(indicator_count=rowSums(select_if(., is.numeric), na.rm=TRUE))
+  
     
-    indicator_count <- z %>% ungroup %>% select(-geoid:-long_name)
-    indicator_count$indicator_count <- rowSums(!is.na(indicator_count))
-    z$indicator_count <- indicator_count$indicator_count 
-    
-    # select columns we need
-    z <- z %>% select(geoid, geo_name, dist_id, district_name, total_enroll, race, long_name, indicator_count, everything()) ## change
-    
-    # remove "ind" in columns
-    colnames(z) <- gsub("_ind", "", colnames(z))
-    
-    # unique indicators that apply to race
-    indicator_col <- z %>% ungroup %>% select(9:ncol(z))
-    indicator_col <- names(indicator_col)
-    
-    # pull the column name with the maximum value
-    z$max_col <- colnames(z[indicator_col]) [
-      apply(
-        z[indicator_col],
-        MARGIN = 1,
-        find_first_max_index_na )
-    ]
-    
-    ## merge with indicator
-    z <- left_join(z, indicator, by = c("max_col"="indicator_short"))
-    
-    return(z)
-  }
+  z$indicator_count <- indicator_count$indicator_count 
+  
+  # select columns we need
+  z <- z %>% select(geoid, geo_name, dist_id, district_name, total_enroll, race, long_name, indicator_count, everything()) 
+  
+  # unique indicators that apply to race
+  indicator_col <- z %>% ungroup %>% select(ends_with("_ind"))
+  indicator_col <- names(indicator_col)
+  
+  # pull the column name with the maximum value
+  z$max_col <- colnames(z[indicator_col]) [
+    apply(
+      z[indicator_col],
+      MARGIN = 1,
+      find_first_max_index_na )
+  ]
+ 
+  z$max_col <- gsub("_ind", "", z$max_col)
+  
+  ## merge with indicator
+  z <- left_join(z, indicator, by = c("max_col"="indicator_short"))
+  
+return(z)
+  
 }
-
 ## Extra step: find most disparate indicator by geo_name and indicator
 
-# we already pulled the most disparate school district for each school in the previous analysis.Use this
+# we already pulled the most disparate school district for each school in the previous analysis.
 df_ds <- bind_rows(df,df_education_district_disparate)
 # df_ds %>% filter(is.na(geo_name)) # why do some geo_names in housing don't have a geo_name? Some of them belong to census designated places with very low pop counts-- we'll filter this out later
 df_ds <- filter(df_ds, race != 'total')    # remove total rates bc all findings in this section are raced
+df_ds <- api_split(df_ds) # duplicate api rates as asian and pacisl
 
-aian_ <- most_disp_by_race(df_ds, 'aian', d = NULL)
 
-asian_ <- most_disp_by_race(df_ds, 'asian', 'api')
+aian_ <- most_disp_by_race(df_ds, 'aian')
 
-black_ <- most_disp_by_race(df_ds, 'black', d = NULL)
+asian_ <- most_disp_by_race(df_ds, 'asian')
 
-latinx_ <- most_disp_by_race(df_ds, 'latino', d = NULL)
+black_ <- most_disp_by_race(df_ds, 'black')
 
-pacisl_ <- most_disp_by_race(df_ds, 'pacisl', 'api')
+latinx_ <- most_disp_by_race(df_ds, 'latino')
 
-white_ <- most_disp_by_race(df_ds, 'white', d = NULL)
+pacisl_ <- most_disp_by_race(df_ds, 'pacisl')
+
+white_ <- most_disp_by_race(df_ds, 'white')
 
 final_findings <- bind_rows(aian_, asian_, black_, latinx_, pacisl_, white_) 
-n = 5 # threshold-- manually update this
+n = 5 # indicator_count threshold
 
 
 ## add geo_level, finding type, findings pos
 most_disp <- final_findings %>% mutate(geo_level = case_when(
-  grepl('City', geo_name) ~ "city",
-  grepl('County', geo_name) ~ "county",
-  grepl('California', geo_name) ~ "state"
-),finding_type = 'most disparate', findings_pos = 3)
+              grepl('City', geo_name) ~ "city",
+              grepl('County', geo_name) ~ "county",
+              grepl('California', geo_name) ~ "state"))
 
 # add finding
-
-most_disp_final <- most_disp  %>% mutate(
+most_disp_final2 <- most_disp %>% mutate(
   finding = ifelse(indicator_count <= n,     ## Suppress finding if race+geo combo has 5 or fewer indicator disparity_z scores
                    paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for this analysis."), ## normal finding
                    paste0(long_name, " residents face the most disparity with ", indicator, " in ", geo_name, "."))
-) %>% mutate(
+  ) %>% mutate(
   
   finding = ifelse(
     indicator %in% educ_indicators & geo_level == "city" & !grepl('too limited', finding), ## add city council district findings to education automated findings
@@ -637,8 +605,9 @@ most_disp_final <- most_disp  %>% mutate(
   total_enroll = 
     ifelse(
       !indicator %in% educ_indicators & geo_level == "city", NA, total_enroll ## remove total enroll observations for non education indicators
-    ),
-) %>% select(geoid, geo_name, geo_level, dist_id, district_name, total_enroll, long_name, indicator, indicator_count, finding_type, findings_pos, finding) %>% filter(!is.na(geo_name)) # some geoids don't have geo_names. all of them belong in housing-- for example: Camp Pendleton North. They don't pass the indicator count threshold either way to be included in the finding, so we will remove these. 
+    ), 
+  finding_type = 'most disparate', findings_pos = 3 ) %>%
+  select(geoid, geo_name, geo_level, dist_id, district_name, total_enroll, long_name, indicator, indicator_count, finding_type, findings_pos, finding) %>% filter(!is.na(geo_name)) # some geoids don't have geo_names. all of them belong in housing-- for example: Camp Pendleton North. They don't pass the indicator count threshold either way to be included in the finding, so we will remove these. 
 
 
 # findings for education
