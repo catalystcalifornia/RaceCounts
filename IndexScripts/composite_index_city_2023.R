@@ -25,48 +25,41 @@ crosswalk <- dbGetQuery(con, "SELECT  city_id, city_name, dist_id, total_enroll 
 # pull in list of tables in racecounts.v5
 rc_list = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(schema = "v5"))$table, function(x) slot(x, 'name'))))
 
-## Pull in city (or district) level education indicators (ends with school district)
+## Pull in city (or district) level education indicators
 education_list <- filter(rc_list, grepl("_district_2023",table))
 education_list <- education_list [order(education_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
 
 # import all tables on education_list
-education_tables <- lapply(setNames(paste0("select * from v5.", education_list), education_list), DBI::dbGetQuery, conn = con)
+education_tables_list <- lapply(setNames(paste0("select * from v5.", education_list), education_list), DBI::dbGetQuery, conn = con)
 
 # create column with indicator name
-education_tables  <- map2(education_tables, names(education_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
+education_tables_list  <- map2(education_tables_list, names(education_tables_list), ~ mutate(.x, indicator = .y)) # create column with indicator name
 
-education_tables_disparity <- lapply(education_tables, function(x) x%>% select(dist_id, district_name, disparity_z, indicator))
+education_tables_list <- lapply(education_tables_list, function(x) x %>% select(dist_id, district_name, disparity_z, performance_z, indicator))
 
-education_disparity <- imap_dfr(education_tables_disparity, ~
+education_tables <- imap_dfr(education_tables_list, ~
                .x %>% 
                    pivot_longer(cols = disparity_z,
                  names_to = "measure",
-                 values_to = "disparity_z_score_unweighted")) %>% select(-measure)
+                 values_to = "disparity_z_score_unweighted")) %>% select(-measure)  
+
+                 
+education_tables <- education_tables %>% mutate(indicator =  gsub('arei_educ_', '', indicator)) %>% mutate(indicator =  gsub('_district_2023', '', indicator)) %>%
+                                         rename(performance_z_score_unweighted = performance_z) %>% relocate(indicator, .after = disparity_z_score_unweighted)
+
+df_education_district <- education_tables %>% left_join(crosswalk, by = "dist_id") %>% filter(!is.na(city_id))
 
 
+## extra step: weighted averages by enrollment size per indicator (some cities have multiple districts but not every indicator will have multiple districts per city).
 
-education_tables_performance <- lapply(education_tables, function(x) x%>% select(dist_id,district_name, performance_z, indicator))
+enrollment_percentages <- df_education_district %>% select(city_id, dist_id, total_enroll, indicator) %>% unique() %>% group_by(city_id, indicator) %>% 
+                                                    mutate(sum_total_enroll = sum(total_enroll, na.rm = T), 
+                                                           percent_total_enroll = (total_enroll/sum_total_enroll)) %>% ungroup() %>% 
+                                                    select(city_id, dist_id, indicator, total_enroll, sum_total_enroll, percent_total_enroll)
 
-
-education_performance <- imap_dfr(education_tables_performance, ~
-               .x %>% 
-                   pivot_longer(cols = performance_z,
-                 names_to = "measure",
-                 values_to = "performance_z_score_unweighted")) %>% select(-measure)
-
-
-df_education_district <- education_disparity %>% full_join(education_performance)  %>% left_join(crosswalk, by = "dist_id")
-
-## extra step: weighted averages by enrollment size per indicator ( some cities have multiple districts but not every indicator will have multiple districts per city).
-
-enrollment_percentages <- df_education_district %>% select(city_id, dist_id, total_enroll, indicator) %>% unique() %>% group_by(city_id,  indicator) %>% mutate(sum_total_enroll = sum(total_enroll, na.rm = T), 
-                                                             percent_total_enroll = (total_enroll/sum_total_enroll)) %>% ungroup() %>% select(city_id, dist_id, indicator, total_enroll, sum_total_enroll, percent_total_enroll)
-
-df_education_district_weighted <- df_education_district %>% left_join(enrollment_percentages, by = c("city_id","dist_id","indicator", "total_enroll")) %>%
-  mutate(
-disparity_z_score = disparity_z_score_unweighted * percent_total_enroll,
-performance_z_score = performance_z_score_unweighted * percent_total_enroll
-)
+df_education_district_weighted <- df_education_district %>% left_join(enrollment_percentages, by = c("city_id","dist_id","indicator","total_enroll")) %>%
+                                                            mutate(disparity_z_score = disparity_z_score_unweighted * percent_total_enroll,
+                                                                   performance_z_score = performance_z_score_unweighted * percent_total_enroll)
 
 df_education_city <- df_education_district_weighted %>% group_by(city_id, city_name, indicator) %>% summarize(disp_z = sum(disparity_z_score), perf_z = sum(performance_z_score))
 
@@ -77,43 +70,6 @@ education_tables_agg <- df_education_city %>% pivot_wider(
   names_glue = "{indicator}_{.value}",
 )
 
-### commenting out previous code where I just averaged
-# rename column 
-#education_tables_short <- lapply(education_tables, function(x) x%>% select(dist_id, district_name, disparity_z, performance_z, indicator))
-
-#education_tables_updated <-
-#  lapply(names(education_tables_short), function(i){
-#   x <- education_tables_short[[ i ]]
-#    # set 2nd column to a new name
-#    names(x)[3] <- paste0(i, "_disp_z")
-#    names(x)[4] <- paste0(i, "_perf_z")
-#    # return
-#    x
-#  })
- 
-
-# only select columns we want
-#education_tables_updated <- lapply(education_tables_updated, function(x) x%>% select(dist_id, district_name, ends_with("disp_z"), ends_with("perf_z")))
-
-# make into df
-#education_tables_df <- education_tables_updated  %>% reduce(full_join) %>% arrange(district_name)
-
-
-#
-# merge cross-walk
-#education_tables_df_crosswalk <- crosswalk %>% select(city_id, city_name, dist_id, district_name) %>% left_join(education_tables_df, by = "dist_id") %>% # select(city_id, city_name, ends_with("z"))
-
-
-
-# pivot longer and wider
-#education_tables_agg<- education_tables_df_crosswalk %>% pivot_longer(
-#                                                                        cols = ends_with("z"),
-#                                                                        names_to = "indicator",
-#                                                                        values_to = "value" ) %>%
-#                        group_by(city_id, city_name, indicator) %>% mutate(mean = mean(value, na.rm=TRUE)) %>% 
-#                        select(-value) %>% ungroup() %>% distinct(city_id, city_name, indicator, mean) %>% 
-#                       pivot_wider(names_from = "indicator", values_from = "mean") %>% mutate_all(~ifelse(is.nan(.), NA, .))
-
 
 ## Add the rest of the indicators  ------------------------------------------------------
 
@@ -121,7 +77,9 @@ education_tables_agg <- df_education_city %>% pivot_wider(
 
 # filter for only city level indicator tables
 city_list <- filter(rc_list, grepl("_city_2023",table))
-city_list <- city_list[order(city_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
+city_list <- filter(city_list, !grepl("index", table)) # filter out index in case there is a prev version in postgres
+
+city_list <- city_list[order(city_list$table), ] # alphabetize list of tables, changes df to list the needed format for next step
 
 
 # import all tables on city_list
@@ -132,7 +90,7 @@ city_tables <- map2(city_tables, names(city_tables), ~ mutate(.x, indicator = .y
 
 
 # rename column 
-city_tables_short <- lapply(city_tables, function(x) x%>% select(city_id, city_name, disparity_z, performance_z, indicator))
+city_tables_short <- lapply(city_tables, function(x) x %>% select(city_id, city_name, disparity_z, performance_z, indicator))
 
 city_tables_updated <-
   lapply(names(city_tables_short), function(i){
@@ -146,18 +104,18 @@ city_tables_updated <-
 
 # only select columns we want
 city_tables_updated <- lapply(city_tables_updated, function(x) x%>% select(city_id, ends_with("disp_z"), ends_with("perf_z")))
-
+city_tables_updated <- city_tables_updated %>% reduce(full_join) # convert list to df
+names(city_tables_updated)[-1] <- substring(names(city_tables_updated)[-1],11) # clean colnames
+names(city_tables_updated)[-1] <- gsub(x = names(city_tables_updated)[-1], pattern = "city_2023_", replacement = "", names) # clean colnames
 
 # make into df
-arei_race_multigeo <- dbGetQuery(con, "SELECT geoid, name, geolevel  FROM v5.arei_race_multigeo") %>% filter(geolevel == "place") %>% rename(city_id = geoid, city_name = name) %>% select(-geolevel)
+arei_race_multigeo <- dbGetQuery(con, "SELECT geoid, name, geolevel, total_pop FROM v5.arei_race_multigeo") %>% filter(geolevel == "place") %>% rename(city_id = geoid, city_name = name) %>% select(-geolevel)
 
 # merge to get city names and education table
+city_tables_df <- city_tables_updated %>% arrange(city_id) %>% distinct(city_id, .keep_all = TRUE) %>% left_join(education_tables_agg) %>% left_join(arei_race_multigeo) %>% select(city_id, city_name, everything())
 
-city_tables_df <- city_tables_updated  %>% reduce(full_join) %>% arrange(city_id) %>% distinct(city_id, .keep_all = TRUE) %>% left_join(education_tables_agg) %>% left_join(arei_race_multigeo) %>% select(city_id, city_name, everything())
-
-# remove cities: there are 6 of them
+# remove cities that are actually universities/colleges: RC v5 there are 6 of them
 city_tables_df <- city_tables_df %>% filter(!grepl('University', city_name))
-
 
 # cap perf_z and disp_z values  at 3.5 
 city_tables_capped <- city_tables_df %>% mutate(across(ends_with("disp_z"), 
@@ -172,15 +130,9 @@ city_tables_capped <- city_tables_df %>% mutate(across(ends_with("disp_z"),
 
 # 6 indicators don't have a city name
 #arei_race_multigeo %>% filter(
-#city_id %in% c("0607379", "0610559", "0633633", "0662868", "0675168", "0675588")
-#)
+#city_id %in% c("0607379", "0610559", "0633633", "0662868", "0675168", "0675588"))
 
-## pull in city screen table from Leila's script to compare 
 
-city_screen <- dbGetQuery(con, "SELECT * FROM v5.api_city_list")
-
-# merge- there are 654 cities
-# city_tables_screened <- city_screen %>% left_join(city_tables_df, by = c("city_id"))
 
 # Look at perf_na and disp_na across all indicators. We will need this later
 all_indicators_perf_count<- city_tables_df %>% select(city_id, ends_with("perf_z")) %>%
