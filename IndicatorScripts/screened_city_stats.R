@@ -80,6 +80,9 @@ city_tables_list_final <- lapply(city_tables_list_screened, function(x) x %>% se
 # Combine Education and non-Education tables and prep for RC Functions ------------------------------
 #all_city_tables_list <- c(education_tables_list_final, city_tables_list_final)
 dist_list <- education_tables_list_final
+dist_list <- lapply(dist_list, function(x) x %>% mutate(across(ends_with("rate"), ~ifelse(asbest == 'min', ends_with("rate")*-1, .))))
+
+
 city_list <- city_tables_list_final
 
 # RC Functions ------------------------------------------------------------
@@ -120,14 +123,13 @@ city_list <- city_tables_list_final
 
 # -------------------------------------------------------------------------
 
-# calc_z with the non-working parts commented out
+# edited calc_z function for this script only
 calc_z <- function(x) {
   #####calculate county disparity z-scores ----
   ## Total/Overall disparity_z score ##
   id_table <- dplyr::select(x, geoid, index_of_disparity)
   avg_id = mean(id_table$index_of_disparity, na.rm = TRUE) #calc avg id and std dev of id
   sd_id = sd((id_table$index_of_disparity), na.rm = TRUE)
-  #mutate(sd_id = sd(unlist(id_table$index_of_disparity)))                    #calc avg id and std dev of id with unlist()
   id_table$disparity_z <- (id_table$index_of_disparity - avg_id) / sd_id      #note the disp_z results are slightly different than pgadmin, must be due to slight methodology differences
   x$disparity_z = id_table$disparity_z                                   #add disparity_z to original table
   
@@ -143,19 +145,36 @@ calc_z <- function(x) {
   
   #####calculate county performance z-scores
   ## Total/Overall performance z_scores ## Note the perf_z results are slightly different than pgadmin, must be due to slight methodology differences
-  tot_table <- dplyr::select(x, geoid, asbest, total_rate)
+  #tot_table <- dplyr::select(x, geoid, asbest, total_rate)
+  #new chunk#
+  tot_table <- dplyr::select(x, geoid, total_rate)
+  #end new chunk#
   avg_tot = mean(tot_table$total_rate, na.rm = TRUE)      #calc avg total_rate and std dev of total_rate
   sd_tot = sd(tot_table$total_rate, na.rm = TRUE)
-  # if (min(tot_table$asbest) == 'max') {
-  #   tot_table$performance_z <- (tot_table$total_rate - avg_tot) / sd_tot          #calc perf_z scores if MAX is best
-  # } else
-  #   if (min(tot_table$asbest) == 'min') {
-  #     tot_table$performance_z <-  ((tot_table$total_rate - avg_tot) / sd_tot) *-1   #calc perf_z scores if MIN is best
-  #   }
-  # x$performance_z = tot_table$performance_z    #add performance_z to original table
+  
+  #new chunk#
+  #tot_table$performance_z <- (tot_table$total_rate - avg_tot) / sd_tot          #calc perf_z scores if MAX is best (later will separately multiply by -1 when min is best)
+  #tot_table <- tot_table %>% select(-c(total_rate))
+  #x <- x %>% left_join(tot_table, by="geoid")                           #join new columns back to original table
+  asbest_ = min(x$asbest, na.rm=TRUE)
+  #end new chunk# 
+  
+  if (asbest_ == 'max') {
+    tot_table$performance_z <- (tot_table$total_rate - avg_tot) / sd_tot          #calc perf_z scores if MAX is best
+  } else
+  {
+    tot_table$performance_z <- ((tot_table$total_rate - avg_tot) / sd_tot) *-1   #calc perf_z scores if MIN is best
+  }
+  #x$performance_z = tot_table$performance_z    #add performance_z to original table
+  
+  tot_table <- tot_table %>% select(-c(total_rate))
+  x <- x %>% left_join(tot_table, by="geoid")                           #join new columns back to original table
   
   ## Raced performance z_scores ##
-  rates <- dplyr::select(x, geoid, asbest, ends_with("_rate"), -ends_with("_no_rate"), -ends_with("_moe_rate"), -total_rate)  #get geoid, avg, variance, and raced diff columns
+  #rates <- dplyr::select(x, geoid, asbest, ends_with("_rate"), -ends_with("_no_rate"), -ends_with("_moe_rate"), -total_rate)  #get geoid, avg, variance, and raced diff columns
+  #new chunk#
+  rates <- dplyr::select(x, geoid, ends_with("_rate"), -ends_with("_no_rate"), -ends_with("_moe_rate"), -total_rate)  #get geoid, avg, variance, and raced diff columns
+  #end new chunk#
   avg_rates <- colMeans(rates[,3:ncol(rates)], na.rm = TRUE)                                        #calc average rates for each raced rate
   a <- as.data.frame(avg_rates)                                                                     #convert to data frame
   a$measure_rate  <- c(names(avg_rates))                                                            #create join field
@@ -165,36 +184,43 @@ calc_z <- function(x) {
   rates_long <- pivot_longer(rates, 3:ncol(rates), names_to="measure_rate", values_to="rate")           #pivot wide table to long on geoid & variance cols
   rates_long <- left_join(rates_long, a, by="measure_rate")                                             #join avg rates for each raced rate
   rates_long <- left_join(rates_long, s, by="measure_rate")                                             #join std dev for each raced rate
-  
-  # if (min(rates$asbest) == 'max') {
+  #new chunk#
   #   rates_long <- rates_long %>% mutate(perf=(rate - avg_rates) / sd_rates, na.rm = TRUE) %>%         #calc perf_z scores if MAX is best
-  #     mutate(measure_perf=sub("_rate", "_performance_z", measure_rate))                   #create new column names for performance z-scores
-  # } else
-  #   if (min(rates$asbest) == 'min') {
-  #     rates_long <- rates_long %>% mutate(perf=((rate - avg_rates) / sd_rates) *-1, na.rm = TRUE) %>%   #calc perf_z scores if MIN is best
-  #       mutate(measure_perf=sub("_rate", "_performance_z", measure_rate))                   #create new column names for performance z-scores
-  #   }
+  #   mutate(measure_perf=sub("_rate", "_performance_z", measure_rate))                   #create new column names for performance z-scores
+  #end new chunk#
+  if (asbest_ == 'max') {
+    rates_long <- rates_long %>% mutate(perf=(rate - avg_rates) / sd_rates, na.rm = TRUE) %>%         #calc perf_z scores if MAX is best
+      mutate(measure_perf=sub("_rate", "_performance_z", measure_rate))                   #create new column names for performance z-scores
+  } else
+  {
+    rates_long <- rates_long %>% mutate(perf=((rate - avg_rates) / sd_rates) *-1, na.rm = TRUE) %>%   #calc perf_z scores if MIN is best
+      mutate(measure_perf=sub("_rate", "_performance_z", measure_rate))                   #create new column names for performance z-scores
+  }
   
-  # rates_wide <- rates_long %>% dplyr::select(geoid, measure_perf, perf) %>%          #pivot long table back to wide keeping only geoid and new columns
-  #   pivot_wider(names_from=measure_perf, values_from=perf)
-  # 
-  # x <- x %>% left_join(rates_wide, by = "geoid")                                #join new columns back to original table
-  # 
+  rates_wide <- rates_long %>% dplyr::select(geoid, measure_perf, perf) %>%          #pivot long table back to wide keeping only geoid and new columns
+    pivot_wider(names_from=measure_perf, values_from=perf)
+  
+  x <- x %>% left_join(rates_wide, by = "geoid")                                #join new columns back to original table
+  
   return(x)
 }
 
-# calc_ranks with the non-working parts commented out
+# edited calc_ranks function for this script only
 calc_ranks <- function(x) {
-  ranks_table <- dplyr::select(x, geoid, asbest, total_rate, index_of_disparity, disparity_z)#, performance_z)
+  #ranks_table <- dplyr::select(x, geoid, asbest, total_rate, index_of_disparity, disparity_z, performance_z)
+  #new chunk#
+  ranks_table <- dplyr::select(x, geoid, total_rate, index_of_disparity, disparity_z, performance_z)
+  asbest_ = min(x$asbest, na.rm=TRUE)
+  #end new chunk#
   
   #performance_rank: rank of 1 = best performance
   #if max is best then rank DESC / if min is best, then rank ASC. exclude NULLS.
-  # if(min(ranks_table$asbest) == 'max'){
-  #   ranks_table$performance_rank = rank(desc(ranks_table$total_rate), na.last = "keep", ties.method = "min")
-  # } else
-  #   if(min(ranks_table$asbest) == 'min'){
-  #     ranks_table$performance_rank = rank(ranks_table$total_rate, na.last = "keep", ties.method = "min")
-  #   }
+  if(asbest_ == 'max'){
+    ranks_table$performance_rank = rank(desc(ranks_table$total_rate), na.last = "keep", ties.method = "min")
+  } else
+  {
+    ranks_table$performance_rank = rank(ranks_table$total_rate, na.last = "keep", ties.method = "min")
+  }
   
   #disparity_rank: rank of 1 = worst disparity
   #max is worst, rank DESC. exclude NULLS.
@@ -203,27 +229,27 @@ calc_ranks <- function(x) {
   #quadrants
   #if perf_z below avg and disp_z above avg, then red / perf_z above or avg and disp_z above or avg, then orange /
   #perf_z above or avg and disp_z below avg, then purple / perf_z below avg and disp_z below or avg, then yellow
-  # ranks_table$quadrant =
-  #   ifelse(ranks_table$performance_z < 0 & ranks_table$disparity_z > 0, 'red',
-  #          ifelse(ranks_table$performance_z > 0 & ranks_table$disparity_z >= 0, 'orange',
-  #                 ifelse(ranks_table$performance_z >= 0 & ranks_table$disparity_z < 0, 'purple',
-  #                        ifelse(ranks_table$performance_z < 0 & ranks_table$disparity_z <= 0, 'yellow', NA))))
-
-  ranks_table <- ranks_table %>% dplyr::select(geoid, disparity_rank)#, performance_rank, quadrant)
+  ranks_table$quadrant =
+    ifelse(ranks_table$performance_z < 0 & ranks_table$disparity_z > 0, 'red',
+           ifelse(ranks_table$performance_z > 0 & ranks_table$disparity_z >= 0, 'orange',
+                  ifelse(ranks_table$performance_z >= 0 & ranks_table$disparity_z < 0, 'purple',
+                         ifelse(ranks_table$performance_z < 0 & ranks_table$disparity_z <= 0, 'yellow', NA))))
+  
+  ranks_table <- ranks_table %>% dplyr::select(geoid, disparity_rank, performance_rank, quadrant)
   x <- x %>% left_join(ranks_table , by = "geoid")
   
   return(x)
 }
 
 #calculate DISTRICT z-scores
-dist_tables <- lapply(dist_list, calc_z) # only disp_z calcs working, perf_z calcs are not working...
-dist_tables <- lapply(dist_tables, calc_ranks) # only disp rank calcs working, perf rank calcs are not working..
+dist_tables <- lapply(dist_list, function(x) calc_z(x))
+dist_tables <- lapply(dist_tables, function(x) calc_ranks(x))
 dist_tables <- lapply(dist_tables, function(x) x %>% dplyr::rename("dist_id" = "geoid", "district_name" = "geoname")) 
 View(dist_tables)
 
 #calculate CITY z-scores
-city_tables <- lapply(city_list, calc_z) # only disp_z calcs working, perf_z calcs are not working...
-city_tables <- lapply(city_tables, calc_ranks) # only disp rank calcs working, perf rank calcs are not working..
+city_tables <- lapply(city_list, function(x) calc_z(x))
+city_tables <- lapply(city_tables, function(x) calc_ranks(x))
 city_tables <- lapply(city_tables, function(x) x %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname"))
 View(city_tables)
 
