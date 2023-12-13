@@ -9,7 +9,7 @@ if(length(new.packages)) install.packages(new.packages)
 library(tidyverse)
 library(RPostgreSQL)
 library(sf)
-
+library(usethis)
 
 # Load PostgreSQL driver and databases --------------------------------------------------
 # create connection for rda database
