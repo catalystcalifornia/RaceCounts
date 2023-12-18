@@ -20,8 +20,8 @@ con <- connect_to_db("racecounts")
 pop_threshold <- 10000
 
 # pull in city-district crosswalk and city population data
-crosswalk <- dbGetQuery(con, "SELECT  city_id, city_name, dist_id FROM v5.arei_city_county_district_table")
-pop_df <- dbGetQuery(con, "SELECT geoid AS city_id, total_pop AS city_total_pop FROM v5.arei_multigeo_list WHERE geolevel = 'place'")
+crosswalk <- dbGetQuery(con, "SELECT  city_id, city_name, dist_id, district_name FROM v5.arei_city_county_district_table")
+pop_df <- dbGetQuery(con, "SELECT geoid AS city_id, geo_name AS city_name, total_pop AS city_total_pop FROM v5.arei_multigeo_list WHERE geolevel = 'place'")
 
 # Pull in Education city indicators -------------------------------------------------------
 ## These indicators require extra prep bc they are at school district not city level
@@ -30,6 +30,7 @@ rc_list = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(sc
 
 ## Pull in city (or district) level education indicators
 education_list <- filter(rc_list, grepl("_district_2023",table))
+education_list <- filter(education_list, !grepl("api_", table)) # filter out api_ tables in case there are prev versions in postgres
 education_list <- education_list [order(education_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
 
 # import all tables on education_list
@@ -41,10 +42,11 @@ education_tables_list_ <- lapply(education_tables_list, function(x) x %>% select
 # screen tables using city pop threshold and prep for RC Functions
 ## first, join city_id's to education tables (one-to-many)
 education_tables_list_join <- lapply(education_tables_list_, function(x) x %>% right_join(crosswalk, by = "dist_id")) # add city_id's
+education_tables_list_join <- lapply(education_tables_list_join, function(x) x %>% mutate(district_name.x = ifelse(!is.na(district_name.x), district_name.x, district_name.y))) # fill in missing dist names using xwalk dist names
 education_tables_list_join <- lapply(education_tables_list_join, function(x) x %>% right_join(pop_df, by = "city_id")) # add city pop data
 education_tables_list_screened <- lapply(education_tables_list_join, function(x) x %>% filter(city_total_pop >= pop_threshold)) # apply pop threshold screen
-education_tables_list_screened <- lapply(education_tables_list_screened, function(x) x %>% rename(geoid = dist_id, geoname = district_name)) # rename fields for RC functions
-education_tables_list_final <- lapply(education_tables_list_screened, function(x) x %>% select(-c(city_id, city_name, city_total_pop))) # drop city info
+education_tables_list_screened <- lapply(education_tables_list_screened, function(x) x %>% rename(geoid = dist_id, geoname = district_name.x)) # rename fields for RC functions
+education_tables_list_final <- lapply(education_tables_list_screened, function(x) x %>% select(-c(city_id, city_name.x, city_name.y, city_total_pop, district_name.y))) # drop city info and dupe dist name
 education_tables_list_final <- lapply(education_tables_list_final, function(x) unique(x)) # keep unique rows (1 per district)
 
 
@@ -52,6 +54,7 @@ education_tables_list_final <- lapply(education_tables_list_final, function(x) u
 # filter for only city level indicator tables
 city_list <- filter(rc_list, grepl("_city_2023",table))
 city_list <- filter(city_list, !grepl("index", table)) # filter out index in case there is a prev version in postgres
+city_list <- filter(city_list, !grepl("api_", table)) # filter out api_ tables in case there are prev versions in postgres
 city_list <- city_list[order(city_list$table), ] # alphabetize list of tables, changes df to list the needed format for next step
 
 # import all tables on city_list
@@ -66,8 +69,9 @@ city_tables_list_ <- lapply(city_tables_list_, function(x) x %>% filter(!grepl('
 # screen tables using city pop threshold and prep for RC Functions
 city_tables_list_join <- lapply(city_tables_list_, function(x) x %>% right_join(pop_df, by = "city_id")) # add city pop data
 city_tables_list_screened <- lapply(city_tables_list_join, function(x) x %>% filter(city_total_pop >= pop_threshold)) # apply pop threshold screen
-city_tables_list_screened <- lapply(city_tables_list_screened, function(x) x %>% rename(geoid = city_id, geoname = city_name)) # rename fields for RC functions
-city_tables_list_final <- lapply(city_tables_list_screened, function(x) x %>% select(-c(city_total_pop))) # drop city pop and add geolevel
+city_tables_list_screened <- lapply(city_tables_list_screened, function(x) x %>% mutate(city_name.x = ifelse(!is.na(city_name.x), city_name.x, city_name.y))) # fill in missing city names using pop_df city names
+city_tables_list_screened <- lapply(city_tables_list_screened, function(x) x %>% rename(geoid = city_id, geoname = city_name.x)) # rename fields for RC functions
+city_tables_list_final <- lapply(city_tables_list_screened, function(x) x %>% select(-c(city_total_pop, city_name.y))) # drop city pop and dupe city name, add geolevel
 
 
 # Edited RC Functions -------------------------------------------------------------------------
@@ -205,25 +209,31 @@ View(city_tables)
 # Make list of api district table names
 table_names_d <- as.data.frame(names(dist_list)) %>% rename('table_name' = 1) %>% mutate(table_name = gsub("arei_", "api_", table_name))
 table_names_d_ = table_names_d[['table_name']]  # convert to character vector
+source <- "This is the screened city or district indicator table used by the API/website. It is based on the arei_ version of the table and contains data for the screened cities only including updated comparative calcs (everything after ID) based on the screened list of cities."
 rc_schema <- "v5"
 
 # loop to export individual tables
 for (i in 1:length(dist_tables)) {
 
   dbWriteTable(con, c(rc_schema, table_names_d_[i]), dist_tables[[i]], overwrite = FALSE, row.names = FALSE)
- 
+  comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", table_names_d_[i],  " IS '", source, "';")
+  dbSendQuery(conn = con, comment)
+
 }
 
 ##### Export "api_" city indicator tables ##### --------------
 # Make list of api city table names
 table_names_c <- as.data.frame(names(city_list)) %>% rename('table_name' = 1) %>% mutate(table_name = gsub("arei_", "api_", table_name))
 table_names_c_ = table_names_c[['table_name']]  # convert to character vector
+source <- "This is the screened city or district indicator table used by the API/website. It is based on the arei_ version of the table and contains data for the screened cities only including updated comparative calcs (everything after ID) based on the screened list of cities."
 rc_schema <- "v5"
 
 # loop to export individual tables
 for (i in 1:length(city_tables)) {
   
   dbWriteTable(con, c(rc_schema, table_names_c_[i]), city_tables[[i]], overwrite = FALSE, row.names = FALSE)
+  comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", table_names_c_[i],  " IS '", source, "';")
+  dbSendQuery(conn = con, comment)
   
 }
 
