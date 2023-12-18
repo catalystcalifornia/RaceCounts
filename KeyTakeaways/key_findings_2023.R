@@ -836,7 +836,7 @@ sum_statement_df <- c_1 %>%
   select(county_id, county_name, urban_type, disparity_z, performance_z) %>%
   mutate(perf_type = ifelse(performance_z < 0, 'below', 'above'),
          pop_type = ifelse(urban_type == 'Urban', 'more', 'less'),
-         disp_type = ifelse(disparity_z < 0, 'below', 'above'))
+         disp_type = ifelse(disparity_z < 0, 'below', 'worse than'))
 
 disp_avg_statement <- sum_statement_df  %>% rename(geoid = county_id, geoname = county_name) %>%
   mutate(finding_type = 'disparity', finding = ifelse(is.na(disp_type), NA, paste0(geoname, " County's racial disparity across indicators is ", disp_type, " average for California counties.")),
