@@ -79,7 +79,7 @@ education_tables_agg <- df_education_city %>% pivot_wider(
 
 # filter for only city level indicator tables
 city_list <- filter(rc_list, grepl("_city_2023",table))
-city_list <- filter(rc_list, grepl("arei_",table)) # get only unscreened indicator tables
+city_list <- filter(city_list, grepl("arei_",table)) # get only unscreened indicator tables
 city_list <- filter(city_list, !grepl("index", table)) # filter out index in case there is a prev version in postgres
 
 city_list <- city_list[order(city_list$table), ] # alphabetize list of tables, changes df to list the needed format for next step
@@ -120,15 +120,16 @@ city_tables_df <- city_tables_updated %>% arrange(city_id) %>% distinct(city_id,
 # remove cities that are actually universities/colleges: RC v5 there are 6 of them
 city_tables_df <- city_tables_df %>% filter(!grepl('University', city_name))
 
-# cap perf_z and disp_z values  at 3.5 
+# cap perf_z and disp_z values  at |3.5|. More info: https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=feyI80
+indicator_cap <- 3.5
 city_tables_capped <- city_tables_df %>% mutate(across(ends_with("disp_z"), 
-             ~ case_when(. > 3.5 ~ 3.5, 
-                       . < -3.5 ~ -3.5,
+             ~ case_when(. > indicator_cap ~ indicator_cap, 
+                       . < -indicator_cap ~ -indicator_cap,
                        TRUE ~ .))) %>% 
   
   mutate(across(ends_with("perf_z"), 
-             ~ case_when(. > 3.5 ~ 3.5, 
-                       . < -3.5 ~ -3.5,
+             ~ case_when(. > indicator_cap ~ indicator_cap, 
+                       . < -indicator_cap ~ -indicator_cap,
                        TRUE ~ .)))
 
 # 6 indicators don't have a city name
@@ -196,18 +197,19 @@ calculate_city_weighted_z <- function(x,y,z) {
     
      
   # Cap Issue Index z-scores at |2| More info: https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=feyI80
-  x <- x %>% mutate(
-          disp_z = case_when(
-            disp_z > 2 ~ 2,
-            disp_z < -2 ~ -2,
-            TRUE ~ disp_z)
-        ) %>%
-        mutate (
-          perf_z = case_when(
-            perf_z > 2 ~ 2,
-            perf_z < -2 ~ -2,
-            TRUE ~ perf_z)
-        )
+    issue_cap <- 2
+    x <- x %>% mutate(
+      disp_z = case_when(
+        disp_z > issue_cap ~ issue_cap,
+        disp_z < -issue_cap ~ -issue_cap,
+        TRUE ~ disp_z)
+    ) %>%
+      mutate (
+        perf_z = case_when(
+          perf_z > issue_cap ~ issue_cap,
+          perf_z < -issue_cap ~ -issue_cap,
+          TRUE ~ perf_z)
+      )
     
     return(x)
   }
@@ -249,16 +251,17 @@ calculate_city_weighted_z <- function(x,y,z) {
   )
   
   # Cap Issue Index z-scores at |2| More info: https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=feyI80
+  issue_cap <- 2
   x <- x %>% mutate(
           disp_z = case_when(
-            disp_z > 2 ~ 2,
-            disp_z < -2 ~ -2,
+            disp_z > issue_cap ~ issue_cap,
+            disp_z < -issue_cap ~ -issue_cap,
             TRUE ~ disp_z)
         ) %>%
         mutate (
           perf_z = case_when(
-            perf_z > 2 ~ 2,
-            perf_z < -2 ~ -2,
+            perf_z > issue_cap ~ issue_cap,
+            perf_z < -issue_cap ~ -issue_cap,
             TRUE ~ perf_z)
         )
  
@@ -493,15 +496,16 @@ city_tables_df <- city_tables_updated %>% arrange(city_id) %>% distinct(city_id,
 # remove cities that are actually universities/colleges: RC v5 there are 6 of them
 city_tables_df <- city_tables_df %>% filter(!grepl('University', city_name))
 
-# cap perf_z and disp_z values  at 3.5 
+# cap perf_z and disp_z values  at |3.5|. More info: https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=feyI80
+indicator_cap <- 3.5
 city_tables_capped <- city_tables_df %>% mutate(across(ends_with("disp_z"), 
-                                                       ~ case_when(. > 3.5 ~ 3.5, 
-                                                                   . < -3.5 ~ -3.5,
+                                                       ~ case_when(. > indicator_cap ~ indicator_cap, 
+                                                                   . < -indicator_cap ~ -indicator_cap,
                                                                    TRUE ~ .))) %>% 
   
                                          mutate(across(ends_with("perf_z"), 
-                                                       ~ case_when(. > 3.5 ~ 3.5, 
-                                                                   . < -3.5 ~ -3.5,
+                                                       ~ case_when(. > indicator_cap ~ indicator_cap, 
+                                                                   . < -indicator_cap ~ -indicator_cap,
                                                                    TRUE ~ .)))
 
 # Count the number of valid disp_z and perf_z per city. We will need this later
@@ -563,16 +567,17 @@ calculate_city_weighted_z <- function(x,y,z) {
     
     
     # Cap Issue Index z-scores at |2| More info: https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=feyI80
+    issue_cap <- 2
     x <- x %>% mutate(
       disp_z = case_when(
-        disp_z > 2 ~ 2,
-        disp_z < -2 ~ -2,
+        disp_z > issue_cap ~ issue_cap,
+        disp_z < -issue_cap ~ -issue_cap,
         TRUE ~ disp_z)
     ) %>%
       mutate (
         perf_z = case_when(
-          perf_z > 2 ~ 2,
-          perf_z < -2 ~ -2,
+          perf_z > issue_cap ~ issue_cap,
+          perf_z < -issue_cap ~ -issue_cap,
           TRUE ~ perf_z)
       )
     
@@ -616,16 +621,17 @@ calculate_city_weighted_z <- function(x,y,z) {
   )
   
   # Cap Issue Index z-scores at |2| More info: https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=feyI80
+  issue_cap <- 2
   x <- x %>% mutate(
     disp_z = case_when(
-      disp_z > 2 ~ 2,
-      disp_z < -2 ~ -2,
+      disp_z > issue_cap ~ issue_cap,
+      disp_z < -issue_cap ~ -issue_cap,
       TRUE ~ disp_z)
   ) %>%
     mutate (
       perf_z = case_when(
-        perf_z > 2 ~ 2,
-        perf_z < -2 ~ -2,
+        perf_z > issue_cap ~ issue_cap,
+        perf_z < -issue_cap ~ -issue_cap,
         TRUE ~ perf_z)
     )
   
