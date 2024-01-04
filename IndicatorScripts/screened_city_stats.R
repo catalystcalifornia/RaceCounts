@@ -238,5 +238,5 @@ for (i in 1:length(city_tables)) {
 }
 
 
-# dbDisconnect(con)
+dbDisconnect(con)
 

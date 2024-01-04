@@ -28,7 +28,7 @@ rc_list = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(sc
 
 ## Pull in city (or district) level education indicators
 education_list <- filter(rc_list, grepl("_district_2023",table)) # pull only district level indicator tables
-education_list <- filter(rc_list, grepl("arei_",table)) # get only unscreened indicator tables
+education_list <- filter(education_list, grepl("arei_",table)) # get only unscreened indicator tables
 education_list <- education_list [order(education_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
 
 # import all tables on education_list
@@ -757,4 +757,8 @@ table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS
 
 ## send table comment to database
 #dbSendQuery(conn = con, table_comment)     
+
+
+## QA script
+
 
