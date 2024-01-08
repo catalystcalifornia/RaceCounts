@@ -856,4 +856,5 @@ comment <- paste0("COMMENT ON TABLE v5.arei_findings_places_multigeo_update IS '
 print(comment)
 #dbSendQuery(con, comment)
 
+#dbDisconnect(con)  
 
