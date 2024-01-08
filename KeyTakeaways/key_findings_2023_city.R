@@ -1,4 +1,5 @@
 ### Key Takeaways RC v5 ###
+####### Produces arei_findings_races_multigeo, arei_findings_places_multigeo, and arei_findings_issues tables
 
 # Packages ----------------------------------------------------------------
 library(tidyverse)
@@ -856,4 +857,5 @@ comment <- paste0("COMMENT ON TABLE v5.arei_findings_places_multigeo_update IS '
 print(comment)
 #dbSendQuery(con, comment)
 
+#dbDisconnect(con)  
 
