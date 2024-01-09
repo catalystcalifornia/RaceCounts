@@ -100,9 +100,6 @@ df_city <- df_merged %>% mutate(
                     ) %>% left_join(arei_race_multigeo_city) %>% rename(geoid = city_id, geo_name = city_name)
 
 
-city_name <- distinct(df_city, geoid, geo_name) # distinct city name to merge with education later
-
-
 # City (District) Education Tables: must be handled separately bc they are school district not city-level ----------------------------------------
 
 education_list <- filter(rc_list, grepl("_district_2023",table))
@@ -164,9 +161,10 @@ df_education_district <- df_merged_education %>% mutate(
                               indicator = substring(indicator, 10),
                               indicator = gsub('_district_2023', '', indicator),
                               geo_level = "city",
-                              race_generic = gsub('nh_', '', race) # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
-                            ) %>% left_join(crosswalk, by = "dist_id") %>% rename (geoid = city_id) %>% left_join(city_name) %>% 
-                              filter(!is.na(race) & !grepl('University', geo_name)) %>% select(geoid, geo_name, dist_id, district_name, everything()) 
+                              race_generic = gsub('nh_', '', race)) %>% # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
+                                left_join(crosswalk, by = "dist_id", relationship = 'many-to-many') %>% left_join(arei_race_multigeo_city, by = "city_id") %>% 
+                                      filter(!is.na(race) & !grepl('University', city_name)) %>% rename(geoid = city_id, geo_name = city_name) %>%
+                                          select(geoid, geo_name, dist_id, district_name, everything()) 
 
 # County Data Tables ------------------------------------------------------
 
