@@ -159,7 +159,7 @@ df_merged_education <- education_disparity %>% full_join(education_performance) 
 
 # create issue, indicator, geo_level, race generic columns for education table
 df_education_district <- df_merged_education %>% mutate(
-                              issue = substring(indicator, 6,9),                            
+                              issue = substring(indicator, 6,9),                          
                               indicator = substring(indicator, 11),
                               indicator = gsub('_district_2023', '', indicator),
                               geo_level = "city",
