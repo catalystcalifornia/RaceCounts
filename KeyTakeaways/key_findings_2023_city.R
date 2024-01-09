@@ -91,8 +91,8 @@ df_merged <- disparity %>% full_join(performance) %>% full_join(rate)
 
 # create issue, indicator, geo_level, race generic columns for issue tables except for education
 df_city <- df_merged %>% mutate(
-                                issue = substring(indicator, 6,9),
-                                indicator = substring(indicator, 11),
+                                issue = substring(indicator, 5, 8),
+                                indicator = substring(indicator, 10),
                                 indicator = gsub('_city_2023', '', indicator),
                                 geo_level = "city",
                                 race_generic = gsub('nh_', '', race) # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
@@ -159,8 +159,8 @@ df_merged_education <- education_disparity %>% full_join(education_performance) 
 
 # create issue, indicator, geo_level, race generic columns for education table
 df_education_district <- df_merged_education %>% mutate(
-                              issue = substring(indicator, 6,9),                            
-                              indicator = substring(indicator, 11),
+                              issue = substring(indicator, 5, 8),                            
+                              indicator = substring(indicator, 10),
                               indicator = gsub('_district_2023', '', indicator),
                               geo_level = "city",
                               race_generic = gsub('nh_', '', race) # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
@@ -198,7 +198,7 @@ county_disparity <- imap_dfr(county_tables_disparity, ~
 
 
 
-county_tables_performance <- lapply(county_tables, function(x) x%>% select(county_id, asbest, ends_with("performance_z"), indicator, values_count))
+county_tables_performance <- lapply(county_tables, function(x) x %>% select(county_id, asbest, ends_with("performance_z"), indicator, values_count))
 
 
 county_performance <- imap_dfr(county_tables_performance, ~
@@ -212,7 +212,7 @@ county_performance <- imap_dfr(county_tables_performance, ~
 
 
 
-county_tables_rate <- lapply(county_tables, function(x) x%>% select(county_id, asbest, ends_with("_rate"), indicator, values_count))
+county_tables_rate <- lapply(county_tables, function(x) x %>% select(county_id, asbest, ends_with("_rate"), indicator, values_count))
 
 county_rate <- imap_dfr(county_tables_rate , ~
                           .x %>% 
@@ -254,7 +254,7 @@ state_tables <- map2(state_tables, names(state_tables), ~ mutate(.x, indicator =
 # call columns we want
 
 # you need to pivot wider
-state_tables_disparity <- lapply(state_tables, function(x) x%>% select(state_id, asbest,ends_with("disparity_z"), indicator, values_count))
+state_tables_disparity <- lapply(state_tables, function(x) x %>% select(state_id, asbest,ends_with("disparity_z"), indicator, values_count))
 
 
 state_disparity <- imap_dfr(state_tables_disparity, ~
@@ -266,7 +266,7 @@ state_disparity <- imap_dfr(state_tables_disparity, ~
                                              race = gsub('_disparity_z', '', race))
 
 
-state_tables_rate <- lapply(state_tables, function(x) x%>% select(state_id, asbest, ends_with("_rate"), indicator, values_count))
+state_tables_rate <- lapply(state_tables, function(x) x %>% select(state_id, asbest, ends_with("_rate"), indicator, values_count))
 
 state_rate <- imap_dfr(state_tables_rate , ~
                          .x %>% 
@@ -806,19 +806,18 @@ issue_area_findings$src <- "rda"
 
 issue_area_findings$citations <- ""
 
-#dbWriteTable(con, c("v5", "arei_findings_issues"), issue_area_findings,
-#              overwrite = FALSE, row.names = FALSE)
+#dbWriteTable(con, c("v5", "arei_findings_issues"), issue_area_findings, overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
-#  comment <- paste0("COMMENT ON TABLE v5.arei_findings_issues IS 'findings for Issue Area pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
-#                   "COMMENT ON COLUMN v5.arei_findings_issues.finding_type
-#                        IS 'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below perf, most disp indicator, worst perf indicator';",
-#                   "COMMENT ON COLUMN v5.arei_findings_issues.src
-#                        IS 'Categorizes source of finding as either rda or program area';",
-#                   "COMMENT ON COLUMN v5.arei_findings_issues.citations
-#                        IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
-#                   "COMMENT ON COLUMN v5.arei_findings_issues.findings_pos
-#                        IS 'Used to determine the order a set of findings should appear in on RC.org';")
+ comment <- paste0("COMMENT ON TABLE v5.arei_findings_issues IS 'findings for Issue Area pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
+                  "COMMENT ON COLUMN v5.arei_findings_issues.finding_type
+                       IS 'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below perf, most disp indicator, worst perf indicator';",
+                  "COMMENT ON COLUMN v5.arei_findings_issues.src
+                       IS 'Categorizes source of finding as either rda or program area';",
+                  "COMMENT ON COLUMN v5.arei_findings_issues.citations
+                       IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
+                  "COMMENT ON COLUMN v5.arei_findings_issues.findings_pos
+                       IS 'Used to determine the order a set of findings should appear in on RC.org';")
 # print(comment)
 # dbSendQuery(con, comment)
 
@@ -840,8 +839,7 @@ findings_places_multigeo <- rbind(rda_places_findings, state_issue_area_findings
 
                                   
 ## Create postgres table
-# dbWriteTable(con, c("v5", "arei_findings_places_multigeo_update"), findings_places_multigeo,
-#                  overwrite = FALSE, row.names = FALSE)
+# dbWriteTable(con, c("v5", "arei_findings_places_multigeo_update"), findings_places_multigeo, overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
 comment <- paste0("COMMENT ON TABLE v5.arei_findings_places_multigeo_update IS 'findings for Place pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023_city.R.';",

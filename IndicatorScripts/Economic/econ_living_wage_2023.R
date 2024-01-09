@@ -65,8 +65,8 @@ ppl <- race_reclass(ppl)
 # table(ppl$race, ppl$latino, useNA = "always")
 # table(ppl$race, ppl$aian, useNA = "always")
 # table(ppl$race, ppl$pacisl, useNA = "always")
-# #table(ppl$aian, useNA = "always")
-# #table(ppl$pacisl, useNA = "always")
+# table(ppl$aian, useNA = "always")
+# table(ppl$pacisl, useNA = "always")
 
 # save copy unadultered prior to filtering
 ppl_orig <- ppl
@@ -83,7 +83,7 @@ ppl <- ppl %>% filter(AGEP >= 18 & AGEP <= 64)
 # Keep records for those with non-zero earnings in past year
 ppl <- ppl %>% filter(wages_adj>0)
 
-# Keep records for those who were at work last week or had a job but were not at work last week
+# Keep records for those who were at work last week OR had a job but were not at work last week
 ppl <- ppl %>% filter(WRK=='1' | ESR %in% c(1, 2, 3, 4, 5))
 
 # Filter for those who were not self-employed or unpaid family workers
@@ -91,7 +91,7 @@ ppl <- ppl %>% filter(WRK=='1' | ESR %in% c(1, 2, 3, 4, 5))
 # View(ppl[c("RT","SERIALNO","COW","ESR","wages_adj","WKW","WRK","WKWN")])
 # mean_cow <- ppl%>%
 #   group_by(COW)%>%
-#   summarize(mean_wages=weighted.mean(wages_adj,PWGTP))
+#     summarize(mean_wages=weighted.mean(wages_adj,PWGTP))
 # 6-8 which are self-employed and then employed in family business do seem to have different average earnings than others
 ppl <- ppl %>% filter(!COW %in% c('6','7','8'))
 
@@ -101,7 +101,7 @@ ppl <- ppl %>% filter(!COW %in% c('6','7','8'))
 ## convert usual hours worked per week past 12 months: WKHP to integer
 ppl$wkly_hrs <- as.integer(ppl$WKHP)
 
-## average number of weeks worked in past 12 months for each value 1-6: WKW pre-2019 data
+## average number of weeks worked in past 12 months for each value 1-6: WKW is the pre-2019 variable
 ppl$wks_worked_avg <- as.numeric(ifelse(ppl$WKW == 1, 51,
                                         ifelse(ppl$WKW == 2, 48.5,
                                                ifelse(ppl$WKW == 3, 43.5,
