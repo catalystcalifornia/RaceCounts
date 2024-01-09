@@ -31,12 +31,12 @@ crosswalk <- dbGetQuery(con, "SELECT city_id, dist_id, total_enroll FROM v5.arei
 
 # pull in list of tables in racecounts.v5
 rc_list = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(schema = "v5"))$table, function(x) slot(x, 'name'))))
+rc_list <- filter(rc_list, grepl("api_",table)) # filter for only final city tables ("api_" prefix)
 
 # pull in list of tables in racecounts.v5
 
 # filter for only city level indicator tables
 city_list <- filter(rc_list, grepl("_city_2023",table)) %>% filter(table!= "arei_composite_index_city_2023")
-city_list <- filter(city_list, grepl("api_",table)) # filter for only final city tables ("api_" prefix)
 city_list <- city_list[order(city_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
 
 # import all tables on city_list
