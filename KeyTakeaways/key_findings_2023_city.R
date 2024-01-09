@@ -106,6 +106,7 @@ city_name <- distinct(df_city, geoid, geo_name) # distinct city name to merge wi
 # City (District) Education Tables: must be handled separately bc they are school district not city-level ----------------------------------------
 
 education_list <- filter(rc_list, grepl("_district_2023",table))
+education_list <- filter(education_list, grepl("api_",table)) # filter for only final city tables ("api_" prefix)
 education_list <- education_list[order(education_list$table), ] # alphabetize list of tables, changes df to list the needed format for next step
 
 
