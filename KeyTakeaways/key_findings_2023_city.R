@@ -36,6 +36,7 @@ rc_list = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(sc
 
 # filter for only city level indicator tables
 city_list <- filter(rc_list, grepl("_city_2023",table)) %>% filter(table!= "arei_composite_index_city_2023")
+city_list <- filter(city_list, grepl("api_",table)) # filter for only final city tables ("api_" prefix)
 city_list <- city_list[order(city_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
 
 # import all tables on city_list
@@ -43,8 +44,6 @@ city_tables <- lapply(setNames(paste0("select * from v5.", city_list), city_list
 
 # create column with indicator name
 city_tables <- map2(city_tables, names(city_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
-
-
 
 # pivot wider
 city_tables_disparity <- lapply(city_tables, function(x) x %>% select(city_id, asbest, ends_with("disparity_z"), indicator, values_count))
