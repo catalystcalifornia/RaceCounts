@@ -838,7 +838,7 @@ findings_places_multigeo <- rbind(rda_places_findings, state_issue_area_findings
 
                                   
 ## Create postgres table
-# dbWriteTable(con, c("v5", "arei_findings_places_multigeo_update"), findings_places_multigeo, overwrite = TRUE, row.names = FALSE)
+# dbWriteTable(con, c("v5", "arei_findings_places_multigeo_update"), findings_places_multigeo, overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
 comment <- paste0("COMMENT ON TABLE v5.arei_findings_places_multigeo_update IS 'findings for Place pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023_city.R.';",
