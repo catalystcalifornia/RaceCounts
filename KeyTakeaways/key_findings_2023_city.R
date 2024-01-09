@@ -103,7 +103,6 @@ df_city <- df_merged %>% mutate(
 # City (District) Education Tables: must be handled separately bc they are school district not city-level ----------------------------------------
 
 education_list <- filter(rc_list, grepl("_district_2023",table))
-education_list <- filter(education_list, grepl("api_",table)) # filter for only final city tables ("api_" prefix)
 education_list <- education_list[order(education_list$table), ] # alphabetize list of tables, changes df to list the needed format for next step
 
 
@@ -245,6 +244,7 @@ state_list <- state_list[order(state_list$table), ] # alphabetize list of state 
 
 # import all tables on state_list
 state_tables <- lapply(setNames(paste0("select * from v5.", state_list), state_list), DBI::dbGetQuery, conn = con)
+
 
 # create column with indicator name
 state_tables <- map2(state_tables, names(state_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
@@ -638,7 +638,7 @@ comment <- paste0("COMMENT ON TABLE v5.arei_findings_races_multigeo_update IS 'f
                          IS 'External v5.citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
                   "COMMENT ON COLUMN v5.arei_findings_races_multigeo_update.findings_pos
                         IS 'Used to determine the order a set of findings should appear in on RC.org';")
-print(comment)
+#print(comment)
 #dbSendQuery(con, comment)
 
 
@@ -838,7 +838,7 @@ findings_places_multigeo <- rbind(rda_places_findings, state_issue_area_findings
 
                                   
 ## Create postgres table
-# dbWriteTable(con, c("v5", "arei_findings_places_multigeo_update"), findings_places_multigeo, overwrite = FALSE, row.names = FALSE)
+# dbWriteTable(con, c("v5", "arei_findings_places_multigeo_update"), findings_places_multigeo, overwrite = TRUE, row.names = FALSE)
 
 # comment on table and columns
 comment <- paste0("COMMENT ON TABLE v5.arei_findings_places_multigeo_update IS 'findings for Place pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023_city.R.';",
@@ -850,7 +850,7 @@ comment <- paste0("COMMENT ON TABLE v5.arei_findings_places_multigeo_update IS '
                         IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo_update.findings_pos
                         IS 'Used to determine the order a set of findings should appear in on RC.org';")
-print(comment)
+#print(comment)
 #dbSendQuery(con, comment)
 
 #dbDisconnect(con)  
