@@ -71,8 +71,6 @@ performance <- imap_dfr(city_tables_performance, ~
                                          race = gsub('_performance_z', '', race))
 
 
-
-
 city_tables_rate <- lapply(city_tables, function(x) x %>% select(city_id, asbest, ends_with("_rate"), indicator, values_count))
 
 rate <- imap_dfr(city_tables_rate , ~
@@ -84,9 +82,7 @@ rate <- imap_dfr(city_tables_rate , ~
                                   race = gsub('_rate', '', race))
 
 
-
 # merge all 3 
-
 df_merged <- disparity %>% full_join(performance) %>% full_join(rate)
 
 # create issue, indicator, geo_level, race generic columns for issue tables except for education
@@ -168,9 +164,10 @@ df_education_district <- df_merged_education %>% mutate(
 # County Data Tables ------------------------------------------------------
 
 # pull in list of tables in racecounts.v5
+rc_list_ = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(schema = "v5"))$table, function(x) slot(x, 'name'))))
 
 # filter for only county level indicator tables, drop all others including api_*_county_2023 tables
-county_list <- filter(rc_list, grepl("^arei_.*\\county_2023$", table))
+county_list <- filter(rc_list_, grepl("^arei_.*\\county_2023$", table))
 county_list <- county_list[order(county_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
 
 # import all tables on county_list
@@ -195,7 +192,6 @@ county_disparity <- imap_dfr(county_tables_disparity, ~
                                               race = gsub('_disparity_z', '', race))
 
 
-
 county_tables_performance <- lapply(county_tables, function(x) x %>% select(county_id, asbest, ends_with("performance_z"), indicator, values_count))
 
 
@@ -206,8 +202,6 @@ county_performance <- imap_dfr(county_tables_performance, ~
                                               values_to = "performance_z_score")) %>% mutate(
                                                 race = (ifelse(race == 'performance_z', 'total', race)),
                                                 race = gsub('_performance_z', '', race))
-
-
 
 
 county_tables_rate <- lapply(county_tables, function(x) x %>% select(county_id, asbest, ends_with("_rate"), indicator, values_count))
@@ -221,17 +215,17 @@ county_rate <- imap_dfr(county_tables_rate , ~
                                          race = gsub('_rate', '', race))
 
 # merge all 3 
-
 df_merged_county <- county_disparity %>% full_join(county_performance) %>% full_join(county_rate)
 
 # create issue, indicator, geo_level, race generic columns for issue tables except for education
 df_county <- df_merged_county %>% mutate(
-  issue = substring(indicator, 6,9),  
-  indicator = substring(indicator, 11),
-  indicator = gsub('_county_2023', '', indicator),
-  geo_level = "county",
-  race_generic = gsub('nh_', '', race) # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
-) %>% left_join(arei_race_multigeo_county) %>% rename(geoid = county_id, geo_name = county_name)  %>%  mutate(geo_name = paste0(geo_name, " County"))
+        issue = substring(indicator, 6,9),  
+        indicator = substring(indicator, 11),
+        indicator = gsub('_county_2023', '', indicator),
+        geo_level = "county",
+        race_generic = gsub('nh_', '', race)) %>% # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
+            left_join(arei_race_multigeo_county) %>% 
+                rename(geoid = county_id, geo_name = county_name)  %>%  mutate(geo_name = paste0(geo_name, " County"))
 
 
 
@@ -239,7 +233,7 @@ df_county <- df_merged_county %>% mutate(
 # pull in list of tables in racecounts.v5
 
 # filter for only state level indicator tables
-state_list <- filter(rc_list, grepl("_state_2023",table))
+state_list <- filter(rc_list_, grepl("_state_2023",table))
 state_list <- state_list[order(state_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
 
 # import all tables on state_list
@@ -276,7 +270,6 @@ state_rate <- imap_dfr(state_tables_rate , ~
                                         race = gsub('_rate', '', race))
 
 # merge all 2
-
 df_merged_state <- state_disparity %>% full_join(state_rate)
 
 # create issue, indicator, geo_level, race generic columns for issue tables except for education
@@ -289,11 +282,9 @@ df_state <- df_merged_state %>% mutate(
   performance_z_score = NA
 ) %>% left_join(arei_race_multigeo_state) %>% rename(geoid = state_id, geo_name = state_name)
 
-
-
+# merge city, county, state data
 df <- bind_rows(df_city, df_county, df_state) %>% select(
                     geoid, geo_name, issue, indicator, race, asbest, rate, disparity_z_score, performance_z_score, values_count, geo_level, race_generic)
-
 
 
 # remove records where city name is actually a university: there are 6 'cities' like this making up 898 rows
@@ -312,7 +303,6 @@ final_df <- df %>% filter(!grepl('University', geo_name))
 race_generic <- unique(df$race_generic)
 long_name <- c("Total", "American Indian / Alaska Native", "Latinx", "Asian", "Black", "Other Race", "Two or More Races", "White", "Native Hawaiian / Pacific Islander", "Asian / Pacific Islander", "Filipinx")
 race_names <- data.frame(race_generic, long_name)
-
 
 
 # Create indicator long name df -------------------------------------------
