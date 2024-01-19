@@ -195,12 +195,18 @@ calc_ranks <- function(x) {
 #calculate DISTRICT z-scores
 dist_tables <- lapply(dist_list, function(x) calc_z(x))
 dist_tables <- lapply(dist_tables, function(x) calc_ranks(x))
+
+### NEED TO ADD IN NEW CALC_QUARTILE{} ###
+
 dist_tables <- lapply(dist_tables, function(x) x %>% dplyr::rename("dist_id" = "geoid", "district_name" = "geoname")) 
 View(dist_tables)
 
 #calculate CITY z-scores
 city_tables <- lapply(city_list, function(x) calc_z(x))
 city_tables <- lapply(city_tables, function(x) calc_ranks(x))
+
+### NEED TO ADD IN NEW CALC_QUARTILE{} ###
+
 city_tables <- lapply(city_tables, function(x) x %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname"))
 View(city_tables)
 
