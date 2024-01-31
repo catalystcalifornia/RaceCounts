@@ -1,5 +1,5 @@
 # RACE COUNTS
-### Fall 2023
+### January 2024
 
 <base target="_blank">
 <!-- NOTE: Need to replace homepage image, findings images
@@ -31,7 +31,7 @@
 
 ## Introduction
 
-This page is an explainer about how we create the Key Takeaways found on RACECOUNTS.org. This document is a work in progress and will continue to be updated as our methods evolve. 
+This is an explanation of how we create the Key Takeaways found on RACECOUNTS.org. This document is a work in progress and will continue to be updated and expanded. 
 
 Note: The code below does not include lines relating to importing of the data. We pull tables from our private PostgreSQL database using credentials accessed through a separate script before running any of the code below. The database is accessible only by our Research & Data Analysis team. However, we do plan to share a public file with the complete data for each RACE COUNTS indicator, where possible, on this repo soon.
 
@@ -53,17 +53,25 @@ We used several R packages to analyze data and perform different functions, incl
 * usethis
 
 ```
-list.of.packages <- c("usethis","dplyr","data.table", "sf", tidyr")
+# Install packages if not already installed
+list.of.packages <- c("usethis","dplyr","data.table", "tidycensus", "sf", "RPostgreSQL",
+                      "stringr", "tidyr", "matrixStats", "tidyverse", "writexl")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
-devtools::install_github("r-lib/usethis")
-
+#Load libraries
 library(usethis)
 library(dplyr)
-library(data.table)
+library(data.table) 
+library(tidycensus) 
 library(sf)
+library(RPostgreSQL) 
+library(stringr) 
 library(tidyr)
+library(matrixStats) 
+library(tidyverse) 
+library(writexl) 
+options(scipen=999)
 ```
 
 ### Installation
@@ -75,7 +83,6 @@ Clone the repo
    git clone https://github.com/github_username/repo_name.git
    ```
 
-
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
@@ -83,7 +90,7 @@ Clone the repo
 ## Generate Key Findings
 
 <!-- Will need to update to say key_findings_2023.R-->
-**This section is an explanation of the key_findings_2022.R script.**
+**This section is an explanation of the key_findings_2023.R script.**
 
 ### Data Loading and Set Up
 Import the cleaned and standardized data for each indicator from our private database into RStudio, then combine into one massive dataframe (df).

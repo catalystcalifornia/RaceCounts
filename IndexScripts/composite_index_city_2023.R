@@ -58,10 +58,10 @@ education_tables<- imap_dfr(education_tables_list, ~
                                             names_to = "measure",
                                             values_to = "disparity_z_score_unweighted")) %>% select(-measure)  
 
-education_tables<- education_tables%>% mutate(indicator =  gsub('api_', '', indicator)) %>% mutate(indicator =  gsub('_district_2023', '', indicator)) %>%
+education_tables<- education_tables%>% mutate(indicator = gsub('api_', '', indicator)) %>% mutate(indicator = gsub('_district_2023', '', indicator)) %>%
   rename(performance_z_score_unweighted = performance_z) %>% relocate(indicator, .after = disparity_z_score_unweighted)
 
-df_education_district<- education_tables%>% left_join(crosswalk, by = "dist_id") %>% filter(!is.na(city_id))
+df_education_district<- education_tables %>% left_join(crosswalk, by = "dist_id") %>% filter(!is.na(city_id))
 
 ## Aggregate District data to Cities: weighted averages by enrollment size per indicator (some cities have multiple districts but not every indicator will have multiple districts per city).
 education_tables_agg<- dist_data_to_city(df_education_district)
@@ -124,7 +124,7 @@ indicators <- names(city_tables) %>% as.data.frame()
 educ_indicators <- unique(education_tables$indicator) %>% as.data.frame()
 
 # Calc SCREENED Index ---------------------------------------------------
-crim_count <- length(grep("crim", indicators$.))
+crim_count<- length(grep("crim", indicators$.))
 demo_count<- length(grep("demo", indicators$.))
 econ_count<- length(grep("econ", indicators$.))
 hben_count<- length(grep("hben", indicators$.))

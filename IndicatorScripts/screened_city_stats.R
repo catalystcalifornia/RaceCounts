@@ -179,10 +179,10 @@ calc_ranks <- function(x) {
   #perf_z above or avg and disp_z below avg, then purple / perf_z below avg and disp_z below or avg, then yellow
   ranks_table$quadrant =
     ifelse(ranks_table$performance_z < 0 & ranks_table$disparity_z > 0, 'red',
-           ifelse(ranks_table$performance_z > 0 & ranks_table$disparity_z >= 0, 'orange',
-                  ifelse(ranks_table$performance_z >= 0 & ranks_table$disparity_z < 0, 'purple',
+           ifelse(ranks_table$performance_z >= 0 & ranks_table$disparity_z > 0, 'orange',
+                  ifelse(ranks_table$performance_z >= 0 & ranks_table$disparity_z <= 0, 'purple',
                          ifelse(ranks_table$performance_z < 0 & ranks_table$disparity_z <= 0, 'yellow', NA))))
-  
+
   ranks_table <- ranks_table %>% dplyr::select(geoid, disparity_rank, performance_rank, quadrant)
   x <- x %>% left_join(ranks_table , by = "geoid")
   
@@ -195,12 +195,18 @@ calc_ranks <- function(x) {
 #calculate DISTRICT z-scores
 dist_tables <- lapply(dist_list, function(x) calc_z(x))
 dist_tables <- lapply(dist_tables, function(x) calc_ranks(x))
+
+### NEED TO ADD IN NEW CALC_QUARTILE{} ###
+
 dist_tables <- lapply(dist_tables, function(x) x %>% dplyr::rename("dist_id" = "geoid", "district_name" = "geoname")) 
 View(dist_tables)
 
 #calculate CITY z-scores
 city_tables <- lapply(city_list, function(x) calc_z(x))
 city_tables <- lapply(city_tables, function(x) calc_ranks(x))
+
+### NEED TO ADD IN NEW CALC_QUARTILE{} ###
+
 city_tables <- lapply(city_tables, function(x) x %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname"))
 View(city_tables)
 
