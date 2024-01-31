@@ -37,14 +37,13 @@ rc_list <- filter(table_list, grepl("api_",table))
 
 
 ######################### CITY INDEX CALCS ########################### ---------------------------
-### NEED TO REPLACE THIS URL WITH THE MAIN BRANCH URL AFTER PULL REQUEST IS APPROVED ###
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/lf_city7/IndexScripts/composite_index_city_calcs_2023.R")
-##############################
+# pull and run calcs from separate script
+source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/IndexScripts/composite_index_city_calcs_2023.R")
 
 
 
 # Export SCREENED index to postgres ------------------------------------------------------
-table_name <- "arei_composite_index_city_2023_edfix"
+table_name <- "arei_composite_index_city_2023"
 table_schema <- "v5"
 table_comment_source <- "This is the SCREENED city index table including pop screen and threshold for representation across all issue areas and indicators.
 The UNSCREENED index is: v5.arei_composite_index_city_2023_draft
