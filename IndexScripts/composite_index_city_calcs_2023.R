@@ -65,17 +65,18 @@ city_tables_updated <-
 city_tables_updated <- lapply(city_tables_updated, function(x) x %>% select(city_id, ends_with("disp_z"), ends_with("perf_z")))
 city_tables_updated <- city_tables_updated %>% reduce(full_join) # convert list to df
                               
-#start new code                              
-names(city_tables_updated) <- sub('^arei_', '', names(city_tables_updated))
-names(city_tables_updated) <- sub('^api_', '', names(city_tables_updated))
-#end new code
-
 #names(city_tables_updated)[-1] <- substring(names(city_tables_updated)[-1],6) # clean colnames
 names(city_tables_updated)[-1] <- gsub(x = names(city_tables_updated)[-1], pattern = "city_2023_", replacement = "", names) # clean colnames
 
 # merge to get city names and education table
 city_tables_df <- city_tables_updated %>% arrange(city_id) %>% distinct(city_id, .keep_all = TRUE) %>% left_join(education_tables_agg) %>% left_join(arei_race_multigeo) %>% select(city_id, city_name, everything())
 
+#start new code                              
+names(city_tables_updated) <- sub('^arei_', '', names(city_tables_updated))
+names(city_tables_updated) <- sub('^api_', '', names(city_tables_updated))
+#end new code
+
+                              
 # remove cities that are actually universities/colleges: RC v5 there are 6 of them
 # remove cities with no city_name: RC v5 there are 6 of them
 city_tables_df <- city_tables_df %>% filter(!grepl('University', city_name)) %>% filter(!is.na(city_name)) %>% filter(!is.na(city_name))
