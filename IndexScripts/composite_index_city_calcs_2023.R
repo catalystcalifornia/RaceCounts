@@ -64,7 +64,13 @@ city_tables_updated <-
 # only select columns we want
 city_tables_updated <- lapply(city_tables_updated, function(x) x %>% select(city_id, ends_with("disp_z"), ends_with("perf_z")))
 city_tables_updated <- city_tables_updated %>% reduce(full_join) # convert list to df
-names(city_tables_updated)[-1] <- substring(names(city_tables_updated)[-1],6) # clean colnames
+                              
+#start new code                              
+names(city_tables_updated) <- sub('^arei_', '', names(city_tables_updated))
+names(city_tables_updated) <- sub('^api_', '', names(city_tables_updated))
+#end new code
+
+#names(city_tables_updated)[-1] <- substring(names(city_tables_updated)[-1],6) # clean colnames
 names(city_tables_updated)[-1] <- gsub(x = names(city_tables_updated)[-1], pattern = "city_2023_", replacement = "", names) # clean colnames
 
 # merge to get city names and education table
