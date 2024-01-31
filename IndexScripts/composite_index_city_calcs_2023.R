@@ -72,8 +72,8 @@ names(city_tables_updated)[-1] <- gsub(x = names(city_tables_updated)[-1], patte
 city_tables_df <- city_tables_updated %>% arrange(city_id) %>% distinct(city_id, .keep_all = TRUE) %>% left_join(education_tables_agg) %>% left_join(arei_race_multigeo) %>% select(city_id, city_name, everything())
 
 #start new code                              
-names(city_tables_updated) <- sub('^arei_', '', names(city_tables_updated))
-names(city_tables_updated) <- sub('^api_', '', names(city_tables_updated))
+names(city_tables_df) <- sub('^arei_', '', names(city_tables_df))
+names(city_tables_df) <- sub('^api_', '', names(city_tables_df))
 #end new code
 
                               
