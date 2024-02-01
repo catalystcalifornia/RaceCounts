@@ -5,11 +5,11 @@
 ## These indicators require extra prep bc they are at school district not city level
 
 ## Pull in city (or district) level education indicators
-education_list <- filter(rc_list, grepl("_district_2023",table)) # pull only district level indicator tables
+education_list <- filter(rc_list, grepl(paste0("_district_",curr_yr),table)) # pull only district level indicator tables
 education_list <- education_list [order(education_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
 
 # import all tables on education_list
-education_tables_list <- lapply(setNames(paste0("select * from v5.", education_list), education_list), DBI::dbGetQuery, conn = con)
+education_tables_list <- lapply(setNames(paste0("select * from ", curr_schema, ".", education_list), education_list), DBI::dbGetQuery, conn = con)
 
 # create column with indicator name
 education_tables_list <- map2(education_tables_list, names(education_tables_list), ~ mutate(.x, indicator = .y)) # create column with indicator name
@@ -22,7 +22,7 @@ education_tables <- imap_dfr(education_tables_list, ~
                                             names_to = "measure",
                                             values_to = "disparity_z_score_unweighted")) %>% select(-measure)  
 
-education_tables <- education_tables %>% mutate(indicator =  gsub('arei_', '', indicator)) %>% mutate(indicator =  gsub('_district_2023', '', indicator)) %>%
+education_tables <- education_tables %>% mutate(indicator = gsub('arei_|api_', '', indicator)) %>% mutate(indicator =  gsub('_district_2023', '', indicator)) %>%
   rename(performance_z_score_unweighted = performance_z) %>% relocate(indicator, .after = disparity_z_score_unweighted)
 
 df_education_district <- education_tables %>% left_join(crosswalk, by = "dist_id") %>% filter(!is.na(city_id))
@@ -36,13 +36,13 @@ education_tables_agg <- dist_data_to_city(df_education_district)
 # pull in list of tables in racecounts.v5
 
 # filter for only city level indicator tables
-city_list <- filter(rc_list, grepl("_city_2023",table))
+city_list <- filter(rc_list, grepl(paste0("_city_",curr_yr),table))
 city_list <- filter(city_list, !grepl("index", table)) # filter out index in case there is a prev version in postgres
 city_list <- city_list[order(city_list$table), ] # alphabetize list of tables, changes df to list the needed format for next step
 
 
 # import all tables on city_list
-city_tables <- lapply(setNames(paste0("select * from v5.", city_list), city_list), DBI::dbGetQuery, conn = con)
+city_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", city_list), city_list), DBI::dbGetQuery, conn = con)
 
 # create column with indicator name
 city_tables <- map2(city_tables, names(city_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
@@ -52,48 +52,49 @@ city_tables <- map2(city_tables, names(city_tables), ~ mutate(.x, indicator = .y
 city_tables_short <- lapply(city_tables, function(x) x %>% select(city_id, city_name, disparity_z, performance_z, indicator))
 
 city_tables_updated <-
-  lapply(names(city_tables_short), function(i){
-    x <- city_tables_short[[ i ]]
-    # set new name for 2nd column
-    names(x)[3] <- paste0(i, "_disp_z")
-    names(x)[4] <- paste0(i, "_perf_z")
-    # return
-    x
-  })
+                      lapply(names(city_tables_short), function(i){
+                        x <- city_tables_short[[ i ]]
+                        # set new name for 2nd column
+                        names(x)[3] <- paste0(i, "_disp_z")
+                        names(x)[4] <- paste0(i, "_perf_z")
+                        # return
+                        x
+                      })
 
 # only select columns we want
 city_tables_updated <- lapply(city_tables_updated, function(x) x %>% select(city_id, ends_with("disp_z"), ends_with("perf_z")))
 city_tables_updated <- city_tables_updated %>% reduce(full_join) # convert list to df
-names(city_tables_updated)[-1] <- gsub(x = names(city_tables_updated)[-1], pattern = "city_2023_", replacement = "", names) # clean colnames
+names(city_tables_updated)[-1] <- gsub(x = names(city_tables_updated)[-1], pattern = paste0("_city_",curr_yr), replacement = "", names) # clean colnames
 
 # merge to get city names and education table
 city_tables_df <- city_tables_updated %>% arrange(city_id) %>% distinct(city_id, .keep_all = TRUE) %>% left_join(education_tables_agg) %>% left_join(arei_race_multigeo) %>% select(city_id, city_name, everything())
 
 # clean col names
-names(city_tables_df) <- sub('^arei_', '', names(city_tables_df)) # for draft index
-names(city_tables_df) <- sub('^api_', '', names(city_tables_df)) # for final index
+names(city_tables_df) <- sub('^arei_|^api_', '', names(city_tables_df))
 
-# remove cities that are actually universities/colleges: RC v5 there are 6 of them
-# remove cities with no city_name: RC v5 there are 6 of them
+# remove cities that are actually universities/colleges
+# remove cities with no city_name
 city_tables_df <- city_tables_df %>% filter(!grepl('University', city_name)) %>% filter(!is.na(city_name)) %>% filter(!is.na(city_name))
 
 # cap perf_z and disp_z values  at |3.5|. More info: https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=feyI80
 city_tables_capped <- clean_city_indicator_data_z(city_tables_df)
 
 # Count the number of valid disp_z and perf_z per city. We will use this later
-all_indicators_perf_count <- city_tables_df %>% select(city_id, ends_with("perf_z")) %>%
-  mutate(all_indicators_perf_count = rowSums(!is.na(.))) %>% select(city_id, all_indicators_perf_count)
+all_indicators_perf_count <- city_tables_df %>% select(city_id, ends_with("perf_z")) 
+all_indicators_perf_count <- all_indicators_perf_count %>% mutate(all_indicators_perf_count = rowSums(!is.na(all_indicators_perf_count[,c(-1)]))) %>%
+                                    select(city_id, all_indicators_perf_count)
 
-all_indicators_disp_count <- city_tables_df %>% select(city_id, ends_with("disp_z")) %>%
-  mutate(all_indicators_disp_count = rowSums(!is.na(.))) %>% select(city_id, all_indicators_disp_count)
+all_indicators_disp_count <- city_tables_df %>% select(city_id, ends_with("disp_z"))
+all_indicators_disp_count <- all_indicators_disp_count %>% mutate(all_indicators_disp_count = rowSums(!is.na(all_indicators_disp_count[,c(-1)]))) %>% 
+                                    select(city_id, all_indicators_disp_count)
 
-
-# count number of indicators per issue area
+# Count number of indicators per issue area
 indicators <- names(city_tables) %>% as.data.frame()
 educ_indicators <- unique(education_tables$indicator) %>% as.data.frame()
 
 
 # Calc UNSCREENED Index ---------------------------------------------------
+# Count number of indicators per issue
 crim_count <- length(grep("crim", indicators$.))
 demo_count <- length(grep("demo", indicators$.))
 econ_count <- length(grep("econ", indicators$.))
@@ -103,8 +104,7 @@ hous_count <- length(grep("hous", indicators$.))
 educ_count <- length(grep("educ", educ_indicators$.))
 
 
-
-# make separate data-frames for all
+# make separate data-frames for all issues
 crim <- city_tables_capped %>% select(city_id, city_name, starts_with("crim")) %>% mutate(crim_count = crim_count) 
 demo <- city_tables_capped %>% select(city_id, city_name, starts_with("demo")) %>% mutate(demo_count = demo_count) 
 econ <- city_tables_capped %>% select(city_id, city_name, starts_with("econ")) %>% mutate(econ_count = econ_count) 
@@ -114,7 +114,7 @@ hous <- city_tables_capped %>% select(city_id, city_name, starts_with("hous")) %
 educ <- city_tables_capped %>% select(city_id, city_name, starts_with("educ")) %>% mutate(educ_count = educ_count) 
 
 
-## Set issue area thresholds
+## Set issue thresholds
 crim_threshold <- 1
 demo_threshold <- 1
 econ_threshold <- 2 # could be 3
@@ -124,7 +124,7 @@ hben_threshold <- 2
 hous_threshold <- 3
 
 
-# Calc issue area z-scores (avg of issue area's indicator z-scores)
+# Calc issue z-scores (avg of issue's indicator z-scores)
 crim_index <- calculate_city_issue(crim, crim_count, crim_threshold) %>% rename_with(~ paste0('crime_and_justice', "_", .x), ends_with("z"))
 demo_index <- calculate_city_issue(demo, demo_count, demo_threshold) %>% rename_with(~ paste0('democracy', "_", .x), ends_with("z"))
 econ_index <- calculate_city_issue(econ, econ_count, econ_threshold) %>% rename_with(~ paste0('economic_opportunity', "_", .x), ends_with("z"))
