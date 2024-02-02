@@ -28,6 +28,7 @@ arei_race_multigeo <- dbGetQuery(con, "SELECT geoid, name, geolevel, total_pop F
 
 # pull in list of all tables in current racecounts schema
 curr_schema <- "v5"  # update each year
+curr_yr <- "2023"
 table_list = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(schema = curr_schema))$table, function(x) slot(x, 'name'))))
 
 ######################### get SCREENED indicator table names ######################### ------------------------------------
@@ -47,7 +48,7 @@ table_name <- "arei_composite_index_city_2023"
 table_schema <- "v5"
 table_comment_source <- "This is the SCREENED city index table including pop screen and threshold for representation across all issue areas and indicators.
 The UNSCREENED index is: v5.arei_composite_index_city_2023_draft
-R script used to calculate rates and import table: W://Project//RACE COUNTS//2023_v5//RC_Github/RaceCounts/IndexScripts//composite_index_city_2023.R 
+R script: W://Project//RACE COUNTS//2023_v5//RC_Github/RaceCounts/IndexScripts//composite_index_city_2023.R 
 QA document: W://Project/RACE COUNTS//2023_v5//Composite Index//Documentation//QA_sheet_Composite_Index_City.docx" 
 
 # send city index and comment to postgres
