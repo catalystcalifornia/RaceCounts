@@ -161,14 +161,14 @@ indicator_threshold <- 13 # city must have data for at least 13 indicators or it
 
 city_index <- calculate_city_index(all_index, issue_area_threshold, indicator_threshold)
 
-# add total pop, county, region data
-region_pop <- dbGetQuery(con, "SELECT  city_id, county_id, county_name, region, city_pop AS total_pop FROM v5.arei_city_county_district_table")
+# add county, region data
+region_pop <- dbGetQuery(con, "SELECT  city_id, county_id, county_name, region FROM v5.arei_city_county_district_table")
 city_index <- city_index %>% left_join(region_pop, by = 'city_id')
 city_index <- unique(city_index) %>% select(city_id, city_name, all_indicators_disp_count, all_indicators_perf_count, issue_disp_count, issue_perf_count,
                                     disparity_rank, performance_rank, quadrant, disparity_z, performance_z, crime_and_justice_disp_z, crime_and_justice_perf_z,
                                     democracy_disp_z, democracy_perf_z, economic_opportunity_disp_z, economic_opportunity_perf_z, education_disp_z, education_perf_z,
                                     healthy_built_environment_disp_z, healthy_built_environment_perf_z, health_care_access_disp_z, health_care_access_perf_z, 
-                                    housing_disp_z, housing_perf_z, region, county_id, county_name, total_pop) %>% arrange(-disparity_z)
+                                    housing_disp_z, housing_perf_z, region, county_id, county_name) %>% arrange(-disparity_z)
 
 
 
