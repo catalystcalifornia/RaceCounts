@@ -24,7 +24,6 @@
       </ul>
     <li><a href="#contributors">Contributors</a></li>
     <li><a href="#contact-us">Contact Us</a></li>
-    <li><a href="#github-link">Github Link</a></li>
     <li><a href="#citation">Citation</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#race-counts-partners">RACE COUNTS Partners</a></li>
@@ -99,12 +98,7 @@ Finally, while RACE COUNTS is the most comprehensive compilation of data about r
 [Chris Ringewald](https://www.linkedin.com/in/chris-ringewald-6766369/) - cringewald[at]catalystcalifornia.org  <br>
 
 
-[Leila Forouzan](https://www.linkedin.com/in/leilaforouzan/) - lforouzan[at]catalystcalifornia.org
-
-## Github Link
-[Click here to view the RACE COUNTS Github Repo](https://github.com/catalystcalifornia/RaceCounts)
-
-<p align="right">(<a href="#top">back to top</a>)</p>
+[Leila Forouzan](https://www.linkedin.com/in/leilaforouzan/) - lforouzan[at]catalystcalifornia.org</p>
 
 
 ## Citation
