@@ -22,7 +22,7 @@ education_tables <- imap_dfr(education_tables_list, ~
                                             names_to = "measure",
                                             values_to = "disparity_z_score_unweighted")) %>% select(-measure)  
 
-education_tables <- education_tables %>% mutate(indicator = gsub('arei_|api_', '', indicator)) %>% mutate(indicator =  gsub('_district_2023', '', indicator)) %>%
+education_tables <- education_tables %>% mutate(indicator = gsub('arei_|api_', '', indicator)) %>% mutate(indicator =  gsub(paste0('_district_',curr_yr), '', indicator)) %>%
   rename(performance_z_score_unweighted = performance_z) %>% relocate(indicator, .after = disparity_z_score_unweighted)
 
 df_education_district <- education_tables %>% left_join(crosswalk, by = "dist_id") %>% filter(!is.na(city_id))
