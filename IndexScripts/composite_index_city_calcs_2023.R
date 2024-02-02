@@ -168,7 +168,7 @@ city_index <- unique(city_index) %>% select(city_id, city_name, all_indicators_d
                                     disparity_rank, performance_rank, quadrant, disparity_z, performance_z, crime_and_justice_disp_z, crime_and_justice_perf_z,
                                     democracy_disp_z, democracy_perf_z, economic_opportunity_disp_z, economic_opportunity_perf_z, education_disp_z, education_perf_z,
                                     healthy_built_environment_disp_z, healthy_built_environment_perf_z, health_care_access_disp_z, health_care_access_perf_z, 
-                                    housing_disp_z, housing_perf_z, region, county_id, county_name) %>% arrange(-disparity_z)
+                                    housing_disp_z, housing_perf_z, region, county_id, county_name, total_pop) %>% arrange(-disparity_z)
 
 
 
