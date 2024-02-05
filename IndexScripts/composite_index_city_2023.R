@@ -1,5 +1,5 @@
 #### SCREENED Composite Index (z-score) for RC v5 ####
-#### Same script as W:\Project\RACE COUNTS\2023_v5\Composite Index\composite_index_city_2023_draft.R EXCEPT this script uses "arei_" tables and exports the unscreened index table
+#### Same script as W:\Project\RACE COUNTS\2023_v5\Composite Index\composite_index_city_2023_draft.R EXCEPT this script uses "api_" tables and exports the unscreened index table
 
 #install packages if not already installed
 list.of.packages <- c("tidyverse","RPostgreSQL","sf")
