@@ -12,35 +12,36 @@ options(scipen=999) # disable scientific notation
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
-
+curr_schema <- 'v5' # update each year, this field populates most table and file names automatically
+curr_yr <- '2023'   # update each year, this field populates most table and file names automatically
 
 # pull in geo level ids with name. I don't do this directly in the data in case names differ and we have issues merging later
-arei_race_multigeo_city <- dbGetQuery(con, "SELECT geoid, name, geolevel  FROM v5.arei_race_multigeo") %>% filter(geolevel == "place") %>% rename(city_id = geoid, city_name = name) %>% select(-geolevel)
+arei_race_multigeo_city <- dbGetQuery(con, paste0("SELECT geoid, name, geolevel FROM ", curr_schema, ".arei_race_multigeo")) %>% filter(geolevel == "place") %>% rename(city_id = geoid, city_name = name) %>% select(-geolevel)
 
-arei_race_multigeo_county <- dbGetQuery(con, "SELECT geoid, name, geolevel  FROM v5.arei_race_multigeo") %>% filter(geolevel == "county") %>% rename(county_id = geoid, county_name = name) %>% select(-geolevel)
+arei_race_multigeo_county <- dbGetQuery(con, paste0("SELECT geoid, name, geolevel FROM ", curr_schema, ".arei_race_multigeo")) %>% filter(geolevel == "county") %>% rename(county_id = geoid, county_name = name) %>% select(-geolevel)
 
-arei_race_multigeo_state <- dbGetQuery(con, "SELECT geoid, name, geolevel  FROM v5.arei_race_multigeo") %>% filter(geolevel == "state") %>% rename(state_id = geoid, state_name = name) %>% select(-geolevel)
+arei_race_multigeo_state <- dbGetQuery(con, paste0("SELECT geoid, name, geolevel FROM ", curr_schema, ".arei_race_multigeo")) %>% filter(geolevel == "state") %>% rename(state_id = geoid, state_name = name) %>% select(-geolevel)
 
 # pull in crosswalk to go from district to city
-crosswalk <- dbGetQuery(con, "SELECT city_id, dist_id, total_enroll FROM v5.arei_city_county_district_table")
+crosswalk <- dbGetQuery(con, paste0("SELECT city_id, dist_id, total_enroll FROM ", curr_schema, ".arei_city_county_district_table"))
 
-########## LOAD ALL DATA FROM RDATA FILE AND DON'T RE-RUN ALL THE TABLE IMPORT/PREP UNLESS UNDERLYING DATA HAS CHANGED #########
-### Skip to line ~302 ###
+########## TO LOAD ALL DATA FROM RDATA FILE AND NOT RE-RUN ALL THE TABLE IMPORT/PREP UNLESS UNDERLYING DATA HAS CHANGED #########
+######################### Skip to line ~302 ###
 
 # City Data Tables --------------------------------------------------------------------
 
 # pull in list of tables in racecounts.v5
-rc_list = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(schema = "v5"))$table, function(x) slot(x, 'name'))))
+rc_list = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(schema = curr_schema))$table, function(x) slot(x, 'name'))))
 rc_list <- filter(rc_list, grepl("api_",table)) # filter for only final city tables ("api_" prefix)
 
-# pull in list of tables in racecounts.v5
+# pull in list of tables in racecounts current schema
 
-# filter for only city level indicator tables
-city_list <- filter(rc_list, grepl("_city_2023",table)) %>% filter(table!= "arei_composite_index_city_2023")
+city_list <- filter(rc_list, grepl(paste0("_city_",curr_yr),table)) # filter for only current year city-level indicator tables
+city_list <- filter(city_list, !grepl("_index", table)) # remove index table in case already exists
 city_list <- city_list[order(city_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
 
 # import all tables on city_list
-city_tables <- lapply(setNames(paste0("select * from v5.", city_list), city_list), DBI::dbGetQuery, conn = con)
+city_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", city_list), city_list), DBI::dbGetQuery, conn = con)
 
 # create column with indicator name
 city_tables <- map2(city_tables, names(city_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
@@ -89,7 +90,7 @@ df_merged <- disparity %>% full_join(performance) %>% full_join(rate)
 df_city <- df_merged %>% mutate(
                                 issue = substring(indicator, 5, 8),
                                 indicator = substring(indicator, 10),
-                                indicator = gsub('_city_2023', '', indicator),
+                                indicator = gsub(paste0("_city_",curr_yr), '', indicator),
                                 geo_level = "city",
                                 race_generic = gsub('nh_', '', race) # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
   
@@ -98,12 +99,12 @@ df_city <- df_merged %>% mutate(
 
 # City (District) Education Tables: must be handled separately bc they are school district not city-level ----------------------------------------
 
-education_list <- filter(rc_list, grepl("_district_2023",table))
+education_list <- filter(rc_list, grepl(paste0("_district_", curr_yr),table))
 education_list <- education_list[order(education_list$table), ] # alphabetize list of tables, changes df to list the needed format for next step
 
 
 # import all tables on education_list
-education_tables <- lapply(setNames(paste0("select * from v5.", education_list), education_list), DBI::dbGetQuery, conn = con)
+education_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", education_list), education_list), DBI::dbGetQuery, conn = con)
 
 # create column with indicator name
 education_tables <- map2(education_tables, names(education_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
@@ -154,7 +155,7 @@ df_merged_education <- education_disparity %>% full_join(education_performance) 
 df_education_district <- df_merged_education %>% mutate(
                               issue = substring(indicator, 5, 8),                            
                               indicator = substring(indicator, 10),
-                              indicator = gsub('_district_2023', '', indicator),
+                              indicator = gsub(paste0('_district_', curr_yr), '', indicator),
                               geo_level = "city",
                               race_generic = gsub('nh_', '', race)) %>% # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
                                 left_join(crosswalk, by = "dist_id", relationship = 'many-to-many') %>% left_join(arei_race_multigeo_city, by = "city_id") %>% 
@@ -163,15 +164,15 @@ df_education_district <- df_merged_education %>% mutate(
 
 # County Data Tables ------------------------------------------------------
 
-# pull in list of tables in racecounts.v5
-rc_list_ = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(schema = "v5"))$table, function(x) slot(x, 'name'))))
+# pull in list of tables in racecounts current schema
+rc_list_ = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(schema = curr_schema))$table, function(x) slot(x, 'name'))))
 
-# filter for only county level indicator tables, drop all others including api_*_county_2023 tables
-county_list <- filter(rc_list_, grepl("^arei_.*\\county_2023$", table))
+# filter for only county level indicator tables, drop all others including api_*_county_ current year tables
+county_list <- filter(rc_list_, grepl(paste0("^arei_.*\\county_", curr_yr, "$"), table))
 county_list <- county_list[order(county_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
 
 # import all tables on county_list
-county_tables <- lapply(setNames(paste0("select * from v5.", county_list), county_list), DBI::dbGetQuery, conn = con)
+county_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", county_list), county_list), DBI::dbGetQuery, conn = con)
 
 # create column with indicator name
 county_tables <- map2(county_tables, names(county_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
@@ -221,7 +222,7 @@ df_merged_county <- county_disparity %>% full_join(county_performance) %>% full_
 df_county <- df_merged_county %>% mutate(
         issue = substring(indicator, 6,9),  
         indicator = substring(indicator, 11),
-        indicator = gsub('_county_2023', '', indicator),
+        indicator = gsub(paste0('_county_', curr_yr), '', indicator),
         geo_level = "county",
         race_generic = gsub('nh_', '', race)) %>% # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
             left_join(arei_race_multigeo_county) %>% 
@@ -230,14 +231,14 @@ df_county <- df_merged_county %>% mutate(
 
 
 # State Data Tables -------------------------------------------------------------------
-# pull in list of tables in racecounts.v5
+# pull in list of tables in racecounts current schema
 
 # filter for only state level indicator tables
-state_list <- filter(rc_list_, grepl("_state_2023",table))
+state_list <- filter(rc_list_, grepl(paste0("_state_", curr_yr),table))
 state_list <- state_list[order(state_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
 
 # import all tables on state_list
-state_tables <- lapply(setNames(paste0("select * from v5.", state_list), state_list), DBI::dbGetQuery, conn = con)
+state_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", state_list), state_list), DBI::dbGetQuery, conn = con)
 
 
 # create column with indicator name
@@ -276,7 +277,7 @@ df_merged_state <- state_disparity %>% full_join(state_rate)
 df_state <- df_merged_state %>% mutate(
   issue = substring(indicator, 6,9), 
   indicator = substring(indicator, 11),
-  indicator = gsub('_state_2023', '', indicator),
+  indicator = gsub(paste0('_state_', curr_yr), '', indicator),
   geo_level = "state",
   race_generic = gsub('nh_', '', race), # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
   performance_z_score = NA
@@ -292,10 +293,10 @@ final_df <- df %>% filter(!grepl('University', geo_name))
 
 #### NOTE: you must re-run the whole script and update the RData file if underlying data changes ###########
 # save df as .RData file, so don't have to re-run each time we update findings text, logic etc.
-#saveRDS(final_df, file = "W:/Project/RACE COUNTS/2023_v5/RC_Github/final_df.RData") 
+#saveRDS(final_df, file = paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/final_df.RData")) 
 
 # load .RData file
-#final_df <- readRDS("W:/Project/RACE COUNTS/2023_v5/RC_Github/final_df.RData")
+#final_df <- readRDS(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/final_df.RData"))
 
 # NOTE: when you call final_df in your code chunk(s), rename it before running code on it bc it takes a LONG time to run again...
 
@@ -307,7 +308,7 @@ race_names <- data.frame(race_generic, long_name)
 
 # Create indicator long name df -------------------------------------------
 ### NOTE: This list may need to be updated or re-ordered. ###
-indicator <- st_read(con, query = "SELECT arei_indicator AS indicator, api_name AS indicator_short, arei_issue_area FROM v5.arei_indicator_list_cntyst")
+indicator <- st_read(con, query = paste0("SELECT arei_indicator AS indicator, api_name AS indicator_short, arei_issue_area FROM ", curr_schema, ".arei_indicator_list_cntyst"))
 
 # unique education indicators at school district level, for city key takeaways analysis later
 educ_indicators <- filter(indicator, arei_issue_area == 'Education')
@@ -359,11 +360,6 @@ df_lf <- api_split(df_lf) # duplicate/split api rates as asian and pacisl
 
 ### Table counting number of non-NA rates per race+geo combo, used for screening worst counts later ### 
 bestworst_screen <- df_lf %>% group_by(geoid, race_generic) %>% summarise(rate_count = sum(!is.na(rate)))
-
-
-### Table counting number of indicators with ID's (multiple raced disp_z scores) per geo, used for screening most impacted later ### 
-impact_screen <- df_lf %>% group_by(geoid, geo_name, indicator) %>% summarise(rate_count = sum(!is.na(disparity_z_score))) 
-impact_screen <- filter(impact_screen, rate_count > 1) %>% group_by(geoid, geo_name) %>% summarise(id_count = n())
 
 ### Worst rates - RACE PAGE ###
 worst_table <- df_lf %>% 
@@ -462,6 +458,10 @@ worst_best_counts <- rename(worst_best_counts, race = race_generic) %>% select(-
 
 
 # Finding 2: Most Impacted Group - PLACE PAGE ---------------------------------------
+
+### Table counting number of indicators with ID's (multiple raced disp_z scores) per geo, used for screening most impacted later ### 
+impact_screen <- df_lf %>% group_by(geoid, geo_name, indicator) %>% summarise(rate_count = sum(!is.na(disparity_z_score))) 
+impact_screen <- filter(impact_screen, rate_count > 1) %>% group_by(geoid, geo_name) %>% summarise(id_count = n())
 
 impact_table <- worst_table2 %>% select(-rate_count) %>% group_by(geoid, geo_name) %>% top_n(1, count) %>% # get race most impacted by racial disparity by geo
   left_join(select(impact_screen, geoid, id_count), by = "geoid")
@@ -612,11 +612,11 @@ most_disp_final <- most_disp %>% mutate(
 # Save most_disp, best_rate_counts, worst_rate_counts as 1 csv
 rda_race_findings <- bind_rows(most_disp_final, worst_best_counts)
 rda_race_findings <- rda_race_findings %>% relocate(geo_level, .after = geo_name) %>% relocate(finding_type, .after = race) %>% mutate(src = 'rda', citations = '') %>%
-  mutate(race = ifelse(race == 'latino', 'latinx', ifelse(race == 'pacisl', 'nhpi', race)))  # rename latino to latinx, and pacisl to nhpi to feed API - will change API later so we can use RC standard latino/pacisl
+  mutate(race = ifelse(race == 'pacisl', 'nhpi', race))  # rename pacisl to nhpi to feed API - In all other tables we use 'pacisl'
 
 
 ## Export postgres table
-#dbWriteTable(con, c("v5", "arei_findings_races_multigeo_update"), rda_race_findings, overwrite = FALSE, row.names = FALSE)
+#dbWriteTable(con, c(curr_schema, "arei_findings_races_multigeo_update"), rda_race_findings, overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
 comment <- paste0("COMMENT ON TABLE v5.arei_findings_races_multigeo_update IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023_city.R.';",
@@ -741,8 +741,8 @@ worst_disp_outc <- union(worst_disp3, worst_outc3)
 # Indicators
 
 ## pull composite disparity/outcome z-scores for city and county; add urban type = NA for cities.
-index_county <- st_read(con, query = "SELECT * FROM v5.arei_composite_index_2023") %>% select(county_id, county_name, urban_type, disparity_z, performance_z) %>% rename(geoid = county_id, geo_name = county_name) %>% mutate(geo_level = "county")
-index_city <- st_read(con, query = "SELECT * FROM v5.arei_composite_index_city_2023") %>% select(city_id, city_name, disparity_z, performance_z) %>% rename(geoid = city_id, geo_name = city_name) %>% mutate(urban_type = NA, geo_level = "city")
+index_county <- st_read(con, query = paste0("SELECT * FROM ", curr_schema, ".arei_composite_index_", curr_yr)) %>% select(county_id, county_name, urban_type, disparity_z, performance_z) %>% rename(geoid = county_id, geo_name = county_name) %>% mutate(geo_level = "county")
+index_city <- st_read(con, query = paste0("SELECT * FROM ", curr_schema, ".arei_composite_index_city_", curr_yr)) %>% select(city_id, city_name, disparity_z, performance_z) %>% rename(geoid = city_id, geo_name = city_name) %>% mutate(urban_type = NA, geo_level = "city")
 index_county_city <- rbind(index_county, index_city)       
 index_county_city$geo_name <- ifelse(index_county_city$geo_level == 'county', paste0(index_county_city$geo_name, ' County'), index_county_city$geo_name)
 
@@ -775,7 +775,7 @@ rda_places_findings <- rbind(most_impacted, disp_avg_statement, outc_avg_stateme
 
 #### HK: (manual) issue area findings (used on issue areas pages and the state places page) ####
 
-issue_area_findings <- read.csv("W:/Project/RACE COUNTS/2023_v5/RC_Github/RaceCounts/KeyTakeaways/manual_findings_v5_2023.csv", encoding = "UTF-8")
+issue_area_findings <- read.csv(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/RaceCounts/KeyTakeaways/manual_findings_", curr_schema, "_", curr_yr, ".csv"), encoding = "UTF-8", check.names = FALSE)
 colnames(issue_area_findings) <- c("issue_area", "finding", "findings_pos")
 
 issue_area_findings_type_dict <- list(economy = "Economic Opportunity",
@@ -795,7 +795,7 @@ issue_area_findings$src <- "rda"
 
 issue_area_findings$citations <- ""
 
-#dbWriteTable(con, c("v5", "arei_findings_issues"), issue_area_findings, overwrite = FALSE, row.names = FALSE)
+#dbWriteTable(con, c(curr_schema, "arei_findings_issues"), issue_area_findings, overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
  comment <- paste0("COMMENT ON TABLE v5.arei_findings_issues IS 'findings for Issue Area pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
@@ -828,10 +828,10 @@ findings_places_multigeo <- rbind(rda_places_findings, state_issue_area_findings
 
                                   
 ## Create postgres table
-# dbWriteTable(con, c("v5", "arei_findings_places_multigeo_update"), findings_places_multigeo, overwrite = FALSE, row.names = FALSE)
+# dbWriteTable(con, c(curr_schema, "arei_findings_places_multigeo_update"), findings_places_multigeo, overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
-comment <- paste0("COMMENT ON TABLE v5.arei_findings_places_multigeo_update IS 'findings for Place pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023_city.R.';",
+comment <- paste0("COMMENT ON TABLE v5.arei_findings_places_multigeo_update IS 'findings for Place pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_2023.R.';",
                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo_update.finding_type
                         IS 'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below outcome, most disp indicator, worst outcome indicator';",
                   "COMMENT ON COLUMN v5.arei_findings_places_multigeo_update.src
