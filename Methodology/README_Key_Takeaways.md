@@ -750,7 +750,7 @@ rda_places_findings <- rbind(most_impacted, disp_avg_statement, outc_avg_stateme
 
 </details>
 
-<img src="https://github.com/catalystcalifornia/RaceCounts/blob/main/images/finding_average_outcomes.PNG" alt="Performance Finding">
+<img src="https://github.com/catalystcalifornia/RaceCounts/blob/main/images/finding_average_outcomes.PNG" alt="Average Outcomes Finding">
 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
