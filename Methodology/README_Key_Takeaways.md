@@ -467,7 +467,7 @@ return(z)
   
 }
 ```
-* Step 4: Prepare data for the function as follows. Add city-level education data to the rest of the indicator data. Then, remove the total_rates, keeping only rates by race. Finally, reclassify API data as both Asian and Native Hawaiian / Pacific Islander data.
+* Step 3: Prepare data for the function as follows. Add city-level education data to the rest of the indicator data. Then, remove the total_rates, keeping only rates by race. Finally, reclassify API data as both Asian and Native Hawaiian / Pacific Islander data.
 
 ```
 df_ds <- bind_rows(final_df,df_education_district_disparate)
@@ -476,7 +476,7 @@ df_ds <- filter(df_ds, race != 'total')    # remove total rates bc all findings 
 df_ds <- api_split(df_ds) # duplicate api rates as asian and pacisl
 ```
 
-* Step 5: Apply the function to the data by race, then bind results together into one dataframe.
+* Step 4: Apply the function to the data by race, then bind results together into one dataframe.
 
 ```
 aian_ <- most_disp_by_race(df_ds, 'aian')
@@ -495,7 +495,7 @@ most_disp <- bind_rows(aian_, asian_, black_, latinx_, pacisl_, white_) %>%
                    select(geoid, geo_name, dist_id, district_name, total_enroll, race, long_name, indicator_count, ends_with("_ind"), everything())
 ``` 
 
-* Step 6: Clean city names. Suppress findings for race-place combinations with too few indicator disparity_z scores. Create the "shells" used to create the key finding sentences. Use the variables created above to generate key findings. Note, we add school district names to education-related findings at city level.
+* Step 5: Clean city names. Suppress findings for race-place combinations with too few indicator disparity_z scores. Create the "shells" used to create the key finding sentences. Use the variables created above to generate key findings. Note, we add school district names to education-related findings at city level.
 
 
 ```
@@ -533,7 +533,7 @@ most_disp_final <- most_disp %>% mutate(
 
 ```
 
-* Step 7: Bind Most Disparate Indicator and Counts of Best and Worst Rates findings together. Export table to postgres database with metadata.
+* Step 6: Bind Most Disparate Indicator and Counts of Best and Worst Rates findings together. Export table to postgres database with metadata.
 
 ```
 rda_race_findings <- bind_rows(most_disp_final, worst_best_counts)
@@ -571,6 +571,8 @@ Create findings identifying the indicator with most racial disparity (highest di
 
 <details>
 <summary>Code Explanation</summary>
+This finding is generated with the following steps:
+
 * Step 1: As Education data is collected at school district level, not city level, additional processing is needed. Merge the most disparate school district per city's data (identified in Count of Worst Rates code) with the rest of data. Then, keep only total or overall rates, dropping raced data.
 
 ```
@@ -667,7 +669,7 @@ worst_outc2 <- worst_outc %>%
   mutate(long_perf_indicator = paste0(long_perf_indicator, collapse = " and ")) %>% select(-c(worst_perf_indicator)) %>% unique() # RC v5: no ties
 ```
 
-* Step 6: Clean city names. Create the "shells" used to create the key finding sentences. Use the variables created above to generate key findings. Combine Most Disparate and Worst Outcome Indicator Findings.
+* Step 7: Clean city names. Create the "shells" used to create the key finding sentences. Use the variables created above to generate key findings. Combine Most Disparate and Worst Outcome Indicator Findings.
 
 ```
 worst_outc2 <- clean_city_names(worst_outc2) 
@@ -702,9 +704,8 @@ worst_disp_outc <- union(worst_disp3, worst_outc3)
 Create key findings identifying whether a geography has above or below average disparity and outcomes as compared to other geographies of the same type. These findings are based on the average disparity z-score and average outcome z-score across all indicators for each geography. When the average disparity or outcome z-score across all indicators is below zero, we say that the disparity is or outcomes are below average. If the average disparity or outcome z-score is above zero, we say that the disparity is or outcomes are above above average. These findings are found on Place pages, such as the [Eureka Place Page](https://www.racecounts.org/city/eureka/).
 
 <details>
-
 <summary>Code Explanation</summary>
-The code below pulls tables from our private PostgreSQL database using credentials accessed through a separate script. This database is accessible only by our Research & Data Analysis team. However, we do plan to share a public file with the complete data for each RACE COUNTS indicator, where possible, here soon.
+This finding is generated with the following steps:
 
 * Step 1: Import county and city Racial Equity Index tables from the postgres database, select only needed fields. Then, reclassify outcome and disparity z-scores as above or below average.
 
@@ -759,8 +760,8 @@ rda_places_findings <- rbind(most_impacted, disp_avg_statement, outc_avg_stateme
 
 ## Data Methodology
 
-[RACE COUNTS: Indicator Methodology for County and State (2023)](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/IndicatorMethodology_CountyState.pdf) <br>
-<!-- [RACE COUNTS: Indicator Methodology for City (2023)](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/IndicatorMethodology_City.pdf) <br> -->
+[RACE COUNTS: Indicator Methodology for County and State  (2023)](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/IndicatorMethodology_CountyState.pdf) <br>
+[RACE COUNTS: Indicator Methodology for City (2024)](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/IndicatorMethodology_City.pdf) <br> 
  
 ## Contributors
 
