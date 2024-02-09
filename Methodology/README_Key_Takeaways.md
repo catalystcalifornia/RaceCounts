@@ -50,33 +50,29 @@ We used several R packages to analyze data and perform different functions, incl
 * dplyr
 * sf
 * tidyr
+* tidyverse 
+* RPostgreSQL
 * usethis
 
 ```
 # Install packages if not already installed
-list.of.packages <- c("usethis","dplyr","data.table", "tidycensus", "sf", "RPostgreSQL",
-                      "stringr", "tidyr", "matrixStats", "tidyverse", "writexl")
+list.of.packages <- c("data.table", "dplyr", "sf", "tidyr", "tidyverse", "RPostgreSQL", "usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
 #Load libraries
-library(usethis)
-library(dplyr)
 library(data.table) 
-library(tidycensus) 
+library(dplyr)
 library(sf)
-library(RPostgreSQL) 
-library(stringr) 
 library(tidyr)
-library(matrixStats) 
 library(tidyverse) 
-library(writexl) 
+library(RPostgreSQL) 
+library(usethis)
 options(scipen=999)
 ```
 
-### Installation
 
-<!-- 1. Get a free TidyCensus API Key at [https://walker-data.com/tidycensus/articles/basic-usage.html](https://walker-data.com/tidycensus/articles/basic-usage.html)-->
+### Installation
 
 Clone the repo
    ```sh
@@ -93,17 +89,80 @@ Clone the repo
 **This section is an explanation of the key_findings_2023.R script.**
 
 ### Data Loading and Set Up
-Import the cleaned and standardized data for each indicator from our private database into RStudio, then combine into one massive dataframe (df).
+Import the cleaned and standardized data for each indicator separately for each geography level (city, county, state) from our private database into RStudio and format it. This process is time-consuming because of the amount of data pulled in from the database and the amount of reformatting done. So once you have this large dataframe, it's a good idea to work with a copy of it. That way, you will not have to re-import and clean the data again if you need to change the code that comes after these steps. As mentioned above, we plan to make a file with complete clean indicator data, where possible, available here soon. 
+
+Then combine into one massive dataframe (df) and clean the data. 
+
 <details>
 <summary>Code Explanation</summary>
 
-Join issue area dataframes together into one final dataframe. This process is time-consuming because of the amount of data pulled in from the database and the amount of reformatting done. So once you have this large dataframe, it's a good idea to work with a copy of it. That way, you will not have to re-import and clean the data again if you need to change the code that comes after these steps. As mentioned above, we plan to make a file with complete clean indicator data, where possible, available here soon. 
-
-
 ```
-# Combine all cleaned issue area dataframes into one final df ----------------------------------
+# Pull list of indicator tables, then import data. County example: ----------------------------------
+rc_list_ = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(schema = "v5"))$table, function(x) slot(x, 'name'))))
 
-df <- bind_rows(crime, democracy, economic, education, hbe, health, housing)
+# filter for only county level indicator tables, drop all others including api_*_county_2023 tables
+county_list <- filter(rc_list_, grepl("^arei_.*\\county_2023$", table))
+county_list <- county_list[order(county_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
+
+# import all tables on county_list
+county_tables <- lapply(setNames(paste0("select * from v5.", county_list), county_list), DBI::dbGetQuery, conn = con)
+
+# create column with indicator name
+county_tables <- map2(county_tables, names(county_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
+
+# call columns we want and pivot wider
+county_tables_disparity <- lapply(county_tables, function(x) x %>% select(county_id, asbest, ends_with("disparity_z"), indicator, values_count))
+
+county_disparity <- imap_dfr(county_tables_disparity, ~
+                               .x %>% 
+                               pivot_longer(cols = ends_with("disparity_z"),
+                                            names_to = "race",
+                                            values_to = "disparity_z_score")) %>% mutate(
+                                              race = (ifelse(race == 'disparity_z', 'total', race)),
+                                              race = gsub('_disparity_z', '', race))
+
+county_tables_performance <- lapply(county_tables, function(x) x %>% select(county_id, asbest, ends_with("performance_z"), indicator, values_count))
+
+county_performance <- imap_dfr(county_tables_performance, ~
+                                 .x %>% 
+                                 pivot_longer(cols = ends_with("performance_z"),
+                                              names_to = "race",
+                                              values_to = "performance_z_score")) %>% mutate(
+                                                race = (ifelse(race == 'performance_z', 'total', race)),
+                                                race = gsub('_performance_z', '', race))
+
+
+county_tables_rate <- lapply(county_tables, function(x) x %>% select(county_id, asbest, ends_with("_rate"), indicator, values_count))
+
+county_rate <- imap_dfr(county_tables_rate , ~
+                          .x %>% 
+                          pivot_longer(cols = ends_with("_rate"),
+                                       names_to = "race",
+                                       values_to = "rate")) %>% mutate(
+                                         race = (ifelse(race == 'rate', 'total', race)),
+                                         race = gsub('_rate', '', race))
+
+# merge all 3 
+df_merged_county <- county_disparity %>% full_join(county_performance) %>% full_join(county_rate)
+
+# create issue, indicator, geo_level, race generic columns for issue tables except for education
+df_county <- df_merged_county %>% mutate(
+        issue = substring(indicator, 6,9),  
+        indicator = substring(indicator, 11),
+        indicator = gsub('_county_2023', '', indicator),
+        geo_level = "county",
+        race_generic = gsub('nh_', '', race)) %>% # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
+            left_join(arei_race_multigeo_county) %>% 
+                rename(geoid = county_id, geo_name = county_name)  %>%  mutate(geo_name = paste0(geo_name, " County"))
+
+# merge city, county, state data
+df <- bind_rows(df_city, df_county, df_state) %>% select(
+                    geoid, geo_name, issue, indicator, race, asbest, rate, disparity_z_score, performance_z_score, values_count, geo_level, race_generic)
+
+
+# remove records where city name is actually a university: there are 6 'cities' like this making up 898 rows
+final_df <- df %>% filter(!grepl('University', geo_name))
+
 ```
 
 Create short form to long form race and indicator label crosswalks that will be used to generate key findings.
