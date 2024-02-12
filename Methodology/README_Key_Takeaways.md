@@ -497,7 +497,6 @@ most_disp <- bind_rows(aian_, asian_, black_, latinx_, pacisl_, white_) %>%
 
 * Step 5: Clean city names. Suppress findings for race-place combinations with too few indicator disparity_z scores. Create the "shells" used to create the key finding sentences. Use the variables created above to generate key findings. Note, we add school district names to education-related findings at city level.
 
-
 ```
 n = 5 # indicator_count threshold
 
@@ -509,28 +508,12 @@ most_disp_final <- most_disp %>% mutate(
   
   # add school district name to city education-related findings
   finding = ifelse(
-    #max_col %in% educ_indicators & geo_level == "city" 
-    arei_issue_area == 'Education' & !grepl('too limited', finding), 
+    arei_issue_area == 'Education' & !grepl('too limited', finding) & !is.na(district_name), 
     paste0(long_name, " residents face the most disparity with ", indicator, " (", district_name, ") in ", geo_name, "."),
     finding),
   
-  # remove school district info from city non-education-related rows
-  dist_id =
-    ifelse(
-      !arei_issue_area == 'Education' & geo_level == "city", NA, dist_id ## remove district ids for non-education indicators
-    ),
-  district_name =
-    ifelse(
-      !arei_issue_area == 'Education' & geo_level == "city", NA, district_name ## remove district names for non-education indicators
-    ),
-  total_enroll = 
-    ifelse(
-      !arei_issue_area == 'Education' & geo_level == "city", NA, total_enroll ## remove total enroll for non-education indicators
-    ), 
-  
   finding_type = 'most disparate', findings_pos = 3) %>%
-  select(geoid, geo_name, geo_level, dist_id, district_name, total_enroll, long_name, race, indicator, indicator_count, finding_type, findings_pos, finding) %>% filter(!is.na(geo_name)) # some geoids don't have geo_names. all of them belong in housing-- for example: Camp Pendleton North. They don't pass the indicator count threshold either way to be included in the finding, so we will remove these.   
-
+  select(geoid, geo_name, geo_level, dist_id, district_name, total_enroll, long_name, race, indicator, indicator_count, finding_type, findings_pos, finding) %>% filter(!is.na(geo_name)) # some geoids don't have geo_names. all of them belong in housing-- for example: Camp Pendleton North. They don't pass the indicator count threshold either way to be included in the finding, so we will remove these. 
 ```
 
 * Step 6: Bind Most Disparate Indicator and Counts of Best and Worst Rates findings together. Export table to postgres database with metadata.
@@ -541,21 +524,19 @@ rda_race_findings <- rda_race_findings %>% relocate(geo_level, .after = geo_name
   mutate(race = ifelse(race == 'pacisl', 'nhpi', race))  # rename pacisl to nhpi to feed API - In all other tables we use 'pacisl'
   
 ## Export postgres table
-dbWriteTable(con, c(curr_schema, "arei_findings_races_multigeo_update"), rda_race_findings, overwrite = FALSE, row.names = FALSE)
+dbWriteTable(con, c(curr_schema, "arei_findings_races_multigeo"), rda_race_findings, overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
-comment <- paste0("COMMENT ON TABLE v5.arei_findings_races_multigeo_update IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023_city.R.';",
-                  "COMMENT ON COLUMN v5.arei_findings_races_multigeo_update.finding_type
+comment <- paste0("COMMENT ON TABLE v5.arei_findings_races_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_2023.R.';",
+                  "COMMENT ON COLUMN v5.arei_findings_races_multigeo.finding_type
                          IS 'Categorizes findings: count of best and worst rates by race/geo combo, most disparate indicator by race/geo combo';",
-                  "COMMENT ON COLUMN v5.arei_findings_races_multigeo_update.src
+                  "COMMENT ON COLUMN v5.arei_findings_races_multigeo.src
                          IS 'Categorizes source of finding as either rda or program area';",
-                  "COMMENT ON COLUMN v5.arei_findings_races_multigeo_update.citations
+                  "COMMENT ON COLUMN v5.arei_findings_races_multigeo.citations
                          IS 'External v5.citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
-                  "COMMENT ON COLUMN v5.arei_findings_races_multigeo_update.findings_pos
+                  "COMMENT ON COLUMN v5.arei_findings_races_multigeo.findings_pos
                         IS 'Used to determine the order a set of findings should appear in on RC.org';")
 dbSendQuery(con, comment)  
-
-  
 ```
 
 </details>
@@ -725,7 +706,7 @@ avg_statement_df <- index_county_city %>%
          disp_type = ifelse(disparity_z < 0, 'below', 'worse than')) 
 ```
 
-* Step 2: Create the "shells" used to create the key finding sentences. Use the variables created above to generate key findings. Combine Above and Below Average Disparity and Outcomes Findings. Then, bind those findings together.
+* Step 2: Create the "shells" used to create the key finding sentences. Use the variables created above to generate key findings. Combine Above and Below Average Disparity and Outcomes Findings. Then, bind those findings together. At this point, we do not export the combined findings in rda_places_findings.
 
 ```
 disp_avg_statement <- avg_statement_df %>%
@@ -756,6 +737,99 @@ rda_places_findings <- rbind(most_impacted, disp_avg_statement, outc_avg_stateme
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
+
+
+### Issue-based Findings at State Level
+
+Import key findings drafted by the Research & Data Analysis team offline. There are three findings per issue area at the state level. These findings are found on the [California Place Page](https://www.racecounts.org/state/california/) and on California Issue Pages, such as the [California Democracy Page](https://www.racecounts.org/issue/democracy/).
+
+<details>
+<summary>Code Explanation</summary>
+This finding is generated with the following steps:
+
+* Step 1: Import findings drafted by the Research & Data Analysis team offline. Add additional fields required for display on state-level Issue Pages, such as finding_type.
+
+```
+issue_area_findings <- read.csv(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/RaceCounts/KeyTakeaways/manual_findings_", curr_schema, "_", curr_yr, ".csv"), encoding = "UTF-8", check.names = FALSE)
+colnames(issue_area_findings) <- c("issue_area", "finding", "findings_pos")
+
+issue_area_findings_type_dict <- list(economy = "Economic Opportunity",
+                                      education = "Education",
+                                      housing = "Housing",
+                                      health = "Health Care Access",
+                                      democracy = "Democracy",
+                                      crime = "Crime and Justice",
+                                      hbe = "Healthy Built Environment")
+
+issue_area_findings$finding_type <- ifelse(issue_area_findings$issue_area == 'economy', "Economic Opportunity",
+                                           ifelse(issue_area_findings$issue_area == 'health', "Health Care Access",
+                                                  ifelse(issue_area_findings$issue_area == 'crime', "Crime and Justice",
+                                                         ifelse(issue_area_findings$issue_area == 'hbe', "Healthy Built Environment",
+                                                                str_to_title(issue_area_findings$issue_area)))))
+issue_area_findings$src <- "rda"
+
+issue_area_findings$citations <- ""
+```
+
+* Step 2: Export table to postgres database with metadata.
+
+```
+#dbWriteTable(con, c(curr_schema, "arei_findings_issues"), issue_area_findings, overwrite = FALSE, row.names = FALSE)
+
+# comment on table and columns
+ comment <- paste0("COMMENT ON TABLE v5.arei_findings_issues IS 'findings for Issue Area pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_2023.R.';",
+                  "COMMENT ON COLUMN v5.arei_findings_issues.finding_type
+                       IS 'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below perf, most disp indicator, worst perf indicator';",
+                  "COMMENT ON COLUMN v5.arei_findings_issues.src
+                       IS 'Categorizes source of finding as either rda or program area';",
+                  "COMMENT ON COLUMN v5.arei_findings_issues.citations
+                       IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
+                  "COMMENT ON COLUMN v5.arei_findings_issues.findings_pos
+                       IS 'Used to determine the order a set of findings should appear in on RC.org';")
+# print(comment)
+# dbSendQuery(con, comment)
+```
+
+* Step 3: Take the same findings from Step 2 and add additional fields required for display on the state-level Place Page, such as geo_name.
+
+```
+# prep issues table for addition to places_findings_table
+state_issue_area_findings <- issue_area_findings
+
+state_issue_area_findings <- state_issue_area_findings %>% select(-issue_area)
+
+state_issue_area_findings$geoid <- "06"
+state_issue_area_findings$geo_name <- "California"
+state_issue_area_findings$geo_level <- "state"
+
+# reorder findings position for places positions
+state_issue_area_findings <- state_issue_area_findings %>%
+                                mutate(findings_pos = row_number() + 1) 
+```
+
+* Step 4: Bind other Place Page findings from earlier (rda_places_findings) with state-level Place Page findings from Step 3.
+
+```
+findings_places_multigeo <- rbind(rda_places_findings, state_issue_area_findings)
+
+## Create postgres table
+# dbWriteTable(con, c(curr_schema, "arei_findings_places_multigeo_update"), findings_places_multigeo, overwrite = FALSE, row.names = FALSE)
+
+# comment on table and columns
+comment <- paste0("COMMENT ON TABLE v5.arei_findings_places_multigeo_update IS 'findings for Place pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_2023.R.';",
+                  "COMMENT ON COLUMN v5.arei_findings_places_multigeo_update.finding_type
+                        IS 'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below outcome, most disp indicator, worst outcome indicator';",
+                  "COMMENT ON COLUMN v5.arei_findings_places_multigeo_update.src
+                        IS 'Categorizes source of finding as either rda or program area';",
+                  "COMMENT ON COLUMN v5.arei_findings_places_multigeo_update.citations
+                        IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
+                  "COMMENT ON COLUMN v5.arei_findings_places_multigeo_update.findings_pos
+                        IS 'Used to determine the order a set of findings should appear in on RC.org';")
+#print(comment)
+#dbSendQuery(con, comment)
+
+#dbDisconnect(con) 
+```
 
 
 ## Data Methodology

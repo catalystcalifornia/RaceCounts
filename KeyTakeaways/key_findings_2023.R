@@ -586,7 +586,6 @@ most_disp_final <- most_disp %>% mutate(
   
   # add school district name to city education-related findings
   finding = ifelse(
-    #max_col %in% educ_indicators  #& geo_level == "city" 
     arei_issue_area == 'Education' & !grepl('too limited', finding) & !is.na(district_name), 
     paste0(long_name, " residents face the most disparity with ", indicator, " (", district_name, ") in ", geo_name, "."),
     finding),
