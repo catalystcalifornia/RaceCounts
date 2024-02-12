@@ -586,24 +586,9 @@ most_disp_final <- most_disp %>% mutate(
   
   # add school district name to city education-related findings
   finding = ifelse(
-    #max_col %in% educ_indicators & geo_level == "city" 
-    arei_issue_area == 'Education' & !grepl('too limited', finding), 
+    arei_issue_area == 'Education' & !grepl('too limited', finding) & !is.na(district_name), 
     paste0(long_name, " residents face the most disparity with ", indicator, " (", district_name, ") in ", geo_name, "."),
     finding),
-  
-  # remove school district info from city non-education-related rows
-  dist_id =
-    ifelse(
-      !arei_issue_area == 'Education' & geo_level == "city", NA, dist_id ## remove district ids for non-education indicators
-    ),
-  district_name =
-    ifelse(
-      !arei_issue_area == 'Education' & geo_level == "city", NA, district_name ## remove district names for non-education indicators
-    ),
-  total_enroll = 
-    ifelse(
-      !arei_issue_area == 'Education' & geo_level == "city", NA, total_enroll ## remove total enroll for non-education indicators
-    ), 
   
   finding_type = 'most disparate', findings_pos = 3) %>%
   select(geoid, geo_name, geo_level, dist_id, district_name, total_enroll, long_name, race, indicator, indicator_count, finding_type, findings_pos, finding) %>% filter(!is.na(geo_name)) # some geoids don't have geo_names. all of them belong in housing-- for example: Camp Pendleton North. They don't pass the indicator count threshold either way to be included in the finding, so we will remove these. 
@@ -616,17 +601,17 @@ rda_race_findings <- rda_race_findings %>% relocate(geo_level, .after = geo_name
 
 
 ## Export postgres table
-#dbWriteTable(con, c(curr_schema, "arei_findings_races_multigeo_update"), rda_race_findings, overwrite = FALSE, row.names = FALSE)
+#dbWriteTable(con, c(curr_schema, "arei_findings_races_multigeo"), rda_race_findings, overwrite = TRUE, row.names = FALSE)
 
 # comment on table and columns
-comment <- paste0("COMMENT ON TABLE v5.arei_findings_races_multigeo_update IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023_city.R.';",
-                  "COMMENT ON COLUMN v5.arei_findings_races_multigeo_update.finding_type
+comment <- paste0("COMMENT ON TABLE v5.arei_findings_races_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_2023.R.';",
+                  "COMMENT ON COLUMN v5.arei_findings_races_multigeo.finding_type
                          IS 'Categorizes findings: count of best and worst rates by race/geo combo, most disparate indicator by race/geo combo';",
-                  "COMMENT ON COLUMN v5.arei_findings_races_multigeo_update.src
+                  "COMMENT ON COLUMN v5.arei_findings_races_multigeo.src
                          IS 'Categorizes source of finding as either rda or program area';",
-                  "COMMENT ON COLUMN v5.arei_findings_races_multigeo_update.citations
+                  "COMMENT ON COLUMN v5.arei_findings_races_multigeo.citations
                          IS 'External v5.citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
-                  "COMMENT ON COLUMN v5.arei_findings_races_multigeo_update.findings_pos
+                  "COMMENT ON COLUMN v5.arei_findings_races_multigeo.findings_pos
                         IS 'Used to determine the order a set of findings should appear in on RC.org';")
 #print(comment)
 #dbSendQuery(con, comment)
@@ -798,7 +783,7 @@ issue_area_findings$citations <- ""
 #dbWriteTable(con, c(curr_schema, "arei_findings_issues"), issue_area_findings, overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
- comment <- paste0("COMMENT ON TABLE v5.arei_findings_issues IS 'findings for Issue Area pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaway\\key_findings_2023.R.';",
+ comment <- paste0("COMMENT ON TABLE v5.arei_findings_issues IS 'findings for Issue Area pages (API) created using W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_2023.R.';",
                   "COMMENT ON COLUMN v5.arei_findings_issues.finding_type
                        IS 'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below perf, most disp indicator, worst perf indicator';",
                   "COMMENT ON COLUMN v5.arei_findings_issues.src
