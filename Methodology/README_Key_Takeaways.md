@@ -831,6 +831,12 @@ comment <- paste0("COMMENT ON TABLE v5.arei_findings_places_multigeo_update IS '
 #dbDisconnect(con) 
 ```
 
+</details>
+
+<img src="https://github.com/catalystcalifornia/RaceCounts/blob/main/images/finding_state_issues.PNG" alt="State-level Issue Finding">
+
+
+<p align="right">(<a href="#top">back to top</a>)</p>
 
 ## Data Methodology
 
