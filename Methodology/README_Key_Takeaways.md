@@ -781,10 +781,7 @@ rda_places_findings <- rbind(most_impacted, disp_avg_statement, outc_avg_stateme
 
 ## Contact Us
 
-[Chris Ringewald](https://www.linkedin.com/in/chris-ringewald-6766369/) - cringewald[at]catalystcalifornia.org  <br>
-
-
-[Leila Forouzan](https://www.linkedin.com/in/leilaforouzan/) - lforouzan[at]catalystcalifornia.org
+Send an email to [Chris Ringewald](https://www.linkedin.com/in/chris-ringewald-6766369/) and [Leila Forouzan](https://www.linkedin.com/in/leilaforouzan/) at rda[at]catalystcalifornia.org
 
 ## Github Link
 
@@ -796,7 +793,7 @@ rda_places_findings <- rbind(most_impacted, disp_avg_statement, outc_avg_stateme
 ## Citation
 To cite RACE COUNTS, please use the following:
 
-Catalyst California; RACE COUNTS, racecounts.org, 2022.
+Catalyst California; RACE COUNTS, racecounts.org, [current year].
 
 
 ## License
