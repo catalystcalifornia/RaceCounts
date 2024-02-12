@@ -2,8 +2,7 @@
 ### January 2024
 
 <base target="_blank">
-<!-- NOTE: Need to replace homepage image, findings images
--->
+
 
 <img src="https://github.com/catalystcalifornia/RaceCounts/blob/main/images/rc_homepage.PNG" alt="RACE COUNTS homepage">
 
