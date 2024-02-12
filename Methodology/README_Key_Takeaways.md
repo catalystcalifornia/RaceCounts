@@ -741,7 +741,7 @@ rda_places_findings <- rbind(most_impacted, disp_avg_statement, outc_avg_stateme
 
 ### Issue-based Findings at State Level
 
-Import key findings drafted by the Research & Data Analysis team offline. There are three findings per issue area at the state level. These findings are found on the [California Place Page](https://www.racecounts.org/state/california/) and on California Issue Pages, such as the [California Democracy Page](https://www.racecounts.org/issue/democracy/).
+Import key findings drafted by the Research & Data Analysis team offline. There are three findings per issue at the state level. These findings are found on the [California Place Page](https://www.racecounts.org/state/california/) and on California Issue Pages, such as the [California Democracy Page](https://www.racecounts.org/issue/democracy/).
 
 <details>
 <summary>Code Explanation</summary>
@@ -807,7 +807,7 @@ state_issue_area_findings <- state_issue_area_findings %>%
                                 mutate(findings_pos = row_number() + 1) 
 ```
 
-* Step 4: Bind other Place Page findings from earlier (rda_places_findings) with state-level Place Page findings from Step 3.
+* Step 4: Bind other Place Page findings from earlier (rda_places_findings) with state-level Place Page findings from Step 3. Export table to postgres database with metadata.
 
 ```
 findings_places_multigeo <- rbind(rda_places_findings, state_issue_area_findings)
