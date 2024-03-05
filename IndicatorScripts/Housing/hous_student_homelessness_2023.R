@@ -160,7 +160,7 @@ df <- df %>%
 df_subset <- select(df, geoid, geoname, ends_with("_pop"), ends_with("_raw"), ends_with("_rate")) %>% mutate(geolevel = ifelse(geoid == '06', 'state', 'county'))
 View(df_subset)
 
-d <- final_df
+d <- df_subset
 
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
@@ -204,4 +204,5 @@ rc_schema <- 'v5'
 
 #send tables to postgres
 #to_postgres(county_table, state_table)
+#city_to_postgres(city_table)
 
