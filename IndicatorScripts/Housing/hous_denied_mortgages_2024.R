@@ -21,7 +21,6 @@ library(httr) # connect to HMDA API
 options(scipen=999)
 
 source("W:\\RDA Team\\R\\credentials_source.R")
-#setwd("W:/Data/Housing/HMDA/Denied Mortgages/2019_20/")
 con2 <- connect_to_db("rda_shared_data")
 
 ##### You must manually update hmda_yrs each year ###
@@ -131,7 +130,6 @@ denied_data <- lapply(mtg_tables, function(x) {x <- x %>% filter(derived_dwellin
                                                                  mutate(state_code = replace(state_code, str_detect(state_code, "CA"), "06")) %>%  # replace state_code in those records with '06'
                                                                   select(state_code, county_code, census_tract, derived_ethnicity, derived_race)})
 
-
 loan_tables <- lapply(loan_tables, function(x) {x <- x %>% select(activity_year, state_code, county_code, census_tract, loan_purpose, occupancy_type, derived_loan_product_type, derived_dwelling_category, derived_ethnicity, derived_race)})
 loans_data <- lapply(loan_tables, function(x) {x <- x %>% filter(derived_dwelling_category != 'Multifamily:Site-Built' & derived_dwelling_category != 'Multifamily:Manufactured' &
                                                                    derived_loan_product_type != 'Conventional:Subordinate Lien' & derived_loan_product_type != 'FHA:Subordinate Lien' &
@@ -140,10 +138,17 @@ loans_data <- lapply(loan_tables, function(x) {x <- x %>% filter(derived_dwellin
                                                                    mutate(state_code = replace(state_code, str_detect(state_code, "CA"), "06")) %>%  # replace state_code in those records with '06'
                                                                     select(state_code, county_code, census_tract, derived_ethnicity, derived_race)})
 
+# add data yr to each list element: this will be used for city-level data
+denied_data  <- map2(denied_data, names(denied_data), ~ mutate(.x, year = .y)) # create column with dataset name
+denied_data <- lapply(denied_data, function(x) {x %>% mutate(year = str_sub(x$year, start = -4))}) # clean $year
 
-############## County / State #############
+loans_data  <- map2(loans_data, names(loans_data), ~ mutate(.x, year = .y)) # create column with dataset name
+loans_data <- lapply(loans_data, function(x) {x %>% mutate(year = str_sub(x$year, start = -4))}) # clean $year
+
+
+############## County / State Counts #############
 # fx to get raced and total counts
-get_raced_hmda <- function(z, suffix) {
+get_raced_hmda <- function(z, suffix) { # get raced and total loan or denied mtg counts at county level
   
   latino <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Hispanic or Latino") %>% dplyr::group_by(county_code) %>%
     dplyr::summarise(latino = n())})
@@ -194,7 +199,7 @@ get_raced_hmda <- function(z, suffix) {
   
   return(joined)
 }
-get_raced_hmda_st <- function(z, suffix) {
+get_raced_hmda_st <- function(z, suffix) { # exact same as get_raced_hmda just for state level
   
   latino <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Hispanic or Latino") %>% dplyr::group_by(state_code) %>%
     dplyr::summarise(latino = n())})
@@ -245,6 +250,7 @@ get_raced_hmda_st <- function(z, suffix) {
   
   return(joined)
 }
+
 # get raced data and add column suffixes
 loans <- get_raced_hmda(loans_data, "_originated")
 loans_st <- get_raced_hmda_st(loans_data, "_originated")
@@ -252,7 +258,7 @@ loans_st <- get_raced_hmda_st(loans_data, "_originated")
 denied <- get_raced_hmda(denied_data, "_denied")
 denied_st <- get_raced_hmda_st(denied_data, "_denied")
 
-#merge loan and denied dfs
+# merge loan and denied dfs
 county_join <- left_join(loans, denied, by = c("county_code", "geolevel")) %>% rename(geoid = county_code)
 state_join <- left_join(loans_st, denied_st, by = c("state_code", "geolevel")) %>% rename(geoid = state_code)
 df_join <- rbind(county_join, state_join)
@@ -276,14 +282,30 @@ df_wide$geoname[df_wide$geoid == '06'] <- 'California'
 #View(df_wide)
 
 ### CT-Place Crosswalk ### ---------------------------------------------------------------------
-# pull in crosswalk
-xwalk_filter <- dbGetQuery(con2, "SELECT * FROM crosswalks.ct_place_2020")
-#View(xwalk_filter)
+# pull in crosswalks - 2019-21 HMDA data uses 2011-15 geos, 2022 HMDA data uses 2020 geos
+# set source for Crosswalk Function script
+source("W:/Project/RACE COUNTS/Functions/RC_CT_Place_Xwalk.R")
+xwalk_filter_15 <- make_ct_place_xwalk("2015") # must specify which data year
+xwalk_filter_20 <- make_ct_place_xwalk("2020") # must specify which data year
 
-############## City #############
+############## City Counts #############
+# We segment 2019-21 and 2022 data bc the former uses 2015 CT's while the latter uses 2020 CT's
+# 2019-21 Data
+loans_2019_21 <- loans_data[grepl(("2019|2021"), names(loans_data))]
+denied_2019_21 <- denied_data[grepl(("2019|2021"), names(denied_data))]
 
-#join xwalk filter to loans
-loans_2019_20 <- loans_2019_20 %>% right_join(select(xwalk_filter, c(ct_geoid, place_geoid)), by = c("census_tract" = "ct_geoid"), relationship = "many-to-many")  # join target geoids/names
+# 2022 Data
+loans_2022 <- loans_data[grepl(("2022"), names(loans_data))]
+denied_2022 <- denied_data[grepl(("2022"), names(denied_data))]
+
+#join xwalk filter to data -- NOT WORKING YET
+loans_2019_21 <- lapply(loans_2019_21, function(x) x <- x %>% right_join(select(xwalk_filter_15, c(ct_geoid, place_geoid)), by = c("census_tract" = "ct_geoid"), relationship = "many-to-many"))  # join target geoids/names
+denied_2019_21 <- denied_2019_21 %>% right_join(select(xwalk_filter_15, c(ct_geoid, place_geoid)), by = c("census_tract" = "ct_geoid"), relationship = "many-to-many")  # join target geoids/names
+
+loans_2022 <- loans_2022 %>% right_join(select(xwalk_filter_20, c(ct_geoid, place_geoid)), by = c("census_tract" = "ct_geoid"), relationship = "many-to-many")  # join target geoids/names
+denied_2022 <- denied_2022 %>% right_join(select(xwalk_filter_20, c(ct_geoid, place_geoid)), by = c("census_tract" = "ct_geoid"), relationship = "many-to-many")  # join target geoids/names
+
+### Add in get_raced_hmda_city{}...
 
 # races----
 latino <- filter(loans_2019_20, derived_ethnicity == "Hispanic or Latino") %>% dplyr::group_by(place_geoid) %>%
@@ -324,8 +346,6 @@ loans <- left_join(total, nh_black, by = c("place_geoid")) %>%
 
 # ########### Denied mortgages by race and total --------------------------
 
-#join xwalk filter to loans
-denied_2019_20 <- denied_2019_20 %>% right_join(select(xwalk_filter, c(ct_geoid, place_geoid)), by = c("census_tract" = "ct_geoid"), relationship = "many-to-many")  # join target geoids/names
 
 # races -----
 latino <- filter(denied_2019_20, derived_ethnicity== "Hispanic or Latino") %>%
