@@ -30,7 +30,8 @@ table_code = 'b25003'
 df_wide_multigeo <- st_read(con, query = paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr)) # import rda_shared_data table
 
 ############## Pre-RC CALCS ##############
-source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
+source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
+#source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
 df <- prep_acs(df_wide_multigeo, table_code, cv_threshold, pop_threshold)
 
 df_screened <- dplyr::select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"))

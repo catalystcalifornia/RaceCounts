@@ -244,7 +244,7 @@ x$name <- gsub(" town", "", x$name)
 x$name <- gsub(" CDP", "", x$name)
 
 
-### CV CALCS ###
+### Coefficient of Variation (CV) CALCS ###
 df <- x
 
 ### calc cv's
