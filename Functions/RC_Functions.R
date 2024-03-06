@@ -208,7 +208,7 @@ return(x)
 }
 
 
-#####calculate disparity and performance ranks and quadrants#####
+#####calculate disparity and performance ranks, quadrants, disparity and performance quartile labels#####
 calc_ranks <- function(x) {
   ranks_table <- dplyr::select(x, geoid, asbest, total_rate, index_of_disparity, disparity_z, performance_z)
   
@@ -250,14 +250,8 @@ calc_ranks <- function(x) {
 }
 
 
-#####calculate indicator quartiles (lowest-low-high-highest) and quadrant colors#####
-calc_quartiles <- function(x) {
 
-return(x)
-}
-
-
-#####send county and state tables to postgres#####
+#####send city, county and state tables to postgres#####
 to_postgres <- function(x,y) {
                       # create connection for rda database
                       source("W:\\RDA Team\\R\\credentials_source.R")
