@@ -27,21 +27,23 @@ asbest = 'max'
 schema = 'housing'
 table_code = 'b25003'
 
-df_wide_multigeo <- st_read(con, query = paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr)) # import rda_shared_data table
+df_wide_multigeo <- st_read(con, query = paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state')")) # import rda_shared_data table
 
 ############## Pre-RC CALCS ##############
 source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
-#source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
 df <- prep_acs(df_wide_multigeo, table_code, cv_threshold, pop_threshold)
 
-df_screened <- dplyr::select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"))
+df_screened <- dplyr::select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"), -ends_with("_cv"))
 
 d <- df_screened
 
 ############## CALC RACE COUNTS STATS ##############
 
 #set source for RC Functions script
-source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
+source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
+
+# Adds asbest value for RC Functions
+d$asbest = asbest
 
 d <- count_values(d) #calculate number of "_rate" values
 d <- calc_best(d) #calculate best rates -- be sure asbest is correct before running this function.
@@ -67,8 +69,7 @@ county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table) %>% dplyr::select(-c(geolevel))
 View(county_table)
 
-
-# #calculate CITY z-scores
+#calculate CITY z-scores
 city_table <- calc_z(city_table)
 
 ## Calc city ranks##
