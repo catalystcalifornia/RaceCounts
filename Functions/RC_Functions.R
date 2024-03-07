@@ -125,6 +125,8 @@ calc_id <- function(x) {
                 diffs$index_of_disparity <- ifelse(diffs$values_count < 2 | diffs$values_count == 2 & diffs$asbest == 'min' & diffs$sumdiff == diffs$best, NA, (((diffs$sumdiff / diffs$best) / (diffs$values_count - 1)) * 100))
                 x$index_of_disparity <- diffs$index_of_disparity
 
+                # Can add here? calc 'times findings', eg: The Latinx rate is X times the White rate.
+                
 return(x)
 }
 
