@@ -37,7 +37,7 @@ con <- connect_to_db("rda_shared_data")
 #      table_source <- "Wide data format, multigeo table with state, county, district, and school"
 # 
 # ## Run function to prep and export rda_shared_data table
-#   source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
+#   source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
 #   df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
 #   View(df)
 # 
@@ -118,7 +118,7 @@ d <- df_final
 ####################################################################################################################################################
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
+source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 
 d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
 
