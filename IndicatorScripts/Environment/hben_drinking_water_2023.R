@@ -136,9 +136,7 @@ pop_threshold = 250               # define population threshold for screening
 
 ##### CREATE COUNTY GEOID & NAMES TABLE ######  You will NOT need this chunk if your indicator data table has target geolevel names already
 targetgeo_names <- county_names(vars = vars_list_acs, yr = year, srvy = survey)
-targetgeo_names <- select(as.data.frame(targetgeo_names), target_id = GEOID, target_name = NAME) %>%   # get targetgeolevel names
-  mutate(target_name = sub(" County, California", "", target_name))           # rename columns
-targetgeo_names <- distinct(targetgeo_names, .keep_all = FALSE)                                        # keep only unique rows, 1 per target geo
+
 #####
 
 
