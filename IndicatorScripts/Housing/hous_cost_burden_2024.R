@@ -1,4 +1,4 @@
-## Housing Cost Burden for RC v5 ##
+## Housing Cost Burden for RC v6 ##
 
 # Install packages if not already installed
 list.of.packages <- c("data.table", "stringr", "dplyr", "RPostgreSQL", "dbplyr", 
@@ -23,95 +23,17 @@ library(sf)
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
-############# Prep rda_shared_data table ######################
-root <- "W:/Data/Housing/HUD/CHAS/2016-2020/"
-dict <- read_excel(paste0(root, "/CHAS-data-dictionary-16-20.xlsx"), sheet = "Table 9")
-# View(dict)
-# 
-# state_data <- fread(paste0(root, "2016thru2020-040-csv/Table9.csv"), header = TRUE, data.table = FALSE)
-# state_data$geolevel <- "state"
-# # View(state_data)
-# 
-# county_data <- fread(paste0(root, "2016thru2020-050-csv/Table9.csv"), header = TRUE, data.table = FALSE)
-# county_data$geolevel <- "county"
-# # View(county_data)
-# 
-# city_data <- fread(paste0(root, "2016thru2020-160-csv/Table9.csv"), header = TRUE, data.table = FALSE)
-# city_data$geolevel <- "city"
-# # View(city_data)
-# 
-# tract_data <- fread(paste0(root, "2016thru2020-140-csv/Table9.csv"), header = TRUE, data.table = FALSE)
-# tract_data$geolevel <- "tract"
-# # View(tract_data)
-# 
-# 
-# state_data['cnty'] <- NA
-# state_data['place'] <- NA
-# state_data['tract'] <- NA
-# county_data['place'] <- NA
-# county_data['tract'] <- NA
-# tract_data['place'] <- NA
-# city_data['cnty'] <- NA
-# city_data['tract'] <- NA
-# 
-# chas <- rbind(state_data, county_data, city_data, tract_data) %>% relocate(geolevel, .after = "name")
-# chas_ca <- filter(chas, (grepl("US06",geoid))) # keep only CA: census tracts, cities, counties, state
-# 
-# # clean geoids
-# chas_ca <- chas_ca %>% mutate(geoid = case_when(
-#                                                 geolevel == 'state' ~ str_sub(chas_ca$geoid, start= -2),
-#                                                 geolevel == 'county' ~ str_sub(chas_ca$geoid, start= -5),
-#                                                 geolevel == 'city' ~ str_sub(chas_ca$geoid, start= -7),
-#                                                 geolevel == 'tract' ~ str_sub(chas_ca$geoid, start= -11)
-#                                               ))
-# names(chas_ca) <- tolower(names(chas_ca))
-# View(chas_ca)
+############# Pull rda_shared_data table ######################
+dict <- read_excel("W:/Data/Housing/HUD/CHAS/2016-2020//CHAS-data-dictionary-16-20.xlsx", sheet = "Table 9")
 
-# export chas data to rda shared table ------------------------------------------------------------
-## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
-# table_schema <- "housing"
-# table_name <- "hud_chas_cost_burden_multigeo_2016_20"
-# table_comment_source <- "Multigeo table including CA tracts, cities, counties, state. The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. Raw data saved here: W:\\Data\\Housing\\HUD\\CHAS\\2016-2020"
-# table_source <- "HUD CHAS (2016-2020) https://www.huduser.gov/portal/datasets/cp.html#data_2006-2020"
-# table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
-# 
-# # send table and comment to postgres
-# dbWriteTable(con, c(table_schema, table_name), chas_ca, overwrite = FALSE, row.names = FALSE)
-# dbSendQuery(conn = con, table_comment)
-
-############# Prep rda_shared_data table metadata ######################
-# clean metadata col names and combine tenure/race/cost into 1 column comment each
-# names(dict) <- gsub(x = names(dict), pattern = "\\/", replacement = "_")  
-# names(dict) <- gsub(x = names(dict), pattern = " ", replacement = "_")  
-# names(dict) <- tolower(names(dict))
-# dict$variable <- paste(dict$tenure, dict$race_ethnicity, dict$cost_burden, sep=", ")
-# names(dict)[1] <- "label"
-
-# colcomments <- dict
-# colcomments_charvar <- colcomments$variable
-# colname_charvar <- colcomments$label
-# 
-# # loop through the columns that will change depending on the table. This loop writes comments for all columns, then sends to the postgres db. 
-# for (i in seq_along(colname_charvar)){
-#   sqlcolcomment <-
-#     paste0("COMMENT ON COLUMN ", table_schema, ".", table_name, ".",
-#            colname_charvar[[i]], " IS '", colcomments_charvar[[i]], "'; COMMENT ON COLUMN ", table_schema, ".", table_name, ".",
-#            colname_charvar[[i]], " IS '", colcomments_charvar[[i]], "';" )
-#   
-#   # send sql comment to database
-#   dbSendQuery(conn = con, sqlcolcomment)
-# }
-
-
-chas_data <- st_read(con, query = "SELECT * FROM housing.hud_chas_cost_burden_multigeo_2016_20 WHERE geolevel <> 'tract'")  # comment out above after table is created
-
+chas_data <- st_read(con, query = "SELECT * FROM housing.hud_chas_cost_burden_multigeo_2016_20 WHERE geolevel IN ('city', 'county', 'state')")  # comment out above after table is created
 
 ###################### Begin Analysis ######################
 # data cleaning
 chas_data <- chas_data %>%
   mutate(geoname = gsub("^(.*?),.*", "\\1", chas_data$name)) %>% # clean geonames
   select(geoid, geoname, geolevel, starts_with("T9")) # drop unneeded cols
-View(chas_data)
+# View(chas_data)
 
 # make longer
 chas_data <- pivot_longer(chas_data, cols = starts_with("T9"), names_to = "Column Name", 
@@ -166,7 +88,7 @@ costburden_race <-
   left_join(chas_data %>%                                                   
               group_by(geoid, geoname, race, Tenure, geolevel) %>%                                  
               summarise(pop = sum(housingunits)))
-View(costburden_race)
+# View(costburden_race)
 ## calculate rate moe
 costburden_moe <-
   moe %>%
@@ -249,7 +171,7 @@ cost_burden_calcs_rc <-
               values_from = c("raw", "pop", "rate", "rate_moe", "rate_cv"),
               names_glue = "{race}_{.value}")%>% 
   as.data.frame()
-# View(cost_burden_calcs_rc)
+# # View(cost_burden_calcs_rc)
 
 ## Screen out values with high CVs and small populations
 
@@ -301,7 +223,7 @@ d <- owners
 
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
+source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 
 d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
 
@@ -311,7 +233,7 @@ d <- calc_diff(d) #calculate difference from best
 d <- calc_avg_diff(d) #calculate (row wise) mean difference from best
 d <- calc_p_var(d) #calculate (row wise) population or sample variance. be sure to use calc_s_var for sample data or calc_p_var for population data.
 d <- calc_id(d) #calculate index of disparity
-View(d)
+# View(d)
 
 #split STATE into separate table and format id, name columns
 state_table <- d[d$geolevel == 'state', ]
@@ -319,7 +241,7 @@ state_table <- d[d$geolevel == 'state', ]
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
 state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid") %>% select(-c(geolevel, Tenure))
-View(state_table)
+# View(state_table)
 
 #remove state from county table
 county_table <- d[d$geolevel == 'county', ]
@@ -328,7 +250,7 @@ county_table <- d[d$geolevel == 'county', ]
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
 county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid") %>% select(-c(geolevel, Tenure))
-View(county_table)
+# View(county_table)
 
 #remove county/state from place table -----
 city_table <- d[d$geolevel == 'city', ]
@@ -338,20 +260,20 @@ city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
 city_table <- city_table %>% 
   dplyr::rename("city_id" = "geoid", "city_name" = "geoname") %>% select(-c(geolevel, Tenure))
-View(city_table)
+# View(city_table)
 
 ###update info for postgres tables###
-county_table_name <- "arei_hous_cost_burden_owner_county_2023"
-state_table_name <- "arei_hous_cost_burden_owner_state_2023"
-city_table_name <- "arei_hous_cost_burden_owner_city_2023"
-rc_schema <- "v5"
+county_table_name <- "arei_hous_cost_burden_owner_county_2024"
+state_table_name <- "arei_hous_cost_burden_owner_state_2024"
+city_table_name <- "arei_hous_cost_burden_owner_city_2024"
+rc_schema <- "v6"
 
 indicator <- "The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. This data is"
-source <- "HUD CHAS (2016-2020) for city, (2014-2018) for county from https://www.huduser.gov/portal/datasets/cp.html#data_2006-2020"
+source <- "HUD CHAS (2016-2020) for city, county, and state from https://www.huduser.gov/portal/datasets/cp.html#data_2006-2020"
 
 # #send tables to postgres
-# to_postgres(county_table, state_table)
-# city_to_postgres()
+to_postgres(county_table, state_table)
+city_to_postgres()
 
 ################### RC CALCS: RENTERS ################################################################
 #Create a renters dataframe by filtering out owners so that it creates two sets of graphs for the RC_Functions for each owners and renters
@@ -363,7 +285,7 @@ d <- renters
 
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
+source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 
 d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
 
@@ -373,7 +295,7 @@ d <- calc_diff(d) #calculate difference from best
 d <- calc_avg_diff(d) #calculate (row wise) mean difference from best
 d <- calc_p_var(d) #calculate (row wise) population or sample variance. be sure to use calc_s_var for sample data or calc_p_var for population data.
 d <- calc_id(d) #calculate index of disparity
-View(d)
+# View(d)
 
 #split STATE into separate table and format id, name columns
 state_table <- d[d$geolevel == 'state', ]
@@ -381,7 +303,7 @@ state_table <- d[d$geolevel == 'state', ]
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
 state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid") %>% select(-c(geolevel, Tenure))
-View(state_table)
+# View(state_table)
 
 #remove state from county table
 county_table <- d[d$geolevel == 'county', ]
@@ -390,7 +312,7 @@ county_table <- d[d$geolevel == 'county', ]
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
 county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid") %>% select(-c(geolevel, Tenure))
-View(county_table)
+# View(county_table)
 
 #remove county/state from place table -----
 city_table <- d[d$geolevel == 'city', ]
@@ -401,17 +323,20 @@ city_table <- calc_ranks(city_table)
 city_table <- city_table %>% 
   dplyr::rename("city_id" = "geoid", "city_name" = "geoname") %>% select(-c(geolevel, Tenure))
 
-View(city_table)
+# View(city_table)
 
 ###update info for postgres tables###
-county_table_name <- "arei_hous_cost_burden_renter_county_2023"
-state_table_name <- "arei_hous_cost_burden_renter_state_2023"
-city_table_name <- "arei_hous_cost_burden_renter_city_2023"
-rc_schema <- "v5"
+county_table_name <- "arei_hous_cost_burden_renter_county_2024"
+state_table_name <- "arei_hous_cost_burden_renter_state_2024"
+city_table_name <- "arei_hous_cost_burden_renter_city_2024"
+rc_schema <- "v6"
 
 indicator <- "The percentage of rented housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. This data is"
-source <- "HUD CHAS (2016-2020) for city, (2014-2018) for county from https://www.huduser.gov/portal/datasets/cp.html#data_2006-2020"
+source <- "HUD CHAS (2016-2020) for city, county, and state from https://www.huduser.gov/portal/datasets/cp.html#data_2006-2020"
 
 # #send tables to postgres
-# to_postgres(county_table, state_table)
-# city_to_postgres()
+to_postgres(county_table, state_table)
+city_to_postgres()
+
+
+#dbDisconnect(con)
