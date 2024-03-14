@@ -19,83 +19,31 @@ library(RPostgreSQL)
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
+
+#### 1. SET UP: DEFINE VARIABLES, FX SOURCE, GET COUNTY NAMES ####
+
 # define variables used in several places that must be updated each year
 curr_yr <- "2020-2021"  # must keep same format
-dwnld_url <- "https://rrnetwork.org/ and https://elneedsassessment.org/"
+indicator <- "ECE Access "
+source <- "https://rrnetwork.org/ and https://elneedsassessment.org/. Created 3/14/24"
 rc_schema <- "v6"
 yr <- "2024"
 
+# set values for weighted average functions - You may need to update these
+source("W:/RDA Team/R/Functions/Cnty_St_Wt_Avg_Functions.R")     #set source for WA Functions script
+year <- c(2020)                   # define your data vintage
+subgeo <- c('zcta')              # define your sub geolevel: can be tract or zcta (zcta may require some additions to the fx since they are mostly for tract)
+targetgeolevel <- c('county')     # define your target geolevel
+survey <- "census"                # define which Census survey you want
+pop_threshold = 50                # define population threshold for screening
+census_api_key(census_key1)       # reload census API key
+vars_list <- "vars_list_p12"      # pop under 5 by race/eth, the list of variables is in the WA fx script
 
-#### 2. AIR IT POP DATA ####
-# 
-# #get la county infant-toddler (IT) data, converting asterisks to nulls
-# air_it <- read_xlsx("W:/Data/Education/American Institute for Research/2020/air_it_2020.xlsx", range = "A6:V2568", na = "*")
-# # air_it_meta <- read_xlsx("W:/Data/Education/American Institute for Research/2020/air_it_2020.xlsx", range = "A2:V7", na = "*") 
-# # air_it_meta <- air_it_meta[-which(air_it_meta[1]=='California'),] # check against subset below
-# # View(air_it_meta)
-# 
-# 
-# #subset IT data to keep columns we want
-# air_it <- air_it[c(1:2, 6, 10, 14, 18, 22)]
-# 
-# #rename columns
-# names(air_it) <- c("geoname", "pct_zip", "it_pop", "it_under_85smi", "it_enrollment", "it_unmet_need", "it_pct_unmet_need")
-# 
-# #join county ids
-# air_it <- left_join(air_it, ca_counties, by = "geoname") %>% 
-#   
-#   #fill in the blanks for county ids, 
-#   fill(GEOID) %>% 
-#   
-#   #filter out county totals
-#   filter(pct_zip != "Percent of Zip Code Allocation")  %>%
-#   
-#   #create county-zip id
-#   mutate(zip_county_id = paste0(geoname, "-", GEOID))
-# 
-# 
-#### 3. AIR PREK POP DATA ####
-# 
-# #get prek data, converting asterisks to nulls
-# air_prek <- read_xlsx("W:/Data/Education/American Institute for Research/2020/air_prek_2020.xlsx", range = "A4:V2566", na = "*")
-# # air_prek_meta <- read_xlsx("W:/Data/Education/American Institute for Research/2020/air_prek_2020.xlsx", range = "A2:V7", na = "*")
-# # air_prek_meta <- air_prek_meta[-which(air_prek_meta[1]=='California'),] # check against subset below
-# # View(air_prek_meta)
-# 
-# #subset prek data to columns we want
-# air_prek <- air_prek[c(1:2, 3:4, 7:8, 11:12, 15:16, 19:20)]
-# 
-# #rename columns
-# names(air_prek) <- c("geoname", "pct_zip", 
-#                      "prek3_pop","prek4_pop", 
-#                      "prek_under_85smi3","prek_under_85smi4", 
-#                      "prek_enrollment3","prek_enrollment4", 
-#                      "prek_unmet_need3", "prek_unmet_need4",
-#                      "prek_pct_unmet_need3", "prek_pct_unmet_need4")
-# 
-# #add 3 and 4 year olds
-# air_prek <- air_prek %>% mutate(
-#   prek_pop = prek3_pop + prek4_pop,
-#   prek_under_85smi = prek_under_85smi3 + prek_under_85smi4,
-#   prek_enrollment = prek_enrollment3 + prek_enrollment4,
-#   prek_unmet_need = prek_unmet_need3 + prek_unmet_need4,
-#   prek_pct_unmet_need = (prek_unmet_need3 + prek_unmet_need4) / (prek_under_85smi3 + prek_under_85smi4)
-# ) %>% select (geoname, pct_zip, prek_pop, prek_under_85smi, prek_enrollment, prek_unmet_need, prek_pct_unmet_need)
-# 
-# #join county ids
-# air_prek <- left_join(air_prek, ca_counties, by = "geoname") %>% 
-#   
-#   #fill in the blanks for county ids, 
-#   fill(GEOID) %>% 
-#   
-#   #filter out county totals
-#   filter(pct_zip != "Percent of Zip Code Allocation")  %>%
-#   
-#   #create county-zip id
-#   mutate(zip_county_id = paste0(geoname, "-", GEOID))
+county_yr <- 2021
+targetgeo_names <- county_names(vars = vars_list_acs, yr = county_yr, srvy = "acs5")              # use fx to get county names
 
 
-#### 4. AIR TK ENR DATA ####
+#### 2. AIR TK ENR DATA ####
 
 #get tk data
 air_tk <- read_xlsx("W:/Data/Education/American Institute for Research/2020/tk.xlsx", range = "A4:F2566", na = "*")
@@ -106,22 +54,22 @@ air_tk <- read_xlsx("W:/Data/Education/American Institute for Research/2020/tk.x
 names(air_tk) <- c("geoname", "pct_zip", "three", "four", "five", "tk") 
 
 #join county ids
-air_tk <- left_join(air_tk, ca_counties, by = "geoname") %>% 
+air_tk <- left_join(air_tk, targetgeo_names, by = c("geoname" = "target_name")) %>% 
   
   #fill in the blanks for county ids, 
-  fill(GEOID) %>% 
+  fill(target_id) %>% 
   
   #filter out county totals
   filter(pct_zip != "Percent of Zip Code Allocation")  %>%
   
   #create county-zip id
-  mutate(zip_county_id = paste0(geoname, "-", GEOID)) %>% 
+  mutate(zip_county_id = paste0(geoname, "-", target_id)) %>% 
   
   #remove unnecessary fields
   select(-"three", -"four", -"five")
 
 
-#### 5. CCCRRN ENR DATA ####
+#### 3. CCCRRN ENR DATA ####
 
 #get CCCRRN data
 cccrrn <- read_xlsx("W:/Data/Education/CCCRRN/2021/CatalystCA2021Data_rev.xlsx") %>% rename(geoname = ZIPCODE)
@@ -130,34 +78,13 @@ cccrrn <- read_xlsx("W:/Data/Education/CCCRRN/2021/CatalystCA2021Data_rev.xlsx")
 cccrrn$geoname <- as.character(cccrrn$geoname) 
 
 
-#### 6. Join AIR IT, PREK, TK, & CCRRN data)
+#### 4. Calculate enrollment counts ####
 
-#join it, prek, and tk data (removing duplicate fields)
-#df <- full_join(air_it, air_prek %>% select(-geoname, -pct_zip, -GEOID), by = "zip_county_id")
-#df <- full_join(df, air_tk %>% select(-geoname, -pct_zip, -GEOID), by = "zip_county_id")
-
-
-#this will be a many to many join and we will apply pct_zip next, check 91361
-#df <- left_join(df, cccrrn, by = "geoname")
-
-
-#### 7. Calculate enrollment counts ####
-
-#calculating as we did for education.ece_zip_code_enrollment_rate_2018 used in RC v3
-#which assumes ccrrn capacity = full enrollment. 
-#df$pct_zip <- as.numeric(df$pct_zip)/100
-#df$children <- rowSums(df[,c("it_pop", "prek_pop")] * df$pct_zip, na.rm = TRUE)
-df <- full_join(air_tk, cccrrn, by = "geoname") %>% rename("sub_id" = "geoname")
+# calculated as we did for education.ece_zip_code_enrollment_rate_2018 used in RC v3
+## which assumes ccrrn capacity = full enrollment. 
+df <- full_join(air_tk, cccrrn, by = "geoname") %>% rename("sub_id" = "geoname")  # join AIR TK and CCCRRN enr data
 df$enrollment <- rowSums(df[,c("INFCAP", "PRECAP", "FCCCAP", "tk")]) # * df$pct_zip, na.rm = TRUE)
 df <- filter(df, enrollment >= 0)
-#df$enrollment_rate <- df$enrollment / df$children * 100
-#df$enrollment_rate[df$enrollment_rate == "Inf"] <- 100
-
-# #format for WA fx
-# ind_df <- df %>% rename(target_id = GEOID, sub_id = geoname) %>%
-#                  mutate(geolevel = "zcta") %>% select(target_id, sub_id, geolevel, enrollment)
-# ind_df <- df %>% filter(children > 0) %>% rename(target_id = GEOID, sub_id = geoname, indicator = enrollment_rate) %>%
-#   mutate(geoname = "zcta") %>% select(target_id, sub_id, geoname)
 
 # import ZCTA-County Relationship File from Census. https://www.census.gov/geographies/reference-files/time-series/geo/relationship-files.2020.html#zcta
 ## Read more: https://www2.census.gov/geo/pdfs/maps-data/data/rel2020/zcta520/explanation_tab20_zcta520_county20_natl.pdf and
@@ -169,19 +96,7 @@ xwalk <- filter(rel_file, (substr(GEOID_COUNTY_20,1,2) == '06' & !is.na(GEOID_ZC
                 mutate(pct_zcta = AREALAND_PART / AREALAND_ZCTA5_20) %>% # calc pct of zcta within each county it overlaps with
                 select(c(zcta_id, county_id, county_name, pct_zcta))
 
-#### 8. Get ZCTA under 5 pop by race ####
-#set source for WA Functions script
-source("W:/RDA Team/R/Functions/Cnty_St_Wt_Avg_Functions.R")
-
-# set values for weighted average functions - You may need to update these
-year <- c(2020)                   # define your data vintage
-subgeo <- c('zcta')              # define your sub geolevel: can be tract or zcta (zcta may require some additions to the fx since they are mostly for tract)
-targetgeolevel <- c('county')     # define your target geolevel
-survey <- "census"                # define which Census survey you want
-pop_threshold = 50                # define population threshold for screening
-census_api_key(census_key1)       # reload census API key
-vars_list <- "vars_list_p12"      # pop under 5 by race/eth, the list of variables is in the WA fx script
-
+#### 5. Get ZCTA under 5 pop by race ####
 pop <- update_detailed_table_census(vars = vars_list, yr = year, srvy = survey)  # subgeolevel pop
 pop <- lapply(pop, function(x) cbind(x, table = str_extract(x$variable, "[^_]+"))) # create table field used in next step
 pop_ <- as.data.frame(pop) %>% select(c(GEOID, table, geolevel, value)) %>% group_by(GEOID, table, geolevel) %>% summarise(value_sum=sum(value))
@@ -200,7 +115,7 @@ n_df <- pop_wt %>% select(target_id, sub_id) %>% group_by(target_id) %>% summari
 pop_wt <- pop_wt %>% left_join(n_df, by = "target_id")
 
   
-##### 9. Get county and state under 5 pop by race ####
+#### 6. Get county and state under 5 pop by race ####
 
 ###### County Pop ##
 # Get target pop directly from API, rather than use targetgeo_pop{}, bc ZCTAs don't cover all of counties and don't fully nest into counties as CTs do.
@@ -226,37 +141,39 @@ ca_pop <- lapply(pop_state, function(x) cbind(x, table = str_extract(x$variable,
 ca_pop <- as.data.frame(ca_pop) %>% select(c(GEOID, table, value)) %>% group_by(GEOID, table) %>% summarise(value_sum=sum(value))
 ca_pop <- ca_pop %>% left_join(p12_meta, by = c("table" = "p12_table")) %>% select(-c(table)) # add race field
 ca_pop <- ca_pop %>% rename(target_id = GEOID, target_pop = value_sum, raceeth = p12_race)
-pop_state_wide <- pivot_wider(ca_pop, id_cols = target_id, names_from = raceeth, names_glue = "{raceeth}_{.value}", values_from = target_pop)
+ca_pop_wide <- pivot_wider(ca_pop, id_cols = target_id, names_from = raceeth, names_glue = "{raceeth}_{.value}", values_from = target_pop)
 
-n_st <- length(unique(pop_df$sub_id)) # get count of zctas in CA
-pop_state_wide$n <- n_st
+n_st <- length(unique(subpop$sub_id)) # get count of zctas in CA
+ca_pop_wide$n <- n_st
 
-########### 10. Calc indicator (weighted total enrollment rate by zcta) ################
+
+#### 7. Calc indicator by zcta ################
+# get indicator for county (weighted total enr rate for zctas)
 ind_df <- df %>% select(sub_id, enrollment) %>% left_join(pop_df %>% select(sub_id, target_id, total_sub_pop, pct_zcta), by = c("sub_id"), relationship = "many-to-many") 
 ind_df <- ind_df %>% mutate(wt_enr = ind_df$enrollment * ind_df$pct_zcta) %>% unique() # calc weighted enrollment and keep only unique rows (zcta-county combos)
 ind_df$indicator <- ind_df$wt_enr / ind_df$total_sub_pop * 100 # calc indicator (weighted total enr rate by zcta)
 # NOTE: ind_df must be overwritten later during state WA calcs.
 
-########### 11. Calc weighted averages ################
+
+#### 8. Calc weighted averages ################
 pop_threshold = 50 # same threshold as used in previous calcs
 
 ##### COUNTY WEIGHTED AVG CALCS ###
-pct_df <- pop_pct_multi(pop_df) # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
-wa <- wt_avg(pct_df)            # calc weighted average and apply reliability screens
-
-targetgeo_names <- county_names(vars = vars_list_acs, yr = year, srvy = "acs5")              # use fx to get county names
-wa <- wa %>% left_join(targetgeo_names, by = "target_id") %>% mutate(geolevel = 'county')    # add in target geolevel names and geolevel type
+    pct_df <- pop_pct_multi(pop_df) # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
+    wa <- wt_avg(pct_df)            # calc weighted average and apply reliability screens
+    
+    wa <- wa %>% left_join(targetgeo_names, by = "target_id") %>% mutate(geolevel = 'county')    # add in target geolevel names and geolevel type
 
 
 ##### STATE WEIGHTED AVG CALCS ###
-# This code comes from/replaces ca_pop_pct{}
+# This code comes from/replaces ca_pop_pct{} which works with tracts but not zctas
     subpop <- pop_wide %>% select(-c(pct_zcta, target_name, geolevel))
     subpop$target_id <- '06'                                           # replace county target_id values w/ state-level target_id value
-    subpop_long <- unique(subpop) %>% pivot_longer(subpop, 3:ncol(subpop), names_to="raceeth", values_to="sub_pop")
-    subpop_long$raceeth <- gsub("_sub_pop","-",as.character(subpop_long$raceeth))              # update to generic raceeth names
+    subpop_long <- pivot_longer(subpop, 3:ncol(subpop), names_to="raceeth", values_to="sub_pop") %>% unique()
+    subpop_long$raceeth <- gsub("_unw_sub_pop","-",as.character(subpop_long$raceeth))              # update to generic raceeth names
     
-    ca_pop_long <- pivot_longer(pop_state_wide, 2:ncol(pop_state_wide), names_to="raceeth", values_to="target_pop")
-    ca_pop_long$raceeth <- gsub("_target_pop","-",as.character(ca_pop_long$raceeth))           # update to generic raceeth names
+    ca_pop_long <- pivot_longer(ca_pop_wide, 2:ncol(ca_pop_wide), names_to="raceeth", values_to="target_pop")
+    ca_pop_long$raceeth <- gsub("_target_pop","-",as.character(ca_pop_long$raceeth))               # update to generic raceeth names
     
     subpop_long <- subpop_long %>% left_join(ca_pop_long, by=c("target_id" = "target_id", "raceeth" = "raceeth"))  # join target and sub pops in long form
     ca_pcts_long <- subpop_long %>% mutate(pct = ifelse(target_pop < pop_threshold, NA, (sub_pop / target_pop)),   # calc pcts of each target geolevel pop per sub geolevel pop
@@ -264,13 +181,68 @@ wa <- wa %>% left_join(targetgeo_names, by = "target_id") %>% mutate(geolevel = 
     ca_pct_df <- ca_pcts_long %>% select(sub_id, target_id, measure_pct, pct) %>%              # pivot long table back to wide keeping only new columns
       pivot_wider(names_from=measure_pct, values_from=pct)
     
-# get indicator (unweighted total enr rate for zctas)    
+    # get indicator for state (unweighted total enr rate for zctas)
+    ### unweighted bc for state-level, it doesn't matter if a zcta is split btwn 1 or more counties
     ind_df_st <- ind_df %>% select(c(sub_id, enrollment))
     ind_df_st <- ind_df_st %>% unique() %>% left_join(pop_wide %>% select(sub_id, total_unw_sub_pop) %>% unique(), by = "sub_id")
     ind_df_st$indicator <- ind_df_st$enrollment / ind_df_st$total_unw_sub_pop * 100
-    ind_df <- ind_df_st
+    ind_df <- ind_df_st  # note: this overwrites the weighted indicator ind_df
     
-ca_wa <- ca_wt_avg(ca_pct_df) %>% mutate(geolevel = 'state')   # add geolevel type
+    ca_wa <- ca_wt_avg(ca_pct_df) %>% mutate(geolevel = 'state')   # add geolevel type
+    ca_wa$n <- n_st # add unique count of zctas
+
+
+#### 9. Join county & state WA tables  ##################
+wa_all <- union(wa, ca_wa)
+wa_all <- rename(wa_all, geoid = target_id, geoname = target_name)   # rename columns for RC functions
+wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid)# move geoname column
+
+d <- wa_all
+View(d)
+
+
+#### 10. Calc RACE COUNTS stats ##############
+###### To use the following RC Functions, 'd' will need the following columns at minimum: 
+###### county_id and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
+
+#set source for RC Functions script
+source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
+
+d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
+
+d <- count_values(d) #calculate number of "_rate" values
+d <- calc_best(d) #calculate best rates -- be sure to define 'asbest' accordingly before running this function.
+d <- calc_diff(d) #calculate difference from best
+d <- calc_avg_diff(d) #calculate (row wise) mean difference from best
+d <- calc_p_var(d) #calculate (row wise) population or sample variance. be sure to use calc_s_var for sample data or calc_p_var for population data.
+d <- calc_id(d) #calculate index of disparity
+
+
+#split STATE into separate table and format id, name columns
+state_table <- d[d$geoname == 'California', ] %>% select(-c(geolevel))
+
+#calculate STATE z-scores
+state_table <- calc_state_z(state_table)
+state_table <- rename(state_table, state_id = geoid, state_name = geoname)
+View(state_table)
+
+
+#split COUNTY into separate table and format id, name columns
+county_table <- d[d$geolevel == 'county', ] %>% select(-c(geolevel))
+
+#calculate COUNTY z-scores
+county_table <- calc_z(county_table)
+county_table <- calc_ranks(county_table)
+county_table <- rename(county_table, county_id = geoid, county_name = geoname)
+View(county_table)
+
+
+### update info for postgres tables - automatically updates based on variables at top of script ###
+county_table_name <- paste0("arei_educ_ece_access_county_",yr)
+state_table_name <- paste0("arei_educ_ece_access_state_",yr)
+
+#send tables to postgres
+#to_postgres(county_table, state_table)
 
 
 #disconnect
