@@ -1,4 +1,4 @@
-### HS Graduation RC v5 ### 
+### HS Graduation RC v6 ### 
 
 # install packages if not already installed
 list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis")
@@ -37,7 +37,7 @@ table_comment_source <- "NOTE: This data is not trendable with data from before 
 table_source <- "Downloaded from https://www.cde.ca.gov/ds/ad/filesacgr.asp. Headers were cleaned of characters like /, ., ), and (. Cells with values of * were nullified. Created cdscode by concatenating county, district, and school codes"
 
 ## Run function to prep and export rda_shared_data table
-source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
+source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
 df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
 # View(df)
 
@@ -93,7 +93,7 @@ census_api_key(census_key1, install = TRUE, overwrite = TRUE)
 ca <- get_acs(geography = "county", 
               variables = c("B01001_001"), 
               state = "CA", 
-              year = 2021)
+              year = 2023)
 
 ca <- ca[,1:2]
 ca$NAME <- gsub(" County, California", "", ca$NAME)
@@ -106,7 +106,7 @@ df_wide <- merge(x=ca,y=df_wide,by="geoname", all=T) #%>% mutate(district='')
 df_wide <- within(df_wide, geoid[geoname == 'California'] <- '06')
 
 # get school district geoids (NCES District ID) - pull in active district records w/ geoids and names from CDE schools' list
-districts <- st_read(con, query = "SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_2021_22 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'") # district,
+districts <- st_read(con, query = "SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_2022_23 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'") # district,
 
 df_final <- 
   left_join(df_wide, districts, by = c('cdscode')) %>% 
@@ -125,7 +125,7 @@ d <- df_final
 ####################################################################################################################################################
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
+source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
@@ -165,13 +165,16 @@ city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" 
 View(city_table)
 
 ###update info for postgres tables###
-county_table_name <- "arei_educ_hs_grad_county_2023"
-state_table_name <- "arei_educ_hs_grad_state_2023"
-city_table_name <- "arei_educ_hs_grad_district_2023"
+county_table_name <- "arei_educ_hs_grad_county_2024"
+state_table_name <- "arei_educ_hs_grad_state_2024"
+city_table_name <- "arei_educ_hs_grad_district_2024"
 indicator <- "Four-year adjusted cohort graduation rate"
-source <- "CDE 2021-22 https://www.cde.ca.gov/ds/ad/filesacgr.asp"
-rc_schema <- "v5"
+source <- "CDE 2022-23 https://www.cde.ca.gov/ds/ad/filesacgr.asp"
+rc_schema <- "v6"
 
 #send tables to postgres
 # to_postgres(county_table,state_table)
 # city_to_postgres()
+
+
+#dbDisconnect(con)
