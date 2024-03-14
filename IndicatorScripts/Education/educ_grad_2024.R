@@ -22,32 +22,32 @@ library(usethis)
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
+# ############### PREP RDA_SHARED_DATA TABLE ########################
+# 
+# #Get HS Grad, handle nas, ensure DistrictCode reads in right
+# # Data Dictionary: https://www.cde.ca.gov/ds/ad/fsacgr.asp
+# filepath = "https://www3.cde.ca.gov/demo-downloads/acgr/acgr23-v2.txt"
+# fieldtype = 1:12 # specify which cols should be varchar, the rest will be assigned numeric
+# 
+# ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+# table_schema <- "education"
+# table_name <- "cde_multigeo_calpads_graduation_2022_23"
+# table_comment_source <- "NOTE: This data is not trendable with data from before 2016-17. See more here: https://www.cde.ca.gov/ds/sd/sd/acgrinfo.asp"
+# table_source <- "Downloaded from https://www.cde.ca.gov/ds/ad/filesacgr.asp. Headers were cleaned of characters like /, ., ), and (. Cells with values of * were nullified. Created cdscode by concatenating county, district, and school codes"
+# 
+# ## Run function to prep and export rda_shared_data table
+# source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
+# df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
+# # View(df)
+# 
+# ## Run function to add rda_shared_data column comments
+# ## See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
+# url <-  "https://www.cde.ca.gov/ds/ad/fsacgr.asp"   # define webpage with metadata
+# html_nodes <- "table"
+# colcomments <- get_cde_metadata(url, html_nodes, table_schema, table_name)
+# View(colcomments)
 
-############### PREP RDA_SHARED_DATA TABLE ########################
-
-#Get HS Grad, handle nas, ensure DistrictCode reads in right
-# Data Dictionary: https://www.cde.ca.gov/ds/ad/fsacgr.asp
-filepath = "https://www3.cde.ca.gov/demo-downloads/acgr/acgr23-v2.txt"
-fieldtype = 1:12 # specify which cols should be varchar, the rest will be assigned numeric
-
-## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
-table_schema <- "education"
-table_name <- "cde_multigeo_calpads_graduation_2022_23"
-table_comment_source <- "NOTE: This data is not trendable with data from before 2016-17. See more here: https://www.cde.ca.gov/ds/sd/sd/acgrinfo.asp"
-table_source <- "Downloaded from https://www.cde.ca.gov/ds/ad/filesacgr.asp. Headers were cleaned of characters like /, ., ), and (. Cells with values of * were nullified. Created cdscode by concatenating county, district, and school codes"
-
-## Run function to prep and export rda_shared_data table
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
-df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
-# View(df)
-
-## Run function to add rda_shared_data column comments
-## See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
-url <-  "https://www.cde.ca.gov/ds/ad/fsacgr.asp"   # define webpage with metadata
-html_nodes <- "table"
-colcomments <- get_cde_metadata(url, table_schema, table_name)
-View(colcomments)
-
+###### Load High School Graduation Data #########
 df <- st_read(con, query = "SELECT * FROM education.cde_multigeo_calpads_graduation_2022_23") # comment out code to pull data and use this once rda_shared_data table is created
 
 #### Continue prep for RC ####
@@ -87,13 +87,13 @@ df_wide <- df_subset %>% pivot_wider(names_from = reportingcategory, names_glue 
                                      values_from = c(raw, pop, rate))
 df_wide$geoname[df_wide$geoname =='State'] <- 'California'   # update state rows' geoname field values
 
-## get county geoids
+##### get county geoids ######
 census_api_key(census_key1, install = TRUE, overwrite = TRUE)
 
 ca <- get_acs(geography = "county", 
               variables = c("B01001_001"), 
               state = "CA", 
-              year = 2023)
+              year = 2022)
 
 ca <- ca[,1:2]
 ca$NAME <- gsub(" County, California", "", ca$NAME)
