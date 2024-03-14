@@ -151,8 +151,10 @@ ca_pop_wide$n <- n_st
 # get indicator for county (weighted total enr rate for zctas)
 ind_df <- df %>% select(sub_id, enrollment) %>% left_join(pop_df %>% select(sub_id, target_id, total_sub_pop, pct_zcta), by = c("sub_id"), relationship = "many-to-many") 
 ind_df <- ind_df %>% mutate(wt_enr = ind_df$enrollment * ind_df$pct_zcta) %>% unique() # calc weighted enrollment and keep only unique rows (zcta-county combos)
+
+# NOTE: ind_df will be overwritten later during state WA calcs.
 ind_df$indicator <- ind_df$wt_enr / ind_df$total_sub_pop * 100 # calc indicator (weighted total enr rate by zcta)
-# NOTE: ind_df must be overwritten later during state WA calcs.
+ind_df$indicator[ind_df$indicator == "Inf"] <- 100
 
 
 #### 8. Calc weighted averages ################
