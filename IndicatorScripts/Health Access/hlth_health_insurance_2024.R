@@ -96,4 +96,4 @@ rc_schema <- "v6"
 to_postgres(county_table,state_table)
 city_to_postgres(city_table)
 
-#dbDisconnect(con)
+dbDisconnect(con)
