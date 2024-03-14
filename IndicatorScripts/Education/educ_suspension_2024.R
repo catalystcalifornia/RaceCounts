@@ -1,11 +1,10 @@
-### HS Graduation RC v6 ### 
+### Suspension for RC v6 ###
 
-# install packages if not already installed
+#install packages if not already installed
 list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
-# Load Libraries
 library(readr)
 library(dplyr)
 library(tidyr)
@@ -16,62 +15,61 @@ library(sf)
 library(tidyverse) # to scrape metadata table from cde website
 library(rvest) # to scrape metadata table from cde website
 library(stringr) # cleaning up data
-library(usethis)
+library(usethis) # connect to github
 
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
-# ############### PREP RDA_SHARED_DATA TABLE ########################
-# 
-# #Get HS Grad, handle nas, ensure DistrictCode reads in right
-# # Data Dictionary: https://www.cde.ca.gov/ds/ad/fsacgr.asp
-# filepath = "https://www3.cde.ca.gov/demo-downloads/acgr/acgr23-v2.txt"
-# fieldtype = 1:12 # specify which cols should be varchar, the rest will be assigned numeric
+############### PREP DATA ########################
+
+# ## Get Suspensions Data from CDE website
+# filepath = "https://www3.cde.ca.gov/demo-downloads/discipline/suspension22-v2.txt"   # will need to update each year
+# fieldtype = 1:11 # specify which cols should be varchar, the rest will be assigned numeric
 # 
 # ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 # table_schema <- "education"
-# table_name <- "cde_multigeo_calpads_graduation_2022_23"
-# table_comment_source <- "NOTE: This data is not trendable with data from before 2016-17. See more here: https://www.cde.ca.gov/ds/sd/sd/acgrinfo.asp"
-# table_source <- "Downloaded from https://www.cde.ca.gov/ds/ad/filesacgr.asp. Headers were cleaned of characters like /, ., ), and (. Cells with values of * were nullified. Created cdscode by concatenating county, district, and school codes"
+# table_name <- "cde_multigeo_calpads_suspensions_2022_23"
+# table_comment_source <- "NOTE: Only use suspension data from this link, https://www.cde.ca.gov/ds/ad/filessd.asp. The Dashboard download is incomplete and lacks data for most high schools (at least within LAUSD). Wide data format, multigeo table with state, county, district, and school"
+# table_source <- "Wide data format, multigeo table with state, county, district, and school"
 # 
 # ## Run function to prep and export rda_shared_data table
 # source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
 # df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
-# # View(df)
 # 
+# ###### NOTE: This function isn't working for Suspensions (loop part of function is the issue).
 # ## Run function to add rda_shared_data column comments
-# ## See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
-# url <-  "https://www.cde.ca.gov/ds/ad/fsacgr.asp"   # define webpage with metadata
+# # See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
+# url <-  "https://www.cde.ca.gov/ds/ad/fssd.asp"   # define webpage with metadata
 # html_nodes <- "table"
 # colcomments <- get_cde_metadata(url, html_nodes, table_schema, table_name)
 # View(colcomments)
 
-# Get County GEOIDS --------------------------------------------------------------------
-census_api_key(census_key1, install = TRUE, overwrite = TRUE)
+##### get county geoids-----
+census_api_key(census_key1, overwrite = TRUE)
 Sys.getenv("CENSUS_API_KEY") # confirms value saved to .renviron
-
 counties <- get_acs(geography = "county", 
-                    variables = c("B01001_001"), 
-                    state = "CA", 
-                    year = 2022)
+              variables = c("B01001_001"), 
+              state = "CA", 
+              year = 2022)
 
 counties <- counties[,1:2]
 counties$NAME <- gsub(" County, California", "", counties$NAME)
 names(counties) <- c("geoid", "geoname")
 
-###### High School Graduation Data: Prep for RC Functions #########
-df <- st_read(con, query = "SELECT * FROM education.cde_multigeo_calpads_graduation_2022_23") # comment out code to pull data and use this once rda_shared_data table is created
 
 #### Continue prep for RC ####
+df <- st_read(con, query = "SELECT * FROM education.cde_multigeo_calpads_suspensions_2022_23") # comment out code to pull data and use this once rda_shared_data table is created
 
-#filter for county and state rows, all types of schools, and racial categories
-df_subset <- df %>% filter(aggregatelevel %in% c("C", "T", "D") & charterschool == "All" & dass == "All" & reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
-  dplyr::select(aggregatelevel, cdscode, countyname, districtname, reportingcategory, cohortstudents, regularhsdiplomagraduatescount, regularhsdiplomagraduatesrate)
+#filter for county and state rows, all types of schools, and racial categories only
+df_subset <- df %>% filter(aggregatelevel %in% c("C", "T", "D") & charteryn == "All" & 
+                             reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
+    #select just fields we need
+     select(cdscode, aggregatelevel, countycode, districtcode, countyname, districtname, reportingcategory, unduplicatedcountofstudentssuspendedtotal, cumulativeenrollment, suspensionratetotal)
 
 #format for column headers
-df_subset <- rename(df_subset, raw = "regularhsdiplomagraduatescount", pop = "cohortstudents", rate = "regularhsdiplomagraduatesrate")
-
+df_subset <- rename(df_subset, raw = "unduplicatedcountofstudentssuspendedtotal", pop = "cumulativeenrollment", rate = "suspensionratetotal")
+#rename race categories
 df_subset$reportingcategory <- gsub("TA", "total", df_subset$reportingcategory)
 df_subset$reportingcategory <- gsub("RB", "nh_black", df_subset$reportingcategory)
 df_subset$reportingcategory <- gsub("RI", "nh_aian", df_subset$reportingcategory)
@@ -81,27 +79,23 @@ df_subset$reportingcategory <- gsub("RH", "latino", df_subset$reportingcategory)
 df_subset$reportingcategory <- gsub("RP", "nh_pacisl", df_subset$reportingcategory)
 df_subset$reportingcategory <- gsub("RT", "nh_twoormor", df_subset$reportingcategory)
 df_subset$reportingcategory <- gsub("RW", "nh_white", df_subset$reportingcategory)
-df_subset <- rename(df_subset,c("geoname" = "countyname"))
-
-#pop screen. suppress raw/rate for groups with fewer than 20 graduating students.
-threshold = 20
-df_subset <- df_subset %>% mutate(rate = ifelse(raw < threshold, NA, rate), raw = ifelse(raw < threshold, NA, raw))
 
 #pivot wider
-df_wide <- df_subset %>% pivot_wider(names_from = reportingcategory, names_glue = "{reportingcategory}_{.value}", values_from = c(raw, pop, rate))
+df_wide <- df_subset %>% pivot_wider(names_from = reportingcategory, names_glue = "{reportingcategory}_{.value}", values_from = c(raw, pop, rate)) %>% rename( c("geoname" = "countyname"))
 df_wide$geoname[df_wide$geoname =='State'] <- 'California'   # update state rows' geoname field values
-df_wide <- merge(x=counties,y=df_wide,by="geoname", all=T) #add county geoids
-df_wide <- within(df_wide, geoid[geoname == 'California'] <- '06')#add state geoid
+df_wide <- merge(x=counties,y=df_wide,by="geoname", all=T) # add county geoids
+df_wide <- within(df_wide, geoid[geoname == 'California'] <- '06') # add state geoid
 
 # get school district geoids (NCES District ID) - pull in active district records w/ geoids and names from CDE schools' list
 districts <- st_read(con, query = "SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_2022_23 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'") # district,
 
 df_final <- left_join(df_wide, districts, by = c('cdscode')) %>% dplyr::rename("geoid" = "geoid.x") %>%
   mutate(geoid=ifelse(aggregatelevel == "D", geoid.y, geoid), geoname=ifelse(!is.na(districtname), districtname, geoname)) %>% 
-  select(-c(geoid.y, districtname)) %>% distinct() %>%  # combine distinct county and district geoid matched df's
+  select(-c(geoid.y, districtname, countycode, districtcode)) %>% distinct() %>%  # combine distinct county and district geoid matched df's
   relocate(geoid, geoname, cdscode, aggregatelevel)
 
 df_final <- filter(df_final, !is.na(geoid)) # remove records without fips codes
+# View(df_final)
 
 d <- df_final
 
@@ -110,7 +104,7 @@ d <- df_final
 #set source for RC Functions script
 source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 
-d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
+d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
 
 d <- count_values(d) #calculate number of "_rate" values
 d <- calc_best(d) #calculate best rates -- be sure to update previous line of code accordingly before running this function.
@@ -121,7 +115,7 @@ d <- calc_id(d) #calculate index of disparity
 # View(d)
 
 #split STATE into separate table and format id, name columns
-state_table <- d[d$geoname == 'California', ]%>% select(-c(cdscode, aggregatelevel))
+state_table <- d[d$geoname == 'California', ] %>% select(-c(cdscode, aggregatelevel))
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
@@ -143,18 +137,19 @@ city_table <- d[d$aggregatelevel == 'D', ] %>% select(-c(aggregatelevel))
 #calculate DISTRICT z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
-city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" = "geoname") %>% relocate(cdscode, .after = dist_id)
+city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" = "geoname") %>% relocate(cdscode, .after = dist_id) 
 # View(city_table)
 
 ###update info for postgres tables###
-county_table_name <- "arei_educ_hs_grad_county_2024"
-state_table_name <- "arei_educ_hs_grad_state_2024"
-city_table_name <- "arei_educ_hs_grad_district_2024"
-indicator <- "Four-year adjusted cohort graduation rate"
-source <- "CDE 2022-23 https://www.cde.ca.gov/ds/ad/filesacgr.asp"
+county_table_name <- "arei_educ_suspension_county_2024"
+state_table_name <- "arei_educ_suspension_state_2024"
+city_table_name <- "arei_educ_suspension_district_2024"
 rc_schema <- "v6"
+
+indicator <- "Unduplicated students suspended, cumulative enrollment, and unduplicated suspension rate. This data is"
+source <- "CDE 2022-23 https://www.cde.ca.gov/ds/ad/filessd.asp"
 
 #send tables to postgres
 # to_postgres(county_table,state_table)
 # city_to_postgres()
-#dbDisconnect(con)
+# dbDisconnect(con)
