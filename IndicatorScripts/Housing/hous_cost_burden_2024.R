@@ -335,8 +335,7 @@ indicator <- "The percentage of rented housing units experiencing cost burden (M
 source <- "HUD CHAS (2016-2020) for city, county, and state from https://www.huduser.gov/portal/datasets/cp.html#data_2006-2020"
 
 # #send tables to postgres
-to_postgres(county_table, state_table)
-city_to_postgres()
+#to_postgres(county_table, state_table)
+#city_to_postgres()
 
-
-#dbDisconnect(con)
+dbDisconnect(con)
