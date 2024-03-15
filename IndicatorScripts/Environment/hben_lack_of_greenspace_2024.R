@@ -68,7 +68,7 @@ city_wa <- city_wa %>% left_join(select(places, c(GEOID, NAME)), by = c("target_
 city_wa <- city_wa %>% rename(target_name = NAME) %>% select(-c(geometry)) %>% mutate(geolevel = 'city')  # change NAME to target_name, drop geometry, add geolevel
 
 
-############# 3. COUNTY CALCS ##################
+##### 3. COUNTY CALCS ##################
 
 ###### DEFINE VALUES FOR FUNCTIONS ###
 
@@ -104,7 +104,7 @@ wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screen
 wa <- wa %>% left_join(targetgeo_names, by = "target_id") %>% mutate(geolevel = 'county')    # add in target geolevel names
 
 
-############# 4. STATE CALCS ##################
+##### 4. STATE CALCS ##################
 # get and prep state pop
 ca_pop_wide <- state_pop(vars = vars_list_acs, yr = year, srvy = survey)
 
@@ -113,20 +113,20 @@ ca_pct_df <- ca_pop_pct(ca_pop_wide)
 ca_wa <- ca_wt_avg(ca_pct_df) %>% mutate(geolevel = 'state')
 
 
-############ 5. JOIN CITY, COUNTY & STATE WA TABLES  ##################
+##### 5. JOIN CITY, COUNTY & STATE WA TABLES  ##################
 wa_all <- union(wa, ca_wa) %>% union(city_wa) 
 wa_all <- rename(wa_all, geoid = target_id, geoname = target_name)   # rename columns for RC functions
 wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid)        # move geoname column
 
 
-############ 6. ADDITIONAL SCREENING FOR GREENSPACE ####################
+##### 6. ADDITIONAL SCREENING FOR GREENSPACE ####################
 # This screen converts any rate = 0 into NA, bc it's virtually impossible for there to be no roads, parking lots, or roofs in an entire city or county
 wa_all[, 3:11][wa_all[, 3:11] == 0] <- NA  # screens only cols 3:11 which are the _rate columns
 
 d <- wa_all
 View(d)
 
-############## 7. CALC RACE COUNTS STATS ##############
+##### 7. CALC RACE COUNTS STATS ##############
 ############ To use the following RC Functions, 'd' will need the following columns at minimum: 
 ############ county_id and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
