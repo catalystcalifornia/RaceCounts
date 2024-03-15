@@ -95,7 +95,7 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
   rc_schema <- "v6"
   
 ####### SEND TO POSTGRES #######
-# to_postgres(county_table, state_table)
-# city_to_postgres()
-  
-# dbDisconnect(con)
+to_postgres(county_table, state_table)
+city_to_postgres()
+
+dbDisconnect(con)
