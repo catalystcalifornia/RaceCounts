@@ -83,7 +83,7 @@ cccrrn$geoname <- as.character(cccrrn$geoname)
 # calculated as we did for education.ece_zip_code_enrollment_rate_2018 used in RC v3
 ## which assumes ccrrn capacity = full enrollment. 
 df <- full_join(air_tk, cccrrn, by = "geoname") %>% rename("sub_id" = "geoname")  # join AIR TK and CCCRRN enr data
-df$enrollment <- rowSums(df[,c("INFCAP", "PRECAP", "FCCCAP", "tk")]) # * df$pct_zip, na.rm = TRUE)
+df$enrollment <- rowSums(df[,c("INFCAP", "PRECAP", "FCCCAP", "tk")]) # unweighted enrollment
 df <- filter(df, enrollment >= 0)
 
 # import ZCTA-County Relationship File from Census. https://www.census.gov/geographies/reference-files/time-series/geo/relationship-files.2020.html#zcta
@@ -93,7 +93,7 @@ filepath <- "https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/tab
 rel_file <- read_delim(file = filepath, delim = "|", na = c("*", ""))
 xwalk <- filter(rel_file, (substr(GEOID_COUNTY_20,1,2) == '06' & !is.na(GEOID_ZCTA5_20))) %>%
                 rename(zcta_id = GEOID_ZCTA5_20, county_id = GEOID_COUNTY_20, county_name = NAMELSAD_COUNTY_20) %>%
-                mutate(pct_zcta = AREALAND_PART / AREALAND_ZCTA5_20) %>% # calc pct of zcta within each county it overlaps with
+                mutate(pct_zcta = AREALAND_PART / AREALAND_ZCTA5_20) %>%      # calc pct of zcta within each county it overlaps with
                 select(c(zcta_id, county_id, county_name, pct_zcta))
 
 #### 5. Get ZCTA under 5 pop by race ####
@@ -129,7 +129,7 @@ pop_target_wide <- pop_target_ %>% as.data.frame() %>% pivot_wider(id_cols = c(G
 pop_target_wide <- pop_target_wide %>% rename(target_id = GEOID)
 colnames(pop_target_wide)[2:ncol(pop_target_wide)] <- paste(colnames(pop_target_wide)[2:ncol(pop_target_wide)], "target_pop", sep = "_") # rename target_pop columns
 
-#join zcta data to county data and format
+#join county data to zcta data and format
 pop_df <- left_join(pop_wt, pop_target_wide, by="target_id")
 
 
