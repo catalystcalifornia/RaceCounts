@@ -78,7 +78,7 @@ cccrrn <- read_xlsx("W:/Data/Education/CCCRRN/2021/CatalystCA2021Data_rev.xlsx")
 cccrrn$geoname <- as.character(cccrrn$geoname) 
 
 
-#### 4. Calculate enrollment counts ####
+#### 4. Join AIR TK and CCCRRN then calculate enrollment counts ####
 
 # calculated as we did for education.ece_zip_code_enrollment_rate_2018 used in RC v3
 ## which assumes ccrrn capacity = full enrollment. 
@@ -250,4 +250,9 @@ state_table_name <- paste0("arei_educ_ece_access_state_",yr)
 
 #disconnect
 dbDisconnect(con)
+
+
+
+
+
 
