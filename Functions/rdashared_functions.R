@@ -13,6 +13,12 @@ library(data.table) # %like% function
 library(dplyr)
 
 
+### For prep_acs: Check table variables each year as they may change. Modify the URLs below by year and table. ###
+# Subject Tables: https://api.census.gov/data/2022/acs/acs5/subject/groups/S2701.html
+# Detailed Tables: https://api.census.gov/data/2022/acs/acs5/groups/B19301.html
+# Profile Tables: https://api.census.gov/data/2022/acs/acs5/profile/groups/DP05.html
+
+
 ##### Prep ACS tables for RC fx #####
 prep_acs <- function(x, table_code, cv_threshold, pop_threshold) {
   
