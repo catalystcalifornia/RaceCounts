@@ -31,19 +31,19 @@ options(scipen = 999) # disable scientific notation
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
-# ## Get Student Homelessness Data from CDE website
-filepath = "https://www3.cde.ca.gov/demo-downloads/homeless/hse2223.txt"   # will need to update each year
-fieldtype = 1:12 # specify which cols should be varchar, the rest will be assigned numeric
-
-## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
-table_schema <- "education"
-table_name <- "cde_multigeo_calpads_homelessness_2022_23"
-table_comment_source <- "NOTE: This data is not trendable with data from before 2016-17. See more here: https://www.cde.ca.gov/ds/ad/fileshse.asp."
-table_source <- "Downloaded from https://www.cde.ca.gov/ds/ad/fileshse.asp. Headers were cleaned of characters like /, ., ), and (. Cells with values of * were nullified. Created cdscode by concatenating county, district, and school codes"
-
-## Run function to prep and export rda_shared_data table
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
-df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
+#### 1) Get Student Homelessness Data from CDE website or postgres ####
+# filepath = "https://www3.cde.ca.gov/demo-downloads/homeless/hse2223.txt"   # will need to update each year
+# fieldtype = 1:12 # specify which cols should be varchar, the rest will be assigned numeric
+# 
+# ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+# table_schema <- "education"
+# table_name <- "cde_multigeo_calpads_homelessness_2022_23"
+# table_comment_source <- "NOTE: This data is not trendable with data from before 2016-17"
+# table_source <- "Downloaded from https://www.cde.ca.gov/ds/ad/fileshse.asp. Headers were cleaned of characters like /, ., ), and (. Also cells with values of * were nullified. Created cdscode by concatenating county, district, and school codes"
+# 
+# ## Run function to prep and export rda_shared_data table
+# source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
+# df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
 
 ###### NOTE: This function isn't working for Student Homelessness (loop part of function is the issue).
 ## Run function to add rda_shared_data column comments
@@ -53,7 +53,9 @@ df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_
 # colcomments <- get_cde_metadata(url, html_nodes, table_schema, table_name)
 # View(colcomments)
 
-#### get census geoids----
+df <- st_read(con, query = "SELECT * FROM education.cde_multigeo_calpads_homelessness_2022_23") # comment out code above to pull data and use this once rda_shared_data table is created
+
+#### 2) Get census geoids----
 
 counties <- get_acs(geography = "county", 
                     variables = c("B01001_001"), 
@@ -64,9 +66,7 @@ counties <- counties[,1:2]
 counties$NAME <- gsub(" County, California", "", counties$NAME)
 names(counties) <- c("geoid", "geoname")
 
-##### cde other way -----
-#### Continue prep for RC ####
-df <- st_read(con, query = "SELECT * FROM education.cde_multigeo_calpads_homelessness_2022_23") # comment out code to pull data and use this once rda_shared_data table is created
+#### 3) Continue prep for RC fx ####
 
 #filter for county and state rows, all types of schools, and racial categories only
 df_subset <- df %>% filter(aggregatelevel %in% c("C", "T", "D") & charterschool == "All" & dass=="All" & reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
@@ -75,6 +75,7 @@ df_subset <- df %>% filter(aggregatelevel %in% c("C", "T", "D") & charterschool 
 
 #format for column headers
 df_subset <- df_subset %>% rename(raw = "homelessstudentenrollment", pop = "cumulativeenrollment") %>% mutate(rate=(raw/pop)*100)
+
 #rename race categories
 df_subset$reportingcategory <- gsub("TA", "total", df_subset$reportingcategory)
 df_subset$reportingcategory <- gsub("RB", "nh_black", df_subset$reportingcategory)
