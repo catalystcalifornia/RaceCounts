@@ -83,7 +83,7 @@ cccrrn$geoname <- as.character(cccrrn$geoname)
 # calculated as we did for education.ece_zip_code_enrollment_rate_2018 used in RC v3
 ## which assumes ccrrn capacity = full enrollment. 
 df <- full_join(air_tk, cccrrn, by = "geoname") %>% rename("sub_id" = "geoname")  # join AIR TK and CCCRRN enr data
-df$enrollment <- rowSums(df[,c("INFCAP", "PRECAP", "FCCCAP", "tk")]) # unweighted enrollment
+df$enrollment <- rowSums(df[,c("INFCAP", "PRECAP", "FCCCAP", "tk")], na.rm=TRUE) # unweighted enrollment
 df <- filter(df, enrollment >= 0)
 
 # import ZCTA-County Relationship File from Census. https://www.census.gov/geographies/reference-files/time-series/geo/relationship-files.2020.html#zcta
@@ -114,7 +114,7 @@ colnames(pop_wt) <- gsub('unw_', '', colnames(pop_wt)) # drop unw (unweighted) p
 n_df <- pop_wt %>% select(target_id, sub_id) %>% group_by(target_id) %>% summarise(n = n()) # count of sub_geos in each target_geo
 pop_wt <- pop_wt %>% left_join(n_df, by = "target_id")
 
-  
+
 #### 6. Get county and state under 5 pop by race ####
 
 ###### County Pop ##
@@ -142,9 +142,6 @@ ca_pop <- as.data.frame(ca_pop) %>% select(c(GEOID, table, value)) %>% group_by(
 ca_pop <- ca_pop %>% left_join(p12_meta, by = c("table" = "p12_table")) %>% select(-c(table)) # add race field
 ca_pop <- ca_pop %>% rename(target_id = GEOID, target_pop = value_sum, raceeth = p12_race)
 ca_pop_wide <- pivot_wider(ca_pop, id_cols = target_id, names_from = raceeth, names_glue = "{raceeth}_{.value}", values_from = target_pop)
-
-n_st <- length(unique(subpop$sub_id)) # get count of zctas in CA
-ca_pop_wide$n <- n_st
 
 
 #### 7. Calc indicator by zcta ################
@@ -188,10 +185,10 @@ pop_threshold = 50 # same threshold as used in previous calcs
     ind_df_st <- ind_df %>% select(c(sub_id, enrollment))
     ind_df_st <- ind_df_st %>% unique() %>% left_join(pop_wide %>% select(sub_id, total_unw_sub_pop) %>% unique(), by = "sub_id")
     ind_df_st$indicator <- ind_df_st$enrollment / ind_df_st$total_unw_sub_pop * 100
-    ind_df_st$indicator[ind_df_st$indicator == "Inf"] <- 100
-        ind_df <- ind_df_st  # note: this overwrites the weighted indicator ind_df
+    ind_df <- ind_df_st  # note: this overwrites the weighted indicator ind_df
     
     ca_wa <- ca_wt_avg(ca_pct_df) %>% mutate(geolevel = 'state')   # add geolevel type
+    n_st <- length(unique(pop_wide$sub_id))  # get count of zctas statewide
     ca_wa$n <- n_st # add unique count of zctas
 
 
@@ -209,7 +206,7 @@ View(d)
 ###### county_id and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
 #set source for RC Functions script
-source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
+source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
