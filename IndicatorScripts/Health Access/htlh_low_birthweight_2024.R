@@ -13,7 +13,12 @@ library(tidyverse)
 library(usethis)
 
 source("W:\\RDA Team\\R\\credentials_source.R")
+
+# update each year
 setwd("W:/Data/Health/Births/CDC/2016-22") # SET WD
+curr_yr <- '2016-2022'     
+rc_schema <- 'v6'
+rc_yr <- '2024'
 
 # Functions to read State data --------------------------------------------
 
@@ -28,10 +33,16 @@ read_state_data <- function(x, group) {
               county_id = `State of Residence Code`) #will rename after rbind
   
   
-  ##### for aian_nhpi and nh races #### 
+  ##### for nh races #### 
   if(is.null(group)) {
     
     y$Notes <- y$`Mother's Single Race 6`
+    y$Notes <- gsub('White', 'nh_white', y$Notes)
+    y$Notes <- gsub('Black or African American', 'nh_black', y$Notes)
+    y$Notes <- gsub('Asian', 'nh_asian', y$Notes)
+    y$Notes <- gsub('More than one race', 'nh_twoormor', y$Notes)
+    
+    
     y <- y[,-c(4:5)]
     
     y <- y %>% filter(!is.na(Notes))
@@ -71,9 +82,9 @@ read_state_data_aian_nhpi <- function(x, group) {
   y$aian <- ifelse(grepl("AIAN",y$Notes), 1, 0)
   y$pacisl <- ifelse(grepl("NHOPI",y$Notes), 1, 0)
   
-  aian_ <- y %>% group_by(county_id, county_name, aian) %>% summarise(Births = sum(Births)) %>% mutate(Notes = 'American Indian or Alaska Native') %>% filter(aian == 1)
+  aian_ <- y %>% group_by(county_id, county_name, aian) %>% summarise(Births = sum(Births)) %>% mutate(Notes = 'aian') %>% filter(aian == 1)
   aian_ <- aian_ %>% select(Notes, county_name, county_id, Births)
-  pacisl_ <- y %>% group_by(county_name, county_id, pacisl) %>% summarise(Births = sum(Births)) %>% mutate(Notes = 'Native Hawaiian or Other Pacific Islander') %>% filter(pacisl == 1)
+  pacisl_ <- y %>% group_by(county_name, county_id, pacisl) %>% summarise(Births = sum(Births)) %>% mutate(Notes = 'pacisl') %>% filter(pacisl == 1)
   pacisl_ <- pacisl_ %>% select(Notes, county_name, county_id, Births)
   
   y <- rbind(aian_,pacisl_) # put all aian and pacisl back together
@@ -94,12 +105,15 @@ read_county_data <- function(x, group) {
   y <- rename(y, county_name = `County of Residence`,
               county_id = `County of Residence Code`)
   
-  ##### for aian_nhpi and nh races #### 
+  ##### for nh races #### 
   
   if(is.null(group)) {
     
     y$Notes <- y$`Mother's Single Race 6`
-    
+    y$Notes <- gsub('White', 'nh_white', y$Notes)
+    y$Notes <- gsub('Black or African American', 'nh_black', y$Notes)
+    y$Notes <- gsub('Asian', 'nh_asian', y$Notes)
+    y$Notes <- gsub('More than one race', 'nh_twoormor', y$Notes)    
     y <- y[,-c(4:5)]
     
     y <- y %>% filter(!is.na(Notes))
@@ -149,9 +163,9 @@ read_county_data_aian_nhpi <- function(x, group) {
     y$aian <- ifelse(grepl("AIAN",y$Notes), 1, 0)
     y$pacisl <- ifelse(grepl("NHOPI",y$Notes), 1, 0)
     
-    aian_ <- y %>% group_by(county_id, county_name, aian) %>% summarise(Births = sum(Births)) %>% mutate(Notes = 'American Indian or Alaska Native') %>% filter(aian == 1)
+    aian_ <- y %>% group_by(county_id, county_name, aian) %>% summarise(Births = sum(Births)) %>% mutate(Notes = 'aian') %>% filter(aian == 1)
     aian_ <- aian_ %>% select(Notes, county_name, county_id, Births)
-    pacisl_ <- y %>% group_by(county_name, county_id, pacisl) %>% summarise(Births = sum(Births)) %>% mutate(Notes = 'Native Hawaiian or Other Pacific Islander') %>% filter(pacisl == 1)
+    pacisl_ <- y %>% group_by(county_name, county_id, pacisl) %>% summarise(Births = sum(Births)) %>% mutate(Notes = 'pacisl') %>% filter(pacisl == 1)
     pacisl_ <- pacisl_ %>% select(Notes, county_name, county_id, Births)
     
     y <- rbind(aian_,pacisl_)
@@ -162,48 +176,49 @@ return(y)
 
 
 # Read Birth Data ---------------------------------------------------------
-state_births_total <- read_state_data("Natality, 2016-2022 state Births total.txt", "Total") # Get State Total Births
+## Data downloaded from: https://wonder.cdc.gov/natality-expanded-current.html
+state_births_total <- read_state_data(paste0("Natality, ",curr_yr," state Births total.txt"), "total") # Get State Total Births
 
-county_births_total <- read_county_data("Natality, 2016-2022 county Births total.txt", "Total") # Get County Total Births
+county_births_total <- read_county_data(paste0("Natality, ",curr_yr," county Births total.txt"), "total") # Get County Total Births
 
-state_births_latino <- read_state_data("Natality, 2016-2022 state Births latino.txt", "Latino") %>% filter(!duplicated(county_name)) %>% select(Notes, county_name, county_id, Births) # Get State Latino Births
+state_births_latino <- read_state_data(paste0("Natality, ",curr_yr," state Births latino.txt"), "latino") %>% filter(!duplicated(county_name)) %>% select(Notes, county_name, county_id, Births) # Get State Latino Births
 
-county_births_latino <- read_county_data("Natality, 2016-2022 county Births latino.txt", "Latino")  %>% filter(!duplicated(county_name)) %>% select(Notes, county_name, county_id, Births) # Get County Latino Births
+county_births_latino <- read_county_data(paste0("Natality, ",curr_yr," county Births latino.txt"), "latino")  %>% filter(!duplicated(county_name)) %>% select(Notes, county_name, county_id, Births) # Get County Latino Births
 
-state_births_aian_nhpi <- read_state_data_aian_nhpi("Natality, 2016-2022 state Births all aian and nhpi.txt", group = NULL) # Get State AIAN NHPI Births
+state_births_aian_nhpi <- read_state_data_aian_nhpi(paste0("Natality, ",curr_yr," state Births all aian and nhpi.txt"), group = NULL) # Get State AIAN NHPI Births
 
-county_births_aian_nhpi <- read_county_data_aian_nhpi("Natality, 2016-2022 county Births all aian and nhpi.txt",group = NULL) # Get County AIAN NHPI Births
+county_births_aian_nhpi <- read_county_data_aian_nhpi(paste0("Natality, ",curr_yr," county Births all aian and nhpi.txt"),group = NULL) # Get County AIAN NHPI Births
 
-state_births_nh_races <- read_state_data("Natality, 2016-2022 state Births nh races.txt",group = NULL) # Get State NH Races Births for Asian, Black, White, Two or More Races
+state_births_nh_races <- read_state_data(paste0("Natality, ",curr_yr," state Births nh races.txt"),group = NULL) # Get State NH Races Births for Asian, Black, White, Two or More Races
 
-county_births_nh_races <- read_county_data("Natality, 2016-2022 county Births nh races.txt",group = NULL) # Get County NH Races Births for Asian, Black, White, Two or More Races
+county_births_nh_races <- read_county_data(paste0("Natality, ",curr_yr," county Births nh races.txt"),group = NULL) # Get County NH Races Births for Asian, Black, White, Two or More Races
 
-state_births_swana <- read_state_data("Natality, 2016-2022 state Births all swana.txt", "SWANA") # Get State SWANA Births
+state_births_swana <- read_state_data(paste0("Natality, ",curr_yr," state Births all swana.txt"), "swana") # Get State SWANA Births
 
-county_births_swana <- read_county_data("Natality, 2016-2022 county Births all swana.txt", "SWANA") # Get County SWANA Births
+county_births_swana <- read_county_data(paste0("Natality, ",curr_yr," county Births all swana.txt"), "swana") # Get County SWANA Births
 
 
 # Read Low Birth Weight Data ---------------------------------------------------------
 
-state_lbw_total <-  read_state_data("Natality, 2016-2022 state LBW total.txt", "Total") # Get State Total LBW
+state_lbw_total <- read_state_data(paste0("Natality, ",curr_yr," state LBW total.txt"), "total") # Get State Total LBW
 
-county_lbw_total <- read_county_data("Natality, 2016-2022 county LBW total.txt", "Total") # Get County Total LBW
+county_lbw_total <- read_county_data(paste0("Natality, ",curr_yr," county LBW total.txt"), "total") # Get County Total LBW
 
-state_lbw_latino <- read_state_data("Natality, 2016-2022 state LBW latino.txt", "Latino") %>% select(-c(4:5)) %>% slice(1) # Get State Latino LBW
+state_lbw_latino <- read_state_data(paste0("Natality, ",curr_yr," state LBW latino.txt"), "latino") %>% select(-c(4:5)) %>% slice(1) # Get State Latino LBW
 
-county_lbw_latino <- read_county_data("Natality, 2016-2022 county LBW latino.txt", "Latino")  %>% filter(!duplicated(county_name)) %>%  select(Notes, county_name, county_id, Births) # Get County Latino LBW
+county_lbw_latino <- read_county_data(paste0("Natality, ",curr_yr," county LBW latino.txt"), "latino")  %>% filter(!duplicated(county_name)) %>%  select(Notes, county_name, county_id, Births) # Get County Latino LBW
 
-state_lbw_aian_nhpi <-  read_state_data_aian_nhpi("Natality, 2016-2022 state LBW all aian and nhpi.txt",group = NULL) # Get State AIAN NHPI LBW
+state_lbw_aian_nhpi <- read_state_data_aian_nhpi(paste0("Natality, ",curr_yr," state LBW all aian and nhpi.txt"),group = NULL) # Get State AIAN NHPI LBW
 
-county_lbw_aian_nhpi <-  read_county_data_aian_nhpi("Natality, 2016-2022 county LBW all aian and nhpi.txt",group = NULL) # Get County AIAN NHPI LBW
+county_lbw_aian_nhpi <- read_county_data_aian_nhpi(paste0("Natality, ",curr_yr," county LBW all aian and nhpi.txt"),group = NULL) # Get County AIAN NHPI LBW
 
-state_lbw_nh_races <-  read_state_data("Natality, 2016-2022 state LBW nh races.txt",group = NULL) # Get State NH Races LBW for Asian, Black, White, Two or More Races
+state_lbw_nh_races <- read_state_data(paste0("Natality, ",curr_yr," state LBW nh races.txt"),group = NULL) # Get State NH Races LBW for Asian, Black, White, Two or More Races
 
-county_lbw_nh_races <- read_county_data("Natality, 2016-2022 county LBW nh races.txt",group = NULL) # Get County NH Races LBW for Asian, Black, White, Two or More Races
+county_lbw_nh_races <- read_county_data(paste0("Natality, ",curr_yr," county LBW nh races.txt"),group = NULL) # Get County NH Races LBW for Asian, Black, White, Two or More Races
 
-state_lbw_swana <-  read_state_data("Natality, 2016-2022 state LBW all swana.txt", "SWANA") # Get State SWANA LBW
+state_lbw_swana <- read_state_data(paste0("Natality, ",curr_yr," state LBW all swana.txt"), "swana") # Get State SWANA LBW
 
-county_lbw_swana <- read_county_data("Natality, 2016-2022 county LBW all swana.txt", "SWANA") # Get County SWANA LBW
+county_lbw_swana <- read_county_data(paste0("Natality, ",curr_yr," county LBW all swana.txt"), "swana") # Get County SWANA LBW
 
 
 # Bind Data Together ---------------------------------------------------------
@@ -228,19 +243,8 @@ df <- left_join(lbw, births) %>% mutate(county_name = gsub(" County, CA", "", co
 #calculate Rate ---------------------------------------------------------
 df <- mutate(df, rate = lbw/births*100)
 
-#Format race/ethnic groups. Pivot wider ---------------------------------------------------------
-
-
-#format Notes, lbw to pre-headers
-df$Notes <- tolower(df$Notes)
-
-# rename race/ethnicity
-df$Notes <- gsub("white", "nh_white", df$Notes)
-df$Notes <- gsub("asian", "nh_asian", df$Notes)
-df$Notes <- gsub("black or african american", "nh_black", df$Notes)
-df$Notes <- gsub("more than one race", "nh_twoormor", df$Notes)
-df$Notes <- gsub("american indian or alaska native", "aian", df$Notes)
-df$Notes <- gsub("native hawaiian or other pacific islander", "pacisl", df$Notes)
+#Format and Pivot wider ---------------------------------------------------------
+#update raw col name for RC fx
 df <- rename(df, raw = "lbw")
 
 #pivot
@@ -286,13 +290,12 @@ county_table<- calc_ranks(county_table)
 county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
-###update info for postgres tables###
-county_table_name <- "arei_hlth_low_birthweight_county_2024"
-state_table_name <- "arei_hlth_low_birthweight_state_2024"
-rc_schema <- 'v6'
+###info for postgres tables will auto-update based on variables at top of script###
+county_table_name <- paste0("arei_hlth_low_birthweight_county_",rc_yr)
+state_table_name <- paste0("arei_hlth_low_birthweight_state_",rc_yr)
 
 indicator <- "Percentage of infants born at low birthweight (less than 2,500 grams or about 5lbs. 5oz) of all live births, by race/ethnicity of mother. This data is"
-source <- "US Department of Health and Human Services, Centers for Disease Control and Prevention (CDC), National Center for Health Statistics, Division of Vital Statistics, CDC WONDER Online Database (2016-2022): https://wonder.cdc.gov/natality-expanded-current.html"
+source <- paste0("US Department of Health and Human Services, Centers for Disease Control and Prevention (CDC), National Center for Health Statistics, Division of Vital Statistics, CDC WONDER Online Database (",curr_yr,"): https://wonder.cdc.gov/natality-expanded-current.html")
 
 #send tables to postgres
 # to_postgres(county_table, state_table)
