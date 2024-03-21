@@ -22,6 +22,11 @@ library(usethis)
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
+# update each year
+curr_yr <- '2022_23' 
+rc_yr <- '2024'
+rc_schema <- 'v6'
+
 # ############### PREP RDA_SHARED_DATA TABLE ########################
 # 
 # #Get HS Grad, handle nas, ensure DistrictCode reads in right
@@ -31,7 +36,7 @@ con <- connect_to_db("rda_shared_data")
 # 
 # ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 # table_schema <- "education"
-# table_name <- "cde_multigeo_calpads_graduation_2022_23"
+# table_name <- paste0("cde_multigeo_calpads_graduation_",curr_yr)
 # table_comment_source <- "NOTE: This data is not trendable with data from before 2016-17. See more here: https://www.cde.ca.gov/ds/sd/sd/acgrinfo.asp"
 # table_source <- "Downloaded from https://www.cde.ca.gov/ds/ad/filesacgr.asp. Headers were cleaned of characters like /, ., ), and (. Cells with values of * were nullified. Created cdscode by concatenating county, district, and school codes"
 # 
@@ -61,7 +66,7 @@ counties$NAME <- gsub(" County, California", "", counties$NAME)
 names(counties) <- c("geoid", "geoname")
 
 ###### High School Graduation Data: Prep for RC Functions #########
-df <- st_read(con, query = "SELECT * FROM education.cde_multigeo_calpads_graduation_2022_23") # comment out code to pull data and use this once rda_shared_data table is created
+df <- st_read(con, query = paste0("SELECT * FROM education.cde_multigeo_calpads_graduation_",curr_yr)) # comment out code to pull data and use this once rda_shared_data table is created
 
 #### Continue prep for RC ####
 
@@ -94,7 +99,7 @@ df_wide <- merge(x=counties,y=df_wide,by="geoname", all=T) #add county geoids
 df_wide <- within(df_wide, geoid[geoname == 'California'] <- '06')#add state geoid
 
 # get school district geoids (NCES District ID) - pull in active district records w/ geoids and names from CDE schools' list
-districts <- st_read(con, query = "SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_2022_23 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'") # district,
+districts <- st_read(con, query = paste0("SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_",curr_yr," WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'")) # district,
 
 df_final <- left_join(df_wide, districts, by = c('cdscode')) %>% dplyr::rename("geoid" = "geoid.x") %>%
   mutate(geoid=ifelse(aggregatelevel == "D", geoid.y, geoid), geoname=ifelse(!is.na(districtname), districtname, geoname)) %>% 
@@ -146,13 +151,13 @@ city_table <- calc_ranks(city_table)
 city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" = "geoname") %>% relocate(cdscode, .after = dist_id)
 # View(city_table)
 
-###update info for postgres tables###
-county_table_name <- "arei_educ_hs_grad_county_2024"
-state_table_name <- "arei_educ_hs_grad_state_2024"
-city_table_name <- "arei_educ_hs_grad_district_2024"
+###update info for postgres tables will automatically update###
+county_table_name <- paste0("arei_educ_hs_grad_county_",rc_yr)
+state_table_name <- paste0("arei_educ_hs_grad_state_",rc_yr)
+city_table_name <- paste0("arei_educ_hs_grad_district_",rc_yr)
 indicator <- "Four-year adjusted cohort graduation rate"
-source <- "CDE 2022-23 https://www.cde.ca.gov/ds/ad/filesacgr.asp"
-rc_schema <- "v6"
+source <- paste0("CDE ",curr_yr," https://www.cde.ca.gov/ds/ad/filesacgr.asp")
+
 
 #send tables to postgres
 # to_postgres(county_table,state_table)
