@@ -78,9 +78,6 @@ View(df_subset)
 
 d <- df_subset
 
-#set source for RC Functions script
-source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
-
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
 source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
