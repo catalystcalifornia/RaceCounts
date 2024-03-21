@@ -1,6 +1,6 @@
-## Homeownership for RC v6 ##
+## Internet Access RC v5 ##
 #install packages if not already installed
-list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis", "sf", "tigris")
+list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis", "sf")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
@@ -10,26 +10,27 @@ library(tidycensus)
 library(dplyr)
 library(DBI)
 library(RPostgreSQL)
-library(sf)
-library(tigris)
-library(dplyr)
 library(usethis)
+library(sf)
 
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
+
 ############## UPDATE FOR SPECIFIC INDICATOR HERE ##############
 curr_yr = 2022 # you MUST UPDATE each year
-cv_threshold = 40         
-pop_threshold = 100       
-asbest = 'max'            
-schema = 'housing'
-table_code = 'b25003'
+cv_threshold = 40         # YOU MUST UPDATE based on most recent Indicator Methodology
+pop_threshold = 100       # YOU MUST UPDATE based on most recent Indicator Methodology or set to NA B19301
+asbest = 'max'            # YOU MUST UPDATE based on indicator, set to 'min' if S2701
+schema = 'economic'
+table_code = "s2802"     # YOU MUST UPDATE based on most recent Indicator Methodology or most recent RC Workflow/Cnty-State Indicator Tracking
+
 
 df_wide_multigeo <- st_read(con, query = paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state')")) # import rda_shared_data table
 
-############## Pre-RC CALCS ##############
+
+############## PRE-CALCULATION DATA PREP ##############
 source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
 df <- prep_acs(df_wide_multigeo, table_code, cv_threshold, pop_threshold)
 
@@ -81,21 +82,20 @@ colnames(state_table)[1:2] <- c("state_id", "state_name")
 colnames(county_table)[1:2] <- c("county_id", "county_name")
 colnames(city_table)[1:2] <- c("city_id", "city_name")
 
-
 ############### COUNTY, STATE, CITY METADATA  ##############
-
-###update info for postgres tables###
-county_table_name <- "arei_hous_homeownership_county_2024"      # See most recent RC Workflow SQL Views for table name (remember to update year)
-state_table_name <- "arei_hous_homeownership_state_2024"        # See most recent RC Workflow SQL Views for table name (remember to update year)
-city_table_name <- "arei_hous_homeownership_city_2024"          # See most recent RC Workflow SQL Views for table name (remember to update year)
-indicator <- "Owner-Occupied Housing Units (%)"                 # See most recent Indicator Methodology for indicator description
-start_yr <- curr_yr-4
-source <- "2018-2022 ACS 5-Year Estimates, Tables B25003B-I, https://data.census.gov/cedsci/"   # See most recent Indicator Methodology for source info
-rc_schema <- "v6"
-
-
+  
+  ###update info for postgres tables###
+  county_table_name <- "arei_econ_internet_county_2024"            # See most recent RC Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
+  state_table_name <- "arei_econ_internet_state_2024"              # See most recent RC Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
+  city_table_name <- "arei_econ_internet_city_2024"                # See most recent RC Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
+  indicator <- "Persons with Internet Access (%)"  
+  start_yr <- curr_yr-4
+  # See most recent Indicator Methodology for indicator description
+  source <- "2018-2022 ACS 5-Year Estimates, Table S2802, https://data.census.gov/cedsci/"   # See most recent Indicator Methodology for source info
+  rc_schema <- "v6"
+  
 ####### SEND TO POSTGRES #######
-#to_postgres(county_table,state_table)
-#city_to_postgres(city_table)
-
-#dbDisconnect(con)
+# to_postgres(county_table, state_table)
+# city_to_postgres()
+  
+# dbDisconnect(con)

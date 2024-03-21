@@ -52,7 +52,6 @@ aian_rownames <- c("aian_no", "aian_yes")
 aian_df[1:2,1] <- aian_rownames[1:2]
 
 
-
 #get data for ALL-NHPI
 pacisl_df = read.xlsx(paste0("Got_Help/",curr_yr,"/GotHelp_nhpi.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
 
@@ -61,7 +60,7 @@ pacisl_rownames <- c("pacisl_no", "pacisl_yes")
 pacisl_df[1:2,1] <- pacisl_rownames[1:2]
 
 
-#get data for MENA
+#get data for ALL-SWANA
 swana_df = read.xlsx(paste0("Got_Help/",curr_yr,"/GotHelp_mena.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
 
 #format row headers
@@ -73,7 +72,7 @@ swana_df[1:2,1] <- swana_rownames[1:2]
 df <- rbind(total_df, races_df, aian_df, pacisl_df, swana_df)
 
 #run the rest of CHIS prep including formatting column names, screen using flags, adding geonames, etc.
-source("W:/Project/RACE COUNTS/2022_v4/RaceCounts/CHIS_Functions.R")
+source("W:/Project/RACE COUNTS/Functions/CHIS_Functions.R")
 df_subset <- prep_chis(df)
 View(df_subset)
 
@@ -81,7 +80,7 @@ d <- df_subset
 
 
 #set source for RC Functions script
-source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
+source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
@@ -113,11 +112,11 @@ county_table <- calc_ranks(county_table)
 county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
-###update info for postgres tables###
-county_table_name <- "arei_hlth_got_help_county_2024"
-state_table_name <- "arei_hlth_got_help_state_2024"
+###info for postgres tables - automatically updates###
+county_table_name <- paste0("arei_hlth_got_help_county_",yr)
+state_table_name <- paste0("arei_hlth_got_help_state_",yr)
 indicator <- "Adults who Got Help for Mental/Emotional or Alcohol/Drug Issues (%)"
-source <- paste0("AskCHIS ", curr_yr, "Pooled Estimates ", dwnld_url)
+source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url)
 
 #send tables to postgres
 #to_postgres(county_table,state_table)

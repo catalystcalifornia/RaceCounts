@@ -45,7 +45,7 @@ yr <- "2024"
       # table_source <- "Wide data format, multigeo table with state, county, district, and school"
       # 
       # # set functions source
-      # source("W:/Project/RACE COUNTS/Functions/rdashared_functions.R")
+      # source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
       # 
       # df <- get_caaspp_data(url, zipfile, file, url2, zipfile2, file2, exdir)
       # #head(df)
@@ -95,7 +95,7 @@ df_final_e <- df_final_e %>% pivot_wider(names_from = race, names_glue = "{race}
 
 ####### ELA: CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
+source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 
 d <- df_final_e # set ela df as d
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
@@ -168,7 +168,7 @@ df_final_m <- df_final_m %>% pivot_wider(names_from = race, names_glue = "{race}
 
 ####### MATH: CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
+source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 
 d <- df_final_m # set math df as d
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
