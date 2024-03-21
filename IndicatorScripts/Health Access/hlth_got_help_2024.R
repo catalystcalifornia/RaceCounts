@@ -60,7 +60,7 @@ pacisl_rownames <- c("pacisl_no", "pacisl_yes")
 pacisl_df[1:2,1] <- pacisl_rownames[1:2]
 
 
-#get data for MENA
+#get data for ALL-SWANA
 swana_df = read.xlsx(paste0("Got_Help/",curr_yr,"/GotHelp_mena.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
 
 #format row headers

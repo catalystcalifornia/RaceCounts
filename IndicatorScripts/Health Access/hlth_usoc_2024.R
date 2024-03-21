@@ -60,7 +60,7 @@ pacisl_rownames <- c("pacisl_yes", "pacisl_no")
 pacisl_df[1:2,1] <- pacisl_rownames[1:2]
 
 
-#get data for MENA
+#get data for ALL-SWANA
 swana_df = read.xlsx(paste0("USOC/",curr_yr,"/USOC_mena.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
 
 #format row headers
@@ -79,7 +79,6 @@ View(df_subset)
 d <- df_subset
 
 ############## CALC RACE COUNTS STATS ##############
-
 #set source for RC Functions script
 source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 
