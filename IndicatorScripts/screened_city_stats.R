@@ -20,7 +20,7 @@ con <- connect_to_db("racecounts")
 pop_threshold <- 10000
 
 # pull in city-district crosswalk and city population data
-crosswalk <- dbGetQuery(con, "SELECT  city_id, city_name, dist_id, district_name FROM v5.arei_city_county_district_table")
+crosswalk <- dbGetQuery(con, "SELECT  city_id, city_name, dist_id, district_name, cdscode FROM v5.arei_city_county_district_table")
 pop_df <- dbGetQuery(con, "SELECT geoid AS city_id, geo_name AS city_name, total_pop AS city_total_pop FROM v5.arei_multigeo_list WHERE geolevel = 'place'")
 
 # Pull in Education city indicators -------------------------------------------------------
