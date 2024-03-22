@@ -9,7 +9,10 @@ readRenviron("~/.Renviron")
 
 
 # Set source for ACS 5-Yr table update fx
-source("W:\\RDA Team\\R\\ACS Updates\\acs_rda_shared_data.R") # This fx also creates or imports the correct vintage CA CBF ZCTA list
+source("W:\\RDA Team\\R\\ACS Updates\\acs_rda_shared_tables.R") # This fx also creates or imports the correct vintage CA CBF ZCTA list
+
+# Script file path, for postgres table comment
+filepath <- "W:/Project/RACE COUNTS/2024_v6/RC_Github/RaceCounts/IndicatorScripts/acs_raw_data.R"
 
 # Define arguments for ACS table update fx
 yr <- 2022 # update for the ACS data/ZCTA vintage needed
@@ -22,9 +25,10 @@ rc_acs_indicators <- list(
         "S2301",  # employment
         "B19301", # per capita income
         "B25003", # homeownership
-        "B25014" # overcrowded housing
+        "B25014", # overcrowded housing
+        "B01001"  # pop by age
 ) 
 
 ## Run fx to get updates ACS table(s)
-update_acs(yr=yr, acs_tables=rc_acs_indicators)
+update_acs(yr=yr, acs_tables=rc_acs_indicators,filepath)
 
