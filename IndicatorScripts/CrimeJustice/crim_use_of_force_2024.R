@@ -2,7 +2,7 @@
 
 ## Set up ----------------------------------------------------------------
 #install packages if not already installed
-list.of.packages <- c("DBI", "tidyverse","RPostgreSQL", "tidycensus", "readxl", "sf", "janitor", "stringr", "data.table", "usethis")
+list.of.packages <- c("DBI", "tidyverse", "RPostgreSQL", "tidycensus", "readxl", "sf", "janitor", "stringr", "data.table", "usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
@@ -32,17 +32,17 @@ rc_yr <- '2024'
 rc_schema <- 'v6'
 
 ############### PREP LATEST URSUS RDA_SHARED_DATA TABLES ########################
-# # Data Dictionary: https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2023-06/Use%20of%20Force%20Readme%2020230530f.pdf
+# # metadata <- "https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2023-06/Use%20of%20Force%20Readme%2020230530f.pdf"
 # ##### civilian-officer
-# filepath = "https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2023-06/UseofForce_Civilian-Officer_2022.csv" 
+# filepath = "https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2023-06/UseofForce_Civilian-Officer_2022.csv" # update each year
 # fieldtype = 1:36  # confirm using metadata link
 # 
 # ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 # table_schema <- "crime_and_justice"
-# table_name <- "ursus_civilian_officer_2022"
+# table_name <- paste0("ursus_civilian_officer_", substr(curr_yr, 6,9))
 # table_comment_source <- "NOTE: race/eth column values have inconsistencies, for example ''''asian indian'''' and ''''asian_indian''''."
-# table_source <- "Use of force data downloaded 3/12/2024
-# from https://openjustice.doj.ca.gov/data. Metadata here: https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2023-06/Use%20of%20Force%20Readme%2020230530f.pdf and saved here: W:/Data/Crime and Justice/Police Violence/Open Justice/2022/"
+# table_source <- paste0("Use of force data downloaded ", Sys.Date(), " from https://openjustice.doj.ca.gov/data. Metadata here: ", metadata, 
+#                        " and saved here: W:/Data/Crime and Justice/Police Violence/Open Justice/", substr(curr_yr, 6,9))
 # 
 # ## Run function to prep and export rda_shared_data table. 
 # ### NOTE: con2 must be rda_shared_data for function to work.
@@ -50,15 +50,14 @@ rc_schema <- 'v6'
 # df <- get_ursus_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
 # 
 # ##### incident
-# filepath = "https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2023-06/UseofForce_Incident_2022.csv" 
+# filepath = "https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2023-06/UseofForce_Incident_2022.csv" # update each year
 # fieldtype = 1:14  # confirm using metadata link
 # 
 # ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 # table_schema <- "crime_and_justice"
-# table_name <- "ursus_incident_2022"
+# table_name <- paste0("ursus_incident_", substr(curr_yr, 6,9))
 # table_comment_source <- "NOTE: This table has 1 row per incident with total # of civilians involved in Use of Force incident. Tables like ursus_civilian_officer_2016, have 1 row per civilian involved in an incident. So if you join the tables, then sum the num_involved_civilians field, you will double-count people."
-# table_source <- "Use of force data downloaded 3/12/2024
-# from https://openjustice.doj.ca.gov/data. Metadata saved here: W:/Data/Crime and Justice/Police Violence/Open Justice/2022/"
+# table_source <- paste0("Use of force data downloaded ", Sys.Date(), " from https://openjustice.doj.ca.gov/data. Metadata saved here: W:/Data/Crime and Justice/Police Violence/Open Justice/", substr(curr_yr, 6,9))
 # 
 # ## Run function to prep and export rda_shared_data table. 
 # ### NOTE: con2 must be rda_shared_data for function to work.
@@ -82,7 +81,7 @@ ursus_tables <- lapply(ursus_tables, transform, year=str_sub(year,-4,-1)) # upda
 list2env(ursus_tables, envir = .GlobalEnv) # convert URSUS list to separate df's
 
 # Combine all data years --------------------------------------------------
-year_list <- lapply(ursus_tables, function(x) x%>% select(year)) %>% rbindlist() %>% unique() # will autoupdate based on which years of data you have in ursus_tables list
+year_list <- lapply(ursus_tables, function(x) x %>% select(year)) %>% rbindlist() %>% unique() # will autoupdate based on which years of data you have in ursus_tables list
 
 prep_ursus <- function(old.x) {
   table1 = eval(parse(text=paste0("ursus_civilian_officer_", old.x)))
@@ -128,7 +127,7 @@ race_reclass <- df_all_years %>% mutate(nh_white = ifelse(race_ethnic_group == '
                                         latino = ifelse(grepl('hispanic', race_ethnic_group), 'latino', 'not latino'),
                                         nh_twoormor = ifelse(grepl(',', race_ethnic_group), 'nh_twoormor', 'not twoormor'),
                                         city = trimws(city)) # remove leading/trailing spaces for match on geoname with ACS later 
-        race_reclass$nh_twoormor = ifelse(grepl('hispanic', race_reclass$race_ethnic_group), 'not twoormor', race_reclass$nh_twoormor)
+race_reclass$nh_twoormor = ifelse(grepl('hispanic', race_reclass$race_ethnic_group), 'not twoormor', race_reclass$nh_twoormor)
 
 calc_counts <- function(race_eth, geolevel) {
   counts <- race_reclass %>% filter(race_reclass[[race_eth]] == race_eth) %>% group_by(city, county) %>% mutate(involved = n()) %>% summarise(involved = min(involved))
@@ -192,8 +191,8 @@ df_all <- df_all %>% mutate(total_involved = coalesce(total_involved, 0), pacisl
 #Summarize Pomona bc it throws an error in d <- calc_diff(d) later. Pomona is listed in 2 different counties LA and SB Counties in the data, but is actually in LAC.
 df_all <- df_all %>% filter(geoname != "Pomona") %>% bind_rows(
   df_all %>% filter(geoname == "Pomona") %>% summarise(across(where(is.numeric), ~sum(.x, na.rm = TRUE))) %>%
-  mutate(county = "Los Angeles", geolevel = "city") %>%
-  select(geoname, county, everything())
+    mutate(county = "Los Angeles", geolevel = "city") %>%
+    select(geoname, county, everything())
 ) %>% arrange(geoname)
 
 #Summarize American Canyon bc it throws an error in d <- calc_diff(d) later. American Canyon has 2 listings, 1 with a typo.
@@ -219,7 +218,7 @@ names(dp05) <- tolower(names(dp05))
 # note: CDP names have not been modified and will not match, in next section we check to see if any of them actually have USOF data and make appropriate fixes ~line 138
 
 dp05_ <- dp05 %>% left_join(city_county, by = c("geoid" = "place_geoid")) %>% mutate(county_name = gsub(" County", "", county_name), geolevel = gsub("place", "city", geolevel)) %>%
-                        rename(geoname = name, county = county_name) # Foresta is the only city that doesn't match to a county, it is in a nat'l park so we can exclude
+  rename(geoname = name, county = county_name) # Foresta is the only city that doesn't match to a county, it is in a nat'l park so we can exclude
 
 new_cols <- c('total_pop', 'nh_white_pop', 'nh_black_pop', 'nh_asian_pop', 'nh_twoormor_pop', 'aian_pop', 'pacisl_pop', 'latino_pop') # https://api.census.gov/data/2022/acs/acs5/profile/groups/DP05.html
 colnames(dp05_)[4:11] <- new_cols
@@ -349,9 +348,9 @@ View(city_table)
 
 #### EXTRA STEP RENAMING COLUMNS AND CHANGING ABBEST FROM 'MAX' TO 'MIN' DUE TO USING FLIPPED RATES IN DISPARITY CALCS, BUT DISPLAYING REGULAR RATES ON RC.ORG ####
 usof_flip <- function(table) {
-    table <- table %>% rename_with(~paste0(., "_flipped"), ends_with("_rate")) %>% mutate(asbest = 'min')
-    names(table) <- gsub("_rate_usof", "_rate", colnames(table))
-return(table)
+  table <- table %>% rename_with(~paste0(., "_flipped"), ends_with("_rate")) %>% mutate(asbest = 'min')
+  names(table) <- gsub("_rate_usof", "_rate", colnames(table))
+  return(table)
 }
 
 state_table  <- usof_flip(state_table)
