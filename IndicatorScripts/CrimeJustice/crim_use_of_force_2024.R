@@ -82,6 +82,7 @@ list2env(ursus_tables, envir = .GlobalEnv) # convert URSUS list to separate df's
 
 # Combine all data years --------------------------------------------------
 year_list <- lapply(ursus_tables, function(x) x %>% select(year)) %>% rbindlist() %>% unique() # will autoupdate based on which years of data you have in ursus_tables list
+year_list <- year_list[['year']] # convert to vector
 
 prep_ursus <- function(old.x) {
   table1 = eval(parse(text=paste0("ursus_civilian_officer_", old.x)))
