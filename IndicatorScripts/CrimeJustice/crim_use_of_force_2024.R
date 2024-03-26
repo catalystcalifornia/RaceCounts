@@ -137,8 +137,8 @@ calc_counts <- function(race_eth, geolevel) {
   return(counts)  
 }
 
-#### Fix USOF names that should match to ACS later on in script if possible #### Manually looked up unmatched USOF places
-######## THIS MANUAL RESEARCH & CLEANING PROCESS WILL NEED TO BE REVIEWED/UPDATED EACH TIME WE PREP THIS DATA #######
+#### Fix USOF names that should match to ACS later on in script if possible #### Manually looked up unmatched USOF places ####
+######## THIS MANUAL RESEARCH & CLEANING PROCESS NEEDs TO BE REVIEWED/UPDATED EACH TIME WE PREP THIS DATA #######
 la_nhood <- race_reclass$city %in% c("Canoga Park", "Chatsworth", "North Hills", "Pacoima", "Panorama City", "Playa Del Rey", "San Pedro", "Sherman Oaks", "Studio City", "Sylmar", "Tujunga", "Van Nuys", "West Hills", "Woodland Hills")
 race_reclass$city[la_nhood] <- "Los Angeles"
 race_reclass <- race_reclass %>% mutate(city = ifelse(city=='City Of Industry', 'Industry', city)) %>%
@@ -183,7 +183,7 @@ df_county$geoname[df_county$geoname == 'Total'] <- 'California'
 df_county$geolevel <- ifelse(df_county$geoname == 'California', 'state', 'county')
 
 # join city, county, state together
-df_all <- rbind(df_city, df_county) 
+df_all <- rbind(df_city, df_county) %>% relocate(geolevel, .after = county)
 
 # make NA = 0 for cities/counties that appear in USOF data. places that are not in the USOF data still receive NA.
 df_all <- df_all %>% mutate(total_involved = coalesce(total_involved, 0), pacisl_involved = coalesce(pacisl_involved, 0), nh_black_involved = coalesce(nh_black_involved, 0), aian_involved = coalesce(aian_involved, 0), nh_asian_involved = coalesce(nh_asian_involved, 0),
@@ -232,15 +232,15 @@ colnames(dp05_)[4:11] <- new_cols
 # acs_nomatch <- filter(df_all_, (is.na(total_involved) & geolevel == 'place')) # this df should have 0 rows
 # View(acs_nomatch)
 
-# Re-join usof and pop data to check if fixes worked
+# Re-join usof and pop data after manual fixes
 df_calcs <- full_join(df_all, dp05_, by = c("geoname", "geolevel", "county")) %>% arrange(geoname) %>% select(geoid, geoname, everything())
-#usof_nomatch_final <- filter(df_all_, is.na(geoid)) # this df should have 26 unmatched
+#usof_nomatch_final <- filter(df_all_, is.na(geoid)) # check if manual fixes worked: this df should have 26 unmatched
 
 
 # Screening / calc rates ----------------------------------------------------------
 pop_threshold = 100
 incident_threshold = 5  # update appropriately each year to ensure counties with few incidents and small pops do not result in outlier rates
-data_yrs = nrow(year_list)  # auto updates based on number of data yrs in ursus_tables. you must multiply pop by this number to get accurate annual avg rate. raw is the sum of incidents across yrs, not annual avg.
+data_yrs = length(unique(year_list))  # auto updates based on number of data yrs in ursus_tables. you must multiply pop by this number to get accurate annual avg rate. raw is the sum of incidents across yrs, not annual avg.
 
 df_screened <- df_calcs %>% 
   mutate(
@@ -297,8 +297,7 @@ df_screened <- df_calcs %>%
     
   ) 
 
-# keep only selected columns
-# filters out Census places that have no USOF data AND bad joins. Ex: SF city joins to both SF County and San Mateo County and this filter removes the San Mateo joined record.
+# keep only selected columns and places with non-NA _raw values
 d <- ungroup(df_screened) %>% select(!ends_with("involved")) %>% filter(!is.na(total_raw))  
 
 
