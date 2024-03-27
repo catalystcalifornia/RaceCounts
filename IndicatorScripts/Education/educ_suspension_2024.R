@@ -21,6 +21,11 @@ library(usethis) # connect to github
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
+# update each year
+curr_yr <- '2022_23' 
+rc_yr <- '2024'
+rc_schema <- 'v6'
+
 ############### PREP DATA ########################
 
 # ## Get Suspensions Data from CDE website
@@ -29,7 +34,7 @@ con <- connect_to_db("rda_shared_data")
 # 
 # ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 # table_schema <- "education"
-# table_name <- "cde_multigeo_calpads_suspensions_2022_23"
+# table_name <- paste0("cde_multigeo_calpads_suspensions_", curr_yr)
 # table_comment_source <- "NOTE: Only use suspension data from this link, https://www.cde.ca.gov/ds/ad/filessd.asp. The Dashboard download is incomplete and lacks data for most high schools (at least within LAUSD). Wide data format, multigeo table with state, county, district, and school"
 # table_source <- "Wide data format, multigeo table with state, county, district, and school"
 # 
@@ -59,7 +64,7 @@ names(counties) <- c("geoid", "geoname")
 
 
 #### Continue prep for RC ####
-df <- st_read(con, query = "SELECT * FROM education.cde_multigeo_calpads_suspensions_2022_23") # comment out code to pull data and use this once rda_shared_data table is created
+df <- st_read(con, query = paste0("SELECT * FROM education.cde_multigeo_calpads_suspensions_", curr_yr)) # comment out code to pull data and use this once rda_shared_data table is created
 
 #filter for county and state rows, all types of schools, and racial categories only
 df_subset <- df %>% filter(aggregatelevel %in% c("C", "T", "D") & charteryn == "All" & 
@@ -87,7 +92,7 @@ df_wide <- merge(x=counties,y=df_wide,by="geoname", all=T) # add county geoids
 df_wide <- within(df_wide, geoid[geoname == 'California'] <- '06') # add state geoid
 
 # get school district geoids (NCES District ID) - pull in active district records w/ geoids and names from CDE schools' list
-districts <- st_read(con, query = "SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_2022_23 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'") # district,
+districts <- st_read(con, query = paste0("SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_", curr_yr, " WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'")) # district,
 
 df_final <- left_join(df_wide, districts, by = c('cdscode')) %>% dplyr::rename("geoid" = "geoid.x") %>%
   mutate(geoid=ifelse(aggregatelevel == "D", geoid.y, geoid), geoname=ifelse(!is.na(districtname), districtname, geoname)) %>% 
@@ -141,13 +146,12 @@ city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" 
 # View(city_table)
 
 ###update info for postgres tables###
-county_table_name <- "arei_educ_suspension_county_2024"
-state_table_name <- "arei_educ_suspension_state_2024"
-city_table_name <- "arei_educ_suspension_district_2024"
-rc_schema <- "v6"
+county_table_name <- paste0("arei_educ_suspension_county_", rc_yr)
+state_table_name <- paste0("arei_educ_suspension_state_", rc_yr)
+city_table_name <- paste0("arei_educ_suspension_district_", rc_yr)
 
 indicator <- "Unduplicated students suspended, cumulative enrollment, and unduplicated suspension rate. This data is"
-source <- "CDE 2022-23 https://www.cde.ca.gov/ds/ad/filessd.asp"
+source <- paste0("CDE ", curr_yr, " https://www.cde.ca.gov/ds/ad/filessd.asp")
 
 #send tables to postgres
 # to_postgres(county_table,state_table)
