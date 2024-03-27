@@ -26,6 +26,8 @@ pop_threshold = NA
 asbest = 'max'            
 schema = 'economic'
 table_code = 'b19301'
+rc_yr = '2024'
+rc_schema <- "v6"
 
 df_wide_multigeo <- st_read(con, query = paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state')")) # import rda_shared_data table
 
@@ -84,14 +86,13 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
 
 ############### COUNTY, STATE, CITY METADATA  ##############
 
-###update info for postgres tables###
-county_table_name <- "arei_econ_per_capita_income_county_2024"      # See most recent RC Workflow SQL Views for table name (remember to update year)
-state_table_name <- "arei_econ_per_capita_income_state_2024"        # See most recent RC Workflow SQL Views for table name (remember to update year)
-city_table_name <- "arei_econ_per_capita_income_city_2024"          # See most recent RC Workflow SQL Views for table name (remember to update year)
+### info for postgres tables will automatically update ###
+county_table_name <- paste0("arei_econ_per_capita_income_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
+state_table_name <- paste0("arei_econ_per_capita_income_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
+city_table_name <- paste0("arei_econ_per_capita_income_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
 indicator <- "Per Capita Income ($)"                 # See most recent Indicator Methodology for indicator description
 start_yr <- curr_yr-4
-source <- "2018-2022 ACS 5-Year Estimates, Tables B19301B-I, https://data.census.gov/cedsci/"   # See most recent Indicator Methodology for source info
-rc_schema <- "v6"
+source <- paste0(start_yr,"-",curr_yr," ACS 5-Year Estimates, Tables B19301B-I, https://data.census.gov/cedsci/")   # See most recent Indicator Methodology for source info
 
 
 ####### SEND TO POSTGRES #######
