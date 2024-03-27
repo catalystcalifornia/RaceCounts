@@ -29,7 +29,7 @@ rc_schema <- 'v6'
 ############### PREP DATA ########################
 
 # ## Get Suspensions Data from CDE website
-# filepath = "https://www3.cde.ca.gov/demo-downloads/discipline/suspension22-v2.txt"   # will need to update each year
+# filepath = "https://www3.cde.ca.gov/demo-downloads/discipline/suspension23.txt"   # will need to update each year
 # fieldtype = 1:11 # specify which cols should be varchar, the rest will be assigned numeric
 # 
 # ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
