@@ -65,8 +65,8 @@ rc_schema <- 'v6'
 # df <- get_ursus_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
 
 
-############### PREP ALL URSUS --------------------------------------------------------------
-### Pull in URSUS data from rda_shared_data.crime_and_justice ---------------------------------------------------------------
+############### Gather all URSUS data years --------------------------------------------------------------
+### Pull in URSUS data from rda_shared_data.crime_and_justice 
 sql_query <- "SELECT table_name FROM information_schema.tables
                    WHERE table_schema='crime_and_justice' AND table_type='BASE TABLE'
                    ORDER BY table_name"
@@ -80,7 +80,7 @@ ursus_tables <- Map(cbind, ursus_tables, year = names(ursus_tables)) # add year 
 ursus_tables <- lapply(ursus_tables, transform, year=str_sub(year,-4,-1)) # update year column values to year only
 list2env(ursus_tables, envir = .GlobalEnv) # convert URSUS list to separate df's
 
-# Combine all data years --------------------------------------------------
+# Combine all data years 
 year_list <- lapply(ursus_tables, function(x) x %>% select(year)) %>% rbindlist() %>% unique() # will autoupdate based on which years of data you have in ursus_tables list
 year_list <- year_list[['year']] # convert to vector
 
@@ -88,6 +88,7 @@ prep_ursus <- function(old.x) {
   table1 = eval(parse(text=paste0("ursus_civilian_officer_", old.x)))
   table2 = eval(parse(text=paste0("ursus_incident_", old.x)))
   if(!'state_name' %in% names(table2)) table2 <- table2 %>% add_column(state_name = 'CA') # add state_name col if doesn't exist bc in some tables col is called 'state' not 'state_name'
+  if(!'incident_id' %in% names(table1)) table1 <- table1 %>% rename(incident_id = incident_code) #add_column(incident_id = incident_code) # add incident_id col if doesn't exist bc in some tables col is called 'incident_code' not 'incident_id'
   new.x <- left_join(table1, table2) %>% select(incident_id, civilian_officer, race_ethnic_group, received_force, county, state_name, city, zip_code, num_involved_civilians, year) %>% filter(
     received_force == "TRUE", civilian_officer == "Civilian" )
   # clean data
@@ -111,8 +112,10 @@ for (i in year_list) {
 }
 
 df_all_years <- as.data.frame(bind_rows(joined, .id = "incident_id")) 
+# check row counts to see if loop/fx worked correctly
+#join_check <- df_all_years %>% group_by(year) %>% mutate(involved = n()) %>% summarise(total_involved = min(involved))
 
-# Calculate Raw: Number of incidents across all data years (total and by race) included NOT average per year ---------------------------------------------------------
+# Calculate counts by race: Number of incidents across all data years (total and by race) included NOT average per year ---------------------------------------------------------
 #### NOTE: There is 1 row per civilian involved in each incident, but each of those rows reports the total # involved and has the same incident ID.
 ##### So if you sum the num_involved_civilians (which is the total # per incident) column, you double/triple-count folks etc.
 ######### NOTE: Due to using our custom race groups, some people are double-counted. Ex: Someone who id's as more than 1 group will be counted in both groups.
@@ -130,15 +133,8 @@ race_reclass <- df_all_years %>% mutate(nh_white = ifelse(race_ethnic_group == '
                                         city = trimws(city)) # remove leading/trailing spaces for match on geoname with ACS later 
 race_reclass$nh_twoormor = ifelse(grepl('hispanic', race_reclass$race_ethnic_group), 'not twoormor', race_reclass$nh_twoormor)
 
-calc_counts <- function(race_eth, geolevel) {
-  counts <- race_reclass %>% filter(race_reclass[[race_eth]] == race_eth) %>% group_by(city, county) %>% mutate(involved = n()) %>% summarise(involved = min(involved))
-  new_name <- paste0(race_eth, '_involved')  # generate race-specific col name
-  counts <- counts %>% rename(!!new_name := involved)  # rename to race-specific col name
-  return(counts)  
-}
-
-#### Fix USOF names that should match to ACS later on in script if possible #### Manually looked up unmatched USOF places ####
-######## THIS MANUAL RESEARCH & CLEANING PROCESS NEEDs TO BE REVIEWED/UPDATED EACH TIME WE PREP THIS DATA #######
+#### Fix city names that should match to ACS later on in script where possible #### Manually look up places with USOF data that do not match to ACS pop data ####
+######## THIS MANUAL RESEARCH & CLEANING PROCESS MUST BE REVIEWED/UPDATED EACH TIME WE PREP THIS DATA 
 la_nhood <- race_reclass$city %in% c("Canoga Park", "Chatsworth", "North Hills", "Pacoima", "Panorama City", "Playa Del Rey", "San Pedro", "Sherman Oaks", "Studio City", "Sylmar", "Tujunga", "Van Nuys", "West Hills", "Woodland Hills")
 race_reclass$city[la_nhood] <- "Los Angeles"
 race_reclass <- race_reclass %>% mutate(city = ifelse(city=='City Of Industry', 'Industry', city)) %>%
@@ -159,8 +155,16 @@ race_reclass <- race_reclass %>% mutate(city = ifelse(city=='City Of Industry', 
   mutate(city = ifelse(city=='El Sobrante' & county == 'Contra Costa', 'El Sobrante CDP (Contra Costa County)', city)) %>%
   mutate(city = ifelse(city=='View Park', 'View Park-Windsor Hills', city))       
 
+#### Calc counts by race ####
+calc_counts <- function(race_eth, geolevel) {
+  counts <- race_reclass %>% filter(race_reclass[[race_eth]] == race_eth) %>% group_by(city, county) %>% mutate(involved = n()) %>% summarise(involved = min(involved))
+  new_name <- paste0(race_eth, '_involved')  # generate race-specific col name
+  counts <- counts %>% rename(!!new_name := involved)  # rename to race-specific col name
+  return(counts)  
+}
+
 # City: calc counts by race
-total_ <- race_reclass %>% group_by(city, county) %>% mutate(total_involved = n()) %>%  summarise(total_involved = min(total_involved))
+total_ <- race_reclass %>% group_by(city, county) %>% mutate(total_involved = n()) %>% summarise(total_involved = min(total_involved))
 nh_black_ <- calc_counts('nh_black')
 aian_ <- calc_counts('aian')
 pacisl_ <- calc_counts('pacisl')
@@ -169,7 +173,7 @@ nh_white_ <- calc_counts('nh_white')
 latino_ <- calc_counts('latino')
 nh_twoormor_ <- calc_counts('nh_twoormor')
 
-# join calcs by race together
+## join city calcs by race together
 df_city <- total_ %>% left_join(pacisl_) %>% left_join(nh_asian_) %>% left_join(nh_black_) %>% left_join(aian_) %>% left_join(nh_white_) %>% left_join(latino_) %>% left_join(nh_twoormor_) %>% rename("geoname" = "city") %>% mutate(geolevel='city')
 
 
@@ -185,18 +189,18 @@ df_county$geolevel <- ifelse(df_county$geoname == 'California', 'state', 'county
 # join city, county, state together
 df_all <- rbind(df_city, df_county) %>% relocate(geolevel, .after = county)
 
-# make NA = 0 for cities/counties that appear in USOF data. places that are not in the USOF data still receive NA.
+# make NA = 0 for cities/counties that appear in USOF data. Places that are not in the USOF data still receive NA.
 df_all <- df_all %>% mutate(total_involved = coalesce(total_involved, 0), pacisl_involved = coalesce(pacisl_involved, 0), nh_black_involved = coalesce(nh_black_involved, 0), aian_involved = coalesce(aian_involved, 0), nh_asian_involved = coalesce(nh_asian_involved, 0),
                             nh_white_involved = coalesce(nh_white_involved, 0), latino_involved = coalesce(latino_involved, 0), nh_twoormor_involved = coalesce(nh_twoormor_involved, 0))
 
-#Summarize Pomona bc it throws an error in d <- calc_diff(d) later. Pomona is listed in 2 different counties LA and SB Counties in the data, but is actually in LAC.
+# Summarize Pomona bc it throws an error in d <- calc_diff(d) later. Pomona is listed in 2 different counties LA and SB Counties in the data, but is actually in LAC.
 df_all <- df_all %>% filter(geoname != "Pomona") %>% bind_rows(
   df_all %>% filter(geoname == "Pomona") %>% summarise(across(where(is.numeric), ~sum(.x, na.rm = TRUE))) %>%
     mutate(county = "Los Angeles", geolevel = "city") %>%
     select(geoname, county, everything())
 ) %>% arrange(geoname)
 
-#Summarize American Canyon bc it throws an error in d <- calc_diff(d) later. American Canyon has 2 listings, 1 with a typo.
+# Summarize American Canyon bc it throws an error in d <- calc_diff(d) later. American Canyon has 2 listings, 1 with a typo.
 df_all <- df_all %>% mutate(geoname = ifelse(geoname == 'American Cyn', 'American Canyon', geoname)) 
 df_all <- df_all %>% filter(geoname != "American Canyon") %>% bind_rows(
   df_all %>% filter(geoname == "American Canyon") %>% summarise(across(where(is.numeric), ~sum(.x, na.rm = TRUE))) %>%
@@ -204,7 +208,7 @@ df_all <- df_all %>% filter(geoname != "American Canyon") %>% bind_rows(
     select(geoname, county, everything())
 ) %>% arrange(geoname)
 
-# Get Total Population: ----------------------------------------------------
+# Get ACS population data ----------------------------------------------------
 dp05 <- st_read(con2, query = "SELECT geoid, name, geolevel, dp05_0001e, dp05_0079e, dp05_0080e, dp05_0082e, dp05_0085e, dp05_0068e, dp05_0070e, dp05_0073e FROM demographics.acs_5yr_dp05_multigeo_2022 WHERE geolevel IN ('place', 'county', 'state')")
 city_county <- st_read(con2, query = "SELECT place_geoid, county_name FROM crosswalks.county_place_2020")
 
@@ -224,7 +228,7 @@ dp05_ <- dp05 %>% left_join(city_county, by = c("geoid" = "place_geoid")) %>% mu
 new_cols <- c('total_pop', 'nh_white_pop', 'nh_black_pop', 'nh_asian_pop', 'nh_twoormor_pop', 'aian_pop', 'pacisl_pop', 'latino_pop') # https://api.census.gov/data/2022/acs/acs5/profile/groups/DP05.html
 colnames(dp05_)[4:11] <- new_cols
 
-# Join USOF and Pop Data --------------------------------------------------
+# Join USOF and Pop Data to check for unmatched cities --------------------------------------------------
 # df_all_ <- full_join(df_all, dp05_, by = c("geoname", "geolevel")) %>% arrange(geoname) %>% select(geoid, geoname, everything())
 # check if there are places with USOF data that did not match to ACS place, but should
 # usof_nomatch <- filter(df_all_, is.na(geoid)) # this df had 40 rows before manual edits ~line 138
@@ -232,70 +236,70 @@ colnames(dp05_)[4:11] <- new_cols
 # acs_nomatch <- filter(df_all_, (is.na(total_involved) & geolevel == 'place')) # this df should have 0 rows
 # View(acs_nomatch)
 
-# Re-join usof and pop data after manual fixes
+# Re-join USOF and pop data after manual fixes
 df_calcs <- full_join(df_all, dp05_, by = c("geoname", "geolevel", "county")) %>% arrange(geoname) %>% select(geoid, geoname, everything())
 #usof_nomatch_final <- filter(df_all_, is.na(geoid)) # check if manual fixes worked: this df should have 26 unmatched
 
 
-# Screening / calc rates ----------------------------------------------------------
+# Data screening / calc rates ----------------------------------------------------------
 pop_threshold = 100
 incident_threshold = 5  # update appropriately each year to ensure counties with few incidents and small pops do not result in outlier rates
 data_yrs = length(unique(year_list))  # auto updates based on number of data yrs in ursus_tables. you must multiply pop by this number to get accurate annual avg rate. raw is the sum of incidents across yrs, not annual avg.
 
 df_screened <- df_calcs %>% 
   mutate(
-    # screen
-    total_raw = ifelse(total_pop < pop_threshold | total_involved < incident_threshold, NA, total_involved),
+    # screen raw counts
+      total_raw = ifelse(total_pop < pop_threshold | total_involved < incident_threshold, NA, total_involved),
+      
+      nh_white_raw = ifelse(nh_white_pop < pop_threshold | total_involved < incident_threshold, NA, nh_white_involved),
+      
+      nh_black_raw = ifelse(nh_black_pop < pop_threshold | total_involved < incident_threshold, NA, nh_black_involved),
+      
+      aian_raw = ifelse(aian_pop < pop_threshold | total_involved < incident_threshold, NA, aian_involved),
+      
+      pacisl_raw = ifelse(pacisl_pop < pop_threshold | total_involved < incident_threshold, NA, pacisl_involved),
+      
+      nh_asian_raw = ifelse(nh_asian_pop < pop_threshold | total_involved < incident_threshold, NA, nh_asian_involved),
+      
+      latino_raw = ifelse(latino_pop < pop_threshold | total_involved < incident_threshold, NA, latino_involved),
+      
+      nh_twoormor_raw = ifelse(nh_twoormor_pop < pop_threshold | total_involved < incident_threshold, NA, nh_twoormor_involved),
     
-    nh_white_raw = ifelse(nh_white_pop < pop_threshold | total_involved < incident_threshold, NA, nh_white_involved),
+    # Screen and flip the rate calc to get "NOT subject to USOF rate" to solve disparity calc issues, lots of zero rates, etc. - used only for disp calcs
+      total_rate = ifelse(total_pop < pop_threshold | total_involved < incident_threshold, NA, ((total_pop * data_yrs) - total_raw) / (total_pop * data_yrs) * 100000),
     
-    nh_black_raw = ifelse(nh_black_pop < pop_threshold | total_involved < incident_threshold, NA, nh_black_involved),
+      nh_white_rate = ifelse(nh_white_pop < pop_threshold | total_involved < incident_threshold, NA, ((nh_white_pop * data_yrs) - nh_white_raw) / (nh_white_pop * data_yrs) * 100000),
     
-    aian_raw = ifelse(aian_pop < pop_threshold | total_involved < incident_threshold, NA, aian_involved),
+      nh_black_rate = ifelse(nh_black_pop < pop_threshold | total_involved < incident_threshold, NA, ((nh_black_pop * data_yrs) - nh_black_raw) / (nh_black_pop * data_yrs) * 100000),
     
-    pacisl_raw = ifelse(pacisl_pop < pop_threshold | total_involved < incident_threshold, NA, pacisl_involved),
+      aian_rate = ifelse(aian_pop < pop_threshold | total_involved < incident_threshold, NA, ((aian_pop * data_yrs) - aian_raw) / (aian_pop * data_yrs) * 100000),
     
-    nh_asian_raw = ifelse(nh_asian_pop < pop_threshold | total_involved < incident_threshold, NA, nh_asian_involved),
+      pacisl_rate = ifelse(pacisl_pop < pop_threshold | total_involved < incident_threshold, NA, ((pacisl_pop * data_yrs) - pacisl_raw) / (pacisl_pop * data_yrs) * 100000),
     
-    latino_raw = ifelse(latino_pop < pop_threshold | total_involved < incident_threshold, NA, latino_involved),
+      nh_asian_rate = ifelse(nh_asian_pop < pop_threshold | total_involved < incident_threshold, NA, ((nh_asian_pop * data_yrs) - nh_asian_raw) / (nh_asian_pop * data_yrs) * 100000),
     
-    nh_twoormor_raw = ifelse(nh_twoormor_pop < pop_threshold | total_involved < incident_threshold, NA, nh_twoormor_involved),
+      latino_rate = ifelse(latino_pop < pop_threshold | total_involved < incident_threshold, NA, ((latino_pop * data_yrs) - latino_raw) / (latino_pop * data_yrs) * 100000),
     
-    # Flipping the rate calc to get "NOT subject to USOF rate" to solve disparity calc issues, lots of zero rates, etc. - used only for disp calcs
-    total_rate = ifelse(total_pop < pop_threshold | total_involved < incident_threshold, NA, ((total_pop * data_yrs) - total_raw) / (total_pop * data_yrs) * 100000),
+      nh_twoormor_rate = ifelse(nh_twoormor_pop < pop_threshold | total_involved < incident_threshold, NA, ((nh_twoormor_pop * data_yrs) - nh_twoormor_raw) / (nh_twoormor_pop * data_yrs) * 100000),
     
-    nh_white_rate = ifelse(nh_white_pop < pop_threshold | total_involved < incident_threshold, NA, ((nh_white_pop * data_yrs) - nh_white_raw) / (nh_white_pop * data_yrs) * 100000),
+    # Screen and calc Use of Force Rates - will be displayed on RC.org
+      total_rate_usof = ifelse(total_pop < pop_threshold | total_involved < incident_threshold, NA, round((total_raw / (total_pop * data_yrs)) * 100000,1)),
     
-    nh_black_rate = ifelse(nh_black_pop < pop_threshold | total_involved < incident_threshold, NA, ((nh_black_pop * data_yrs) - nh_black_raw) / (nh_black_pop * data_yrs) * 100000),
+      nh_white_rate_usof = ifelse(nh_white_pop < pop_threshold | total_involved < incident_threshold, NA, round((nh_white_raw / (nh_white_pop * data_yrs)) * 100000,1)),
     
-    aian_rate = ifelse(aian_pop < pop_threshold | total_involved < incident_threshold, NA, ((aian_pop * data_yrs) - aian_raw) / (aian_pop * data_yrs) * 100000),
+      nh_black_rate_usof = ifelse(nh_black_pop < pop_threshold | total_involved < incident_threshold, NA, round((nh_black_raw / (nh_black_pop * data_yrs)) * 100000,1)),
     
-    pacisl_rate = ifelse(pacisl_pop < pop_threshold | total_involved < incident_threshold, NA, ((pacisl_pop * data_yrs) - pacisl_raw) / (pacisl_pop * data_yrs) * 100000),
+      aian_rate_usof = ifelse(aian_pop < pop_threshold | total_involved < incident_threshold, NA, round((aian_raw / (aian_pop * data_yrs)) * 100000,1)),
     
-    nh_asian_rate = ifelse(nh_asian_pop < pop_threshold | total_involved < incident_threshold, NA, ((nh_asian_pop * data_yrs) - nh_asian_raw) / (nh_asian_pop * data_yrs) * 100000),
+      pacisl_rate_usof = ifelse(pacisl_pop < pop_threshold | total_involved < incident_threshold, NA, round((pacisl_raw / (pacisl_pop * data_yrs)) * 100000,1)),
     
-    latino_rate = ifelse(latino_pop < pop_threshold | total_involved < incident_threshold, NA, ((latino_pop * data_yrs) - latino_raw) / (latino_pop * data_yrs) * 100000),
+      nh_asian_rate_usof = ifelse(nh_asian_pop < pop_threshold | total_involved < incident_threshold, NA, round((nh_asian_raw / (nh_asian_pop * data_yrs)) * 100000,1)),
     
-    nh_twoormor_rate = ifelse(nh_twoormor_pop < pop_threshold | total_involved < incident_threshold, NA, ((nh_twoormor_pop * data_yrs) - nh_twoormor_raw) / (nh_twoormor_pop * data_yrs) * 100000),
+      latino_rate_usof = ifelse(latino_pop < pop_threshold | total_involved < incident_threshold, NA, round((latino_raw / (latino_pop * data_yrs)) * 100000,1)),
     
-    # Use of Force Rates - will be displayed on RC.org
-    total_rate_usof = ifelse(total_pop < pop_threshold | total_involved < incident_threshold, NA, round((total_raw / (total_pop * data_yrs)) * 100000,1)),
+      nh_twoormor_rate_usof = ifelse(nh_twoormor_pop < pop_threshold | total_involved < incident_threshold, NA, round((nh_twoormor_raw / (nh_twoormor_pop * data_yrs)) * 100000,1))
     
-    nh_white_rate_usof = ifelse(nh_white_pop < pop_threshold | total_involved < incident_threshold, NA, round((nh_white_raw / (nh_white_pop * data_yrs)) * 100000,1)),
-    
-    nh_black_rate_usof = ifelse(nh_black_pop < pop_threshold | total_involved < incident_threshold, NA, round((nh_black_raw / (nh_black_pop * data_yrs)) * 100000,1)),
-    
-    aian_rate_usof = ifelse(aian_pop < pop_threshold | total_involved < incident_threshold, NA, round((aian_raw / (aian_pop * data_yrs)) * 100000,1)),
-    
-    pacisl_rate_usof = ifelse(pacisl_pop < pop_threshold | total_involved < incident_threshold, NA, round((pacisl_raw / (pacisl_pop * data_yrs)) * 100000,1)),
-    
-    nh_asian_rate_usof = ifelse(nh_asian_pop < pop_threshold | total_involved < incident_threshold, NA, round((nh_asian_raw / (nh_asian_pop * data_yrs)) * 100000,1)),
-    
-    latino_rate_usof = ifelse(latino_pop < pop_threshold | total_involved < incident_threshold, NA, round((latino_raw / (latino_pop * data_yrs)) * 100000,1)),
-    
-    nh_twoormor_rate_usof = ifelse(nh_twoormor_pop < pop_threshold | total_involved < incident_threshold, NA, round((nh_twoormor_raw / (nh_twoormor_pop * data_yrs)) * 100000,1))
-    
-  ) 
+      )
 
 # keep only selected columns and places with non-NA _raw values
 d <- ungroup(df_screened) %>% select(!ends_with("involved")) %>% filter(!is.na(total_raw))  
