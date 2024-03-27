@@ -88,7 +88,7 @@ prep_ursus <- function(old.x) {
   table1 = eval(parse(text=paste0("ursus_civilian_officer_", old.x)))
   table2 = eval(parse(text=paste0("ursus_incident_", old.x)))
   if(!'state_name' %in% names(table2)) table2 <- table2 %>% add_column(state_name = 'CA') # add state_name col if doesn't exist bc in some tables col is called 'state' not 'state_name'
-  if(!'incident_id' %in% names(table1)) table1 <- table1 %>% rename(incident_id = incident_code) #add_column(incident_id = incident_code) # add incident_id col if doesn't exist bc in some tables col is called 'incident_code' not 'incident_id'
+  if(!'incident_id' %in% names(table1)) table1 <- table1 %>% rename(incident_id = incident_code) # rename incident_code col to incident_id bc in some tables col is called 'incident_code' not 'incident_id'
   new.x <- left_join(table1, table2) %>% select(incident_id, civilian_officer, race_ethnic_group, received_force, county, state_name, city, zip_code, num_involved_civilians, year) %>% filter(
     received_force == "TRUE", civilian_officer == "Civilian" )
   # clean data
