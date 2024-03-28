@@ -1,4 +1,4 @@
-### Drinking Water Contamination (Weighted Avg) RC v5 ### 
+### Drinking Water Contamination (Weighted Avg) RC v6 ### 
 ##install packages if not already installed ------------------------------
 list.of.packages <- c("dplyr","data.table","sf","tigris","readr","tidyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
@@ -34,16 +34,16 @@ ind_df <- filter(ind_df, indicator >= 0) # screen out NA values of -999
 ###### DEFINE VALUES FOR FUNCTIONS ######
 
 # set values for weighted average functions - You may need to update these
-year <- c(2020)                   # define your data vintage
+year <- c(2021)                   # define your data vintage
 subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
 targetgeolevel <- c('place')     # define your target geolevel: county (state is handled separately)
 survey <- "acs5"                  # define which Census survey you want
 pop_threshold = 250               # define population threshold for screening
 
 ### CT-Place Crosswalk ### ---------------------------------------------------------------------
-## pull in 2020 CBF Places ##
-  places <- places(state = 'CA', year = 2020, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
-  tracts <- tracts(state = 'CA', year = 2020, cb = TRUE) %>% select(-c(STATEFP, TRACTCE, AFFGEOID, NAME, NAMELSAD, STATE_NAME, LSAD, ALAND, AWATER))
+## pull in 2021 CBF Places ##
+  places <- places(state = 'CA', year = 2021, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
+  tracts <- tracts(state = 'CA', year = 2021, cb = TRUE) %>% select(-c(STATEFP, TRACTCE, AFFGEOID, NAME, NAMELSAD, STATE_NAME, LSAD, ALAND, AWATER))
 
 ## spatial join ##
     places_3310 <- st_transform(places, 3310) # change projection to 3310
@@ -78,9 +78,9 @@ pop_threshold = 250               # define population threshold for screening
     xwalk_filter <- select(xwalk_filter, ct_place_geoid, ct_geoid, place_geoid, county_geoid, place_name, namelsad, county_name, area, pl_area, intersect_area, prc_area, prc_pl_area)
 
 # export xwalk table
-    table_name <- "ct_place_2020"
+    table_name <- "ct_place_2021"
     table_schema <- "crosswalks"
-    table_comment_source <- "Created with W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\IndicatorScripts\\Environment\\hben_drinking_water_2023.R and based on 2020 ACS TIGER non-CBF shapefiles.
+    table_comment_source <- "Created with W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\IndicatorScripts\\Environment\\hben_drinking_water_2023.R and based on 2021 ACS TIGER non-CBF shapefiles.
     CTs with 25% or more of their area within a city or that cover 25% or more of a city''s area are assigned to those cities.
     As a result, a CT can be assigned to more than one city"
     
@@ -107,11 +107,29 @@ pop_threshold = 250               # define population threshold for screening
 ##### GET SUB GEOLEVEL POP DATA ######
 pop <- update_detailed_table(vars = vars_list_acs, yr = year, srvy = survey)  # subgeolevel pop
 
+pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = year, srvy = survey) %>% as.data.frame() %>%
+  group_by(GEOID, NAME, geolevel)%>%
+  summarise(estimate=sum(estimate),
+            moe=moe_sum(moe,estimate)) %>% mutate(variable = "swana") # subgeolevel pop
+
+# combine DP05 groups with swana estimates 
+
+pop <- rbind(pop, pop_swana)
+
+
 # transform pop data to wide format 
 pop_wide <- lapply(pop, to_wide)
+
+
+# make to df
+pop_wide <- pop_wide$GEOID %>% as.data.frame()
+
+
+
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
 pop_wide <- as.data.frame(pop_wide) %>% right_join(select(xwalk_filter, c(ct_geoid, place_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = place_geoid) # rename to generic column names for WA functions
+
 
 # calc target geolevel pop and number of sub geolevels per target geolevel
 pop_df <- targetgeo_pop(pop_wide) 
@@ -128,7 +146,7 @@ city_wa <- city_wa %>% rename(target_name = NAME) %>% select(-c(geometry)) %>% m
 ###### DEFINE VALUES FOR FUNCTIONS ######
 
 # set values for weighted average functions - You may need to update these
-year <- c(2020)                   # define your data vintage
+year <- c(2021)                   # define your data vintage
 subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
 targetgeolevel <- c('county')     # define your target geolevel: place
 survey <- "acs5"                  # define which Census survey you want
@@ -143,10 +161,25 @@ targetgeo_names <- county_names(vars = vars_list_acs, yr = year, srvy = survey)
 ##### GET SUB GEOLEVEL POP DATA ######
 pop <- update_detailed_table(vars = vars_list_acs, yr = year, srvy = survey)  # subgeolevel pop
 
+pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = year, srvy = survey) %>% as.data.frame() %>%
+  group_by(GEOID, NAME, geolevel)%>%
+  summarise(estimate=sum(estimate),
+            moe=moe_sum(moe,estimate)) %>% mutate(variable = "swana") # subgeolevel pop
+
+# combine DP05 groups with swana estimates 
+
+pop <- rbind(pop, pop_swana)
+
 # transform pop data to wide format 
 pop_wide <- lapply(pop, to_wide)
+
+# make to df
+pop_wide <- pop_wide$GEOID %>% as.data.frame()
+
+
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
 pop_wide <- as.data.frame(pop_wide) %>% mutate(target_id = substr(GEOID, 1, 5))  # use left 5 characters as target_id
+
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID)                              # rename to generic column name for WA functions
 
 # calc target geolevel pop and number of sub geolevels per target geolevel
@@ -161,12 +194,11 @@ wa <- wa %>% left_join(targetgeo_names, by = "target_id") %>% mutate(geolevel = 
 
 ############# STATE CALCS ##################
 # get and prep state pop
-ca_pop_wide <- state_pop(vars = vars_list_acs, yr = year, srvy = survey)
+ca_pop_wide <- state_pop(vars = vars_list_acs, vars2 = vars_list_acs_swana, yr = year, srvy = survey)
 
 # calc state wa
 ca_pct_df <- ca_pop_pct(ca_pop_wide)
 ca_wa <- ca_wt_avg(ca_pct_df) %>% mutate(geolevel = 'state')   # add geolevel type
-
 
 ############ JOIN CITY, COUNTY & STATE WA TABLES  ##################
 wa_all <- union(wa, ca_wa) %>% union(city_wa)
@@ -222,15 +254,20 @@ city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "g
 View(city_table)
 
 ###update info for postgres tables###
-county_table_name <- "arei_hben_drinking_water_county_2023"
-state_table_name <- "arei_hben_drinking_water_state_2023"
-city_table_name <- "arei_hben_drinking_water_city_2023"
-rc_schema <- 'v5'
+county_table_name <- "arei_hben_drinking_water_county_2024"
+state_table_name <- "arei_hben_drinking_water_state_2024"
+city_table_name <- "arei_hben_drinking_water_city_2024"
+rc_schema <- 'v6'
 
 indicator <- "Exposure to Contaminated Drinking Water Score"
-source <- "CalEnviroScreen 4.0 https://oehha.ca.gov/calenviroscreen/report/calenviroscreen-40 . Created 6-23-23"
+source <- "CalEnviroScreen 4.0 https://oehha.ca.gov/calenviroscreen/report/calenviroscreen-40 . Created 3-27-24"
 
 
 #send tables to postgres
 #to_postgres(county_table, state_table)
 #city_to_postgres(city_table)
+
+
+
+
+
