@@ -267,7 +267,8 @@ con2 <- connect_to_db("racecounts")
 
 ##### Begin RACE COUNTS prep #
 # Import RIPA postgres table --------------------------------------------------------
-ripa_orig <- dbGetQuery(con, "SELECT * FROM crime_and_justice.cadoj_ripa_2022") 
+ripa_orig <- dbGetQuery(con, "SELECT county, agency_name, call_for_service, rae_hispanic_latino, rae_full, rae_native_american, 
+                                  rae_pacific_islander, rae_middle_eastern_south_asian FROM crime_and_justice.cadoj_ripa_2022 WHERE call_for_service = 0;") 
 
 # manual cleaning so that unique agency names to match to cities later
 agency_names <- as.data.frame(unique(ripa_orig$agency_name))
@@ -295,9 +296,7 @@ ripa_final <- ripa_orig %>% left_join(agency_names_, by = "agency_name") # join 
 
 
 # filter data for officer-initiated stops by race/eth --------------------------------------------------------
-ripa_cfs <- ripa_final %>% filter(call_for_service == "0")
-ripa_cfs <- ripa_cfs %>% select(c(county, agency_name, agency_name_new, call_for_service, rae_hispanic_latino, rae_full, rae_native_american, 
-                                  rae_pacific_islander, rae_middle_eastern_south_asian)) %>% mutate(state_id = '06')  
+ripa_cfs <- ripa_orig %>% mutate(state_id = '06')  
 
 
 #### Calc counts by race ####
