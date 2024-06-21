@@ -296,7 +296,7 @@ ripa_final <- ripa_orig %>% left_join(agency_names_, by = "agency_name") # join 
 
 
 # filter data for officer-initiated stops by race/eth --------------------------------------------------------
-ripa_cfs <- ripa_orig %>% mutate(state_id = '06')  
+ripa_cfs <- ripa_final %>% mutate(state_id = '06')  
 
 
 #### Calc counts by race ####
