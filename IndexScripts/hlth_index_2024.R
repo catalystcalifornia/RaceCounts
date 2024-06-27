@@ -30,6 +30,7 @@ options(scipen = 100)
 # udpate each yr
 rc_yr <- '2024'
 rc_schema <- 'v6'
+last_rc_schema <- 'v5'
 source <- "Robert Wood Johnson Foundation County Health Rankings (2024), American Community Survey 5-Year Estimates Table S2701 (2018-2022), Office of Statewide Health Planning and Development(2018-2021), CDC WONDER (2016-22), California Health Interview Survey (2011-2022)"
 
 issue <- 'health_care_access'
@@ -45,7 +46,7 @@ c_4 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hlth_low_
 c_5 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hlth_usual_source_of_care_county_", rc_yr))
 c_6 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hlth_preventable_hospitalizations_county_", rc_yr))
 
-region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", rc_schema, ".arei_multigeo_list"))
+region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", last_rc_schema, ".arei_multigeo_list"))
 
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area.
 varname1 <- 'help'
@@ -112,5 +113,5 @@ View(index_table)
 index_table_name <- paste0("arei_hlth_index_", rc_yr)
 index <- "Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is"
 
-#index_to_postgres(index_table, rc_schema)
-#dbDisconnect(con)
+index_to_postgres(index_table, rc_schema)
+dbDisconnect(con)

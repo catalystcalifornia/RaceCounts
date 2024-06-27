@@ -30,6 +30,7 @@ options(scipen = 100)
 # udpate each yr
 rc_yr <- '2024'
 rc_schema <- 'v6'
+last_rc_schema <- 'v5'
 source <- "California Health Interview Survey (CHIS) (2011-2022), Vera Institute of Justice (2018), California Department of Justice Open Justice Data (CADOJ) (2016-2022 USOF), (2011-2022 Status Offenses), and (2022 RIPA stops) and American Community Survey (ACS) 5-Year Estimates, Tables B01001B/H/I and DP05 (2018-2022)"
 
 issue <- 'crime_and_justice'
@@ -44,7 +45,7 @@ c_3 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_crim_stat
 c_4 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_crim_use_of_force_county_", rc_yr))
 c_5 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_crim_officer_initiated_stops_county_", rc_yr))
 
-region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", rc_schema, ".arei_multigeo_list"))
+region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", last_rc_schema, ".arei_multigeo_list"))
 
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area.
 varname1 <- 'incarceration'
@@ -101,6 +102,6 @@ View(index_table)
 index_table_name <- paste0("arei_crim_index_", rc_yr)
 index <- "Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is"
 
-#index_to_postgres(index_table, rc_schema)
-#dbDisconnect(con)
+index_to_postgres(index_table, rc_schema)
+dbDisconnect(con)
 	

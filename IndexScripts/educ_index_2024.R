@@ -30,6 +30,7 @@ options(scipen = 100)
 # udpate each yr
 rc_yr <- '2024'
 rc_schema <- 'v6'
+last_rc_schema <- 'v5'
 source <- "CALIFORNIA DEPARTMENT OF EDUCATION (2022-23) for Suspensions, Chronic Absenteeism, High School Graduation, 3rd Grade English and Math, and (2018-19) for Diversity of Teachers, CALIFORNIA CHILD CARE RESOURCE & REFERRAL NETWORK (2020), AMERICAN INSTITUTES FOR RESEARCH EARLY LEARNING NEEDS ASSESSMENT TOOL (2020)"
 
 issue <- 'education'
@@ -46,7 +47,7 @@ c_5 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_susp
 c_6 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_ece_access_county_", rc_yr))
 c_7 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_staff_diversity_county_", rc_yr))
 
-region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", rc_schema, ".arei_race_multigeo_", rc_yr))
+region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", last_rc_schema, ".arei_multigeo_list"))
 
 
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area.
@@ -116,8 +117,8 @@ View(index_table)
 index_table_name <- paste0("arei_educ_index_", rc_yr)
 index <- "Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is"
 
-#index_to_postgres(index_table, rc_schema)
-#dbDisconnect(con)
+index_to_postgres(index_table, rc_schema)
+dbDisconnect(con)
 
 
 
