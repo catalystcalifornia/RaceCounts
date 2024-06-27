@@ -30,6 +30,7 @@ options(scipen = 100)
 # udpate each yr
 rc_yr <- '2024'
 rc_schema <- 'v6'
+last_rc_schema <- 'v5'
 source <- "American Community Survey (ACS) PUMS 2018-2022, American Community Survey (ACS) 2018-2022 Tables S2301 / S2802 / B19301B-I, and United Ways of California 2023"
 
 issue <- 'economic_opportunity'
@@ -45,7 +46,7 @@ c_4 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_offi
 c_5 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_per_capita_income_county_", rc_yr))
 c_6 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_real_cost_measure_county_", rc_yr))
 
-region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", rc_schema, ".arei_multigeo_list"))
+region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", last_rc_schema, ".arei_multigeo_list"))
 
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area.
 varname1 <- 'connected'
@@ -116,5 +117,5 @@ View(index_table)
 index_table_name <- paste0("arei_econ_index_", rc_yr)
 index <- "Includes all issue indicators except for living wage. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators except for living wage. This data is"
 
-#index_to_postgres(index_table, rc_schema)
-#dbDisconnect(con)
+index_to_postgres(index_table, rc_schema)
+dbDisconnect(con)
