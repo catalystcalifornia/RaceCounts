@@ -6,7 +6,7 @@ list.of.packages <- c("DBI", "tidyverse", "RPostgreSQL", "tidycensus", "readxl",
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
-## packages
+# packages
 library(tidyverse)
 library(readxl)
 library(RPostgreSQL)
@@ -33,7 +33,7 @@ con2 <- connect_to_db("racecounts")
 
 ########## Prep rda_shared_data table: Comment out these sections once table has been created ###########
 
-# Import list of agencies with counties: Check for updated file each year
+# # Import list of agencies with counties: Check for updated file each year
 # agency_file <- read.xlsx("https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2023-06/NCIC%20Code%20Jurisdiction%20List_04242023.xlsx")
 # 
 # # Import & clean RIPA supplement data ---------------------------------------------
@@ -44,8 +44,8 @@ con2 <- connect_to_db("racecounts")
 # # ripa_supp_df %>% filter(is.na(County)) # View unmatched RIPA records. San Ramon PD agency code in RIPA is diff than in agency file. 2 SD records also do not match. Manually adding county names.
 # ripa_supp_df$County <- ifelse(ripa_supp_df$AGENCY_NAME == 'SAN RAMON PD', "Contra Costa County", ripa_supp_df$County) # Manual fix for San Ramon PD
 # ripa_supp_df$County <- ifelse(grepl('SAN DIEGO COMM', ripa_supp_df$AGENCY_NAME), "San Diego County", ripa_supp_df$County) # Manual fix for San Diego Comm
-
-
+# 
+# 
 # # Import & clean California Highway Patrol RIPA data ----------------------------------------
 # ### this step takes several minutes
 # ripa_CHP_q1 <- read_excel("W:/Data/Crime and Justice/CA DOJ/RIPA Stop Data/2022/RIPA Stop Data _ CHP 2022 Q1.xlsx")
@@ -85,6 +85,7 @@ con2 <- connect_to_db("racecounts")
 # unique(ripa_df$County)   # check if county names need cleaning
 # ripa_df <- ripa_df %>% mutate(County = ifelse(grepl("Los Angeles", County), "Los Angeles County", County)) # clean up LAC rows bc LAC data was separated into 4 files
 # ripa_df <- ripa_df %>% clean_names()
+# ripa_df$date_of_stop <- as.character(as.POSIXct(ripa_df$date_of_stop,tz="UTC",format="%Y-%m-%d"))
 # 
 # # push to postgres
 # con <- connect_to_db("rda_shared_data")
@@ -266,7 +267,8 @@ con2 <- connect_to_db("racecounts")
 
 ##### Begin RACE COUNTS prep #
 # Import RIPA postgres table --------------------------------------------------------
-ripa_orig <- dbGetQuery(con, "SELECT * FROM crime_and_justice.cadoj_ripa_2022") 
+ripa_orig <- dbGetQuery(con, "SELECT county, agency_name, call_for_service, rae_hispanic_latino, rae_full, rae_native_american, 
+                                  rae_pacific_islander, rae_middle_eastern_south_asian FROM crime_and_justice.cadoj_ripa_2022 WHERE call_for_service = 0;") 
 
 # manual cleaning so that unique agency names to match to cities later
 agency_names <- as.data.frame(unique(ripa_orig$agency_name))
@@ -294,9 +296,7 @@ ripa_final <- ripa_orig %>% left_join(agency_names_, by = "agency_name") # join 
 
 
 # filter data for officer-initiated stops by race/eth --------------------------------------------------------
-ripa_cfs <- ripa_final %>% filter(call_for_service == "0")
-ripa_cfs <- ripa_cfs %>% select(c(county, agency_name, agency_name_new, call_for_service, rae_hispanic_latino, rae_full, rae_native_american, 
-                                  rae_pacific_islander, rae_middle_eastern_south_asian)) %>% mutate(state_id = '06')  
+ripa_cfs <- ripa_final %>% mutate(state_id = '06')  
 
 
 #### Calc counts by race ####
