@@ -30,6 +30,7 @@ options(scipen = 100)
 # udpate each yr
 rc_yr <- '2024'
 rc_schema <- 'v6'
+last_rc_schema <- 'v5'
 source <- "California Health Interview Survey (CHIS) (Food Access 2011-18) (Asthma 2011-2022), CalEnviroScreen 4.0, National Land Cover Database (NLCD) 2021, and American Community Survey (ACS) 2017-2021 Table DP05"
 
 issue <- 'healthy_built_environment'
@@ -38,14 +39,14 @@ issue <- 'healthy_built_environment'
 ####################### ADD COUNTY DATA #####################################
 # you must update this section if we add or remove any indicators in an issue #
 
-c_1 <- st_read(con, query = paste0("SELECT * FROM", rc_schema, ".arei_hben_drinking_water_county_", rc_yr))
-c_2 <- st_read(con, query = paste0("SELECT * FROM", rc_schema, ".arei_hben_food_access_county_", rc_yr))
-c_3 <- st_read(con, query = paste0("SELECT * FROM", rc_schema, ".arei_hben_haz_weighted_avg_county_", rc_yr))
-c_4 <- st_read(con, query = paste0("SELECT * FROM", rc_schema, ".arei_hben_toxic_release_county_", rc_yr))
-c_5 <- st_read(con, query = paste0("SELECT * FROM", rc_schema, ".arei_hben_asthma_county_", rc_yr))
-c_6 <- st_read(con, query = paste0("SELECT * FROM", rc_schema, ".arei_hben_lack_of_greenspace_county_", rc_yr))
+c_1 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_drinking_water_county_", rc_yr))
+c_2 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_food_access_county_", rc_yr))
+c_3 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_haz_weighted_avg_county_", rc_yr))
+c_4 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_toxic_release_county_", rc_yr))
+c_5 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_asthma_county_", rc_yr))
+c_6 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_lack_of_greenspace_county_", rc_yr))
 
-region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM", rc_schema, ".arei_multigeo_list"))
+region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", last_rc_schema, ".arei_multigeo_list"))
 
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area.
 varname1 <- 'water'
@@ -114,7 +115,7 @@ View(index_table)
 index_table_name <- paste0("arei_hben_index_", rc_yr)
 index <- "Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is"
 
-#index_to_postgres(index_table, rc_schema)
-#dbDisconnect(con)
+index_to_postgres(index_table, rc_schema)
+dbDisconnect(con)
 
 

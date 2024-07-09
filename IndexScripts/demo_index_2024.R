@@ -30,6 +30,7 @@ options(scipen = 100)
 # udpate each yr
 rc_yr <- '2024'
 rc_schema <- 'v6'
+last_rc_schema <- 'v5'
 source <- "US Census Bureau (2020), Who Leads Us Campaign (2014, 2016, 2018, 2020 and 2017, 2019, 2020), CPS (Midterm 2010, 2014, 2018, 2022), (Presidential 2012, 2016, 2020), (Registration 2012-2020 even yrs), and American Community Survey (ACS) (2015-19/2016-20) Table DP05"
 
 issue <- 'democracy'
@@ -38,14 +39,14 @@ issue <- 'democracy'
 ####################### ADD COUNTY DATA #####################################
 # you must update this section if we add or remove any indicators in an issue #
 
-c_1 <- st_read(con, query = paste0("SELECT * FROM", rc_schema, ".arei_demo_census_participation_county_", rc_yr))
-c_2 <- st_read(con, query = paste0("SELECT * FROM", rc_schema, ".arei_demo_diversity_of_candidates_county_", rc_yr))
-c_3 <- st_read(con, query = paste0("SELECT * FROM", rc_schema, ".arei_demo_diversity_of_electeds_county_", rc_yr))
-c_4 <- st_read(con, query = paste0("SELECT * FROM", rc_schema, ".arei_demo_registered_voters_county_", rc_yr))
-c_5 <- st_read(con, query = paste0("SELECT * FROM", rc_schema, ".arei_demo_voting_midterm_county_", rc_yr))
-c_6 <- st_read(con, query = paste0("SELECT * FROM", rc_schema, ".arei_demo_voting_presidential_county_", rc_yr))
+c_1 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_census_participation_county_", rc_yr))
+c_2 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_diversity_of_candidates_county_", rc_yr))
+c_3 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_diversity_of_electeds_county_", rc_yr))
+c_4 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_registered_voters_county_", rc_yr))
+c_5 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_voting_midterm_county_", rc_yr))
+c_6 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_voting_presidential_county_", rc_yr))
 
-region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM", rc_schema, ".arei_multigeo_list"))
+region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", last_rc_schema, ".arei_multigeo_list"))
 
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area. 
 varname1 <- 'census'
@@ -113,7 +114,7 @@ View(index_table)
 index_table_name <- paste0("arei_demo_index_", rc_yr)
 index <- "Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is"
 
-#index_to_postgres(index_table, rc_schema)
-#dbDisconnect(con)
+index_to_postgres(index_table, rc_schema)
+dbDisconnect(con)
 
 
