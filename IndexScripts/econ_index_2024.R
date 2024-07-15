@@ -45,6 +45,7 @@ c_3 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_inte
 c_4 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_officials_county_", rc_yr))
 c_5 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_per_capita_income_county_", rc_yr))
 c_6 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_real_cost_measure_county_", rc_yr))
+c_7 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_living_wage_county_", rc_yr))
 
 region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", last_rc_schema, ".arei_multigeo_list"))
 
@@ -55,7 +56,7 @@ varname3 <- 'internet'
 varname4 <- 'officials'
 varname5 <- 'percap'
 varname6 <- 'realcost'
-
+varname7 <- 'living wage'
 
 # Clean data --------
 
@@ -83,6 +84,10 @@ c_5 <- clean_data_z(c_5, varname5)
 # use function to select cols we want and cap z-scores
 c_6 <- clean_data_z(c_6, varname6)
 
+## c7 
+# use function to select cols we want and cap z-scores
+c_7 <- clean_data_z(c_7, varname7)
+
 
 # Join Data Together ------------------------------------------------------
 c_index <- full_join(c_1, c_2) 
@@ -90,6 +95,7 @@ c_index <- full_join(c_index, c_3)
 c_index <- full_join(c_index, c_4)
 c_index <- full_join(c_index, c_5)
 c_index <- full_join(c_index, c_6)
+c_index <- full_join(c_index, c_7)
 colnames(c_index) <- gsub("performance", "perf", names(c_index))  # shorten col names
 colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col names
 
@@ -114,7 +120,7 @@ index_table <- index_table[order(index_table[[5]]), ]  # order by disparity rank
 View(index_table)
 
 # Send table to postgres 
-index_table_name <- paste0("arei_econ_index_", rc_yr)
+index_table_name <- paste0("arei_econ_index_new_", rc_yr)
 index <- "Includes all issue indicators except for living wage. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators except for living wage. This data is"
 
 index_to_postgres(index_table, rc_schema)
