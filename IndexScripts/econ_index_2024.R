@@ -101,7 +101,7 @@ colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col 
 
 
 # calculate z-scores. Will need to add threshold option to the calculate_z function
-ind_threshold <- 3  # update depending on the number of indicators in the issue area
+ind_threshold <- 4  # update depending on the number of indicators in the issue area
 c_index <- calculate_z(c_index)
 
 
