@@ -115,7 +115,7 @@ View(index_table)
 
 # Send table to postgres 
 index_table_name <- paste0("arei_educ_index_", rc_yr)
-index <- "Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is"
+index <- "Includes all issue indicators included. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is"
 
 index_to_postgres(index_table, rc_schema)
 dbDisconnect(con)
