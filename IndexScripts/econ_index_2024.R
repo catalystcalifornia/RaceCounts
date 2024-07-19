@@ -120,8 +120,8 @@ index_table <- index_table[order(index_table[[5]]), ]  # order by disparity rank
 View(index_table)
 
 # Send table to postgres 
-index_table_name <- paste0("arei_econ_index_new_", rc_yr)
-index <- "Includes all issue indicators except for living wage. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators except for living wage. This data is"
+index_table_name <- paste0("arei_econ_index_", rc_yr)
+index <- "Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is"
 
 index_to_postgres(index_table, rc_schema)
 dbDisconnect(con)
