@@ -52,7 +52,7 @@ varname1 <- 'incarceration'
 varname2 <- 'safety'
 varname3 <- 'offenses'
 varname4 <- 'force'
-varname4 <- 'stops'
+varname5 <- 'stops'
 
 # Clean data --------
 ## use function to select cols we want, cap z-scores, and rename z-score cols
