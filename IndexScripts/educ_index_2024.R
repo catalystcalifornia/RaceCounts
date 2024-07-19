@@ -97,7 +97,7 @@ colnames(c_index) <- gsub("performance", "perf", names(c_index))  # shorten col 
 colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col names
 
 # calculate z-scores. Will need to add threshold option to the calculate_z function
-ind_threshold <- 4  # update depending on the number of indicators in the issue area
+ind_threshold <- 3  # update depending on the number of indicators in the issue area
 c_index <- calculate_z(c_index)
 
 # merge region and urban type from current arei_multigeo_list
