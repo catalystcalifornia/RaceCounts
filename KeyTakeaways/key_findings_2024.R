@@ -296,7 +296,7 @@ final_df <- df %>% filter(!grepl('University', geo_name))
 #saveRDS(final_df, file = paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/final_df.RData")) 
 
 # load .RData file
-final_df <- readRDS(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/final_df.RData"))
+# final_df <- readRDS(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/final_df.RData"))
 
 # NOTE: when you call final_df in your code chunk(s), rename it before running code on it bc it takes a LONG time to run again...
 
@@ -362,11 +362,11 @@ df_lf <- api_split(df_lf) # duplicate/split api rates as asian and pacisl
 ### Table counting number of non-NA rates per race+geo combo, used for screening worst counts later ### 
 bestworst_screen <- df_lf %>% group_by(geoid, race_generic) %>% summarise(rate_count = sum(!is.na(rate)))
 
+
 ### Worst rates - RACE PAGE ###
 worst_table <- df_lf %>% 
   group_by(geoid, geo_level, indicator) %>% top_n(1, disparity_z_score) %>% # get worst raced disparity z-score by geo+indicator combo
   rename(worst_rate = race_generic) %>% filter(values_count > 1) # filter out geo+indicator combos with only 1 raced rate
-
 
 worst_table2 <- df_lf %>% 
   left_join(select(worst_table, geoid, indicator, worst_rate, geo_level), by = c("geoid", "indicator", "geo_level")) %>%
