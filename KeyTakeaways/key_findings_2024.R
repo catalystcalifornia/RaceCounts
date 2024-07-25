@@ -569,7 +569,9 @@ pacisl_ <- most_disp_by_race(df_ds, 'pacisl')
 
 white_ <- most_disp_by_race(df_ds, 'white')
 
-most_disp <- bind_rows(aian_, asian_, black_, latinx_, pacisl_, white_) %>%
+swana_ <- most_disp_by_race(df_ds, 'swana')
+
+most_disp <- bind_rows(aian_, asian_, black_, latinx_, pacisl_, white_, swana_) %>%
   select(geoid, geo_name, dist_id, district_name, total_enroll, race, long_name, indicator_count, ends_with("_ind"), everything())
 
 # clean city names
@@ -760,7 +762,7 @@ rda_places_findings <- rbind(most_impacted, disp_avg_statement, outc_avg_stateme
 
 #### HK: (manual) issue area findings (used on issue areas pages and the state places page) ####
 
-issue_area_findings <- read.csv(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/RaceCounts/KeyTakeaways/manual_findings_", curr_schema, "_", curr_yr, ".csv"), encoding = "UTF-8", check.names = FALSE)
+issue_area_findings <- read.csv(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/RaceCounts/RaceCounts/KeyTakeaways/manual_findings_", curr_schema, "_", curr_yr, ".csv"), encoding = "UTF-8", check.names = FALSE)
 colnames(issue_area_findings) <- c("issue_area", "finding", "findings_pos")
 
 issue_area_findings_type_dict <- list(economy = "Economic Opportunity",
