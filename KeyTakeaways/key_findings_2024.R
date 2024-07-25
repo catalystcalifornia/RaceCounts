@@ -358,7 +358,6 @@ api_split <- function(x) {
 
 df_lf <- api_split(df_lf) # duplicate/split api rates as asian and pacisl
 
-
 ### Table counting number of non-NA rates per race+geo combo, used for screening worst counts later ### 
 bestworst_screen <- df_lf %>% group_by(geoid, race_generic) %>% summarise(rate_count = sum(!is.na(rate)))
 
