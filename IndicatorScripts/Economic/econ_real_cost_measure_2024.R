@@ -70,7 +70,10 @@ rcm_subset <- rcm_subset %>% mutate(total_rate = (1 - pct_hh_below_rcm) * 100,
                                     nh_other_rate = (1 - pct_nh_other_hh_below_rcm) * 100)
 
 # select just fields we want
-d <- rcm_subset %>% select(geoid, geoname, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"))
+d <- rcm_subset %>% select(geoid, geoname, ends_with("_pop"), ends_with("_raw"), ends_with("_rate")) %>%
+  
+  #filter out regions
+  filter(!geoid %in% c("06117","06119","06121","06123","06125","06127","06129"))
 
 
 
