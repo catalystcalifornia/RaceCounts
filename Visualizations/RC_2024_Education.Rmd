@@ -12,7 +12,6 @@ output:
 
 subtitle: 'Draft Visuals'
 ---
-  
 <style type="text/css">
   h1{
   font-family: Rubik;
@@ -47,6 +46,7 @@ body { background-color: #FFFFFF; }
 ```{r include = FALSE}
 ### install version 1.1.1 of Crosstalk -- LATER VERSIONS OF CROSSTALK WILL NOT WORK ####
 # remotes::install_version("crosstalk", version = "1.1.1", repos = "http://cran.us.r-project.org") 
+
 library(crosstalk)
 
 ```
@@ -61,7 +61,7 @@ library(RPostgreSQL)
 library(sf)
 library(htmltools)
 library(tidyr)
-library(rgdal)
+#library(rgdal) outdated
 library(reshape2)
 library(plotly)
 library(tidyverse)
@@ -70,28 +70,18 @@ library(highcharter)
 options(scipen=999)
 options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
 
-setwd("W:/Project/RACE COUNTS/2022_v4/Visualizations/") 
 
+setwd("W:/Project/RACE COUNTS/2024_v6/RC_Github/SS/RaceCounts/Visualizations")
 
 # data setup
-pw <- {"password"}
+source("W:\\RDA Team\\R\\credentials_source.R")
+con <- connect_to_db("racecounts")
+
+source("W:\\RDA Team\\R\\credentials_source.R")
+con2 <- connect_to_db("rda_shared_data")
 
 # load PostgreSQL driver
 drv <- dbDriver("PostgreSQL")
-
-con <- dbConnect(drv,
-dbname = "racecounts",
-host = "aws-postgres-db.c5udgz7ro8hq.us-west-2.rds.amazonaws.com", 
-port = 5432,
-user = "postgres",
-password = pw)
-
-con2 <- dbConnect(drv,
-dbname = "rda_shared_data",
-host = "aws-postgres-db.c5udgz7ro8hq.us-west-2.rds.amazonaws.com", 
-port = 5432,
-user = "postgres",
-password = pw)
 
 
 # just a note of reference to inserting text #https://monashbioinformaticsplatform.github.io/2017-11-16-open-science-training/topics/rmarkdown.html
@@ -105,7 +95,7 @@ password = pw)
 ##Add RC theme##
 rc_theme <- hc_theme(
     # race counts colors
-  colors = c("green", "orange", "red", "yellow"),
+  colors = c("purple", "orange", "red", "yellow"),
   chart = list(
     backgroundColor = "#FFFFFF",
     borderColor = "black",
@@ -148,15 +138,15 @@ options(highcharter.lang = lang)
 
 ####################### ADD COUNTY DATA #####################################
 
-c_1 <- st_read(con, query = "SELECT * FROM v4.arei_educ_chronic_absenteeism_county_2022")
-c_2 <- st_read(con, query = "SELECT * FROM v4.arei_educ_hs_grad_county_2022")
-c_3 <- st_read(con, query = "SELECT * FROM v4.arei_educ_gr3_ela_scores_county_2022")
-c_4 <- st_read(con, query = "SELECT * FROM v4.arei_educ_gr3_math_scores_county_2022")
-c_5 <- st_read(con, query = "SELECT * FROM v4.arei_educ_suspension_county_2022")
-c_6 <- st_read(con, query = "SELECT * FROM v4.arei_educ_ece_access_county_2022")
-c_7 <- st_read(con, query = "SELECT * FROM v4.arei_educ_staff_diversity_county_2022")
+c_1 <- st_read(con, query = "SELECT * FROM v6.arei_educ_chronic_absenteeism_county_2024")
+c_2 <- st_read(con, query = "SELECT * FROM v6.arei_educ_hs_grad_county_2024")
+c_3 <- st_read(con, query = "SELECT * FROM v6.arei_educ_gr3_ela_scores_county_2024")
+c_4 <- st_read(con, query = "SELECT * FROM v6.arei_educ_gr3_math_scores_county_2024")
+c_5 <- st_read(con, query = "SELECT * FROM v6.arei_educ_suspension_county_2024")
+c_6 <- st_read(con, query = "SELECT * FROM v6.arei_educ_ece_access_county_2024")
+c_7 <- st_read(con, query = "SELECT * FROM v6.arei_educ_staff_diversity_county_2024")
 
-c_index_z <- st_read(con, query = "SELECT * FROM v4.arei_educ_index_2022")
+c_index_z <- st_read(con, query = "SELECT * FROM v6.arei_educ_index_2024")
 
 
 ####################### POPULATION DATA #####################################
