@@ -308,9 +308,8 @@ s_1_long %>%
 ### County Barchart
 
 ```{r}
-
 c_1_long <- c_1 %>%
-   select(c(1, ends_with('_rate')))
+   select(c(2, ends_with('_rate')))
 
 c_1_long <- melt(c_1_long, id.vars=c("county_name"))
 # Round 'value' field to 1 decimal
