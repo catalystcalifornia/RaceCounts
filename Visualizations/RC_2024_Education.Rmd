@@ -421,7 +421,7 @@ s_2_long %>%
   hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
 
 ```
-* Asian students, the group with the highest rate, have a graduation rate 21 percentage points higher than AIAN and Black students, the groups with the lowest rates. This gap has increased since the 2018-19 school year. This data comes from the first year (2020-21) of the COVID-19 pandemic when many students became disconnected from school.
+* NH-Filipino students, the group with the highest rate, have a graduation rate about 16 percentage points higher than AIAN and Black students, the groups with the lowest rates. 
 
 ### County Barchart
 
