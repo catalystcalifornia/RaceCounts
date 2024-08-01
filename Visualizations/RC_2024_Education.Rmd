@@ -296,7 +296,7 @@ s_1_long %>%
                   color = "black",
                   width = 2,
                   zIndex = 20,  # the higher number means will be top/most visible layer
-                  label = list(text = paste0("Total Rate: ",round(s_1$total_rate, 1)), style = list(color = "black", fontSize = 16), align = "left")))) %>%
+                  label = list(text = paste0("Total Rate: ",round(s_1$total_rate, 1),"%"), style = list(color = "black", fontSize = 16), align = "left")))) %>%
   hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
   hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
   hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
