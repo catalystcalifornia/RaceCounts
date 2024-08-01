@@ -190,6 +190,9 @@ RACE COUNTS provides a 3D view of racial equity:
 <br>2) Race labels for bar charts: The "nh_" prefix signifies that a group is non-Latinx (excludes Latinx).
 <br>3) The "twoormor" group represents those who identify as Two or More Races.
 
+# Key Findings
+
+*
 # Indicators
 
 ## Education Index - UPDATED
@@ -226,8 +229,10 @@ RACE COUNTS provides a 3D view of racial equity:
 ```
 
 * San Francisco has among the highest racial disparities, driven by large inequities in chronic absenteeism and graduation rates.
-* Central Valley counties are split between the Red and Yellow Quadrants, meaning they have low overall Education opportunities. Most counties also have higher disparity.
-* Looking across Education indicators, Latinx, Black, and AIAN Californians fare worse than other groups.
+
+* Central Valley counties are split between the Red and Yellow Quadrants, meaning they have low overall Education opportunities. Most countiesin the Central Valley  also have higher disparity.
+
+
 
 
 ## Chronic Absenteeism - UPDATED {.tabset .tabset-fade}
@@ -247,7 +252,7 @@ c_1_chart <- c_1 %>% mutate(
       performance_z > 3.5 ~ 3.5,
       performance_z < -3.5 ~ -3.5,
       TRUE ~ performance_z)
-    ) %>% filter(quadrant %in% c("green", "yellow", "orange", "red"))
+    ) %>% filter(quadrant %in% c("yellow", "orange", "red", "purple"))
 
  c_1_chart %>% 
     hchart("scatter", 
@@ -259,15 +264,15 @@ c_1_chart <- c_1 %>% mutate(
   hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
   hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
   hc_caption(
-    text = "Data source: CALIFORNIA DEPARTMENT OF EDUCATION (2020-21);<br> A chronically absent student is absent on 10 percent or more of school days per year.<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
+    text = "Data source: California Department of Education (2022-23);<br> A chronically absent student is absent on 10 percent or more of school days per year.<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
     align = "center"
      ) %>% #hc_size(height=400,width=700) %>% 
    hc_legend(element_blank) %>% hc_add_theme(rc_theme)
 
 
 ```
-* San Mateo County is by far the most racially disparate on chronic absenteeism. NHPI, Black, and Latinx rates are three or more times higher than all other races.
-* Del Norte County has by far the worst performance with more than half of students (53.3%) being chronically absent. All groups have higher rates, however, AIAN students are the most likely to be chronically absent (65.5%).
+* San Francisco County is by far the most racially disparate on chronic absenteeism. NHPI, Black, AIAN, and Latinx rates are two or more times higher than all other races.
+* Plumas County has by far the worst performance with more than half of students (56.2%) being chronically absent. All groups have higher rates, however, Latinx students are the most likely to be chronically absent (61.8%).
 
 ### State Barchart
 ```{r}
