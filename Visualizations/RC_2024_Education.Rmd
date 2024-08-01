@@ -230,7 +230,7 @@ RACE COUNTS provides a 3D view of racial equity:
 
 * San Francisco has among the highest racial disparities, driven by large inequities in chronic absenteeism and graduation rates.
 
-* Central Valley counties are split between the Red and Yellow Quadrants, meaning they have low overall Education opportunities. Most countiesin the Central Valley  also have higher disparity.
+* Central Valley counties are split between the Red and Yellow Quadrants, meaning they have low overall Education opportunities. Most counties in the Central Valley  also have higher disparity.
 
 
 
@@ -240,7 +240,7 @@ RACE COUNTS provides a 3D view of racial equity:
 ### Scatterplot
 
 ```{r}
-# Be sure to update title above depending on if indicator has been updated since RC v3
+
 # Remove counties without quadrant values. Cap indicator perf/disp z-scores at 3.5 and -3.5. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
 c_1_chart <- c_1 %>% mutate(
     disp_z_cap = case_when(
