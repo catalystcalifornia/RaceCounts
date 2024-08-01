@@ -71,7 +71,7 @@ options(scipen=999)
 options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
 
 
-setwd("W:/Project/RACE COUNTS/2024_v6/RC_Github/SS/RaceCounts/Visualizations")
+#setwd("W:/Project/RACE COUNTS/2024_v6/RC_Github/SS/RaceCounts/Visualizations")
 
 # data setup
 source("W:\\RDA Team\\R\\credentials_source.R")
@@ -95,7 +95,7 @@ drv <- dbDriver("PostgreSQL")
 ##Add RC theme##
 rc_theme <- hc_theme(
     # race counts colors
-  colors = c("purple", "orange", "red", "yellow"),
+  colors = c("orange", "purple", "red", "yellow"),
   chart = list(
     backgroundColor = "#FFFFFF",
     borderColor = "black",
@@ -205,7 +205,7 @@ RACE COUNTS provides a 3D view of racial equity:
       education_performance_z > 2 ~ 2,
       education_performance_z < -2 ~ -2,
       TRUE ~ education_performance_z)
-    ) %>% filter(quadrant %in% c("purple", "yellow", "orange", "red"))
+    ) %>% filter(quadrant %in% c("yellow", "orange", "red", "purple"))
 
  c_index_chart %>% 
     hchart("scatter", 
