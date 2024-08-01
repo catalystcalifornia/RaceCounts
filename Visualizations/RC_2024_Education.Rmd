@@ -374,7 +374,7 @@ c_2_chart <- c_2 %>% mutate(
       performance_z > 3.5 ~ 3.5,
       performance_z < -3.5 ~ -3.5,
       TRUE ~ performance_z)
-    ) %>% filter(quadrant %in% c("green", "yellow", "orange", "red"))
+    ) %>% filter(quadrant %in% c("yellow", "orange", "red", "purple"))
 
 c_2_chart %>% 
     hchart("scatter", 
@@ -386,15 +386,13 @@ c_2_chart %>%
   hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
   hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
   hc_caption(
-    text = "Data source: CALIFORNIA DEPARTMENT OF EDUCATION (2020-21)<br> Graduates are students who graduate with either a traditional high school diploma,<br>an adult education high school diploma, or have passed the California High School Proficiency Exam.<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
+    text = "Data source: CALIFORNIA DEPARTMENT OF EDUCATION (2022-23)<br> Graduates are students who graduate with either a traditional high school diploma,<br>an adult education high school diploma, or have passed the California High School Proficiency Exam.<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
     align = "center"
      ) %>% #hc_size(height=400,width=700) %>% 
   hc_legend(element_blank) %>% hc_add_theme(rc_theme)
 
 ```
-* Inyo, Mono, San Francisco, and Nevada Counties have among the highest racial disparities and lowest performance on high school graduation rates.
-* In San Francisco County, less than half of Latinx and Black students graduate.
-* Around three out of four White and AIAN students graduate in Inyo County, compared to only about one in three Latinx and Black students.
+* Mono, Nevada, Inyo, and San Francisco Counties have among the highest racial disparities and lowest performance on high school graduation rates.
 
 ### State Barchart
 ```{r}
