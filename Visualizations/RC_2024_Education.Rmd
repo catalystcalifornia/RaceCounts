@@ -151,20 +151,20 @@ c_index_z <- st_read(con, query = "SELECT * FROM v6.arei_educ_index_2024")
 
 ####################### POPULATION DATA #####################################
 #Join total population to index view, food access, and asthma data frames
-pop <- st_read(con2, query = "SELECT geoid, dp05_0001e FROM demographics.acs_5yr_dp05_multigeo_2020")
+pop <- st_read(con2, query = "SELECT geoid, dp05_0001e FROM demographics.acs_5yr_dp05_multigeo_2022")
 
 #c_index_pctile <- left_join(x = c_index_pctile, y = pop, by = c("county_id" = "geoid"))
 c_index_z <- left_join(x = c_index_z, y = pop, by = c("county_id" = "geoid"))
 
 
 ####################### ADD STATE DATA #####################################
-s_1 <- st_read(con, query = "SELECT * FROM v4.arei_educ_chronic_absenteeism_state_2022")
-s_2 <- st_read(con, query = "SELECT * FROM v4.arei_educ_hs_grad_state_2022")
-s_3 <- st_read(con, query = "SELECT * FROM v4.arei_educ_gr3_ela_scores_state_2022")
-s_4 <- st_read(con, query = "SELECT * FROM v4.arei_educ_gr3_math_scores_state_2022")
-s_5 <- st_read(con, query = "SELECT * FROM v4.arei_educ_suspension_state_2022")
-s_6 <- st_read(con, query = "SELECT * FROM v4.arei_educ_ece_access_state_2022")
-s_7 <- st_read(con, query = "SELECT * FROM v4.arei_educ_staff_diversity_state_2022")
+s_1 <- st_read(con, query = "SELECT * FROM v6.arei_educ_chronic_absenteeism_state_2024")
+s_2 <- st_read(con, query = "SELECT * FROM v6.arei_educ_hs_grad_state_2024")
+s_3 <- st_read(con, query = "SELECT * FROM v6.arei_educ_gr3_ela_scores_state_2024")
+s_4 <- st_read(con, query = "SELECT * FROM v6.arei_educ_gr3_math_scores_state_2024")
+s_5 <- st_read(con, query = "SELECT * FROM v6.arei_educ_suspension_state_2024")
+s_6 <- st_read(con, query = "SELECT * FROM v6.arei_educ_ece_access_state_2024")
+s_7 <- st_read(con, query = "SELECT * FROM v6.arei_educ_staff_diversity_state_2024")
 
 
 
@@ -205,7 +205,7 @@ RACE COUNTS provides a 3D view of racial equity:
       education_performance_z > 2 ~ 2,
       education_performance_z < -2 ~ -2,
       TRUE ~ education_performance_z)
-    ) %>% filter(quadrant %in% c("green", "yellow", "orange", "red"))
+    ) %>% filter(quadrant %in% c("purple", "yellow", "orange", "red"))
 
  c_index_chart %>% 
     hchart("scatter", 
