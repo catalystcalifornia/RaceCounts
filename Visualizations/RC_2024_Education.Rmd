@@ -1003,7 +1003,7 @@ c_7_chart <- c_7 %>% mutate(
       performance_z > 3.5 ~ 3.5,
       performance_z < -3.5 ~ -3.5,
       TRUE ~ performance_z)
-    ) %>% filter(quadrant %in% c("green", "yellow", "orange", "red"))
+    ) %>% filter(quadrant %in% c("yellow", "orange", "red", "purple"))
 
 c_7_chart %>% 
     hchart("scatter", 
@@ -1023,7 +1023,7 @@ c_7_chart %>%
 
 ```
 * Larger population counties overall are in the Yellow (Lower disparity, Lower performance) Quadrant, with Low Angeles County having the lowest disparity.
-* All Central Valley counties are in the Yellow (Lower disparity, Lower performance) and Red (Higher disparity, Lower performance) Quadrants.
+* All but two (Mariposa and Tuolumne) Central Valley counties are in the Yellow (Lower disparity, Lower performance) and Red (Higher disparity, Lower performance) Quadrants.
 
 ### State Barchart
 
