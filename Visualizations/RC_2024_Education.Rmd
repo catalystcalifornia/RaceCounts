@@ -768,7 +768,7 @@ c_5_chart  %>%
 ```
 * Inyo County is the most racially disparate for this measure, with suspension rates for AIAN students reaching 7.1 while the suspension rates for the lowest group is 0.
 
-* Modoc county is the lowest performing for this measure, with suspension rates for NH-Black students reaching 38 and the lowest rate being 6.7.
+* Three counties (Modoc, Lake, and Del Norte) in the Northern California region are the lowest performing for this measure.
 
 
 ### State Barchart
@@ -800,7 +800,7 @@ s_5_long %>%
   hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
 
 ```
-* Statewide, rates dropped across the board between 2018-19 and 2020-21 -- likely due to distance learning during the COVID-19 pandemic. Still, disparities remained with AIAN students being suspended twice (or more) as often as other students. Note that data for this time period may not reflect trends seen during in-person learning.
+* NH_Black students are suspended at a rate 8.0 times higher than the lowest suspension rate. 
 
 ### County Barchart
 
