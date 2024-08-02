@@ -807,7 +807,7 @@ s_5_long %>%
 ```{r}
 
 c_5_long <- c_5 %>%
-   select(c(1, ends_with('_rate')))
+   select(c(2, ends_with('_rate')))
 
 c_5_long <- melt(c_5_long, id.vars=c("county_name"))
 # Round 'value' field to 1 decimal
@@ -874,7 +874,7 @@ c_6_chart <- c_6 %>% mutate(
       performance_z > 3.5 ~ 3.5,
       performance_z < -3.5 ~ -3.5,
       TRUE ~ performance_z)
-    ) %>% filter(quadrant %in% c("green", "yellow", "orange", "red"))
+    ) %>% filter(quadrant %in% c("yellow", "orange", "red", "purple"))
 
 c_6_chart %>% 
     hchart("scatter", 
@@ -886,7 +886,7 @@ c_6_chart %>%
   hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
   hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
   hc_caption(
-    text = "Data source: CALIFORNIA CHILD CARE RESOURCE & REFERRAL NETWORK (2019);<br>AMERICAN INSTITUTES FOR RESEARCH EARLY LEARNING NEEDS ASSESSMENT TOOL (2018);<br>Licensed childcare (CCCRRN) and Transitional Kindergarten (AIR) enrollment per 100 children aged 0-5 (AIR).<br>Accessible childcare refers to enrollment in one's neighborhood defined here as one's ZIP Code.<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
+    text = "Data source: California Child Care Resource & Referral Network (2021); American Institutes for Research Early Learning Needs Assessment Tool (2020)br>AMERICAN INSTITUTES FOR RESEARCH EARLY LEARNING NEEDS ASSESSMENT TOOL (2018);<br>Licensed childcare (CCCRRN) and Transitional Kindergarten (AIR) enrollment per 100 children aged 0-5 (AIR).<br>Accessible childcare refers to enrollment in one's neighborhood defined here as one's ZIP Code.<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
     align = "center"
      ) %>% #hc_size(height=400,width=700) %>% 
   hc_legend(element_blank) %>% hc_add_theme(rc_theme)
@@ -925,7 +925,7 @@ s_6_long %>%
   hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
 
 ``` 
-* ECE access rates are low across the state and for all groups, even the best rate means only one in three children has access. Still Other Race, AIAN, Latinx, and Black children all have less ECE access than the average child in California.
+* ECE access rates are low across the state and for all groups, even the best rate means less than one in two children has access. Still Other Race, AIAN, Latinx, and Black children all have less ECE access than the average child in California.
 
 ### County Barchart
 
