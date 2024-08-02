@@ -624,7 +624,7 @@ c_4_chart <- c_4 %>% mutate(
       performance_z > 3.5 ~ 3.5,
       performance_z < -3.5 ~ -3.5,
       TRUE ~ performance_z)
-    ) %>% filter(quadrant %in% c("green", "yellow", "orange", "red"))
+    ) %>% filter(quadrant %in% c("yellow", "orange", "red", "purple"))
 
 c_4_chart %>%
     hchart("scatter", 
@@ -636,15 +636,14 @@ c_4_chart %>%
   hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
   hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
   hc_caption(
-    text = "Data source: CALIFORNIA ASSESSMENT OF STUDENT PERFORMANCE AND PROGRESS (2020-21)<br>Students scoring proficient or advanced on the third grade Mathematics test (Smarter Balanced and California Alternate Assessment) as a percentage of all third graders tested.<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
+    text = "Data source: CALIFORNIA DEPARTMENT OF EDUCATION (2022-2023)<br>Students scoring proficient or advanced on the third grade Mathematics test (Smarter Balanced and California Alternate Assessment) as a percentage of all third graders tested.<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
     align = "center"
      ) %>% #hc_size(height=400,width=700) %>% 
   hc_legend(element_blank) %>% hc_add_theme(rc_theme)
 
 
 ```
-* Imperial, Riverside, and San Bernardino, representing half of the SoCal counties, are ranked 2nd, 3rd, and 4th most disparate in the state.
-* Los Angeles jumped up (worsened) from a disparity rank of 25 to 8 compared to 2018-19 data, while performance rank dropped (worsened) from 14 to 30. It moved from the Orange to Red Quadrant. This may be at least partially explained by the COVID-19 pandemic. It is important to note that only a small fraction of the usual number of students took the proficiency tests in the 2020-21 school year, so this chart represents a much smaller sample of students than other years.
+*Most Central Valley and Northern California counties have lower than average performance on this measure.
 
 ### State Barchart
 
@@ -674,7 +673,7 @@ s_4_long %>%
 
 
 ```
-* Statewide, two groups emerge. In the first group, fewer than one in three AIAN, Black, Latinx, and NHPI students scored proficient. While in the second group, more than 50% of Asian, Filipinx, White, Two or More Races third graders scored proficient in math. Note: A small percentage of the usual number of students took the proficiency test in the 2020-21 school year.
+* Statewide, two groups emerge. In the first group, about one in three AIAN, Black, Latinx, and NHPI students scored proficient. While in the second group, more than 50% of Asian, Filipinx, White, Two or More Races third graders scored proficient in math. 
 
 ### County Barchart
 
