@@ -192,7 +192,12 @@ RACE COUNTS provides a 3D view of racial equity:
 
 # Key Findings
 
-*
+* On the Education Index, Central Valley counties are split between the Red and Yellow Quadrants, meaning they have low overall Education opportunities.(See scatterplot on Education Index)
+
+* 
+
+
+
 # Indicators
 
 ## Education Index - UPDATED
@@ -230,7 +235,7 @@ RACE COUNTS provides a 3D view of racial equity:
 
 * San Francisco has among the highest racial disparities, driven by large inequities in chronic absenteeism and graduation rates.
 
-* Central Valley counties are split between the Red and Yellow Quadrants, meaning they have low overall Education opportunities. Most counties in the Central Valley  also have higher disparity.
+* Central Valley counties have lower than average performance, with most counties also exhibiting higher levels of disparity. 
 
 
 
