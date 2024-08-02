@@ -395,6 +395,8 @@ c_2_chart %>%
 ```
 * Mono, Nevada, Inyo, and San Francisco Counties have among the highest racial disparities and lowest performance on high school graduation rates.
 
+* In Mono, only one in three Latinx students graduate.
+
 ### State Barchart
 ```{r}
 # Be sure to update title above depending on if indicator has been updated since RC v3
@@ -517,7 +519,7 @@ c_3_chart %>%
 
 
 ```
-* Most Central Valley counties fall below average on performance for this measure.
+* Most Central Valley counties exhibit below average performance for this measure.
 
 * 
 
@@ -645,6 +647,8 @@ c_4_chart %>%
 
 ```
 *Most Central Valley and Northern California counties have lower than average performance on this measure.
+
+* Modoc County is the lowest performing on this measure. Only 16.7% of Modoc's Latinx and 28.3% of its NH-White students score proficient or better in Math.  
 
 ### State Barchart
 
