@@ -521,7 +521,7 @@ c_3_chart %>%
 ```
 * Most Central Valley counties exhibit below average performance for this measure.
 
-* 
+ 
 
 ### State Barchart
 
@@ -805,6 +805,8 @@ s_5_long %>%
   hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
 
 ```
+* Pacific Islander, Latinx,  AIAN, and Black students are suspended at above average rates. 
+
 * NH_Black students are suspended at a rate 8.0 times higher than the lowest suspension rate. 
 
 ### County Barchart
@@ -883,7 +885,7 @@ c_6_chart <- c_6 %>% mutate(
 
 c_6_chart %>% 
     hchart("scatter", 
-    hcaes(x=disp_z_cap, y=perf_z_cap, size=county_total_und5, group=quadrant),
+    hcaes(x=disp_z_cap, y=perf_z_cap, size=total_pop, group=quadrant),
       tooltip = 
          list(pointFormat = 
                 "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.county_total_und5:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Two or More Races Rate: </strong>{point.twoormor_rate:.1f}")) %>%
@@ -891,7 +893,7 @@ c_6_chart %>%
   hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
   hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
   hc_caption(
-    text = "Data source: California Child Care Resource & Referral Network (2021); American Institutes for Research Early Learning Needs Assessment Tool (2020)br>AMERICAN INSTITUTES FOR RESEARCH EARLY LEARNING NEEDS ASSESSMENT TOOL (2018);<br>Licensed childcare (CCCRRN) and Transitional Kindergarten (AIR) enrollment per 100 children aged 0-5 (AIR).<br>Accessible childcare refers to enrollment in one's neighborhood defined here as one's ZIP Code.<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
+    text = "Data source: California Child Care Resource & Referral Network (2021); American Institutes for Research Early Learning Needs Assessment Tool (2020);<br>Licensed childcare (CCCRRN) and Transitional Kindergarten (AIR) enrollment per 100 children aged 0-5 (AIR).<br>Accessible childcare refers to enrollment in one's neighborhood defined here as one's ZIP Code.<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
     align = "center"
      ) %>% #hc_size(height=400,width=700) %>% 
   hc_legend(element_blank) %>% hc_add_theme(rc_theme)
@@ -899,6 +901,7 @@ c_6_chart %>%
 
 ```
 * Marin, Colusa, Mono, and San Francisco Counties are the only counties where more than half of children ages 0-5 have access to a licensed ECE program. However, all four have higher than average racial disparities.
+
 * All Central Valley counties have lower performance (access), with most having lower disparity as well.
 
 ### State Barchart
@@ -930,7 +933,7 @@ s_6_long %>%
   hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
 
 ``` 
-* ECE access rates are low across the state and for all groups, even the best rate means less than one in two children has access. Still Other Race, AIAN, Latinx, and Black children all have less ECE access than the average child in California.
+* ECE access rates are low across the state and for all groups, even the best rate means less than one in two children has access. Still AIAN, Latinx, and Black children all have less ECE access than the average child in California.
 
 ### County Barchart
 
