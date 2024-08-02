@@ -427,7 +427,7 @@ s_2_long %>%
 
 ```{r}
 c_2_long <- c_2 %>%
-   select(c(1, ends_with('_rate')))
+   select(c(2, ends_with('_rate'))) ##Value of 1 gives us county_id, value of 2 gives us county_name
 
 c_2_long <- melt(c_2_long, id.vars=c("county_name"))
 # Round 'value' field to 1 decimal
@@ -475,6 +475,7 @@ bscols(
             hoverlabel = list(bgcolor = "FFFFFF")
    ) # end layout
 ) # end bscols
+##Ignoring 160 observations that are NA##
 
 ```
 
@@ -494,27 +495,30 @@ c_3_chart <- c_3 %>% mutate(
       performance_z > 3.5 ~ 3.5,
       performance_z < -3.5 ~ -3.5,
       TRUE ~ performance_z)
-    ) %>% filter(quadrant %in% c("green", "yellow", "orange", "red"))
+    ) %>% filter(quadrant %in% c("yellow", "orange", "red", "purple"))
 
 c_3_chart %>% 
     hchart("scatter", 
     hcaes(x=disp_z_cap, y=perf_z_cap, size=total_pop, group=quadrant),
       tooltip = 
          list(pointFormat = 
-                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.total_pop:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.nh_black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.nh_aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.nh_pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.nh_asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Filipinx Rate: </strong>{point.nh_filipino_rate:.1f} <br><strong>Two or More Races Rate: </strong>{point.nh_twoormor_rate:.1f}")) %>%
+                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.total_pop:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.nh_black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.nh_aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.nh_pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.nh_asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Filipinx Rate: </strong>{point.nh_filipino_rate:.1f} <br><strong>Two or More Races Rate: </strong>{point.nh_twoormor_rate:.1f}"),
+    allowOverlap = FALSE) %>%
     hc_title(text = "3rd Graders Scoring Proficient or Better in English Language Arts (%)") %>%
   hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
   hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
   hc_caption(
-    text = "Data source: CALIFORNIA ASSESSMENT OF STUDENT PERFORMANCE AND PROGRESS (2020-21);<br>Students scoring proficient or advanced on the third grade English Language Arts/Literacy (Smarter Balanced and California Alternate Assessment) test as a percentage of all third graders tested.<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
+    text = "Data source: CALIFORNIA DEPARTMENT OF EDUCATION (2022-23);<br>Students scoring proficient or advanced on the third grade English Language Arts/Literacy (Smarter Balanced and California Alternate Assessment) test as a percentage of all third graders tested.<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
     align = "center"
-     ) %>% #hc_size(height=400,width=700) %>% 
+     ) %>% 
+  #hc_size(height=400,width=700) %>% 
   hc_legend(element_blank) %>% hc_add_theme(rc_theme)
 
 
 ```
-* All Central Valley counties have lower performance. 
-* Los Angeles jumped up (worsened) from a disparity rank of 41 to 8 compared to 2018-19 data, while performance rank dropped (worsened) from 15 to 30. It moved from the Green to Red Quadrant. This may be at least partially explained by the COVID-19 pandemic. It is important to note that only a small fraction of the usual number of students took the proficiency tests in the 2020-21 school year, so this chart represents a much smaller sample of students than other years.
+* Most Central Valley counties fall below average on performance for this measure.
+
+* 
 
 ### State Barchart
 
