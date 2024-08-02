@@ -680,7 +680,7 @@ s_4_long %>%
 ```{r}
 
 c_4_long <- c_4 %>%
-   select(c(1, ends_with('_rate')))
+   select(c(2, ends_with('_rate')))
 
 c_4_long <- melt(c_4_long, id.vars=c("county_name"))
 # Round 'value' field to 1 decimal
@@ -748,7 +748,7 @@ c_5_chart <- c_5 %>% mutate(
       performance_z > 3.5 ~ 3.5,
       performance_z < -3.5 ~ -3.5,
       TRUE ~ performance_z)
-    ) %>% filter(quadrant %in% c("green", "yellow", "orange", "red"))
+    ) %>% filter(quadrant %in% c("yellow", "orange", "red", "purple"))
 
 c_5_chart  %>% 
     hchart("scatter", 
@@ -760,15 +760,16 @@ c_5_chart  %>%
   hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
   hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
   hc_caption(
-    text = "Data source: California Department of Education (2020-21).<br>Students suspended include those who were suspended for any reason, including willful defiance.<br>This rate is calculated using cumulative enrolled students which consists of the total number of unduplicated primary and short-term enrollments within the academic year.<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
+    text = "Data source: CALIFORNIA DEPARTMENT OF EDUCATION (2022-23).<br>Students suspended include those who were suspended for any reason, including willful defiance.<br>This rate is calculated using cumulative enrolled students which consists of the total number of unduplicated primary and short-term enrollments within the academic year.<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
     align = "center"
      ) %>% #hc_size(height=400,width=700) %>% 
   hc_legend(element_blank) %>% hc_add_theme(rc_theme)
 
 ```
-* Los Angeles is ranked 1 for performance with a suspension rate so low it rounds to zero. It dropped from the 23rd most disparate county to 48th during the same period (2018-19 compared to 2020-21). This change is likely due to decreased suspensions during the COVID-19 pandemic and distance learning in the 2020-21 school year.
-* All Bay Area and SoCal counties, excluding Marin and San Diego, have lower disparity and higher performance putting them in the Green Quadrant. 
-* Note that data for this time period may not reflect trends seen during in-person learning.
+* Inyo County is the most racially disparate for this measure, with suspension rates for AIAN students reaching 7.1 while the suspension rates for the lowest group is 0.
+
+* Modoc county is the lowest performing for this measure, with suspension rates for NH-Black students reaching 38 and the lowest rate being 6.7.
+
 
 ### State Barchart
 
