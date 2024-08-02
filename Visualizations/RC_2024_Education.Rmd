@@ -264,7 +264,7 @@ c_1_chart <- c_1 %>% mutate(
   hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
   hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
   hc_caption(
-    text = "Data source: California Department of Education (2022-23);<br> A chronically absent student is absent on 10 percent or more of school days per year.<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
+    text = "Data source: CALIFORNIA DEPARTMENT OF EDUCATION (2022-23);<br> A chronically absent student is absent on 10 percent or more of school days per year.<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
     align = "center"
      ) %>% #hc_size(height=400,width=700) %>% 
    hc_legend(element_blank) %>% hc_add_theme(rc_theme)
@@ -272,6 +272,7 @@ c_1_chart <- c_1 %>% mutate(
 
 ```
 * San Francisco County is by far the most racially disparate on chronic absenteeism. NHPI, Black, AIAN, and Latinx rates are two or more times higher than all other races.
+
 * Plumas County has by far the worst performance with more than half of students (56.2%) being chronically absent. All groups have higher rates, however, Latinx students are the most likely to be chronically absent (61.8%).
 
 ### State Barchart
@@ -302,7 +303,7 @@ s_1_long %>%
   hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
 
 ``` 
-* Statewide, NHPI, Black, AIAN, and Latinx students have the highest rates ranging from 28.9% to 36.6% respectively. 
+* Statewide, NHPI, Black, AIAN, and Latinx students have the highest rates for chronic absenteeism ranging from 28.9% to 36.6% respectively. 
 
 
 ### County Barchart
