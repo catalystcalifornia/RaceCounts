@@ -17,7 +17,7 @@ library(sf)
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
 
-#Trying to add a new commit ----
+
 # Add indicators and arei_multigeo_list ------------------------------------------------------
 ####################### ADD COUNTY DATA #####################################
 c_1 <- st_read(con, query = "SELECT * FROM v5.arei_educ_chronic_absenteeism_county_2023")
