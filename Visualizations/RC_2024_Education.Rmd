@@ -47,7 +47,7 @@ body { background-color: #FFFFFF; }
 ### install version 1.1.1 of Crosstalk -- LATER VERSIONS OF CROSSTALK WILL NOT WORK ####
 # remotes::install_version("crosstalk", version = "1.1.1", repos = "http://cran.us.r-project.org") 
 
-library(crosstalk)
+library(crosstalk) 
 
 ```
 
@@ -194,10 +194,15 @@ RACE COUNTS provides a 3D view of racial equity:
 
 * On the Education Index, Central Valley counties are split between the Red and Yellow Quadrants, meaning they have low overall Education opportunities.(See scatterplot on Education Index)
 
-* Across the state, NH-AIAN, NH-Black, Latinx, and NH-Pacific Islander students have above average rates for chronic absenteeism.
+* There are several key areas where racial disparities exist in educational outcomes across different racial and ethnic groups in the state of California.
 
+* Across the state, NH-AIAN, NH-Black, Latinx, and NH-Pacific Islander are more likely to experience chronic absenteeism than other groups. (See State Barchart on Chronically Absent Students (%))
 
+* Additionally, NH-AIAN, NH-Black, Latinx, and NH-Pacific Islander students have lower graduation rates than the average rate for students across the state. (See State Barchart on Graduates as a Percentage of Four-Year Adjusted Cohort Students)
 
+* NH- Filipinx, NH- Asian, NH- White, and NH- Students of Two or More races experience lower suspension rates. (See State Barchart on students Suspended per 100 Students)
+
+* NH- Flipinx, NH-Asian, NH-White, and NH- 3rd grade students of Two or More races experience higher average rates of proficiency in English and Math. (See State Barchart on 3rd Graders Scoring Proficient or Better in English Language Arts (%) and 3rd Graders Scoring Proficient or Better in Math (%))
 
 # Indicators
 
@@ -338,7 +343,7 @@ bscols(
                 sd1,
                 ~ county_name, multiple = FALSE),
    plot_ly(sd1) %>%
-      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
+      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"),
                 marker = list(line = list(color = "black", width = 1)) ## add order t
                 ) %>%
      layout(barmode = "stack",
@@ -556,7 +561,7 @@ s_3_long %>%
   hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
 
 ``` 
-* Statewide, two groups emerge. In the first group, fewer than one in three AIAN, Latinx, Black, and NHPI students scored proficient. While in the second group, more than 50% of Asian, Filipinx, Two or More Races, and White third graders scored proficient in English Language Arts. 
+* Statewide, two groups emerge. In the first group, fewer than one in three NH-AIAN, Latinx, NH-Black, and NHPI students scored proficient. While in the second group, more than 50% of Asian, Filipinx, Two or More Races, and White third graders scored proficient in English Language Arts. 
 
 
 ### County Barchart
@@ -652,9 +657,11 @@ c_4_chart %>%
 
 
 ```
-*Most Central Valley and Northern California counties have lower than average performance on this measure.
+* Most Central Valley and Northern California counties have lower than average performance on this measure.
 
 * Modoc County is the lowest performing on this measure. Only 16.7% of Modoc's Latinx and 28.3% of its NH-White students score proficient or better in Math.  
+
+* Larger population counties have higher levels of racial disparities among racial and ethnic groups for this indicator.
 
 ### State Barchart
 
