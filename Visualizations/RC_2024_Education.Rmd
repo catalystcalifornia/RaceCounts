@@ -905,7 +905,7 @@ c_6_chart %>%
        
 
 ```
-* Less than a quarter of San Bernardino County children ages 0-5 have access to a licensed ECE program, which is a 62.4% difference from the county with the most access. 
+* Less than a quarter of San Bernardino County children ages 0-5 have access to a licensed ECE program, which is a 62.4 percentage point difference from the county with the most access. 
 
 
 
