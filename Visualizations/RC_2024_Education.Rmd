@@ -11,7 +11,7 @@ output:
     toc_float: yes
 
 subtitle: 'Draft Visuals'
----
+---For
 <style type="text/css">
   h1{
   font-family: Rubik;
@@ -194,7 +194,8 @@ RACE COUNTS provides a 3D view of racial equity:
 
 * On the Education Index, Central Valley counties are split between the Red and Yellow Quadrants, meaning they have low overall Education opportunities.(See scatterplot on Education Index)
 
-* 
+* Across the state, NH-AIAN, NH-Black, Latinx, and NH-Pacific Islander students have above average rates for chronic absenteeism.
+
 
 
 
@@ -278,7 +279,7 @@ c_1_chart <- c_1 %>% mutate(
 ```
 * San Francisco County is by far the most racially disparate on chronic absenteeism. NHPI, Black, AIAN, and Latinx rates are two or more times higher than all other races.
 
-* Plumas County has by far the worst performance with more than half of students (56.2%) being chronically absent. All groups have higher rates, however, Latinx students are the most likely to be chronically absent (61.8%).
+* Plumas County has the highest rates of absenteeism, with more than half of students (56.2%) being chronically absent. All groups have higher rates, however, Latinx students are the most likely to be chronically absent (61.8%).
 
 ### State Barchart
 ```{r}
