@@ -905,9 +905,9 @@ c_6_chart %>%
        
 
 ```
-* Marin, Colusa, Mono, and San Francisco Counties are the only counties where more than half of children ages 0-5 have access to a licensed ECE program. However, all four have higher than average racial disparities.
+* Less than a quarter of San Bernardino County children ages 0-5 have access to a licensed ECE program, which is a 62.4% difference from the county with the most access. 
 
-* All Central Valley counties have lower performance (access), with most having lower disparity as well.
+
 
 ### State Barchart
 
@@ -1036,6 +1036,7 @@ c_7_chart %>%
 
 ```
 * Larger population counties overall are in the Yellow (Lower disparity, Lower performance) Quadrant, with Low Angeles County having the lowest disparity.
+
 * All but two (Mariposa and Tuolumne) Central Valley counties are in the Yellow (Lower disparity, Lower performance) and Red (Higher disparity, Lower performance) Quadrants.
 
 ### State Barchart
