@@ -70,7 +70,7 @@ library(highcharter)
 options(scipen=999)
 options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
 
-setwd("W:/Project/RACE COUNTS/2022_v4/Visualizations/") 
+#setwd("W:/Project/RACE COUNTS/2022_v4/Visualizations/") 
 
 
 # data setup
