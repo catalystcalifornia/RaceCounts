@@ -11,7 +11,8 @@ output:
     toc_float: yes
 
 subtitle: 'Draft Visuals'
----For
+---
+
 <style type="text/css">
   h1{
   font-family: Rubik;
@@ -71,7 +72,7 @@ options(scipen=999)
 options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
 
 
-#setwd("W:/Project/RACE COUNTS/2024_v6/RC_Github/SS/RaceCounts/Visualizations")
+#setwd("W:/Project/RACE COUNTS/2024_v6/Visualizations")
 
 # data setup
 source("W:\\RDA Team\\R\\credentials_source.R")
@@ -246,7 +247,7 @@ RACE COUNTS provides a 3D view of racial equity:
 
 
 
-## Chronic Absenteeism {.tabset .tabset-fade}
+## Chronic Absenteeism - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -878,7 +879,7 @@ bscols(
 ```
 
 
-## ECE Access - NOT UPDATED {.tabset .tabset-fade}
+## ECE Access - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
