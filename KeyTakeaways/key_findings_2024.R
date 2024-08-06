@@ -358,6 +358,10 @@ api_split <- function(x) {
 
 df_lf <- api_split(df_lf) # duplicate/split api rates as asian and pacisl
 
+# rename SWANASA as SWANA for findings purposes
+df_lf <- df_lf %>% mutate(race_generic=replace(race_generic, race_generic=='swanasa', 'swana'))  
+
+
 ### Table counting number of non-NA rates per race+geo combo, used for screening worst counts later ### 
 bestworst_screen <- df_lf %>% group_by(geoid, race_generic) %>% summarise(rate_count = sum(!is.na(rate)))
 
@@ -758,6 +762,11 @@ worst_disp_outc_ <- worst_disp_outc %>% select(-c(dist_id, district_name, total_
 rda_places_findings <- rbind(most_impacted, disp_avg_statement, outc_avg_statement, worst_disp_outc_) %>%
   mutate(src = 'rda', citations = '') %>%
   relocate(geo_level, .after = geo_name)
+
+# clean statement geos
+worst_disp_outc_$finding <- str_remove(worst_disp_outc_$finding, ", California County")
+worst_disp_outc_$finding <- str_remove(worst_disp_outc_$finding, " city, California")
+worst_disp_outc_$finding <- str_remove(worst_disp_outc_$finding, " CDP, California")
 
 
 #### HK: (manual) issue area findings (used on issue areas pages and the state places page) ####
