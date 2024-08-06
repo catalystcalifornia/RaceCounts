@@ -192,19 +192,19 @@ RACE COUNTS provides a 3D view of racial equity:
 
 # Key Findings
 
-* On the Education Index, Central Valley counties are split between the Red and Yellow Quadrants, meaning they have low overall Education opportunities.(See scatterplot on Education Index)
-
 * There are several key areas where racial disparities exist in educational outcomes across different racial and ethnic groups in the state of California.
 
 * Across the state, NH-AIAN, NH-Black, Latinx, and NH-Pacific Islander are more likely to experience chronic absenteeism than other groups. (See State Barchart on Chronically Absent Students (%))
 
-* Additionally, NH-AIAN, NH-Black, Latinx, and NH-Pacific Islander students have lower graduation rates than the average rate for students across the state. (See State Barchart on Graduates as a Percentage of Four-Year Adjusted Cohort Students)
+* Additionally, NH-AIAN, NH-Black, Latinx, and NH-Pacific Islander students have lower graduation rates than the state average. NH-Black student graduation rates are 16.7 percentage points lower than the group with the highest rate. (See State Barchart on Graduates as a Percentage of Four-Year Adjusted Cohort Students)
 
 * NH- Filipinx, NH- Asian, NH- White, and NH- Students of Two or More races experience lower suspension rates. (See State Barchart on students Suspended per 100 Students)
 
-* NH- Flipinx, NH-Asian, NH-White, and NH-3rd grade students of Two or More races experience higher average rates of proficiency in English and Math. (See State Barchart on 3rd Graders Scoring Proficient or Better in English Language Arts (%) and 3rd Graders Scoring Proficient or Better in Math (%))
+* More than 50% of Asian, Filipinx, Two or More Races, and White third graders scored proficient in English Language Arts, while less than a third of NH-PI, NH-Black, NH-AIAN, and Latinx students score proficient or better. (See State Barchart on 3rd Graders Scoring Proficient or Better in English Language Arts (%) and 3rd Graders Scoring Proficient or Better in Math (%))
 
-# Indicators
+* ECE access rates are low across the state for all groups, even the best rate means less than one in two children has acess to licensed ECE programs. Still NH-AIAN, Latinx, and NH-Black children all have less acccess to licensed ECE programs than the average child in California. (See State Barchart on Children 0-5 Enrolled in Licensed ECE Program (%))
+
+# Indicators 
 
 ## Education Index - UPDATED
 ```{r}
@@ -241,7 +241,7 @@ RACE COUNTS provides a 3D view of racial equity:
 
 * San Francisco has among the highest racial disparities, driven by large inequities in chronic absenteeism and graduation rates.
 
-* Central Valley counties have lower than average performance, with most counties also exhibiting higher levels of disparity. 
+* Most Northern California region counties have lower than average performance, with most counties also exhibiting higher levels of disparity. 
 
 
 
@@ -314,9 +314,9 @@ s_1_long %>%
   hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
 
 ``` 
-* Statewide, NHPI, Black, AIAN, and Latinx students have the highest rates for chronic absenteeism ranging from 28.9% to 36.6% respectively. 
+* Statewide, NHPI, NH-Black, NH-AIAN, and Latinx students have the highest rates for chronic absenteeism ranging from 28.9% to 36.6% respectively. 
 
-* Black, NHPI, and NH-AIAN students are 3 times more likely to be chronically absent than the group with the lowest rate.
+* NH-Black, NHPI, and NH-AIAN students are 3.5 times more likely to be chronically absent than the group with the lowest rate.
 
 ### County Barchart
 
@@ -436,7 +436,7 @@ s_2_long %>%
   hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
 
 ```
-* NH-AIAN, NH-Blac, Latinx, and NHPI students have below average graduation rates. Black  and AIAN student graduation rates are 16 percentage points lower than the group with the highest rate.
+* NH-AIAN, NH-Black, Latinx, and NH-PI students have below average graduation rates. Black and NH-AIAN student graduation rates are 16 percentage points lower than the group with the highest rate.
 
 ### County Barchart
 
@@ -531,8 +531,9 @@ c_3_chart %>%
 
 
 ```
-* Most Central Valley counties exhibit below average performance for this measure with rates lower than 40%. 
+* Modoc County has the lowest rates in this measure, with only one in five 3rd graders scoring Proficient or Better in ELA.
 
+* Imperial County is the most disparate in this measure, with a 41.5 percentage point difference between the groups with the highest and lowest rate. 
 
  
 
@@ -659,9 +660,9 @@ c_4_chart %>%
 
 
 ```
-* Modoc County is the lowest performing on this measure with less than 25% of it's students scoring Proficient or Better in Math.
+* Modoc County is the lowest performing on this measure with less than 25% of its students scoring Proficient or Better in Math.
 
-* Larger population counties have higher levels of racial disparities among racial and ethnic groups for this indicator.
+* Larger population counties have above average levels of racial disparities among racial and ethnic groups for this indicator.
 
 ### State Barchart
 
@@ -691,7 +692,7 @@ s_4_long %>%
 
 
 ```
-* Statewide, two groups emerge. In the first group, about one in three AIAN, Black, Latinx, and NHPI students scored proficient. While in the second group, more than 50% of Asian, Filipinx, White, Two or More Races third graders scored proficient in math. 
+* Statewide, two groups emerge. In the first group, about one in three NH-AIAN, NH-Black, Latinx, and NH-PI students scored proficient. While in the second group, more than 50% of Asian, Filipinx, White, Two or More Races third graders scored proficient in math. 
 
 ### County Barchart
 
@@ -784,7 +785,7 @@ c_5_chart  %>%
   hc_legend(element_blank) %>% hc_add_theme(rc_theme)
 
 ```
-* Inyo County is the most racially disparate for this measure, with suspension rates for AIAN students reaching 7.1% while the suspension rates for the lowest group is 0.
+* Inyo County is the most racially disparate for this measure, with suspension rates for NH-AIAN students reaching 7.1% while the suspension rates for the lowest group is 0.
 
 * Three counties (Modoc, Lake, and Del Norte) in the Northern California region are the lowest performing for this measure, with suspension rates at or nearing 10%. 
 
@@ -818,9 +819,9 @@ s_5_long %>%
   hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
 
 ```
-* Pacific Islander, Latinx,  AIAN, and Black students are suspended at above average rates. 
+* NH-Pacific Islander, Latinx, NH-AIAN, and NH-Black students are suspended at above state average rates. 
 
-* NH_Black students are suspended at a rate 8.0 times higher than the lowest suspension rate. 
+* NH-Black students are suspended at a rate 8.0 times higher than the lowest suspension rate. 
 
 ### County Barchart
 
@@ -913,7 +914,7 @@ c_6_chart %>%
        
 
 ```
-* Less than a quarter of San Bernardino County children ages 0-5 have access to a licensed ECE program, which is a 62.4 percentage point difference from the county with the most access. 
+* 22.2% of San Bernardino County children ages 0-5 have access to a licensed ECE program, which is a 62.4 percentage point difference from Modoc County (84.6%), the county with the most access. 
 
 
 
@@ -946,7 +947,7 @@ s_6_long %>%
   hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
 
 ``` 
-* ECE access rates are low across the state and for all groups, even the best rate means less than one in two children has access. Still AIAN, Latinx, and Black children all have less ECE access than the average child in California.
+* ECE access rates are low across the state and for all groups, even the best rate means less than one in two children has access. Still NH-AIAN, Latinx, and NH-Black children all have less ECE access than the state average.
 
 ### County Barchart
 
@@ -1076,7 +1077,7 @@ s_7_long %>%
   hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
 
 ``` 
-* White students have by far the highest representation, with more than 13 White teachers and staff per 100 White students. Compare this to AIANs, the group with the next highest rate, at five per 100 students.
+* White students have by far the highest representation, with more than 13 White teachers and staff per 100 White students. Compare this to NH-AIANs, the group with the next highest rate, at five per 100 students.
 
 ### County Barchart
 
