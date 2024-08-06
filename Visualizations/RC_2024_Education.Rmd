@@ -179,7 +179,7 @@ RACE COUNTS provides a 3D view of racial equity:
 <br>DISPARITY: How racial groups compare to one another. The further right the circle, the greater the differences by race.
 <br>IMPACT: The total population. The bigger the circle, the larger the population.
 
-<br><span style="color:green">Green</span> counties: Gains at Risk; 
+<br><span style="color:purple">purple</span> counties: Gains at Risk; 
 <br><span style="color:orange">Orange</span> counties: Prosperity for the Few;
 <br><span style="color:#c9cc14">Yellow</span> counties: Struggling to Prosper;
 <br><span style="color:red">Red</span> counties: Stuck and Unequal.
@@ -202,7 +202,7 @@ RACE COUNTS provides a 3D view of racial equity:
 
 * NH- Filipinx, NH- Asian, NH- White, and NH- Students of Two or More races experience lower suspension rates. (See State Barchart on students Suspended per 100 Students)
 
-* NH- Flipinx, NH-Asian, NH-White, and NH- 3rd grade students of Two or More races experience higher average rates of proficiency in English and Math. (See State Barchart on 3rd Graders Scoring Proficient or Better in English Language Arts (%) and 3rd Graders Scoring Proficient or Better in Math (%))
+* NH- Flipinx, NH-Asian, NH-White, and NH-3rd grade students of Two or More races experience higher average rates of proficiency in English and Math. (See State Barchart on 3rd Graders Scoring Proficient or Better in English Language Arts (%) and 3rd Graders Scoring Proficient or Better in Math (%))
 
 # Indicators
 
@@ -246,7 +246,7 @@ RACE COUNTS provides a 3D view of racial equity:
 
 
 
-## Chronic Absenteeism - UPDATED {.tabset .tabset-fade}
+## Chronic Absenteeism {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -282,7 +282,7 @@ c_1_chart <- c_1 %>% mutate(
 
 
 ```
-* San Francisco County is by far the most racially disparate on chronic absenteeism. NHPI, Black, AIAN, and Latinx rates are two or more times higher than all other races.
+* San Francisco County is by far the most racially disparate on chronic absenteeism. NHPI students have the highest absenteeism rate at 65.9%, which is  58.2 percentage points higher than the group with the lowest rate.
 
 * Plumas County has the highest rates of absenteeism, with more than half of students (56.2%) being chronically absent. All groups have higher rates, however, Latinx students are the most likely to be chronically absent (61.8%).
 
@@ -316,6 +316,7 @@ s_1_long %>%
 ``` 
 * Statewide, NHPI, Black, AIAN, and Latinx students have the highest rates for chronic absenteeism ranging from 28.9% to 36.6% respectively. 
 
+* Black, NHPI, and NH-AIAN students are 3 times more likely to be chronically absent than the group with the lowest rate.
 
 ### County Barchart
 
@@ -404,7 +405,7 @@ c_2_chart %>%
   hc_legend(element_blank) %>% hc_add_theme(rc_theme)
 
 ```
-* Mono, Nevada, Inyo, and San Francisco Counties have among the highest racial disparities and lowest performance on high school graduation rates.
+* Mono, Nevada, Inyo, and San Francisco Counties have the lowest graduation rates and the highest racial disparities on this measure. 
 
 * In Mono, only one in three Latinx students graduate.
 
@@ -435,7 +436,7 @@ s_2_long %>%
   hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
 
 ```
-* NH-Filipino students, the group with the highest rate, have a graduation rate about 16 percentage points higher than AIAN and Black students, the groups with the lowest rates. 
+* NH-AIAN, NH-Blac, Latinx, and NHPI students have below average graduation rates. Black  and AIAN student graduation rates are 16 percentage points lower than the group with the highest rate.
 
 ### County Barchart
 
@@ -530,7 +531,8 @@ c_3_chart %>%
 
 
 ```
-* Most Central Valley counties exhibit below average performance for this measure.
+* Most Central Valley counties exhibit below average performance for this measure with rates lower than 40%. 
+
 
  
 
@@ -657,9 +659,7 @@ c_4_chart %>%
 
 
 ```
-* Most Central Valley and Northern California counties have lower than average performance on this measure.
-
-* Modoc County is the lowest performing on this measure. Only 16.7% of Modoc's Latinx and 28.3% of its NH-White students score proficient or better in Math.  
+* Modoc County is the lowest performing on this measure with less than 25% of it's students scoring Proficient or Better in Math.
 
 * Larger population counties have higher levels of racial disparities among racial and ethnic groups for this indicator.
 
@@ -784,9 +784,9 @@ c_5_chart  %>%
   hc_legend(element_blank) %>% hc_add_theme(rc_theme)
 
 ```
-* Inyo County is the most racially disparate for this measure, with suspension rates for AIAN students reaching 7.1 while the suspension rates for the lowest group is 0.
+* Inyo County is the most racially disparate for this measure, with suspension rates for AIAN students reaching 7.1% while the suspension rates for the lowest group is 0.
 
-* Three counties (Modoc, Lake, and Del Norte) in the Northern California region are the lowest performing for this measure.
+* Three counties (Modoc, Lake, and Del Norte) in the Northern California region are the lowest performing for this measure, with suspension rates at or nearing 10%. 
 
 
 ### State Barchart
