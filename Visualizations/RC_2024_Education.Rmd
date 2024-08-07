@@ -242,7 +242,7 @@ RACE COUNTS provides a 3D view of racial equity:
 
 * San Francisco has among the highest racial disparities, driven by large inequities in chronic absenteeism and graduation rates.
 
-* Most Northern California region counties have lower than average performance, with most counties also exhibiting higher levels of disparity. 
+* Most Northern California region counties have lower than average performance, with many counties also exhibiting higher levels of disparity. 
 
 
 
@@ -437,7 +437,7 @@ s_2_long %>%
   hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
 
 ```
-* NH-AIAN, NH-Black, Latinx, and NH-PI students have below average graduation rates. Black and NH-AIAN student graduation rates are 16 percentage points lower than the group with the highest rate.
+* NH-AIAN, NH-Black, Latinx, and NH-PI students have below average graduation rates. Black and NH-AIAN student graduation rates are roughly 16 percentage points lower than the group with the highest rate.
 
 ### County Barchart
 
@@ -1134,7 +1134,8 @@ bscols(
    ) # end layout
 ) # end bscols
 
-
+dbDisconnect(con)
+dbDisconnect(con2)
 ```
 
 
