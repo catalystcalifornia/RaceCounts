@@ -1137,6 +1137,7 @@ bscols(
 ##Disconnect from db
 dbDisconnect(con)
 dbDisconnect(con2)
+
 ```
 
 
