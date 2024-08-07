@@ -180,7 +180,7 @@ RACE COUNTS provides a 3D view of racial equity:
 <br>DISPARITY: How racial groups compare to one another. The further right the circle, the greater the differences by race.
 <br>IMPACT: The total population. The bigger the circle, the larger the population.
 
-<br><span style="color:purple">purple</span> counties: Gains at Risk; 
+<br><span style="color:purple">Purple</span> counties: Gains at Risk; 
 <br><span style="color:orange">Orange</span> counties: Prosperity for the Few;
 <br><span style="color:#c9cc14">Yellow</span> counties: Struggling to Prosper;
 <br><span style="color:red">Red</span> counties: Stuck and Unequal.
