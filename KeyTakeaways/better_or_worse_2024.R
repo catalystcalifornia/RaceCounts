@@ -161,7 +161,7 @@ issue_area7 <- 'housing'
 clean_data_z <- function(x, y, z) {
   
   # Select IDs. More info: https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=feyI80
-  x <- x %>% select(state_id, state_name, total_rate, index_of_disparity) %>% 
+  x <- x %>% select(state_id, state_name, total_rate, asbest, index_of_disparity) %>% 
     mutate(variable = y) %>%
     mutate(issue_area = z)
   
@@ -453,12 +453,13 @@ combined_data <- full_join(new_data,
          total_rate.x,
          index_of_disparity.x,
          variable,
+         asbest.x,
          issue_area.x,
          total_rate.y,
          index_of_disparity.y)
 
-names(combined_data) <- c("state", "total_rate_24", "id_24", "variable",
-                          "issue_area", "total_rate_23", "id_23")
+names(combined_data) <- c("state", "total_rate_24", "id_24", "variable", 
+                          "asbest","issue_area", "total_rate_23", "id_23")
 
 # Calculate differences and percent differences in outcomes and disparity
 combined_data$rate_diff <- combined_data$total_rate_24 - combined_data$total_rate_23
@@ -479,6 +480,17 @@ issue_change <- combined_data %>% group_by(issue_area) %>% summarize(
   id_pct_chng=(sum(id_24) - sum(id_23))/ sum(id_23) * 100
 )
 
+# calculate overall and mean difference in outcomes
+combined_data <- combined_data %>% mutate(outcome_better = 
+                                            ifelse(asbest == "min" & rate_pct_chng < 0, "better",
+                                                   ifelse(asbest == "min" & rate_pct_chng > 0, "worse",
+                                                          ifelse(asbest == "max" & rate_pct_chng > 0, "better",
+                                                                 ifelse(asbest == "max" & rate_pct_chng < 0, "worse", "no change"
+                                                   )))))
+                                            
 
+rate_change_sum <- combined_data %>% group_by(outcome_better) %>% summarize(sum_rate_pct_chng = sum(rate_pct_chng), n=n())
+
+issue_rate_change <- combined_data %>% group_by(outcome_better, issue_area) %>% summarize(sum_rate_pct_chng = sum(rate_pct_chng), n=n())
 
 
