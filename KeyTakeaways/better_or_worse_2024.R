@@ -446,7 +446,6 @@ old_data <- c_index
 
 ############################ join old and new data & analyze
 
-
 combined_data <- full_join(new_data,
                            old_data,
                            by = "variable") %>%
@@ -461,9 +460,25 @@ combined_data <- full_join(new_data,
 names(combined_data) <- c("state", "total_rate_24", "id_24", "variable",
                           "issue_area", "total_rate_23", "id_23")
 
+# Calculate differences and percent differences in outcomes and disparity
 combined_data$rate_diff <- combined_data$total_rate_24 - combined_data$total_rate_23
 combined_data$rate_pct_chng <- combined_data$rate_diff / combined_data$total_rate_23 * 100
 
 combined_data$id_diff <- combined_data$id_24 - combined_data$id_23
 combined_data$id_pct_chng <- combined_data$id_diff / combined_data$id_23 * 100
+
+# Calculate overall and mean difference in disparity
+id_change_sum <- sum(combined_data$id_pct_chng)
+id_change_mean <- mean(combined_data$id_pct_chng)
+
+# Calculate difference in disparity by issue area
+issue_change <- combined_data %>% group_by(issue_area) %>% summarize(
+  id_24=sum(id_24),
+  id_23=sum(id_23),
+  id_diff=sum(id_24) - sum(id_23),
+  id_pct_chng=(sum(id_24) - sum(id_23))/ sum(id_23) * 100
+)
+
+
+
 
