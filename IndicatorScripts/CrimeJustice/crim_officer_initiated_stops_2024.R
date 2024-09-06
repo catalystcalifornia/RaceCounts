@@ -420,16 +420,16 @@ View(city_table)
 
 
 ###update info for postgres tables will automatically update###
-county_table_name <- paste0("arei_crim_officer_initiated_stops_county_", rc_yr)
-state_table_name <- paste0("arei_crim_officer_initiated_stops_state_", rc_yr)
-city_table_name <- paste0("arei_crim_officer_initiated_stops_city_", rc_yr)
+county_table_name <- paste0("arei_crim_officer_initiated_stops_county_revised_", rc_yr)
+state_table_name <- paste0("arei_crim_officer_initiated_stops_state_revised_", rc_yr)
+city_table_name <- paste0("arei_crim_officer_initiated_stops_city_revised_", rc_yr)
 
 indicator <- paste0("Officer initiated stops per 1,000 people. Raw is total number of officer initiated stops. Note: City data is based only on the largest agency in that city. In addition, stops are assigned to the geography where the law enforcement agency is located, not where the stop occurred. This data is")
 source <- paste0("CADOJ RIPA ",curr_yr, " https://openjustice.doj.ca.gov/data")
 
 #send tables to postgres
-#to_postgres(county_table, state_table)
-#city_to_postgres(city_table)
+# to_postgres(county_table, state_table)
+# city_to_postgres(city_table)
 
 dbDisconnect(con)
 dbDisconnect(con2)
