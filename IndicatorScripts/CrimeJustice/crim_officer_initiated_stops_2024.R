@@ -353,8 +353,10 @@ df_screened <- all_df %>% mutate(
                 nh_black_raw = ifelse(nh_black_pop < pop_threshold | nh_black_stops < stop_threshold, NA, nh_black_stops),
                 nh_asian_raw = ifelse(nh_asian_pop < pop_threshold | nh_asian_stops < stop_threshold, NA, nh_asian_stops),
                 nh_twoormor_raw = ifelse(nh_twoormor_pop < pop_threshold | nh_twoormor_stops < stop_threshold, NA, nh_twoormor_stops),
-                nh_aian_raw = ifelse( nh_aian_pop < pop_threshold |  aian_stops < stop_threshold, NA,  aian_stops),
-                nh_pacisl_raw = ifelse(nh_pacisl_pop < pop_threshold | pacisl_stops < stop_threshold, NA, pacisl_stops),
+                nh_aian_raw = ifelse( nh_aian_pop < pop_threshold |  nh_aian_stops < stop_threshold, NA,  nh_aian_stops),
+                nh_pacisl_raw = ifelse(nh_pacisl_pop < pop_threshold | nh_pacisl_stops < stop_threshold, NA, nh_pacisl_stops),
+                aian_raw = ifelse(aian_pop < pop_threshold |  aian_stops < stop_threshold, NA,  aian_stops),
+                pacisl_raw = ifelse(pacisl_pop < pop_threshold | pacisl_stops < stop_threshold, NA, pacisl_stops),
                 swanasa_raw = ifelse(swanasa_pop < pop_threshold | swanasa_stops < stop_threshold, NA, swanasa_stops),
                 
                 # calc rates
@@ -366,10 +368,12 @@ df_screened <- all_df %>% mutate(
                 nh_twoormor_rate = (nh_twoormor_raw/nh_twoormor_pop) * 1000,
                 nh_aian_rate = (nh_aian_raw/nh_aian_pop) * 1000,
                 nh_pacisl_rate = (nh_pacisl_raw/nh_pacisl_pop) * 1000,
+                aian_rate = (aian_raw/aian_pop) * 1000,
+                pacisl_rate = (pacisl_raw/pacisl_pop) * 1000,
                 swanasa_rate = (swanasa_raw/swanasa_pop) * 1000
 )
 
-d <- df_screened %>% select(-c(contains(c("_stops")), starts_with("nh_twoormor"))) # drop multiracial bc of mismatch with pop denominator
+d <- df_screened %>% select(-c(contains(c("_stops")), starts_with(c("nh_twoormor","aian_","pacisl")))) # drop multiracial bc of mismatch with pop denominator and drop aian and nhpi alone or in combo
 
 ############## CALC RACE COUNTS STATS ##############
 ############ To use the following RC Functions, 'd' will need the following columns at minimum: 
