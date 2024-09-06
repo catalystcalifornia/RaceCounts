@@ -272,7 +272,7 @@ con2 <- connect_to_db("racecounts")
 ##### Begin RACE COUNTS prep #
 # Import RIPA postgres table --------------------------------------------------------
 ripa_orig <- dbGetQuery(con, "SELECT county, agency_name, call_for_service, rae_hispanic_latino, rae_full, rae_native_american, 
-                                  rae_pacific_islander, rae_middle_eastern_south_asian FROM crime_and_justice.cadoj_ripa_2022 WHERE call_for_service = 0;") 
+                                  rae_pacific_islander, rae_middle_eastern_south_asian FROM crime_and_justice.cadoj_ripa_2022_revised WHERE call_for_service = 0;") 
 
 # manual cleaning so that unique agency names to match to cities later
 agency_names <- as.data.frame(unique(ripa_orig$agency_name))
@@ -286,6 +286,8 @@ agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" CO SHERIFF", 
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" COUNTY SHERIFF'S OFFICE", " COUNTY", agency_name_new))  # clean Sheriff's names
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" SHERIFF", " COUNTY", agency_name_new))  # clean Sheriff's names
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPT", "", agency_name_new))  
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPARTME", "", agency_name_new))  
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPAR", "", agency_name_new))  
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPARTMENT", "", agency_name_new))  
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub("-COMM", "", agency_name_new))  
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" - COMM", "", agency_name_new))  
