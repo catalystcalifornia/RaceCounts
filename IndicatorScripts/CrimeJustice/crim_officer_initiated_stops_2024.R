@@ -56,9 +56,13 @@ con2 <- connect_to_db("racecounts")
 # ripa_CHP <- rbind(ripa_CHP_q1, ripa_CHP_q2, ripa_CHP_q3, ripa_CHP_q4)
 # ripa_CHP_df <- ripa_CHP %>% mutate(Code=(str_sub(AGENCY_ORI,4,7)))
 # 
-# ripa_CHP_df <- ripa_CHP_df %>% left_join(agency_file %>% select(County, Code, Agency), by = "Code")
-# # ripa_CHP_df %>% filter(is.na(County)) # View unmatched RIPA records.
+# # all CHP stops have the agency ID associated with CA Highway Patrol - Sacramento, which is incorrect
+# ## ripa_CHP_df_test <- ripa_CHP_df %>% left_join(agency_file %>% select(County, Code, Agency), by = "Code")
+# ## ripa_CHP_df_test %>% filter(is.na(County)) # View unmatched RIPA records.
+# ## table(ripa_CHP_df_test$County)
 # 
+# # add a county field to CHP stops that just retains the agency as CHP so it doesn't get matched to Sac County
+# ripa_CHP_df<-ripa_CHP_df%>%mutate(County='CA Highway Patrol')
 # 
 # # Import & clean county RIPA data -------------------------------------------------
 # setwd("W:\\Data\\Crime and Justice\\CA DOJ\\RIPA Stop Data\\2022\\county_data")
@@ -80,7 +84,7 @@ con2 <- connect_to_db("racecounts")
 # # Create RIPA data postgres table -------------------------------------------------
 # 
 # # bind county df with CHP and supplement
-# ripa_df <- rbind(ripa_CHP_df, ripa_supp_df) %>% select(-c(Agency, Code))
+# ripa_df <- rbind(ripa_CHP_df%>%select(-Code), ripa_supp_df%>%select(-c(Agency, Code)))
 # ripa_df <- rbind(ripa_df, ripa_county_df)
 # unique(ripa_df$County)   # check if county names need cleaning
 # ripa_df <- ripa_df %>% mutate(County = ifelse(grepl("Los Angeles", County), "Los Angeles County", County)) # clean up LAC rows bc LAC data was separated into 4 files
@@ -90,7 +94,7 @@ con2 <- connect_to_db("racecounts")
 # # push to postgres
 # con <- connect_to_db("rda_shared_data")
 # schema <- "crime_and_justice"
-# table_name <- "cadoj_ripa_2022"
+# table_name <- "cadoj_ripa_2022_revised"
 # table_comment <- paste0(curr_yr, " RIPA statewide data. Downloaded from https://openjustice.doj.ca.gov/data. Script: W:\\Project\\RACE COUNTS\\2024_v6\\RC_Github\\RaceCounts\\IndicatorScripts\\CrimeJustice\\crim_officer_initiated_stops_2024.R")
 # 
 # dbWriteTable(con, c(schema, table_name), ripa_df,
