@@ -306,7 +306,7 @@ ripa_cfs <- ripa_final %>% mutate(state_id = '06')
 
 
 #### Calc counts by race ####
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/crime_justice_functions.R")
+source("W:/Project/RACE COUNTS/2024_v6/RC_Github/EMG/RaceCounts/Functions/crime_justice_functions.R")
 state_calcs <- stops_by_state(ripa_cfs)
 county_calcs <- stops_by_county(ripa_cfs) %>% mutate(county = gsub(" County", "", county))
 agency_calcs <- stops_by_agency(ripa_cfs) # this df includes agencies at all levels: state, county, city, school district, etc.
@@ -318,7 +318,7 @@ pop <- dbGetQuery(con2, "SELECT * FROM v6.arei_race_multigeo") %>% mutate(name =
                                                                           name =  gsub(" city, California", "", name),
                                                                           name =  gsub(" town, California", "", name),
                                                                           name =  gsub(", California", "", name)) %>% 
-                                                                   select(-c(contains(c("swana_", "nh_other_", "aian_", "pacisl_", "pct_"))))
+                                                                   select(-c(contains(c("swana_", "nh_other_", "pct_"))))
 
 nh_aian_pacisl <- dbGetQuery(con, "SELECT geoid, dp05_0081e AS nh_aian_pop, dp05_0083e as nh_pacisl_pop FROM demographics.acs_5yr_dp05_multigeo_2022 WHERE geolevel IN ('state', 'county', 'place')")
 pop <- pop %>% full_join(nh_aian_pacisl)
@@ -335,6 +335,10 @@ all_df <- rbind(state_df, county_df, city_df) %>% rename(geoname = name)
 # copy SF County (Sheriff) data to SF City record since SF Sheriff primarily serves SF City
 sf_stops <- all_df %>% filter(geoname == 'San Francisco' & geolevel == 'county') %>% select(geoname, ends_with("_stops"))
 all_df <- all_df %>% rows_update(sf_stops, by = "geoname")
+
+# copy 	S. San Francisco PD data to South San Francisco record
+so_sf_stops <- agency_calcs %>% filter(agency_name_new=='S. San Francisco') %>% mutate(geoname="South San Francisco")%>%select(geoname, ends_with("_stops"))
+all_df <- all_df %>% rows_update(so_sf_stops, by = "geoname")
 
 
 # Data screening  --------------------------------------------------------
