@@ -307,7 +307,7 @@ ripa_cfs <- ripa_final %>% mutate(state_id = '06')
 
 
 #### Calc counts by race ####
-source("W:/Project/RACE COUNTS/2024_v6/RC_Github/EMG/RaceCounts/Functions/crime_justice_functions.R")
+source("./Functions/crime_justice_functions.R")
 state_calcs <- stops_by_state(ripa_cfs)
 county_calcs <- stops_by_county(ripa_cfs) %>% mutate(county = gsub(" County", "", county))
 agency_calcs <- stops_by_agency(ripa_cfs) # this df includes agencies at all levels: state, county, city, school district, etc.
