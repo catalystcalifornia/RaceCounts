@@ -285,10 +285,10 @@ agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" CO SHERIFF'S 
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" CO SHERIFF", " COUNTY", agency_name_new))  # clean Sheriff's names
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" COUNTY SHERIFF'S OFFICE", " COUNTY", agency_name_new))  # clean Sheriff's names
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" SHERIFF", " COUNTY", agency_name_new))  # clean Sheriff's names
-agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPT", "", agency_name_new))  
-agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPARTME", "", agency_name_new))  
-agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPAR", "", agency_name_new))  
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPARTMENT", "", agency_name_new))  
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPARTME", "", agency_name_new))  
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPAR", "", agency_name_new)) 
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPT", "", agency_name_new))  
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub("-COMM", "", agency_name_new))  
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" - COMM", "", agency_name_new))  
 
