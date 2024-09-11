@@ -1,7 +1,7 @@
 #### Screened City Indicator Z-Scores, Ranks etc. for RC v6 ####
 
 #install packages if not already installed
-packages <- c("tidyverse","RPostgreSQL","sf","usethis")  
+packages <- c("tidyverse","RPostgreSQL","sf","usethis","dplyr","DBI")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
