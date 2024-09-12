@@ -45,10 +45,10 @@ cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0)) # get all PUMS co
 cols_ <- grep("^PWGTP*", cols, value = TRUE)                                # filter for PUMS weight colnames
 
 ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE,  select = c(cols_, "AGEP", "ESR", "SCH", "PUMA10",
-             "PUMA20", "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P", "RAC3P", "RACAIAN", "RACPI", "RACNH", "ADJINC",
-             "WAGP","PERNP", "COW", "WKHP","WKW","WKL", "WRK","WKWN"),
-             colClasses = list(character = c("PUMA10", "PUMA20", "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P", "RAC3P", "RACAIAN", "RACPI", "RACNH", 
-                                             "COW", "WKL", "ESR", "WRK"), numeric = c("AGEP", "WAGP", "ADJINC", "WKHP", "WKWN", "PERNP")))
+                                                                                          "PUMA20", "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P", "RAC3P", "RACAIAN", "RACPI", "RACNH", "ADJINC",
+                                                                                          "WAGP","PERNP", "COW", "WKHP","WKW","WKL", "WRK","WKWN"),
+             colClasses = list(character = c("PUMA10", "PUMA20", "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P", "RAC3P", "RACAIAN", "RACPI", "RACNH", "ADJINC",
+                                             "WAGP","PERNP", "COW", "WKHP","WKW","WKL", "ESR","WRK","WKWN")))
 
 # Add state_geoid to ppl, add state_geoid to PUMA id, so it aligns with crosswalks.puma_county_2020
 ppl$state_geoid <- "06"
@@ -102,7 +102,7 @@ View(ppl[c("HISP","latino","RAC1P","race","RAC2P","RAC3P","ANC1P","ANC2P", "aian
 ####### Subset Data for Living Wage ########
 # Adjust wage or salary income in past 12 months: WAGP (adjust with ADJINC)----
 # trying wages first then will try earnings 
-ppl$wages_adj <- as.numeric(ppl$WAGP) * as.numeric(ppl$ADJINC)/1000000
+ppl$wages_adj <- (as.numeric(ppl$WAGP)*(as.numeric(ppl$ADJINC)/1000000))
 
 # Filter data for pop of interest  ----
 # Keep records only for those ages 18-64
@@ -127,23 +127,23 @@ ppl <- ppl %>% filter(!COW %in% c('6','7','8'))
 # Calculate hourly wage ----
 # First calculate number of hours worked based on weekly hours and weeks worked
 ## convert usual hours worked per week past 12 months: WKHP to integer
-ppl$wkly_hrs <- ppl$WKHP
+ppl$wkly_hrs <- as.integer(ppl$WKHP)
 
 ## average number of weeks worked in past 12 months for each value 1-6: WKW is the pre-2019 variable
-ppl$wks_worked_avg <- ifelse(ppl$WKW == 1, 51,
+ppl$wks_worked_avg <- as.numeric(ifelse(ppl$WKW == 1, 51,
                                         ifelse(ppl$WKW == 2, 48.5,
                                                ifelse(ppl$WKW == 3, 43.5,
                                                       ifelse(ppl$WKW == 4, 33,
                                                              ifelse(ppl$WKW == 5, 20, 
-                                                                    ifelse(ppl$WKW == 6, 7, 0))))))
+                                                                    ifelse(ppl$WKW == 6, 7, 0)))))))
 
 ## create final weeks worked variable using WKWN variable for 2019 or later
-ppl$wks_worked <- ifelse(ppl$WKWN>=1, ppl$WKWN, ppl$wks_worked_avg)
+ppl$wks_worked <- as.numeric(ifelse(ppl$WKWN>=1, ppl$WKWN, ppl$wks_worked_avg))
 ## View(ppl[c("RT","SERIALNO","wages_adj","WKW","WKWN","wks_worked","wks_worked_avg")])
 
 # Then calculate hourly wage
 ## Used 15.50 since that went into effect January 2023
-ppl$hrly_wage <- ppl$wages_adj/(ppl$wks_worked * ppl$wkly_hrs)
+ppl$hrly_wage <- as.numeric(ppl$wages_adj/(ppl$wks_worked * ppl$wkly_hrs))
 ## View(ppl[c("RT","SERIALNO","wages_adj","WKHP","WKW","WKWN","wks_worked","wkly_hrs","hrly_wage")])
 
 #* Code for Living Wage Indicator ----
@@ -158,7 +158,7 @@ ppl$indicator <- as.factor(ppl$living_wage)
 summary(ppl$indicator)
 table(ppl$indicator, useNA = "always")
 
-# Test disparities for state ######
+# Test disparities for state
 # install.packages("spatstat")
 # library(spatstat)
 # median_race<-ppl%>%
@@ -175,7 +175,7 @@ table(ppl$indicator, useNA = "always")
 # # Subset Data for Living Wage 
 # # Adjust wage or salary income in past 12 months: WAGP (adjust with ADJINC)
 # # trying wages first then will try earnings 
-# ppl_test$earnings <- ppl_test$PERNP*ppl_test$ADJINC/1000000)
+# ppl_test$earnings <- (as.numeric(ppl_test$PERNP)*(as.numeric(ppl_test$ADJINC)/1000000))
 # 
 # # Filter data for pop of interest  
 # # Keep records only for those ages 18-24
@@ -193,23 +193,23 @@ table(ppl$indicator, useNA = "always")
 # # Calculate Living Wage 
 # # Calculate average number of hours worked per week
 # # convert usual hours worked per week past 12 months: WKHP to integer
-# ppl_test$wkly_hrs <- ppl_test$WKHP
+# ppl_test$wkly_hrs <- as.integer(ppl_test$WKHP)
 # 
 # # average number of weeks worked in past 12 months for each value 1-6: WKW pre-2019 data
-# ppl_test$wks_worked_avg<- ifelse(ppl_test$WKW == 1, 51,
+# ppl_test$wks_worked_avg<-as.numeric(ifelse(ppl_test$WKW == 1, 51,
 #                                       ifelse(ppl_test$WKW == 2, 48.5,
 #                                              ifelse(ppl_test$WKW == 3, 43.5,
 #                                                     ifelse(ppl_test$WKW == 4, 33,
 #                                                            ifelse(ppl_test$WKW == 5, 20, 
-#                                                                   ifelse(ppl_test$WKW == 6, 7, 0))))))
+#                                                                   ifelse(ppl_test$WKW == 6, 7, 0)))))))
 # 
 # # created final weeks worked variable using WKWN variable for 2019 or later
-# ppl_test$wks_worked<- ifelse(ppl_test$WKWN>=1, ppl_test$WKWN, ppl_test$wks_worked_avg)
+# ppl_test$wks_worked<-as.numeric(ifelse(ppl_test$WKWN>=1, ppl_test$WKWN, ppl_test$wks_worked_avg))
 # #View(ppl_test[c("RT","SERIALNO","earnings","WKW","WKWN","wks_worked","wks_worked_avg")])
 # 
 # # Calculate hourly wage 
 # # Use 15.50 since that is going into effect January 2023
-# ppl_test$hrly_wage <- ppl_test$earnings/(ppl_test$wks_worked * ppl_test$wkly_hrs)
+# ppl_test$hrly_wage <- as.numeric(ppl_test$earnings/(ppl_test$wks_worked * ppl_test$wkly_hrs))
 # # View(ppl_test[c("RT","SERIALNO","earnings","WKHP","WKW","WKWN","wks_worked","wkly_hrs","hrly_wage")])
 # 
 # # Code for Living Wage Indicator 
