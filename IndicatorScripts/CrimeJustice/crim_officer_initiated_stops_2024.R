@@ -90,17 +90,17 @@ con2 <- connect_to_db("racecounts")
 # ripa_df <- ripa_df %>% mutate(County = ifelse(grepl("Los Angeles", County), "Los Angeles County", County)) # clean up LAC rows bc LAC data was separated into 4 files
 # ripa_df <- ripa_df %>% clean_names()
 # ripa_df$date_of_stop <- as.character(as.POSIXct(ripa_df$date_of_stop,tz="UTC",format="%Y-%m-%d"))
-# 
+
 # # push to postgres
 # con <- connect_to_db("rda_shared_data")
 # schema <- "crime_and_justice"
-# table_name <- "cadoj_ripa_2022_revised"
+# table_name <- "cadoj_ripa_2022"
 # table_comment <- paste0(curr_yr, " RIPA statewide data. Downloaded from https://openjustice.doj.ca.gov/data. Script: W:\\Project\\RACE COUNTS\\2024_v6\\RC_Github\\RaceCounts\\IndicatorScripts\\CrimeJustice\\crim_officer_initiated_stops_2024.R")
 # 
 # dbWriteTable(con, c(schema, table_name), ripa_df,
 #              overwrite = FALSE, row.names = FALSE)
-# 
-# 
+
+
 # # function to add table comments
 # add_table_comments <- function(con, schema, table_name, indicator, source, column_names, column_comments) {
 #   comments <- character()
@@ -272,7 +272,7 @@ con2 <- connect_to_db("racecounts")
 ##### Begin RACE COUNTS prep #
 # Import RIPA postgres table --------------------------------------------------------
 ripa_orig <- dbGetQuery(con, "SELECT county, agency_name, call_for_service, rae_hispanic_latino, rae_full, rae_native_american, 
-                                  rae_pacific_islander, rae_middle_eastern_south_asian FROM crime_and_justice.cadoj_ripa_2022_revised WHERE call_for_service = 0;") 
+                                  rae_pacific_islander, rae_middle_eastern_south_asian FROM crime_and_justice.cadoj_ripa_2022 WHERE call_for_service = 0;") 
 
 # manual cleaning so that unique agency names to match to cities later
 agency_names <- as.data.frame(unique(ripa_orig$agency_name))
@@ -307,7 +307,8 @@ ripa_cfs <- ripa_final %>% mutate(state_id = '06')
 
 
 #### Calc counts by race ####
-source("./Functions/crime_justice_functions.R")
+# source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/crime_justice_functions.R")
+# temporary file path used to run code before merge source("W:/Project/RACE COUNTS/2024_v6/RC_Github/EMG/RaceCounts/Functions/crime_justice_functions.R")
 state_calcs <- stops_by_state(ripa_cfs)
 county_calcs <- stops_by_county(ripa_cfs) %>% mutate(county = gsub(" County", "", county))
 agency_calcs <- stops_by_agency(ripa_cfs) # this df includes agencies at all levels: state, county, city, school district, etc.
@@ -421,19 +422,19 @@ View(city_table)
 
 
 ###update info for postgres tables will automatically update###
-county_table_name <- paste0("arei_crim_officer_initiated_stops_county_revised_", rc_yr)
-state_table_name <- paste0("arei_crim_officer_initiated_stops_state_revised_", rc_yr)
-city_table_name <- paste0("arei_crim_officer_initiated_stops_city_revised_", rc_yr)
+county_table_name <- paste0("arei_crim_officer_initiated_stops_county_", rc_yr)
+state_table_name <- paste0("arei_crim_officer_initiated_stops_state_", rc_yr)
+city_table_name <- paste0("arei_crim_officer_initiated_stops_city_", rc_yr)
 
 indicator <- paste0("Officer initiated stops per 1,000 people. Raw is total number of officer initiated stops. Note: City data is based only on the largest agency in that city. In addition, stops are assigned to the geography where the law enforcement agency is located, not where the stop occurred. This data is")
 source <- paste0("CADOJ RIPA ",curr_yr, " https://openjustice.doj.ca.gov/data")
 
-#send tables to postgres
+# #send tables to postgres
 # to_postgres(county_table, state_table)
 # city_to_postgres(city_table)
-
-dbDisconnect(con)
-dbDisconnect(con2)
+# 
+# dbDisconnect(con)
+# dbDisconnect(con2)
 
 
 
