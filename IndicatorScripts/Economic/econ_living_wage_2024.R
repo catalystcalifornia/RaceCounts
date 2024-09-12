@@ -47,7 +47,7 @@ cols_ <- grep("^PWGTP*", cols, value = TRUE)                                # fi
 ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE,  select = c(cols_, "AGEP", "ESR", "SCH", "PUMA10",
              "PUMA20", "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P", "RAC3P", "RACAIAN", "RACPI", "RACNH", "ADJINC",
              "WAGP","PERNP", "COW", "WKHP","WKW","WKL", "WRK","WKWN"),
-             colClasses = list(character = c("PUMA10", "PUMA20", "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P", "RAC3P", "RACAIAN", "RACPI", "RACNH", "AGEP", "ADJINC",
+             colClasses = list(character = c("PUMA10", "PUMA20", "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P", "RAC3P", "RACAIAN", "RACPI", "RACNH", "ADJINC",
                                              "WAGP","PERNP", "COW", "WKHP","WKW","WKL", "ESR","WRK","WKWN")))
 
 # Add state_geoid to ppl, add state_geoid to PUMA id, so it aligns with crosswalks.puma_county_2020
@@ -293,4 +293,5 @@ source <- paste0("ACS PUMS (", start_yr, "-", curr_yr, ")")
 #send tables to postgres
 to_postgres()
 
-
+#close connection
+dbDisconnect(con)
