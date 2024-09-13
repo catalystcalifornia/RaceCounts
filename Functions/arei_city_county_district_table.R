@@ -41,7 +41,7 @@ rc_schema <- 'v6'
 
 
 ### District-Place Crosswalk ### ---------------------------------------------------------------------
-## pull in 2020 CBF Places and Districts ##
+## pull in CBF Places and Districts ##
 places <- places(state = 'CA', year = curr_yr, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
 unified <- school_districts(state = 'CA', type = "unified", year = curr_yr, cb = TRUE) %>% select(-c(STATEFP, UNSDLEA, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
 elementary <- school_districts(state = 'CA', type = "elementary", year = curr_yr, cb = TRUE) %>% select(-c(STATEFP, ELSDLEA, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
@@ -128,7 +128,7 @@ table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS
 
 
 # Add counties, enrollment, pop, and region data ---------------------------------------------
-counties <- st_read(con, query = "SELECT place_geoid, county_geoid, county_name FROM crosswalks.county_place_2020")
+counties <- st_read(con, query = paste0("SELECT place_geoid, county_geoid, county_name FROM crosswalks.county_place_", curr_yr))
 city_pop <- st_read(con2, query = paste0("SELECT geoid AS place_geoid, total_pop AS city_pop FROM ", rc_schema, ".arei_race_multigeo WHERE geolevel = 'place'"))
 county_pop <- st_read(con2, query = paste0("SELECT geoid AS county_geoid, total_pop AS county_pop FROM ", rc_schema, ".arei_race_multigeo WHERE geolevel = 'county'"))
 regions <- st_read(con2, query = paste0("SELECT county_id AS county_geoid, region FROM ", rc_schema, ".arei_county_region_urban_type"))
