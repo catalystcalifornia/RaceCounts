@@ -45,8 +45,8 @@ cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0)) # get all PUMS co
 cols_ <- grep("^PWGTP*", cols, value = TRUE)                                # filter for PUMS weight colnames
 
 ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE,  select = c(cols_, "AGEP", "ESR", "SCH", "PUMA10",
-                                                                                          "PUMA20", "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P", "RAC3P", "RACAIAN", "RACPI", "RACNH", "ADJINC",
-                                                                                          "WAGP","PERNP", "COW", "WKHP","WKW","WKL", "WRK","WKWN"),
+             "PUMA20", "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P", "RAC3P", "RACAIAN", "RACPI", "RACNH", "ADJINC",
+             "WAGP","PERNP", "COW", "WKHP","WKW","WKL", "WRK","WKWN"),
              colClasses = list(character = c("PUMA10", "PUMA20", "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P", "RAC3P", "RACAIAN", "RACPI", "RACNH", "ADJINC",
                                              "WAGP","PERNP", "COW", "WKHP","WKW","WKL", "ESR","WRK","WKWN")))
 
