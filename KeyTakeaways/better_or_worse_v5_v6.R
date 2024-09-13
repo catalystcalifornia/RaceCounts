@@ -1,6 +1,6 @@
 #### Better or worse current RC version compared to previous version of RC? ####
-### Example findings:
-#### 
+### Script produces findings about how much an indicator's overall outcome has changed since prev RC by calculating % change btwn curr and prev total_rate values.
+### Script produces findings about how much an indicator's disparity has changed by calculating the % change btwn curr and prev Index of Disparity values.
 
 
 #install packages if not already installed
