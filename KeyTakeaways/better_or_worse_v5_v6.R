@@ -1,4 +1,7 @@
-#### Better or worse this year? ####
+#### Better or worse current RC version compared to previous version of RC? ####
+### Script produces findings about how much an indicator's overall outcome has changed since prev RC by calculating % change btwn curr and prev total_rate values.
+### Script produces findings about how much an indicator's disparity has changed by calculating the % change btwn curr and prev Index of Disparity values.
+
 
 #install packages if not already installed
 packages <- c("tidyverse","RPostgreSQL","sf","usethis")  
@@ -27,65 +30,67 @@ source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Fun
 # remove exponentiation
 options(scipen = 100) 
 
-# udpate each yr
-rc_yr <- '2024'
-rc_schema <- 'v6'
+# update each yr
+curr_rc_yr <- '2024'
+curr_rc_schema <- 'v6'
+prev_rc_yr <- '2023'
+prev_rc_schema <- 'v5'
 
 ####################### ADD state DATA #####################################
 #commenting out c5 bc it is not available both years
-c_1 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_crim_incarceration_state_", rc_yr))
-c_2 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_crim_perception_of_safety_state_", rc_yr))
-c_3 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_crim_status_offenses_state_", rc_yr))
-c_4 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_crim_use_of_force_state_", rc_yr))
-#c_5 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_crim_officer_initiated_stops_state_", rc_yr))
+c_1 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_crim_incarceration_state_", curr_rc_yr))
+c_2 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_crim_perception_of_safety_state_", curr_rc_yr))
+c_3 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_crim_status_offenses_state_", curr_rc_yr))
+c_4 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_crim_use_of_force_state_", curr_rc_yr))
+#c_5 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_crim_officer_initiated_stops_state_", curr_rc_yr))
 
-c_6 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_census_participation_state_", rc_yr))
-c_7 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_diversity_of_candidates_state_", rc_yr))
-c_8 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_diversity_of_electeds_state_", rc_yr))
-c_9 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_registered_voters_state_", rc_yr))
-c_10 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_voting_midterm_state_", rc_yr))
-c_11 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_voting_presidential_state_", rc_yr))
+c_6 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_demo_census_participation_state_", curr_rc_yr))
+c_7 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_demo_diversity_of_candidates_state_", curr_rc_yr))
+c_8 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_demo_diversity_of_electeds_state_", curr_rc_yr))
+c_9 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_demo_registered_voters_state_", curr_rc_yr))
+c_10 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_demo_voting_midterm_state_", curr_rc_yr))
+c_11 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_demo_voting_presidential_state_", curr_rc_yr))
 
-c_12 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_connected_youth_state_", rc_yr))
-c_13 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_employment_state_", rc_yr))
-c_14 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_internet_state_", rc_yr))
-c_15 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_officials_state_", rc_yr))
-c_16 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_per_capita_income_state_", rc_yr))
-c_17 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_real_cost_measure_state_", rc_yr))
-c_18 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_living_wage_state_", rc_yr))
+c_12 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_econ_connected_youth_state_", curr_rc_yr))
+c_13 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_econ_employment_state_", curr_rc_yr))
+c_14 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_econ_internet_state_", curr_rc_yr))
+c_15 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_econ_officials_state_", curr_rc_yr))
+c_16 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_econ_per_capita_income_state_", curr_rc_yr))
+c_17 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_econ_real_cost_measure_state_", curr_rc_yr))
+c_18 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_econ_living_wage_state_", curr_rc_yr))
 
-c_19 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_chronic_absenteeism_state_", rc_yr))
-c_20 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_hs_grad_state_", rc_yr))
-c_21 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_gr3_ela_scores_state_", rc_yr))
-c_22 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_gr3_math_scores_state_", rc_yr))
-c_23 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_suspension_state_", rc_yr))
-c_24 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_ece_access_state_", rc_yr))
-c_25 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_staff_diversity_state_", rc_yr))
+c_19 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_educ_chronic_absenteeism_state_", curr_rc_yr))
+c_20 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_educ_hs_grad_state_", curr_rc_yr))
+c_21 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_educ_gr3_ela_scores_state_", curr_rc_yr))
+c_22 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_educ_gr3_math_scores_state_", curr_rc_yr))
+c_23 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_educ_suspension_state_", curr_rc_yr))
+c_24 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_educ_ece_access_state_", curr_rc_yr))
+c_25 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_educ_staff_diversity_state_", curr_rc_yr))
 
-c_26 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hlth_got_help_state_", rc_yr))
-c_27 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hlth_health_insurance_state_", rc_yr))
-c_28 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hlth_life_expectancy_state_", rc_yr))
-c_29 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hlth_low_birthweight_state_", rc_yr))
-c_30 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hlth_usual_source_of_care_state_", rc_yr))
-c_31 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hlth_preventable_hospitalizations_state_", rc_yr))
+c_26 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hlth_got_help_state_", curr_rc_yr))
+c_27 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hlth_health_insurance_state_", curr_rc_yr))
+c_28 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hlth_life_expectancy_state_", curr_rc_yr))
+c_29 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hlth_low_birthweight_state_", curr_rc_yr))
+c_30 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hlth_usual_source_of_care_state_", curr_rc_yr))
+c_31 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hlth_preventable_hospitalizations_state_", curr_rc_yr))
 
-c_32 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_drinking_water_state_", rc_yr))
-c_33 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_food_access_state_", rc_yr))
-c_34 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_haz_weighted_avg_state_", rc_yr))
-c_35 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_toxic_release_state_", rc_yr))
-c_36 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_asthma_state_", rc_yr))
-c_37 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_lack_of_greenspace_state_", rc_yr))
+c_32 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hben_drinking_water_state_", curr_rc_yr))
+c_33 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hben_food_access_state_", curr_rc_yr))
+c_34 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hben_haz_weighted_avg_state_", curr_rc_yr))
+c_35 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hben_toxic_release_state_", curr_rc_yr))
+c_36 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hben_asthma_state_", curr_rc_yr))
+c_37 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hben_lack_of_greenspace_state_", curr_rc_yr))
 
-c_38 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_cost_burden_owner_state_", rc_yr))
-c_39 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_cost_burden_renter_state_", rc_yr))
-c_40 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_denied_mortgages_state_", rc_yr))
-c_41 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_eviction_filing_rate_state_", rc_yr)) 
-c_42 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_foreclosure_state_", rc_yr))
-c_43 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_homeownership_state_", rc_yr))
-c_44 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_overcrowded_state_", rc_yr))
-c_45 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_housing_quality_state_", rc_yr))
-c_46 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_student_homelessness_state_", rc_yr))
-c_47 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_subprime_state_", rc_yr))
+c_38 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hous_cost_burden_owner_state_", curr_rc_yr))
+c_39 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hous_cost_burden_renter_state_", curr_rc_yr))
+c_40 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hous_denied_mortgages_state_", curr_rc_yr))
+c_41 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hous_eviction_filing_rate_state_", curr_rc_yr)) 
+c_42 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hous_foreclosure_state_", curr_rc_yr))
+c_43 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hous_homeownership_state_", curr_rc_yr))
+c_44 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hous_overcrowded_state_", curr_rc_yr))
+c_45 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hous_housing_quality_state_", curr_rc_yr))
+c_46 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hous_student_homelessness_state_", curr_rc_yr))
+c_47 <- st_read(con, query = paste0("SELECT * FROM ", curr_rc_schema, ".arei_hous_subprime_state_", curr_rc_yr))
 
 dbDisconnect(con)
 
@@ -275,67 +280,62 @@ new_data <- c_index
 
 
 # Load PostgreSQL driver and databases --------------------------------------------------
-source("W:\\RDA Team\\R\\credentials_source.R")
-con <- connect_to_db("racecounts")
-
-rc_yr <- '2023'
-rc_schema <- 'v5'
 
 ####################### ADD state DATA #####################################
 #commenting out c5 bc it is not available both years
-c_1 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_crim_incarceration_state_", rc_yr))
-c_2 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_crim_perception_of_safety_state_", rc_yr))
-c_3 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_crim_status_offenses_state_", rc_yr))
-c_4 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_crim_use_of_force_state_", rc_yr))
-#c_5 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_crim_officer_initiated_stops_state_", rc_yr))
+c_1 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_crim_incarceration_state_", prev_rc_yr))
+c_2 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_crim_perception_of_safety_state_", prev_rc_yr))
+c_3 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_crim_status_offenses_state_", prev_rc_yr))
+c_4 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_crim_use_of_force_state_", prev_rc_yr))
+#c_5 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_crim_officer_initiated_stops_state_", prev_rc_yr))
 
-c_6 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_census_participation_state_", rc_yr))
-c_7 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_diversity_of_candidates_state_", rc_yr))
-c_8 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_diversity_of_electeds_state_", rc_yr))
-c_9 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_registered_voters_state_", rc_yr))
-c_10 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_voting_midterm_state_", rc_yr))
-c_11 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_voting_presidential_state_", rc_yr))
+c_6 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_demo_census_participation_state_", prev_rc_yr))
+c_7 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_demo_diversity_of_candidates_state_", prev_rc_yr))
+c_8 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_demo_diversity_of_electeds_state_", prev_rc_yr))
+c_9 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_demo_registered_voters_state_", prev_rc_yr))
+c_10 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_demo_voting_midterm_state_", prev_rc_yr))
+c_11 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_demo_voting_presidential_state_", prev_rc_yr))
 
-c_12 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_connected_youth_state_", rc_yr))
-c_13 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_employment_state_", rc_yr))
-c_14 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_internet_state_", rc_yr))
-c_15 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_officials_state_", rc_yr))
-c_16 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_per_capita_income_state_", rc_yr))
-c_17 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_real_cost_measure_state_", rc_yr))
-c_18 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_living_wage_state_", rc_yr))
+c_12 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_econ_connected_youth_state_", prev_rc_yr))
+c_13 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_econ_employment_state_", prev_rc_yr))
+c_14 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_econ_internet_state_", prev_rc_yr))
+c_15 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_econ_officials_state_", prev_rc_yr))
+c_16 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_econ_per_capita_income_state_", prev_rc_yr))
+c_17 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_econ_real_cost_measure_state_", prev_rc_yr))
+c_18 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_econ_living_wage_state_", prev_rc_yr))
 
-c_19 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_chronic_absenteeism_state_", rc_yr))
-c_20 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_hs_grad_state_", rc_yr))
-c_21 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_gr3_ela_scores_state_", rc_yr))
-c_22 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_gr3_math_scores_state_", rc_yr))
-c_23 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_suspension_state_", rc_yr))
-c_24 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_ece_access_state_", rc_yr))
-c_25 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_staff_diversity_state_", rc_yr))
+c_19 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_educ_chronic_absenteeism_state_", prev_rc_yr))
+c_20 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_educ_hs_grad_state_", prev_rc_yr))
+c_21 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_educ_gr3_ela_scores_state_", prev_rc_yr))
+c_22 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_educ_gr3_math_scores_state_", prev_rc_yr))
+c_23 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_educ_suspension_state_", prev_rc_yr))
+c_24 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_educ_ece_access_state_", prev_rc_yr))
+c_25 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_educ_staff_diversity_state_", prev_rc_yr))
 
-c_26 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hlth_got_help_state_", rc_yr))
-c_27 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hlth_health_insurance_state_", rc_yr))
-c_28 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hlth_life_expectancy_state_", rc_yr))
-c_29 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hlth_low_birthweight_state_", rc_yr))
-c_30 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hlth_usual_source_of_care_state_", rc_yr))
-c_31 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hlth_preventable_hospitalizations_state_", rc_yr))
+c_26 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hlth_got_help_state_", prev_rc_yr))
+c_27 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hlth_health_insurance_state_", prev_rc_yr))
+c_28 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hlth_life_expectancy_state_", prev_rc_yr))
+c_29 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hlth_low_birthweight_state_", prev_rc_yr))
+c_30 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hlth_usual_source_of_care_state_", prev_rc_yr))
+c_31 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hlth_preventable_hospitalizations_state_", prev_rc_yr))
 
-c_32 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_drinking_water_state_", rc_yr))
-c_33 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_food_access_state_", rc_yr))
-c_34 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_haz_weighted_avg_state_", rc_yr))
-c_35 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_toxic_release_state_", rc_yr))
-c_36 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_asthma_state_", rc_yr))
-c_37 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_lack_of_greenspace_state_", rc_yr))
+c_32 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hben_drinking_water_state_", prev_rc_yr))
+c_33 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hben_food_access_state_", prev_rc_yr))
+c_34 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hben_haz_weighted_avg_state_", prev_rc_yr))
+c_35 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hben_toxic_release_state_", prev_rc_yr))
+c_36 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hben_asthma_state_", prev_rc_yr))
+c_37 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hben_lack_of_greenspace_state_", prev_rc_yr))
 
-c_38 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_cost_burden_owner_state_", rc_yr))
-c_39 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_cost_burden_renter_state_", rc_yr))
-c_40 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_denied_mortgages_state_", rc_yr))
-c_41 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_eviction_filing_rate_state_", rc_yr)) 
-c_42 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_foreclosure_state_", rc_yr))
-c_43 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_homeownership_state_", rc_yr))
-c_44 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_overcrowded_state_", rc_yr))
-c_45 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_housing_quality_state_", rc_yr))
-c_46 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_student_homelessness_state_", rc_yr))
-c_47 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_subprime_state_", rc_yr))
+c_38 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hous_cost_burden_owner_state_", prev_rc_yr))
+c_39 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hous_cost_burden_renter_state_", prev_rc_yr))
+c_40 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hous_denied_mortgages_state_", prev_rc_yr))
+c_41 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hous_eviction_filing_rate_state_", prev_rc_yr)) 
+c_42 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hous_foreclosure_state_", prev_rc_yr))
+c_43 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hous_homeownership_state_", prev_rc_yr))
+c_44 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hous_overcrowded_state_", prev_rc_yr))
+c_45 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hous_housing_quality_state_", prev_rc_yr))
+c_46 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hous_student_homelessness_state_", prev_rc_yr))
+c_47 <- st_read(con, query = paste0("SELECT * FROM ", prev_rc_schema, ".arei_hous_subprime_state_", prev_rc_yr))
 
 dbDisconnect(con)
 
@@ -458,15 +458,15 @@ combined_data <- full_join(new_data,
          total_rate.y,
          index_of_disparity.y)
 
-names(combined_data) <- c("state", "total_rate_24", "id_24", "variable", 
-                          "asbest","issue_area", "total_rate_23", "id_23")
+names(combined_data) <- c("state", "total_rate_curr", "id_curr", "variable", 
+                          "asbest","issue_area", "total_rate_prev", "id_prev")
 
 # Calculate differences and percent differences in outcomes and disparity
-combined_data$rate_diff <- combined_data$total_rate_24 - combined_data$total_rate_23
-combined_data$rate_pct_chng <- combined_data$rate_diff / combined_data$total_rate_23 * 100
+combined_data$rate_diff <- combined_data$total_rate_curr - combined_data$total_rate_prev
+combined_data$rate_pct_chng <- combined_data$rate_diff / combined_data$total_rate_prev * 100
 
-combined_data$id_diff <- combined_data$id_24 - combined_data$id_23
-combined_data$id_pct_chng <- combined_data$id_diff / combined_data$id_23 * 100
+combined_data$id_diff <- combined_data$id_curr - combined_data$id_prev
+combined_data$id_pct_chng <- combined_data$id_diff / combined_data$id_prev * 100
 
 # Calculate overall and mean difference in disparity
 id_change_sum <- sum(combined_data$id_pct_chng)
@@ -474,10 +474,10 @@ id_change_mean <- mean(combined_data$id_pct_chng)
 
 # Calculate difference in disparity by issue area
 issue_change <- combined_data %>% group_by(issue_area) %>% summarize(
-  id_24=sum(id_24),
-  id_23=sum(id_23),
-  id_diff=sum(id_24) - sum(id_23),
-  id_pct_chng=(sum(id_24) - sum(id_23))/ sum(id_23) * 100
+  id_curr=sum(id_curr),
+  id_prev=sum(id_prev),
+  id_diff=sum(id_curr) - sum(id_prev),
+  id_pct_chng=(sum(id_curr) - sum(id_prev))/ sum(id_prev) * 100
 )
 
 # calculate overall and mean difference in outcomes
