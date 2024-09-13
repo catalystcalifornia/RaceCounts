@@ -9,6 +9,8 @@ nh_black_code <- "2"
 nh_white_code <- "7"
 nh_multiracial_code <- "8"
 aian_pacisl_swanasa_code <- "1"
+nh_aian_code<-"5"
+nh_nhpi_code<-"6"
 
 
 ## RIPA Stops by State -----------------
@@ -59,6 +61,20 @@ stops_by_state <- function(x) {
         filter(rae_pacific_islander == aian_pacisl_swanasa_code) %>%
         group_by(state_id) %>%
         dplyr::summarize(pacisl_stops = n())) %>%
+    
+    ### merge with NH-AIAN
+    left_join(      
+      x %>% 
+        filter(rae_hispanic_latino == nh_code & rae_full == nh_aian_code) %>%
+        group_by(state_id) %>%
+        dplyr::summarize(nh_aian_stops = n())) %>%
+    
+    ### merge with NH-PACISL
+    left_join(      
+      x %>% 
+        filter(rae_hispanic_latino == nh_code & rae_full == nh_nhpi_code) %>%
+        group_by(state_id) %>%
+        dplyr::summarize(nh_pacisl_stops = n())) %>%
     
     ### merge with SWANASA
     left_join(      
@@ -126,6 +142,20 @@ stops_by_county <- function(x) {
         group_by(county) %>%
         dplyr::summarize(pacisl_stops = n())) %>%
     
+    ### merge with NH-AIAN
+    left_join(      
+      x %>% 
+        filter(rae_hispanic_latino == nh_code & rae_full == nh_aian_code) %>%
+        group_by(county) %>%
+        dplyr::summarize(nh_aian_stops = n())) %>%
+    
+    ### merge with NH-PACISL
+    left_join(      
+      x %>% 
+        filter(rae_hispanic_latino == nh_code & rae_full == nh_nhpi_code) %>%
+        group_by(county) %>%
+        dplyr::summarize(nh_pacisl_stops = n())) %>%
+    
     ### merge with SWANASA
     left_join(      
       x %>% 
@@ -191,6 +221,21 @@ stops_by_agency <- function(x) {
         filter(rae_pacific_islander == aian_pacisl_swanasa_code) %>%
         group_by(agency_name_new) %>%
         dplyr::summarize(pacisl_stops = n())) %>%
+
+    
+    ### merge with NH-AIAN
+    left_join(      
+      x %>% 
+        filter(rae_hispanic_latino == nh_code & rae_full == nh_aian_code) %>%
+        group_by(agency_name_new) %>%
+        dplyr::summarize(nh_aian_stops = n())) %>%
+    
+    ### merge with NH-PACISL
+    left_join(      
+      x %>% 
+        filter(rae_hispanic_latino == nh_code & rae_full == nh_nhpi_code) %>%
+        group_by(agency_name_new) %>%
+        dplyr::summarize(nh_pacisl_stops = n())) %>%
     
     ### merge with SWANASA
     left_join(      

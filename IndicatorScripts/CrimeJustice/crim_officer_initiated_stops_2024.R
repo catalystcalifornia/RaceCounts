@@ -56,9 +56,13 @@ con2 <- connect_to_db("racecounts")
 # ripa_CHP <- rbind(ripa_CHP_q1, ripa_CHP_q2, ripa_CHP_q3, ripa_CHP_q4)
 # ripa_CHP_df <- ripa_CHP %>% mutate(Code=(str_sub(AGENCY_ORI,4,7)))
 # 
-# ripa_CHP_df <- ripa_CHP_df %>% left_join(agency_file %>% select(County, Code, Agency), by = "Code")
-# # ripa_CHP_df %>% filter(is.na(County)) # View unmatched RIPA records.
+# # all CHP stops have the agency ID associated with CA Highway Patrol - Sacramento, which is incorrect
+# ## ripa_CHP_df_test <- ripa_CHP_df %>% left_join(agency_file %>% select(County, Code, Agency), by = "Code")
+# ## ripa_CHP_df_test %>% filter(is.na(County)) # View unmatched RIPA records.
+# ## table(ripa_CHP_df_test$County)
 # 
+# # add a county field to CHP stops that just retains the agency as CHP so it doesn't get matched to Sac County
+# ripa_CHP_df<-ripa_CHP_df%>%mutate(County='CA Highway Patrol')
 # 
 # # Import & clean county RIPA data -------------------------------------------------
 # setwd("W:\\Data\\Crime and Justice\\CA DOJ\\RIPA Stop Data\\2022\\county_data")
@@ -80,13 +84,13 @@ con2 <- connect_to_db("racecounts")
 # # Create RIPA data postgres table -------------------------------------------------
 # 
 # # bind county df with CHP and supplement
-# ripa_df <- rbind(ripa_CHP_df, ripa_supp_df) %>% select(-c(Agency, Code))
+# ripa_df <- rbind(ripa_CHP_df%>%select(-Code), ripa_supp_df%>%select(-c(Agency, Code)))
 # ripa_df <- rbind(ripa_df, ripa_county_df)
 # unique(ripa_df$County)   # check if county names need cleaning
 # ripa_df <- ripa_df %>% mutate(County = ifelse(grepl("Los Angeles", County), "Los Angeles County", County)) # clean up LAC rows bc LAC data was separated into 4 files
 # ripa_df <- ripa_df %>% clean_names()
 # ripa_df$date_of_stop <- as.character(as.POSIXct(ripa_df$date_of_stop,tz="UTC",format="%Y-%m-%d"))
-# 
+
 # # push to postgres
 # con <- connect_to_db("rda_shared_data")
 # schema <- "crime_and_justice"
@@ -95,8 +99,8 @@ con2 <- connect_to_db("racecounts")
 # 
 # dbWriteTable(con, c(schema, table_name), ripa_df,
 #              overwrite = FALSE, row.names = FALSE)
-# 
-# 
+
+
 # # function to add table comments
 # add_table_comments <- function(con, schema, table_name, indicator, source, column_names, column_comments) {
 #   comments <- character()
@@ -281,8 +285,11 @@ agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" CO SHERIFF'S 
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" CO SHERIFF", " COUNTY", agency_name_new))  # clean Sheriff's names
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" COUNTY SHERIFF'S OFFICE", " COUNTY", agency_name_new))  # clean Sheriff's names
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" SHERIFF", " COUNTY", agency_name_new))  # clean Sheriff's names
-agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPT", "", agency_name_new))  
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPARTMENT", "", agency_name_new))  
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPARTME", "", agency_name_new))  
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPAR", "", agency_name_new)) 
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPT", "", agency_name_new))  
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DE", "", agency_name_new))
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub("-COMM", "", agency_name_new))  
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" - COMM", "", agency_name_new))  
 
@@ -300,7 +307,8 @@ ripa_cfs <- ripa_final %>% mutate(state_id = '06')
 
 
 #### Calc counts by race ####
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/crime_justice_functions.R")
+# source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/crime_justice_functions.R")
+# temporary file path used to run code before merge source("W:/Project/RACE COUNTS/2024_v6/RC_Github/EMG/RaceCounts/Functions/crime_justice_functions.R")
 state_calcs <- stops_by_state(ripa_cfs)
 county_calcs <- stops_by_county(ripa_cfs) %>% mutate(county = gsub(" County", "", county))
 agency_calcs <- stops_by_agency(ripa_cfs) # this df includes agencies at all levels: state, county, city, school district, etc.
@@ -312,7 +320,7 @@ pop <- dbGetQuery(con2, "SELECT * FROM v6.arei_race_multigeo") %>% mutate(name =
                                                                           name =  gsub(" city, California", "", name),
                                                                           name =  gsub(" town, California", "", name),
                                                                           name =  gsub(", California", "", name)) %>% 
-                                                                   select(-c(contains(c("swana_", "nh_other_", "aian_", "pacisl_", "pct_"))))
+                                                                   select(-c(contains(c("swana_", "nh_other_", "pct_"))))
 
 nh_aian_pacisl <- dbGetQuery(con, "SELECT geoid, dp05_0081e AS nh_aian_pop, dp05_0083e as nh_pacisl_pop FROM demographics.acs_5yr_dp05_multigeo_2022 WHERE geolevel IN ('state', 'county', 'place')")
 pop <- pop %>% full_join(nh_aian_pacisl)
@@ -330,6 +338,10 @@ all_df <- rbind(state_df, county_df, city_df) %>% rename(geoname = name)
 sf_stops <- all_df %>% filter(geoname == 'San Francisco' & geolevel == 'county') %>% select(geoname, ends_with("_stops"))
 all_df <- all_df %>% rows_update(sf_stops, by = "geoname")
 
+# copy 	S. San Francisco PD data to South San Francisco record
+so_sf_stops <- agency_calcs %>% filter(agency_name_new=='S. San Francisco') %>% mutate(geoname="South San Francisco")%>%select(geoname, ends_with("_stops"))
+all_df <- all_df %>% rows_update(so_sf_stops, by = "geoname")
+
 
 # Data screening  --------------------------------------------------------
 pop_threshold = 100
@@ -343,8 +355,10 @@ df_screened <- all_df %>% mutate(
                 nh_black_raw = ifelse(nh_black_pop < pop_threshold | nh_black_stops < stop_threshold, NA, nh_black_stops),
                 nh_asian_raw = ifelse(nh_asian_pop < pop_threshold | nh_asian_stops < stop_threshold, NA, nh_asian_stops),
                 nh_twoormor_raw = ifelse(nh_twoormor_pop < pop_threshold | nh_twoormor_stops < stop_threshold, NA, nh_twoormor_stops),
-                nh_aian_raw = ifelse( nh_aian_pop < pop_threshold |  aian_stops < stop_threshold, NA,  aian_stops),
-                nh_pacisl_raw = ifelse(nh_pacisl_pop < pop_threshold | pacisl_stops < stop_threshold, NA, pacisl_stops),
+                nh_aian_raw = ifelse( nh_aian_pop < pop_threshold |  nh_aian_stops < stop_threshold, NA,  nh_aian_stops),
+                nh_pacisl_raw = ifelse(nh_pacisl_pop < pop_threshold | nh_pacisl_stops < stop_threshold, NA, nh_pacisl_stops),
+                aian_raw = ifelse(aian_pop < pop_threshold |  aian_stops < stop_threshold, NA,  aian_stops),
+                pacisl_raw = ifelse(pacisl_pop < pop_threshold | pacisl_stops < stop_threshold, NA, pacisl_stops),
                 swanasa_raw = ifelse(swanasa_pop < pop_threshold | swanasa_stops < stop_threshold, NA, swanasa_stops),
                 
                 # calc rates
@@ -356,10 +370,12 @@ df_screened <- all_df %>% mutate(
                 nh_twoormor_rate = (nh_twoormor_raw/nh_twoormor_pop) * 1000,
                 nh_aian_rate = (nh_aian_raw/nh_aian_pop) * 1000,
                 nh_pacisl_rate = (nh_pacisl_raw/nh_pacisl_pop) * 1000,
+                aian_rate = (aian_raw/aian_pop) * 1000,
+                pacisl_rate = (pacisl_raw/pacisl_pop) * 1000,
                 swanasa_rate = (swanasa_raw/swanasa_pop) * 1000
 )
 
-d <- df_screened %>% select(-c(contains(c("_stops")), starts_with("nh_twoormor"))) # drop multiracial bc of mismatch with pop denominator
+d <- df_screened %>% select(-c(contains(c("_stops")), starts_with(c("nh_twoormor","aian_","pacisl")))) # drop multiracial bc of mismatch with pop denominator and drop aian and nhpi alone or in combo
 
 ############## CALC RACE COUNTS STATS ##############
 ############ To use the following RC Functions, 'd' will need the following columns at minimum: 
@@ -413,12 +429,12 @@ city_table_name <- paste0("arei_crim_officer_initiated_stops_city_", rc_yr)
 indicator <- paste0("Officer initiated stops per 1,000 people. Raw is total number of officer initiated stops. Note: City data is based only on the largest agency in that city. In addition, stops are assigned to the geography where the law enforcement agency is located, not where the stop occurred. This data is")
 source <- paste0("CADOJ RIPA ",curr_yr, " https://openjustice.doj.ca.gov/data")
 
-#send tables to postgres
-#to_postgres(county_table, state_table)
-#city_to_postgres(city_table)
-
-dbDisconnect(con)
-dbDisconnect(con2)
+# #send tables to postgres
+# to_postgres(county_table, state_table)
+# city_to_postgres(city_table)
+# 
+# dbDisconnect(con)
+# dbDisconnect(con2)
 
 
 
