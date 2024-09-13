@@ -167,7 +167,7 @@ rc_table <- rc_table %>% rename(
 
 # Export to postgres ------------------------------------------------------
 table_name <- "arei_city_county_district_table"
-table_comment_source <- paste0("Created with W:\\Project\\RACE COUNTS\\", rc_yr, "_", rc_schema, "\\API\\arei_city_county_district_table.R and based on ", curr_yr, " ACS TIGER CBF shapefiles and CDE data, ", acs_yr, " ACS pop data and ", cde_yr, " enrollment data.
+table_comment_source <- paste0("Created with W:\\Project\\RACE COUNTS\\", rc_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\RaceCounts\\Functions\\arei_city_county_district_table.R and based on ", curr_yr, " ACS TIGER CBF shapefiles and CDE data, ", acs_yr, " ACS pop data and ", cde_yr, " enrollment data.
     Districts with 30% or more of their area within a city or that cover 30% or more of a city''s area are assigned to those cities. 
     As a result, a district can be assigned to more than one city")
 
