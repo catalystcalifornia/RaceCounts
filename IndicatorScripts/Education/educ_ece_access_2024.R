@@ -24,8 +24,6 @@ con <- connect_to_db("rda_shared_data")
 
 # define variables used in several places that must be updated each year
 curr_yr <- "2020-2021"  # must keep same format
-indicator <- "ECE Access "
-source <- "https://rrnetwork.org/ and https://elneedsassessment.org/. Created 3/14/24"
 rc_schema <- "v6"
 yr <- "2024"
 
@@ -240,6 +238,8 @@ View(county_table)
 ### update info for postgres tables - automatically updates based on variables at top of script ###
 county_table_name <- paste0("arei_educ_ece_access_county_",yr)
 state_table_name <- paste0("arei_educ_ece_access_state_",yr)
+indicator <- "ECE Access"
+source <- paste0("CCCRRN https://rrnetwork.org/ and AIR ELNAT https://elneedsassessment.org/ (", curr_yr, ")")
 
 #send tables to postgres
 #to_postgres(county_table, state_table)
