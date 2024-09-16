@@ -30,11 +30,10 @@ options(scipen = 100)
 # udpate each yr
 rc_yr <- '2024'
 rc_schema <- 'v6'
-last_rc_schema <- 'v5'
 index <- "QA doc: W:\\Project\\RACE COUNTS\\2024_v6\\Composite Index\\QA_Sheet_Composite_Index.docx Includes all Issue area indexes. Composite index z-scores are the average z-scores for performance and disparity across all issue indexes. This data is"
 
 
-## Add indexes and arei_multigeo_list ------------------------------------------------------
+## Add indexes and arei_county_region_urban_type ------------------------------------------------------
 c_1 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_crim_index_", rc_yr))
 c_2 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_index_", rc_yr))
 c_3 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_index_", rc_yr))
@@ -43,10 +42,7 @@ c_5 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_inde
 c_6 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hlth_index_", rc_yr))
 c_7 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_index_", rc_yr))
 
-region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", last_rc_schema, ".arei_multigeo_list"))
-
-
-## Define variable names for clean_index_data_z function. you MUST UPDATE for each issue area. Used prefixes from arei_multigeo_list table.
+## Define variable names for clean_index_data_z function. you MUST UPDATE for each issue area. Used prefixes from curr_schema arei_issue_list$api_name_v2
 varname1 <- 'crime_and_justice'
 varname2 <- 'democracy'
 varname3 <- 'economic_opportunity'
@@ -54,6 +50,10 @@ varname4 <- 'education'
 varname5 <- 'healthy_built_environment'
 varname6 <- 'health_care_access'
 varname7 <- 'housing'
+
+
+region_urban_type <- st_read(con, query = paste0("SELECT county_id, region, urban_type FROM ", rc_schema, ".arei_county_region_urban_type"))
+
 
 # Clean data --------
 # use function to select cols we want, cap z-scores, and rename z-score cols
@@ -97,14 +97,8 @@ colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col 
 ind_threshold <- 4  # update depending on the number of indexes a county has
 c_index <- calculate_index_z(c_index)
 
-# merge region and urban type from current arei_multigeo_list
+# merge region and urban type from current arei_county_region_urban_type
 c_index <- left_join(c_index, region_urban_type)
-
-# # rename columns -- YOU MUST UPDATE ISSUE (COPY FROM V3 INDEX VIEW) --
-# issue <- 'education'
-# c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("_rank"))
-# c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("performance_z"))
-# c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("disparity_z"))
 
 # select/reorder final columns for index table
 index_table <- c_index %>% select(county_id, county_name, region, urban_type, ends_with("_rank"), quadrant, disparity_z, performance_z, disp_avg, perf_avg, disp_values_count, perf_values_count, ends_with("_disparity_z"), ends_with("_performance_z"), everything())
