@@ -19,16 +19,23 @@ options(scipen = 100)
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
 
-# pull in county race and RC county_id tables from racecounts db - Chris updated county_ids to come from v5
-race <- st_read(con, query = "select * from v5.arei_race_multigeo where geolevel <> 'place'") # import county & state records only
-county_ids <- st_read(con, query = "select geoid, county_id, region, urban_type from v5.arei_multigeo_list") # get RC-specific county_id's, region, urban_type
+
+# Update each yr
+curr_schema <- 'v6'
+prev_schema <- 'v5'
+rc_yr <- '2024'
+
+# pull in RC county_ids from previous schema, then race and region/urban type from current schema
+county_ids <- st_read(con, query = paste0("select geoid, county_id from ", prev_schema, ".arei_multigeo_list where geolevel <> 'place'")) # get RC-specific county_id's
+race <- st_read(con, query = paste0("select * from ", curr_schema, ".arei_race_multigeo where geolevel <> 'place'")) # import county & state records only
+region_urban <- st_read(con, query = paste0("select county_id AS geoid, region, urban_type from ", curr_schema, ".arei_county_region_urban_type")) # get region, urban_type
 
 ## get RC county index tables ##
   # import county index tables - Chris updated rc_list schema to v6
-  rc_list = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(schema = "v6"))$table, function(x) slot(x, 'name')))) # create list of tables in racecounts.v6
-  index_list <- filter(rc_list, grepl("_index_2023",table)) # filter for only index tables
+  rc_list = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(schema = curr_schema))$table, function(x) slot(x, 'name')))) # create list of tables in racecounts.v6
+  index_list <- filter(rc_list, grepl(paste0("_index_", rc_yr)),table) # filter for only index tables
   index_list <- index_list[order(index_list$table), ] # alphabetize list of index tables which transforms into character from list, needed to format list correctly for next steps
-  index_tables <- lapply(setNames(paste0("select * from v5.", index_list), index_list), DBI::dbGetQuery, conn = con) # import tables from postgres
+  index_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", index_list), index_list), DBI::dbGetQuery, conn = con) # import tables from postgres
   
   # format and clean tables
   index_tables_sort <- lapply(index_tables, function(i) i[order(i$county_id),]) # sort all list elements by county_id so they are all in the same order
@@ -38,20 +45,20 @@ county_ids <- st_read(con, query = "select geoid, county_id, region, urban_type 
   index_df = index_df[,!duplicated(names(index_df))]                                # drop duplicated county_id columns
 
 # join tables together
-multigeo_list <- left_join(race, county_ids) %>% relocate(county_id, .after = geoid) %>% relocate(region, .after = name) %>% relocate(urban_type, .after = total_pop) %>%
+multigeo_list <- left_join(race, county_ids) %>% left_join(region_urban) %>% relocate(county_id, .after = geoid) %>% relocate(region, .after = name) %>% relocate(urban_type, .after = total_pop) %>%
                     dplyr::rename(geo_name = name)
 multigeo_list <- left_join(multigeo_list, index_df, by = c("geoid" = "county_id"))
 
 
 # City Data ---------------------------------------------------------------
 
-# pull in city race and RC city_id tables from racecounts db - chris updated city_race to pull from v6
-city_race <- st_read(con, query = "select * from v6.arei_race_multigeo where geolevel = 'place'") # import city records only
-city_ids <- st_read(con, query = "select city_id AS geoid, region from v5.arei_city_county_district_table") %>% unique() # get unique city_ids, regions. postgres table has multiple listings per city depending on how many school dist it has.
+# pull in city race and RC city_id tables from curr_schema
+city_race <- st_read(con, query = paste0("select * from ", curr_schema, ".arei_race_multigeo where geolevel = 'place'")) # import city records only
+city_ids <- st_read(con, query = paste0("select city_id AS geoid, region from ", curr_schema, ".arei_city_county_district_table")) %>% unique() # get unique city_ids, regions. postgres table has multiple listings per city depending on how many school dist it has.
 
 ## get RC city index table ##
 # import city index table - Chris updated to pull from v6 city index
-city_index <- dbGetQuery(con, "SELECT city_id, disparity_z, disparity_rank, performance_z, performance_rank FROM v6.arei_composite_index_city_2023")
+city_index <- dbGetQuery(con, paste0("SELECT city_id, disparity_z, disparity_rank, performance_z, performance_rank FROM ", curr_schema, ".arei_composite_index_city_", rc_yr))
 
 # join city tables together
 city_multigeo_list <- left_join(city_race, city_ids) %>% rename(geo_name = name)
@@ -65,9 +72,9 @@ unloadNamespace("plyr") # unload plyr bc conflicts with dplyr used elsewhere
 
 # Export to Postgres ------------------------------------------------------
 
-table_schema <- "v6" #chris updated to v6
+table_schema <- curr_schema
 table_name <- "arei_multigeo_list"
-table_comment_source <- "Based on arei_race_multigeo, composite index and all issue area index tables for cities and counties. Feeds RC.org scatterplots and map. Source: W:\\Project\\RACE COUNTS\\2023_v5\\Composite Index\\arei_multigeo_list.R"
+table_comment_source <- paste0("Based on arei_race_multigeo, composite index and all issue area index tables for cities and counties. Feeds RC.org scatterplots and map. Source: W:\\Project\\RACE COUNTS\\", rc_yr, "_", curr_schema, "\\Composite Index\\arei_multigeo_list.R")
 
 # get list of multigeo col names
 cols <- colnames(multigeo_list)
