@@ -30,14 +30,13 @@ options(scipen = 100)
 # udpate each yr
 rc_yr <- '2024'
 rc_schema <- 'v6'
-last_rc_schema <- 'v5'
 source <- "American Community Survey (ACS) PUMS 2018-2022, American Community Survey (ACS) 2018-2022 Tables S2301 / S2802 / B19301B-I, and United Ways of California 2023"
 
 issue <- 'economic_opportunity'
 
-# Add indicators and arei_multigeo_list ------------------------------------------------------
+# Add indicators and arei_county_region_urban_type ------------------------------------------------------
 ####################### ADD COUNTY DATA #####################################
-# you must update this section if we add or remove any indicators in an issue #
+# you MUST update this section if we add or remove any indicators in an issue #
 
 c_1 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_connected_youth_county_", rc_yr))
 c_2 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_employment_county_", rc_yr))
@@ -47,8 +46,6 @@ c_5 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_per_
 c_6 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_real_cost_measure_county_", rc_yr))
 c_7 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_econ_living_wage_county_", rc_yr))
 
-region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", last_rc_schema, ".arei_multigeo_list"))
-
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area.
 varname1 <- 'connected'
 varname2 <- 'employ'
@@ -57,6 +54,10 @@ varname4 <- 'officials'
 varname5 <- 'percap'
 varname6 <- 'realcost'
 varname7 <- 'living wage'
+
+
+region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", rc_schema, ".arei_county_region_urban_type"))
+
 
 # Clean data --------
 
@@ -105,7 +106,7 @@ ind_threshold <- 3  # update depending on the number of indicators in the issue 
 c_index <- calculate_z(c_index)
 
 
-# merge region and urban type from current arei_multigeo_list
+# merge region and urban type from current arei_county_region_urban_type
 c_index <- left_join(c_index, region_urban_type)
 
 # rename columns

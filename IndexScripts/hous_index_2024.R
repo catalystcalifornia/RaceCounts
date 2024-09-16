@@ -30,12 +30,11 @@ options(scipen = 100)
 # udpate each yr
 rc_yr <- '2024'
 rc_schema <- 'v6'
-last_rc_schema <- 'v5'
 source <- "CA Dept of Education (2022-23), US Department of Housing and Urban Development (HUD) Comprehensive Housing Affordability Strategy (CHAS) data (2016-2020), Home Mortgage Disclosure Act (HMDA) (Denied Mortgage 2019-2022) (Subprime Mortgage 2013-2017), The Eviction Lab at Princeton University (2014-2017), DataQuick (2017-2021), and AMERICAN COMMUNITY SURVEY 5-YEAR ESTIMATES, TABLES B25003B-I (2018-2022), B25014B-I, DP05, and PUMS (2018-2022) "
 
 issue <- 'housing'
 
-# Add indicators and arei_multigeo_list ------------------------------------------------------
+# Add indicators and arei_county_region_urban_type ------------------------------------------------------
 ####################### ADD COUNTY DATA #####################################
 # you must update this section if we add or remove any indicators in an issue #
 
@@ -50,9 +49,6 @@ c_8 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_hous
 c_9 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_student_homelessness_county_", rc_yr))
 c_10 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_subprime_county_", rc_yr))
 
-region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", last_rc_schema, ".arei_multigeo_list"))
-
-
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area. Copy from v3 index view.
 varname1 <- 'burden_own'
 varname2 <- 'burden_rent'
@@ -64,6 +60,9 @@ varname7 <- 'overcrowded'
 varname8 <- 'quality'
 varname9 <- 'homeless'
 varname10 <- 'subprime'
+
+
+region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", rc_schema, ".arei_county_region_urban_type"))
 
 
 # Clean data --------
@@ -117,7 +116,7 @@ colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col 
 ind_threshold <- 5  # update depending on the number of indicators in the issue area
 c_index <- calculate_z(c_index)
 
-# merge region and urban type from current arei_multigeo_list
+# merge region and urban type from current arei_county_region_urban_type
 c_index <- left_join(c_index, region_urban_type)
 
 # rename columns

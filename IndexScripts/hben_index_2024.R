@@ -30,14 +30,13 @@ options(scipen = 100)
 # udpate each yr
 rc_yr <- '2024'
 rc_schema <- 'v6'
-last_rc_schema <- 'v5'
 source <- "California Health Interview Survey (CHIS) (Food Access 2011-18) (Asthma 2011-2022), CalEnviroScreen 4.0, National Land Cover Database (NLCD) 2021, and American Community Survey (ACS) 2017-2021 Table DP05"
 
 issue <- 'healthy_built_environment'
 
-# Add HBEN indicators and arei_multigeo_list ------------------------------------------------------
+# Add HBEN indicators and arei_county_region_urban_type ------------------------------------------------------
 ####################### ADD COUNTY DATA #####################################
-# you must update this section if we add or remove any indicators in an issue #
+# you MUST update this section if we add or remove any indicators in an issue #
 
 c_1 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_drinking_water_county_", rc_yr))
 c_2 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_food_access_county_", rc_yr))
@@ -46,8 +45,6 @@ c_4 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_toxi
 c_5 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_asthma_county_", rc_yr))
 c_6 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hben_lack_of_greenspace_county_", rc_yr))
 
-region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", last_rc_schema, ".arei_multigeo_list"))
-
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area.
 varname1 <- 'water'
 varname2 <- 'food'
@@ -55,6 +52,9 @@ varname3 <- 'hazard'
 varname4 <- 'toxic'
 varname5 <- 'asthma'
 varname6 <- 'green'
+
+
+region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", rc_schema, ".arei_county_region_urban_type"))
 
 
 # Clean data --------
@@ -98,7 +98,7 @@ colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col 
 ind_threshold <- 4  # update depending on the number of indicators in the issue area
 c_index <- calculate_z(c_index)
 
-# merge region and urban type from current arei_multigeo_list
+# merge region and urban type from current arei_county_region_urban_type
 c_index <- left_join(c_index, region_urban_type)
 
 # rename columns 

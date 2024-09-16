@@ -30,14 +30,13 @@ options(scipen = 100)
 # udpate each yr
 rc_yr <- '2024'
 rc_schema <- 'v6'
-last_rc_schema <- 'v5'
 source <- "CALIFORNIA DEPARTMENT OF EDUCATION (2022-23) for Suspensions, Chronic Absenteeism, High School Graduation, 3rd Grade English and Math, and (2018-19) for Diversity of Teachers, CALIFORNIA CHILD CARE RESOURCE & REFERRAL NETWORK (2020), AMERICAN INSTITUTES FOR RESEARCH EARLY LEARNING NEEDS ASSESSMENT TOOL (2020)"
 
 issue <- 'education'
 
-# Add indicators and arei_multigeo_list ------------------------------------------------------
+# Add indicators and arei_county_region_urban_type ------------------------------------------------------
 ####################### ADD COUNTY DATA #####################################
-# you must update this section if we add or remove any indicators in an issue #
+# you MUST update this section if we add or remove any indicators in an issue #
 
 c_1 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_chronic_absenteeism_county_", rc_yr))
 c_2 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_hs_grad_county_", rc_yr))
@@ -47,9 +46,6 @@ c_5 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_susp
 c_6 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_ece_access_county_", rc_yr))
 c_7 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_educ_staff_diversity_county_", rc_yr))
 
-region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", last_rc_schema, ".arei_multigeo_list"))
-
-
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area.
 varname1 <- 'abst'
 varname2 <- 'grad'
@@ -58,6 +54,9 @@ varname4 <- 'math'
 varname5 <- 'susp'
 varname6 <- 'ece'
 varname7 <- 'diver'
+
+
+region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", last_rc_schema, ".arei_county_region_urban_type"))
 
 
 # Clean data --------
@@ -100,7 +99,7 @@ colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col 
 ind_threshold <- 4  # update depending on the number of indicators in the issue area
 c_index <- calculate_z(c_index)
 
-# merge region and urban type from current arei_multigeo_list
+# merge region and urban type from current arei_county_region_urban_type
 c_index <- left_join(c_index, region_urban_type)
 
 # rename columns
