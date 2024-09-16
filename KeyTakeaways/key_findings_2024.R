@@ -218,7 +218,7 @@ county_rate <- imap_dfr(county_tables_rate , ~
 # merge all 3
 df_merged_county <- county_disparity %>% full_join(county_performance) %>% full_join(county_rate)
 
-# create issue, indicator, geo_level, race generic columns for issue tables except for education
+# create issue, indicator, geo_level, race generic columns for issue tables
 df_county <- df_merged_county %>% mutate(
   issue = substring(indicator, 6,9),
   indicator = substring(indicator, 11),
@@ -226,7 +226,7 @@ df_county <- df_merged_county %>% mutate(
   geo_level = "county",
   race_generic = gsub('nh_', '', race)) %>% # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
   left_join(arei_race_multigeo_county) %>%
-  rename(geoid = county_id, geo_name = county_name)  %>%  mutate(geo_name = paste0(geo_name, " County"))
+  rename(geoid = county_id, geo_name = county_name)# %>% mutate(geo_name = paste0(geo_name, " County"))
 
 
 
@@ -273,7 +273,7 @@ state_rate <- imap_dfr(state_tables_rate , ~
 # merge all 2
 df_merged_state <- state_disparity %>% full_join(state_rate)
 
-# create issue, indicator, geo_level, race generic columns for issue tables except for education
+# create issue, indicator, geo_level, race generic columns for issue tables
 df_state <- df_merged_state %>% mutate(
   issue = substring(indicator, 6,9),
   indicator = substring(indicator, 11),
@@ -288,8 +288,23 @@ df <- bind_rows(df_city, df_county, df_state) %>% select(
   geoid, geo_name, issue, indicator, race, asbest, rate, disparity_z_score, performance_z_score, values_count, geo_level, race_generic)
 
 
-# remove records where city name is actually a university: there are 6 'cities' like this making up 898 rows
+# remove records where city name is actually a university
+# v6: there is 1 place like this (University of California-Santa Barbara CDP, California) with 192 rows
 final_df <- df %>% filter(!grepl('University', geo_name))
+
+# clean place names
+    clean_geo_names <- function(x){
+    
+    x$geo_name <- str_remove(x$geo_name, ", California")
+    x$geo_name <- str_remove(x$geo_name, " city")
+    x$geo_name <- str_remove(x$geo_name, " CDP")
+    x$geo_name <- gsub(" County)", ")", x$geo_name)
+    
+    return(x)
+    }
+
+final_df <- clean_geo_names(final_df)
+
 
 #### NOTE: you must re-run the whole script and update the RData file if underlying data changes ###########
 # save df as .RData file, so don't have to re-run each time we update findings text, logic etc.
@@ -302,7 +317,7 @@ final_df <- df %>% filter(!grepl('University', geo_name))
 
 # Get long form race names for findings ------------------------------------------------
 race_generic <- unique(final_df$race_generic) #Chris updated df to final_df and the next line to add SWANASA and SWANA
-long_name <- c("Total", "American Indian / Alaska Native", "Latinx", "Asian", "Black", "Other Race", "Two or More Races", "White", "Native Hawaiian / Pacific Islander", "Southwest Asian / North African / South Asian", "Asian / Pacific Islander", "Southwest Asian / North African", "Filipinx")
+long_name <- c("Total", "American Indian / Alaska Native", "Latinx", "Asian", "Black", "Another Race", "Multiracial", "White", "Native Hawaiian / Pacific Islander", "Southwest Asian / North African / South Asian", "Asian / Pacific Islander", "Southwest Asian / North African", "Filipinx")
 race_names <- data.frame(race_generic, long_name)
 
 
@@ -333,16 +348,19 @@ educ_indicators <- filter(indicator, arei_issue_area == 'Education')
 df_education_district_disparate <- df_education_district %>% filter(!is.na(geoid)) %>% group_by(geoid, indicator, race) %>% 
   mutate(rk = ifelse(race == 'total', dense_rank(-disparity_z_score), NA))
 
+# clean geo_names
+df_education_district_disparate_final <- clean_geo_names(df_education_district_disparate)
+
 # checked for districts tied for rk 1, but there are none. if there are ties, will need to add tiebreaker code similar to what's in the best outcomes code
 #temp <- filter(df_education_district_disparate, rk=='1')
 #temp <- temp %>% select(geoid, geo_name, indicator, rate) %>% group_by(geoid, indicator) %>% count(rate)
 
 # keep indicator data for the most disparate district for each city+indicator combo only
-df_education_district_disparate <- df_education_district_disparate %>% group_by(geoid, dist_id, indicator) %>% fill(rk, .direction = "downup") %>%
+df_education_district_disparate_final <- df_education_district_disparate_final %>% group_by(geoid, dist_id, indicator) %>% fill(rk, .direction = "downup") %>%
   filter(rk == 1) %>% select (-c(rk))
 
 # bind most disparate district with main df
-df_lf <- bind_rows(final_df, df_education_district_disparate) 
+df_lf <- bind_rows(final_df, df_education_district_disparate_final) 
 df_lf <- filter(df_lf, race != 'total')   # remove total rates bc all findings in this section are raced
 
 # duplicate API rows, assigning one set race_generic Asian and the other set PacIsl
@@ -379,29 +397,29 @@ worst_table2 <- df_lf %>%
   left_join(bestworst_screen, by = c("geoid", "race_generic")) 
 
 # Clean geo_names where 'City' isn't part of city's name and fix geo_names that include "City City"
-clean_city_names <- function(x) {
-  clean_city_names1 <- x %>% filter(!grepl('City City', geo_name) & grepl(' City', geo_name)) %>%
-    mutate(geo_name = gsub(' City', '', geo_name))
-  
-  clean_city_names2 <- x %>% filter(grepl('City City', geo_name)) %>%
-    mutate(geo_name = gsub('City City', 'City', geo_name))		
-  
-  clean_city_names_ <- rbind(clean_city_names1, clean_city_names2) %>% ungroup() %>% select(geoid, geo_name) %>% unique()
-  
-  library(easyr)
-  x <- jrepl(
-    x,
-    clean_city_names_,
-    by = c('geoid' = 'geoid'),
-    replace.cols = c('geo_name' = 'geo_name'),
-    na.only = FALSE,
-    only.rows = NULL,
-    verbose = FALSE)
-  
-  return(x)
-}
-
-worst_table2 <- clean_city_names(worst_table2)
+# clean_city_names <- function(x) {
+#   clean_city_names1 <- x %>% filter(!grepl('City City', geo_name) & grepl(' City', geo_name)) %>%
+#     mutate(geo_name = gsub(' City', '', geo_name))
+#   
+#   clean_city_names2 <- x %>% filter(grepl('City City', geo_name)) %>%
+#     mutate(geo_name = gsub('City City', 'City', geo_name))		
+#   
+#   clean_city_names_ <- rbind(clean_city_names1, clean_city_names2) %>% ungroup() %>% select(geoid, geo_name) %>% unique()
+#   
+#   library(easyr)
+#   x <- jrepl(
+#     x,
+#     clean_city_names_,
+#     by = c('geoid' = 'geoid'),
+#     replace.cols = c('geo_name' = 'geo_name'),
+#     na.only = FALSE,
+#     only.rows = NULL,
+#     verbose = FALSE)
+#   
+#   return(x)
+# }
+# 
+# worst_table2 <- clean_city_names(worst_table2)
 
 # NOTE: This df does include findings for non-RC race pg grps, however they won't appear on the site
 wb_rate_threshold <- 5  # suppress findings for race+geo combos with data for fewer than 6 indicators
@@ -418,20 +436,22 @@ worst_rate_count <- filter(worst_table2, !is.na(rate_count)) %>% mutate(finding_
 df_education_district_best_outcome <- df_education_district %>% filter(values_count > 1 & !is.na(geoid)) %>% group_by(geoid, indicator, race) %>% 
   mutate(rk = ifelse(asbest == 'min' & race == 'total', dense_rank(rate), 
                      ifelse(asbest == 'max' & race == 'total', dense_rank(-rate), NA))) # using dense_rank means there can be ties, use enr as tie-breaker
+# clean geo_names
+df_education_district_best_outcome_final <- clean_geo_names(df_education_district_best_outcome)
 
 # tie-breaker when 2+ districts tie for best overall outcome for a city+indicator combo
-tiebreaker <- df_education_district_best_outcome %>% group_by(geoid, indicator, rk) %>% mutate(ties = ifelse(rk == '1', sum(rk), NA)) # if ties is >1 then there is a tie
+tiebreaker <- df_education_district_best_outcome_final %>% group_by(geoid, indicator, rk) %>% mutate(ties = ifelse(rk == '1', sum(rk), NA)) # if ties is >1 then there is a tie
 tiebreaker <- filter(tiebreaker, ties > 1) %>% group_by(geoid, indicator) %>% mutate(rk2 = ifelse(ties > 2, rank(-total_enroll), rk)) # break tie based on largest total_enrollment                                                                                     
-df_education_district_best_outcome <- df_education_district_best_outcome %>% mutate(old_rk = rk) %>% # preserve original ranks with ties
+df_education_district_best_outcome_final <- df_education_district_best_outcome_final %>% mutate(old_rk = rk) %>% # preserve original ranks with ties
   left_join(select(tiebreaker, geoid, indicator, dist_id, race, rk2), by = c("geoid", "indicator", "dist_id", "race"))
-df_education_district_best_outcome <- df_education_district_best_outcome %>% mutate(rk = ifelse(!is.na(rk2), rk2, rk)) %>% select(-c(rk2)) # update rk to reflect tiebreaker
+df_education_district_best_outcome_final <- df_education_district_best_outcome_final %>% mutate(rk = ifelse(!is.na(rk2), rk2, rk)) %>% select(-c(rk2)) # update rk to reflect tiebreaker
 
 # keep indicator data for the best overall outcome district for each city+indicator combo only
-df_education_district_best_outcome <- df_education_district_best_outcome %>% group_by(geoid, dist_id, indicator) %>% fill(rk, .direction = "downup") %>%
+df_education_district_best_outcome_final <- df_education_district_best_outcome_final %>% group_by(geoid, dist_id, indicator) %>% fill(rk, .direction = "downup") %>%
   filter(rk == 1) %>% select (-c(rk, old_rk))
 
 ## Now, bind this back with the df
-df_lf2 <- bind_rows(final_df, df_education_district_best_outcome) 
+df_lf2 <- bind_rows(final_df, df_education_district_best_outcome_final) 
 df_lf2 <- filter(df_lf2, race != 'total')   # remove total rates bc all findings in this section are raced
 
 df_lf2 <- api_split(df_lf2) # duplicate api rates as asian and pacisl
@@ -449,7 +469,7 @@ best_table2 <- subset(df_lf2, values_count > 1) %>%  # filter out indicators wit
   left_join(race_names, by = c("race_generic")) %>%
   left_join(bestworst_screen, by = c("geoid", "race_generic"))
 
-best_table2 <- clean_city_names(best_table2)
+#best_table2 <- clean_city_names(best_table2)
 
 best_rate_count <- filter(best_table2, !is.na(rate_count)) %>% mutate(finding_type = 'best count', findings_pos = 1) %>%
   mutate(finding = ifelse(rate_count > wb_rate_threshold, paste0(geo_name, "'s ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for this analysis.")))
@@ -555,7 +575,7 @@ most_disp_by_race <- function(x, y) {
 ## Extra step: find most disparate indicator by geo_name and indicator
 
 # we already pulled the most disparate school district for each school in the previous analysis.
-df_ds <- bind_rows(final_df,df_education_district_disparate)
+df_ds <- bind_rows(final_df,df_education_district_disparate_final)
 # df_ds %>% filter(is.na(geo_name)) # why do some geo_names in housing don't have a geo_name? Some of them belong to census designated places with very low pop counts-- we'll filter this out later
 df_ds <- filter(df_ds, race != 'total')    # remove total rates bc all findings in this section are raced
 df_ds <- api_split(df_ds) # duplicate api rates as asian and pacisl
@@ -579,7 +599,7 @@ most_disp <- bind_rows(aian_, asian_, black_, latinx_, pacisl_, white_, swana_) 
   select(geoid, geo_name, dist_id, district_name, total_enroll, race, long_name, indicator_count, ends_with("_ind"), everything())
 
 # clean city names
-most_disp <- clean_city_names(most_disp)
+#most_disp <- clean_city_names(most_disp)
 
 # create findings
 n = 5 # indicator_count threshold
@@ -607,17 +627,17 @@ rda_race_findings <- rda_race_findings %>% relocate(geo_level, .after = geo_name
 
 
 ## Export postgres table
-#dbWriteTable(con, c(curr_schema, "arei_findings_races_multigeo"), rda_race_findings, overwrite = TRUE, row.names = FALSE)
+#dbWriteTable(con, c(curr_schema, "arei_findings_races_multigeo"), rda_race_findings, overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
-comment <- paste0("COMMENT ON TABLE v6.arei_findings_races_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\2024_v6\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_2024.R.';",
-                  "COMMENT ON COLUMN v6.arei_findings_races_multigeo.finding_type
+comment <- paste0("COMMENT ON TABLE ", curr_schema, ".arei_findings_races_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R.';",
+                  "COMMENT ON COLUMN ", curr_schema, ".arei_findings_races_multigeo.finding_type
                          IS 'Categorizes findings: count of best and worst rates by race/geo combo, most disparate indicator by race/geo combo';",
-                  "COMMENT ON COLUMN v6.arei_findings_races_multigeo.src
+                  "COMMENT ON COLUMN ", curr_schema, ".arei_findings_races_multigeo.src
                          IS 'Categorizes source of finding as either rda or program area';",
-                  "COMMENT ON COLUMN v6.arei_findings_races_multigeo.citations
-                         IS 'External v6.citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
-                  "COMMENT ON COLUMN v6.arei_findings_races_multigeo.findings_pos
+                  "COMMENT ON COLUMN ", curr_schema, ".arei_findings_races_multigeo.citations
+                         IS 'External ", curr_schema, ".citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
+                  "COMMENT ON COLUMN ", curr_schema, ".arei_findings_races_multigeo.findings_pos
                         IS 'Used to determine the order a set of findings should appear in on RC.org';")
 #print(comment)
 #dbSendQuery(con, comment)
@@ -626,7 +646,7 @@ comment <- paste0("COMMENT ON TABLE v6.arei_findings_races_multigeo IS 'findings
 # Finding 4: the most disparate and worst outcome indicators ----------
 
 ## Extra step: first merge the most disparate district for education with df for cities
-df_3 <- bind_rows(final_df, df_education_district_disparate) 
+df_3 <- bind_rows(final_df, df_education_district_disparate_final) 
 
 ### This section creates findings for Place page - the most disparate and worst outcome indicators across counties #####
 disp_long <- df_3 %>% filter(race == "total" & geo_level %in% c("county", "city")) %>% select(geoid, geo_name, dist_id, district_name, total_enroll, indicator, disparity_z_score, geo_level) %>% 
@@ -657,7 +677,7 @@ worst_disp2 <- worst_disp %>%
   mutate(long_disp_indicator = paste0(long_disp_indicator, collapse = " and ")) %>% select(-c(worst_disp_indicator)) %>% unique() # RC v6: no ties
 
 # clean city names
-worst_disp2 <- clean_city_names(worst_disp2) 
+#worst_disp2 <- clean_city_names(worst_disp2) 
 
 # Write findings using ifelse statements
 worst_disp3 <- subset(worst_disp2, !is.na(geo_name)) %>%
@@ -677,7 +697,10 @@ worst_disp3 <- subset(worst_disp2, !is.na(geo_name)) %>%
 df_education_district_worst_outcome <- df_education_district %>% filter(!is.na(geoid)) %>% group_by(geoid, race_generic) %>%
   mutate(rk = dense_rank(performance_z_score)) %>% filter(rk == "1") %>% select(-rk) # RC v6 no ties
 
-df_4 <- bind_rows(final_df, df_education_district_worst_outcome) 
+# clean geo_name
+df_education_district_worst_outcome_final <- clean_geo_names(df_education_district_worst_outcome)
+
+df_4 <- bind_rows(final_df, df_education_district_worst_outcome_final) 
 
 outc_long <- df_4 %>% filter(race == "total" & geo_level %in% c("county", "city")) %>% select(geoid, geo_name, dist_id, district_name, total_enroll, indicator, performance_z_score, geo_level) %>%
   rename(variable = indicator, value = performance_z_score)
@@ -705,7 +728,7 @@ worst_outc2 <- worst_outc %>%
   mutate(long_perf_indicator = paste0(long_perf_indicator, collapse = " and ")) %>% select(-c(worst_perf_indicator)) %>% unique() # RC v6: no ties
 
 # clean city names
-worst_outc2 <- clean_city_names(worst_outc2) 
+#worst_outc2 <- clean_city_names(worst_outc2) 
 
 # Write Findings using ifelse statements
 worst_outc3 <- subset(worst_outc2, !is.na(geo_name)) %>%
@@ -794,14 +817,14 @@ issue_area_findings$citations <- ""
 #dbWriteTable(con, c(curr_schema, "arei_findings_issues"), issue_area_findings, overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
-comment <- paste0("COMMENT ON TABLE v6.arei_findings_issues IS 'findings for Issue Area pages (API) created using W:\\Project\\RACE COUNTS\\2024_v6\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_2024.R.';",
-                  "COMMENT ON COLUMN v6.arei_findings_issues.finding_type
+comment <- paste0("COMMENT ON TABLE ", curr_schema, ".arei_findings_issues IS 'findings for Issue Area pages (API) created using W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R.';",
+                  "COMMENT ON COLUMN ", curr_schema, ".arei_findings_issues.finding_type
                        IS 'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below perf, most disp indicator, worst perf indicator';",
-                  "COMMENT ON COLUMN v6.arei_findings_issues.src
+                  "COMMENT ON COLUMN ", curr_schema, ".arei_findings_issues.src
                        IS 'Categorizes source of finding as either rda or program area';",
-                  "COMMENT ON COLUMN v6.arei_findings_issues.citations
+                  "COMMENT ON COLUMN ", curr_schema, ".arei_findings_issues.citations
                        IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
-                  "COMMENT ON COLUMN v6.arei_findings_issues.findings_pos
+                  "COMMENT ON COLUMN ", curr_schema, ".arei_findings_issues.findings_pos
                        IS 'Used to determine the order a set of findings should appear in on RC.org';")
 # print(comment)
 # dbSendQuery(con, comment)
@@ -824,17 +847,17 @@ findings_places_multigeo <- rbind(rda_places_findings, state_issue_area_findings
 
 
 ## Create postgres table
-# dbWriteTable(con, c(curr_schema, "arei_findings_places_multigeo_update"), findings_places_multigeo, overwrite = FALSE, row.names = FALSE)
+# dbWriteTable(con, c(curr_schema, "arei_findings_places_multigeo"), findings_places_multigeo, overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
-comment <- paste0("COMMENT ON TABLE v6.arei_findings_places_multigeo_update IS 'findings for Place pages (API) created using W:\\Project\\RACE COUNTS\\2024_v6\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_2024.R.';",
-                  "COMMENT ON COLUMN v6.arei_findings_places_multigeo_update.finding_type
+comment <- paste0("COMMENT ON TABLE ", curr_schema, ".arei_findings_places_multigeo IS 'findings for Place pages (API) created using W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R.';",
+                  "COMMENT ON COLUMN ", curr_schema, ".arei_findings_places_multigeo.finding_type
                         IS 'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below outcome, most disp indicator, worst outcome indicator';",
-                  "COMMENT ON COLUMN v6.arei_findings_places_multigeo_update.src
+                  "COMMENT ON COLUMN ", curr_schema, ".arei_findings_places_multigeo.src
                         IS 'Categorizes source of finding as either rda or program area';",
-                  "COMMENT ON COLUMN v6.arei_findings_places_multigeo_update.citations
+                  "COMMENT ON COLUMN ", curr_schema, ".arei_findings_places_multigeo.citations
                         IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
-                  "COMMENT ON COLUMN v6.arei_findings_places_multigeo_update.findings_pos
+                  "COMMENT ON COLUMN ", curr_schema, ".arei_findings_places_multigeo.findings_pos
                         IS 'Used to determine the order a set of findings should appear in on RC.org';")
 #print(comment)
 #dbSendQuery(con, comment)
