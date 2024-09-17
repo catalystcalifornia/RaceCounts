@@ -94,6 +94,7 @@ c_47 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_r
 
 dbDisconnect(con)
 
+
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area.
 varname1 <- 'incarceration'
 varname2 <- 'safety'
@@ -280,7 +281,7 @@ curr_data <- c_index
 
 
 # Load PostgreSQL driver and databases --------------------------------------------------
-
+con <- connect_to_db("racecounts")
 ####################### ADD state DATA #####################################
 #commenting out c5 bc it is not available both years
 c_1 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", prev_rc_schema, ".arei_crim_incarceration_state_", prev_rc_yr))
