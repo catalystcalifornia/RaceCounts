@@ -15,6 +15,18 @@ con <- connect_to_db("racecounts")
 curr_schema <- 'v6' # update each year, this field populates most table and file names automatically
 curr_yr <- '2024'   # update each year, this field populates most table and file names automatically
 
+
+# clean place names
+clean_geo_names <- function(x){
+  
+  x$geo_name <- str_remove(x$geo_name, ", California")
+  x$geo_name <- str_remove(x$geo_name, " city")
+  x$geo_name <- str_remove(x$geo_name, " CDP")
+  x$geo_name <- gsub(" County)", ")", x$geo_name)
+  
+  return(x)
+}
+
 # pull in geo level ids with name. I don't do this directly in the data in case names differ and we have issues merging later
 arei_race_multigeo_city <- dbGetQuery(con, paste0("SELECT geoid, name, geolevel FROM ", curr_schema, ".arei_race_multigeo")) %>% filter(geolevel == "place") %>% rename(city_id = geoid, city_name = name) %>% select(-geolevel)
 
@@ -292,16 +304,6 @@ df <- bind_rows(df_city, df_county, df_state) %>% select(
 # v6: there is 1 place like this (University of California-Santa Barbara CDP, California) with 192 rows
 final_df <- df %>% filter(!grepl('University', geo_name))
 
-# clean place names
-    clean_geo_names <- function(x){
-    
-    x$geo_name <- str_remove(x$geo_name, ", California")
-    x$geo_name <- str_remove(x$geo_name, " city")
-    x$geo_name <- str_remove(x$geo_name, " CDP")
-    x$geo_name <- gsub(" County)", ")", x$geo_name)
-    
-    return(x)
-    }
 
 final_df <- clean_geo_names(final_df)
 
@@ -309,9 +311,11 @@ final_df <- clean_geo_names(final_df)
 #### NOTE: you must re-run the whole script and update the RData file if underlying data changes ###########
 # save df as .RData file, so don't have to re-run each time we update findings text, logic etc.
 #saveRDS(final_df, file = paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/final_df.RData")) 
+#saveRDS(df_education_district, file = paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/df_education_district.RData")) 
 
 # load .RData file
 # final_df <- readRDS(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/final_df.RData"))
+# df_education_district <- readRDS(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/df_education_district.RData"))
 
 # NOTE: when you call final_df in your code chunk(s), rename it before running code on it bc it takes a LONG time to run again...
 
@@ -396,31 +400,6 @@ worst_table2 <- df_lf %>%
   left_join(race_names, by = "race_generic") %>%
   left_join(bestworst_screen, by = c("geoid", "race_generic")) 
 
-# Clean geo_names where 'City' isn't part of city's name and fix geo_names that include "City City"
-# clean_city_names <- function(x) {
-#   clean_city_names1 <- x %>% filter(!grepl('City City', geo_name) & grepl(' City', geo_name)) %>%
-#     mutate(geo_name = gsub(' City', '', geo_name))
-#   
-#   clean_city_names2 <- x %>% filter(grepl('City City', geo_name)) %>%
-#     mutate(geo_name = gsub('City City', 'City', geo_name))		
-#   
-#   clean_city_names_ <- rbind(clean_city_names1, clean_city_names2) %>% ungroup() %>% select(geoid, geo_name) %>% unique()
-#   
-#   library(easyr)
-#   x <- jrepl(
-#     x,
-#     clean_city_names_,
-#     by = c('geoid' = 'geoid'),
-#     replace.cols = c('geo_name' = 'geo_name'),
-#     na.only = FALSE,
-#     only.rows = NULL,
-#     verbose = FALSE)
-#   
-#   return(x)
-# }
-# 
-# worst_table2 <- clean_city_names(worst_table2)
-
 # NOTE: This df does include findings for non-RC race pg grps, however they won't appear on the site
 wb_rate_threshold <- 5  # suppress findings for race+geo combos with data for fewer than 6 indicators
 worst_rate_count <- filter(worst_table2, !is.na(rate_count)) %>% mutate(finding_type = 'worst count', findings_pos = 2) %>% 
@@ -468,8 +447,6 @@ best_table2 <- subset(df_lf2, values_count > 1) %>%  # filter out indicators wit
   group_by(geoid, geo_name, geo_level, race_generic) %>% summarise(count = sum(best, na.rm = TRUE)) %>%
   left_join(race_names, by = c("race_generic")) %>%
   left_join(bestworst_screen, by = c("geoid", "race_generic"))
-
-#best_table2 <- clean_city_names(best_table2)
 
 best_rate_count <- filter(best_table2, !is.na(rate_count)) %>% mutate(finding_type = 'best count', findings_pos = 1) %>%
   mutate(finding = ifelse(rate_count > wb_rate_threshold, paste0(geo_name, "'s ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for this analysis.")))
@@ -598,8 +575,6 @@ swana_ <- most_disp_by_race(df_ds, 'swana')
 most_disp <- bind_rows(aian_, asian_, black_, latinx_, pacisl_, white_, swana_) %>%
   select(geoid, geo_name, dist_id, district_name, total_enroll, race, long_name, indicator_count, ends_with("_ind"), everything())
 
-# clean city names
-#most_disp <- clean_city_names(most_disp)
 
 # create findings
 n = 5 # indicator_count threshold
@@ -676,8 +651,6 @@ worst_disp2 <- worst_disp %>%
   mutate(disp_ties = n()) %>%
   mutate(long_disp_indicator = paste0(long_disp_indicator, collapse = " and ")) %>% select(-c(worst_disp_indicator)) %>% unique() # RC v6: no ties
 
-# clean city names
-#worst_disp2 <- clean_city_names(worst_disp2) 
 
 # Write findings using ifelse statements
 worst_disp3 <- subset(worst_disp2, !is.na(geo_name)) %>%
@@ -726,9 +699,6 @@ worst_outc2 <- worst_outc %>%
   group_by(geoid, geo_name) %>% 
   mutate(perf_ties = n()) %>%
   mutate(long_perf_indicator = paste0(long_perf_indicator, collapse = " and ")) %>% select(-c(worst_perf_indicator)) %>% unique() # RC v6: no ties
-
-# clean city names
-#worst_outc2 <- clean_city_names(worst_outc2) 
 
 # Write Findings using ifelse statements
 worst_outc3 <- subset(worst_outc2, !is.na(geo_name)) %>%
@@ -794,7 +764,7 @@ worst_disp_outc_$finding <- str_remove(worst_disp_outc_$finding, " CDP, Californ
 
 #### HK: (manual) issue area findings (used on issue areas pages and the state places page) ####
 
-issue_area_findings <- read.csv(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/RaceCounts/RaceCounts/KeyTakeaways/manual_findings_", curr_schema, "_", curr_yr, ".csv"), encoding = "UTF-8", check.names = FALSE)
+issue_area_findings <- read.csv(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/RaceCounts/KeyTakeaways/manual_findings_", curr_schema, "_", curr_yr, ".csv"), encoding = "UTF-8", check.names = FALSE)
 colnames(issue_area_findings) <- c("issue_area", "finding", "findings_pos")
 
 issue_area_findings_type_dict <- list(economy = "Economic Opportunity",
