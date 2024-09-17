@@ -29,7 +29,7 @@ df_education_district <- education_tables %>% left_join(crosswalk, by = "dist_id
 
 ## Aggregate District data to Cities: weighted averages by enrollment size per indicator (some cities have multiple districts but not every indicator will have multiple districts per city).
 education_tables_agg <- dist_data_to_city(df_education_district)
-
+print("Education indicators prepped.")
 
 ## Add the rest of the indicators  ------------------------------------------------------
 
@@ -91,6 +91,7 @@ all_indicators_disp_count <- all_indicators_disp_count %>% mutate(all_indicators
 # Count number of indicators per issue area
 indicators <- names(city_tables) %>% as.data.frame()
 educ_indicators <- unique(education_tables$indicator) %>% as.data.frame()
+print("Non-education indicators prepped and joined with Education indicators.")
 
 
 # Calc UNSCREENED Index ---------------------------------------------------
@@ -154,6 +155,7 @@ all_index <- crim_index %>% select(city_id, ends_with("z")) %>% left_join(
   city_id, city_name, ends_with("count"), everything()
 )  
 
+print("Issue indexes calculated and joined together.")
 
 # Calc composite index
 issue_area_threshold <- 4 # city must have at least 3 issue perf/disp z-scores or it will be suppressed
@@ -170,5 +172,6 @@ city_index <- unique(city_index) %>% select(city_id, city_name, all_indicators_d
                                     healthy_built_environment_disp_z, healthy_built_environment_perf_z, health_care_access_disp_z, health_care_access_perf_z, 
                                     housing_disp_z, housing_perf_z, region, county_id, county_name, total_pop, disparity_z_quartile, performance_z_quartile) %>% arrange(-disparity_z)
 
+print("Composite index calculated.")
 
 
