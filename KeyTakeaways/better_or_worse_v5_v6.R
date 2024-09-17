@@ -487,10 +487,19 @@ combined_data <- combined_data %>% mutate(outcome_better =
                                                       asbest == "min" & rate_pct_chng > 0 ~ "worse",
                                                       asbest == "max" & rate_pct_chng > 0 ~ "better",
                                                       asbest == "max" & rate_pct_chng < 0 ~ "worse", 
+                                                      .default = "no change"),
+                                          disparity_better =
+                                            case_when(id_pct_chng > 0 ~ "worse",
+                                                      id_pct_chng < 0 ~ "better",
                                                       .default = "no change"))
+
+
                                             
 
-rate_change_sum <- combined_data %>% group_by(outcome_better) %>% summarize(sum_rate_pct_chng = sum(rate_pct_chng), n=n())
+rate_change_sum <- combined_data %>% group_by(outcome_better) %>% summarize(sum_rate_pct_chng = sum(rate_pct_chng), 
+                                                                            n=n(),
+                                                                            abs_sum_rate_pct_chng_qa = sum(abs(rate_pct_chng)))
+
 
 issue_rate_change <- combined_data %>% group_by(outcome_better, issue_area) %>% summarize(sum_rate_pct_chng = sum(rate_pct_chng), n=n())
 
