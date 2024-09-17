@@ -483,11 +483,11 @@ issue_change <- combined_data %>% group_by(issue_area) %>% summarize(
 
 # calculate overall and mean difference in outcomes
 combined_data <- combined_data %>% mutate(outcome_better = 
-                                            ifelse(asbest == "min" & rate_pct_chng < 0, "better",
-                                                   ifelse(asbest == "min" & rate_pct_chng > 0, "worse",
-                                                          ifelse(asbest == "max" & rate_pct_chng > 0, "better",
-                                                                 ifelse(asbest == "max" & rate_pct_chng < 0, "worse", "no change"
-                                                   )))))
+                                            case_when(asbest == "min" & rate_pct_chng < 0 ~ "better",
+                                                      asbest == "min" & rate_pct_chng > 0 ~ "worse",
+                                                      asbest == "max" & rate_pct_chng > 0 ~ "better",
+                                                      asbest == "max" & rate_pct_chng < 0 ~ "worse", 
+                                                      .default = "no change"))
                                             
 
 rate_change_sum <- combined_data %>% group_by(outcome_better) %>% summarize(sum_rate_pct_chng = sum(rate_pct_chng), n=n())
