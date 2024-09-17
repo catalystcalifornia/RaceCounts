@@ -272,7 +272,7 @@ c_index <- full_join(c_index, c_45)
 c_index <- full_join(c_index, c_46)
 c_index <- full_join(c_index, c_47)
 
-new_data <- c_index
+curr_data <- c_index
 
 ################################################
 ######################################## OLD - SAME CODE AS ABOVE W DIF rc_yr, rc_schema
@@ -441,13 +441,13 @@ c_index <- full_join(c_index, c_45)
 c_index <- full_join(c_index, c_46)
 c_index <- full_join(c_index, c_47)
 
-old_data <- c_index
+prev_data <- c_index
 
 
 ############################ join old and new data & analyze
 
-combined_data <- full_join(new_data,
-                           old_data,
+combined_data <- full_join(curr_data,
+                           prev_data,
                            by = "variable") %>%
   select(state_name.x,
          total_rate.x,
