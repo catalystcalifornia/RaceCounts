@@ -210,9 +210,6 @@ calculate_index_z <- function(x) {
                                 include.lowest=TRUE,
                                 labels=c("lowest", "low", "high", "highest"))
   
-  print(paste0("These are the perf z breaks.", performance_z_breaks))
-  print(paste0("These are the disp z breaks.", disparity_z_breaks))
-  
   return(x)  
   
 }
