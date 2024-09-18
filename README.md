@@ -47,9 +47,9 @@ RACE COUNTS includes 46 county/state indicators, and 28 city indicators, across 
 At county level only, we calculate one index for each of the seven issue indexes including all, or most, indicators in that issue. At city and county level, we calculate an overall Racial Equity Index combining all indicators. In all indexes, each county and city receives a rank for racial disparity and a rank for overall outcomes. The county or city ranked one for disparity is the most racially disparate, while a county ranked one for outcomes has the best outcomes.
 
 ## Data Methodology
-[RACE COUNTS: Indicator Methodology for County and State (2023)](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/IndicatorMethodology_CountyState.pdf) <br>
-[RACE COUNTS: Indicator Methodology for City (2023)](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/IndicatorMethodology_City.pdf) <br> 
-[RACE COUNTS: Race & Ethnicity Methodology (2023)](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md) <br>
+[RACE COUNTS: Indicator Methodology for County and State](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/IndicatorMethodology_CountyState.pdf) <br>
+[RACE COUNTS: Indicator Methodology for City](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/IndicatorMethodology_City.pdf) <br> 
+[RACE COUNTS: Race & Ethnicity Methodology)](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md) <br>
 
 <!--[RACE COUNTS: Key Takeaways Methodology (2023)](https://github.com/catalystcalifornia/RaceCounts/blob/main/KeyTakeaways/README_Key_Takeaways.md) <br>-->
 
@@ -82,10 +82,10 @@ Finally, while RACE COUNTS is the most comprehensive compilation of data about r
 
 
 ## Contributors
-* [Alexandra Baker, Research & Data Analyst I](https://github.com/bakeralexan)
+* [Alexandra Baker, Research & Data Analyst II](https://github.com/bakeralexan)
 * [Chris Ringewald, Senior Director of Research & Data Analysis](https://github.com/cringewald)
 * [David Segovia, Research & Data Analyst I](https://github.com/davidseg1997)
-* [Elycia Mulholland Graves, Associate Director of Research & Data Analysis](https://github.com/elyciamg)
+* [Elycia Mulholland Graves, Director of Research & Data Analysis](https://github.com/elyciamg)
 * [Hillary Khan, Database Architect Manager](https://github.com/hillarykhan)
 * [Jennifer Zhang, Senior Research & Data Analyst](https://github.com/jzhang514)
 * [Leila Forouzan, Senior Manager of Research & Data Analysis](https://github.com/lforouzan)
