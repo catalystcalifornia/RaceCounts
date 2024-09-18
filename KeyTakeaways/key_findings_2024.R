@@ -22,6 +22,7 @@ clean_geo_names <- function(x){
   x$geo_name <- str_remove(x$geo_name, ", California")
   x$geo_name <- str_remove(x$geo_name, " city")
   x$geo_name <- str_remove(x$geo_name, " CDP")
+  x$geo_name <- str_remove(x$geo_name, " town")
   x$geo_name <- gsub(" County)", ")", x$geo_name)
   
   return(x)
@@ -38,7 +39,7 @@ arei_race_multigeo_state <- dbGetQuery(con, paste0("SELECT geoid, name, geolevel
 crosswalk <- dbGetQuery(con, paste0("SELECT city_id, dist_id, total_enroll FROM ", curr_schema, ".arei_city_county_district_table"))
 
 ########## TO LOAD ALL DATA FROM RDATA FILE AND NOT RE-RUN ALL THE TABLE IMPORT/PREP UNLESS UNDERLYING DATA HAS CHANGED #########
-######################### Skip to line ~302 ###
+################## SKIP TO LINE ~312 ###
 
 rc_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", curr_schema, "' AND table_name LIKE '%_", curr_yr, "';")
 
@@ -305,22 +306,22 @@ df <- bind_rows(df_city, df_county, df_state) %>% select(
 final_df <- df %>% filter(!grepl('University', geo_name))
 
 
-final_df <- clean_geo_names(final_df)
-
-
-#### NOTE: you must re-run the whole script and update the RData file if underlying data changes ###########
+######## NOTE: You MUST re-run the whole script and update the RData file if underlying data changes ###########
 # save df as .RData file, so don't have to re-run each time we update findings text, logic etc.
 #saveRDS(final_df, file = paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/final_df.RData")) 
 #saveRDS(df_education_district, file = paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/df_education_district.RData")) 
 
-# load .RData file
+######## LOAD ALL DATA FROM RDATA FILE ######
 # final_df <- readRDS(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/final_df.RData"))
 # df_education_district <- readRDS(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/df_education_district.RData"))
 
 # NOTE: when you call final_df in your code chunk(s), rename it before running code on it bc it takes a LONG time to run again...
+# Clean geo names
+final_df <- clean_geo_names(final_df)
+
 
 # Get long form race names for findings ------------------------------------------------
-race_generic <- unique(final_df$race_generic) #Chris updated df to final_df and the next line to add SWANASA and SWANA
+race_generic <- unique(final_df$race_generic)
 long_name <- c("Total", "American Indian / Alaska Native", "Latinx", "Asian", "Black", "Another Race", "Multiracial", "White", "Native Hawaiian / Pacific Islander", "Southwest Asian / North African / South Asian", "Asian / Pacific Islander", "Southwest Asian / North African", "Filipinx")
 race_names <- data.frame(race_generic, long_name)
 
@@ -595,7 +596,7 @@ most_disp_final <- most_disp %>% mutate(
   select(geoid, geo_name, geo_level, dist_id, district_name, total_enroll, long_name, race, indicator, indicator_count, finding_type, findings_pos, finding) %>% filter(!is.na(geo_name)) # some geoids don't have geo_names. all of them belong in housing-- for example: Camp Pendleton North. They don't pass the indicator count threshold either way to be included in the finding, so we will remove these. 
 
 
-# Save most_disp, best_rate_counts, worst_rate_counts as 1 csv
+# Save most_disp, best_rate_counts, worst_rate_counts as 1 df
 rda_race_findings <- bind_rows(most_disp_final, worst_best_counts)
 rda_race_findings <- rda_race_findings %>% relocate(geo_level, .after = geo_name) %>% relocate(finding_type, .after = race) %>% mutate(src = 'rda', citations = '') %>%
   mutate(race = ifelse(race == 'pacisl', 'nhpi', race))  # rename pacisl to nhpi to feed API - In all other tables we use 'pacisl'
@@ -618,16 +619,16 @@ comment <- paste0("COMMENT ON TABLE ", curr_schema, ".arei_findings_races_multig
 #dbSendQuery(con, comment)
 
 
-# Finding 4: the most disparate and worst outcome indicators ----------
+# Finding 4: the most disparate and worst outcome indicators - PLACE PAGE ----------
 
 ## Extra step: first merge the most disparate district for education with df for cities
 df_3 <- bind_rows(final_df, df_education_district_disparate_final) 
 
-### This section creates findings for Place page - the most disparate and worst outcome indicators across counties #####
+### This section creates findings for Place page - the most disparate and worst outcome indicators #####
 disp_long <- df_3 %>% filter(race == "total" & geo_level %in% c("county", "city")) %>% select(geoid, geo_name, dist_id, district_name, total_enroll, indicator, disparity_z_score, geo_level) %>% 
   rename(variable = indicator, value = disparity_z_score)
 
-# Worst Disparity - PLACE PAGE ----
+### Worst Disparity - PLACE PAGE ----
 
 #### Rank indicators by disp_z with worst/highest disp_z = 1
 disp_final <- disp_long %>%
@@ -664,7 +665,7 @@ worst_disp3 <- subset(worst_disp2, !is.na(geo_name)) %>%
          ) %>% select(geoid, geo_name, dist_id, district_name, total_enroll, geo_level, finding_type,finding, findings_pos)
 
 
-## Worst outcome - PLACE PAGE ----
+### Worst Outcome - PLACE PAGE ----
 
 ## Extra step: first identify the worst outcome district per city for each ed indicator, then merge the that district with df for cities
 df_education_district_worst_outcome <- df_education_district %>% filter(!is.na(geoid)) %>% group_by(geoid, race_generic) %>%
@@ -719,11 +720,8 @@ worst_outc3 <- subset(worst_outc2, !is.na(geo_name)) %>%
 worst_disp_outc <- union(worst_disp3, worst_outc3)
 
 
-# Finding 5: Findings for Place Page --------------------------------------
-
+# Finding 5: Above/Below Average Disparity/Outcome Findings - PLACE PAGE --------------------------------------
 ### This section creates findings for Place page - the summary statements above/below avg disparity/outcome across counties ####
-# Indicators
-
 ## pull composite disparity/outcome z-scores for city and county; add urban type = NA for cities.
 index_county <- st_read(con, query = paste0("SELECT * FROM ", curr_schema, ".arei_composite_index_", curr_yr)) %>% select(county_id, county_name, urban_type, disparity_z, performance_z) %>% rename(geoid = county_id, geo_name = county_name) %>% mutate(geo_level = "county")
 index_city <- st_read(con, query = paste0("SELECT * FROM ", curr_schema, ".arei_composite_index_city_", curr_yr)) %>% select(city_id, city_name, disparity_z, performance_z) %>% rename(geoid = city_id, geo_name = city_name) %>% mutate(urban_type = NA, geo_level = "city")
@@ -734,7 +732,8 @@ index_county_city$geo_name <- ifelse(index_county_city$geo_level == 'county', pa
 avg_statement_df <- index_county_city %>% 
   mutate(pop_type = ifelse(urban_type == 'Urban', 'more', 'less'), # used for more/less populous finding
          outc_type = ifelse(performance_z < 0, 'below', 'above'),
-         disp_type = ifelse(disparity_z < 0, 'below', 'worse than')) 
+         disp_type = ifelse(disparity_z < 0, 'below', 'worse than')) %>%
+         clean_geo_names()
 
 disp_avg_statement <- avg_statement_df %>%
   mutate(finding_type = 'disparity', finding = ifelse(geo_level == "county", paste0(geo_name, "'s racial disparity across indicators is ", disp_type, " average for California counties."), 
@@ -755,11 +754,6 @@ worst_disp_outc_ <- worst_disp_outc %>% select(-c(dist_id, district_name, total_
 rda_places_findings <- rbind(most_impacted, disp_avg_statement, outc_avg_statement, worst_disp_outc_) %>%
   mutate(src = 'rda', citations = '') %>%
   relocate(geo_level, .after = geo_name)
-
-# clean statement geos
-worst_disp_outc_$finding <- str_remove(worst_disp_outc_$finding, ", California County")
-worst_disp_outc_$finding <- str_remove(worst_disp_outc_$finding, " city, California")
-worst_disp_outc_$finding <- str_remove(worst_disp_outc_$finding, " CDP, California")
 
 
 #### HK: (manual) issue area findings (used on issue areas pages and the state places page) ####
@@ -800,6 +794,8 @@ comment <- paste0("COMMENT ON TABLE ", curr_schema, ".arei_findings_issues IS 'f
 # dbSendQuery(con, comment)
 
 
+
+###### Combine Issues table and places_findings_table #####
 # prep issues table for addition to places_findings_table
 state_issue_area_findings <- issue_area_findings
 
