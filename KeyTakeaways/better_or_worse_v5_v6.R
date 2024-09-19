@@ -469,6 +469,30 @@ combined_data$rate_pct_chng <- combined_data$rate_diff / combined_data$total_rat
 combined_data$id_diff <- combined_data$id_curr - combined_data$id_prev
 combined_data$id_pct_chng <- combined_data$id_diff / combined_data$id_prev * 100
 
+# Classify changes in outcome, disparity, and both (e.g., better/worse/no change; better outcome and less disparity/worse outcome and more disparity, etc.
+combined_data <- combined_data %>% 
+  mutate(outcome_better =
+           case_when(asbest == "min" & rate_pct_chng < 0 ~ "better",
+                     asbest == "min" & rate_pct_chng > 0 ~ "worse",
+                     asbest == "max" & rate_pct_chng > 0 ~ "better",
+                     asbest == "max" & rate_pct_chng < 0 ~ "worse", 
+                     .default = "no change"),
+         disparity_better =
+           case_when(id_pct_chng > 0 ~ "worse",
+                     id_pct_chng < 0 ~ "better",
+                     .default = "no change"),
+         conclusion = 
+           case_when(outcome_better == "better" & disparity_better == "better" ~ "Better and more equitable outcomes",
+                     outcome_better == "better" & disparity_better == "worse" ~ "Better but more inequitable outcomes",
+                     outcome_better == "better" & disparity_better == "no change" ~ "Better outcomes and the same disparity",
+                     outcome_better == "no change" & disparity_better == "better" ~ "Same but more equitable outcomes",
+                     outcome_better == "no change" & disparity_better == "worse" ~ "Same but more inequitable outcomes",
+                     outcome_better == "no change" & disparity_better == "no change" ~ "No changes",
+                     outcome_better == "worse" & disparity_better == "better" ~ "Worse but more equitable outcomes",
+                     outcome_better == "worse" & disparity_better == "worse" ~ "Worse and more inequitable outcomes",
+                     outcome_better == "worse" & disparity_better == "no change" ~ "Worse outcomes and the same disparity",
+                     .default = "error"))
+
 # Calculate overall and mean difference in disparity
 id_change_sum <- sum(combined_data$id_pct_chng, na.rm=TRUE)
 id_change_mean <- mean(combined_data$id_pct_chng, na.rm=TRUE)
@@ -483,29 +507,7 @@ issue_id_change <- combined_data %>% group_by(issue_area) %>% summarize(
 
 
 # calculate overall and mean difference in outcomes
-combined_data <- combined_data %>% mutate(outcome_better = 
-                                            case_when(asbest == "min" & rate_pct_chng < 0 ~ "better",
-                                                      asbest == "min" & rate_pct_chng > 0 ~ "worse",
-                                                      asbest == "max" & rate_pct_chng > 0 ~ "better",
-                                                      asbest == "max" & rate_pct_chng < 0 ~ "worse", 
-                                                      .default = "no change"),
-                                          disparity_better =
-                                            case_when(id_pct_chng > 0 ~ "worse",
-                                                      id_pct_chng < 0 ~ "better",
-                                                      .default = "no change"),
-                                          conclusion = 
-                                            case_when(outcome_better == "better" & disparity_better == "better" ~ "Better and more equitable outcomes",
-                                                      outcome_better == "better" & disparity_better == "worse" ~ "Better but more inequitable outcomes",
-                                                      outcome_better == "better" & disparity_better == "no change" ~ "Better outcomes and unchanged disparity",
-                                                      outcome_better == "no change" & disparity_better == "better" ~ "Same but more equitable outcomes",
-                                                      outcome_better == "no change" & disparity_better == "worse" ~ "Same but more inequitable outcomes",
-                                                      outcome_better == "no change" & disparity_better == "no change" ~ "No changes",
-                                                      outcome_better == "worse" & disparity_better == "better" ~ "Worse but more equitable outcomes",
-                                                      outcome_better == "worse" & disparity_better == "worse" ~ "Worse and more inequitable outcomes",
-                                                      outcome_better == "worse" & disparity_better == "no change" ~ "Worse outcomes and unchanged disparity",
-                                                      .default = "error"
-                                                      
-                                          ))
+
 
 
 indicators_better_outcomes_abs <- combined_data %>%
