@@ -121,6 +121,24 @@ calculate_z <- function(x) {
   # calculate performance rank
     x$performance_rank <-  rank(desc(x$performance_z), na.last = "keep", ties.method = "min")
   
+  # calc disp_z and perf_z quartiles
+  performance_z_breaks <- quantile(x$performance_z, probs=seq(0,1, by=0.25), na.rm=TRUE)
+  performance_z_breaks[[1]] <- performance_z_breaks[[1]]-1
+  performance_z_breaks[[5]] <- performance_z_breaks[[5]]+1
+  
+  disparity_z_breaks <- quantile(x$disparity_z, probs=seq(0,1, by=0.25), na.rm=TRUE)
+  disparity_z_breaks[[1]] <-disparity_z_breaks[[1]]-1
+  disparity_z_breaks[[5]] <-disparity_z_breaks[[5]]+1
+  
+  x$performance_z_quartile <- cut(x$performance_z, 
+                                  breaks=performance_z_breaks, 
+                                  include.lowest=TRUE,
+                                  labels=c("lowest", "low", "high", "highest"))
+  x$disparity_z_quartile <- cut(x$disparity_z, 
+                                breaks=disparity_z_breaks, 
+                                include.lowest=TRUE,
+                                labels=c("lowest", "low", "high", "highest"))
+  
   return(x)  
   
 }
