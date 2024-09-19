@@ -37,7 +37,6 @@ prev_rc_yr <- '2023'
 prev_rc_schema <- 'v5'
 
 ####################### ADD CURR state DATA #####################################
-#commenting out c5 bc it is not available both years
 c_1 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_incarceration_state_", curr_rc_yr))
 c_2 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_perception_of_safety_state_", curr_rc_yr))
 c_3 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_status_offenses_state_", curr_rc_yr))
@@ -283,7 +282,7 @@ curr_data <- c_index
 # Load PostgreSQL driver and databases --------------------------------------------------
 con <- connect_to_db("racecounts")
 ####################### ADD state DATA #####################################
-#commenting out c5 bc it is not available both years
+#commenting out c5 bc it is not available in prev year
 c_1 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", prev_rc_schema, ".arei_crim_incarceration_state_", prev_rc_yr))
 c_2 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", prev_rc_schema, ".arei_crim_perception_of_safety_state_", prev_rc_yr))
 c_3 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", prev_rc_schema, ".arei_crim_status_offenses_state_", prev_rc_yr))
@@ -469,7 +468,7 @@ combined_data$rate_pct_chng <- combined_data$rate_diff / combined_data$total_rat
 combined_data$id_diff <- combined_data$id_curr - combined_data$id_prev
 combined_data$id_pct_chng <- combined_data$id_diff / combined_data$id_prev * 100
 
-# Classify changes in outcome, disparity, and both (e.g., better/worse/no change; better outcome and less disparity/worse outcome and more disparity, etc.
+# Classify differences in outcome, disparity, and both (e.g., better/worse/no change; better outcome and less disparity/worse outcome and more disparity, etc.)
 combined_data <- combined_data %>% 
   mutate(outcome_better =
            case_when(asbest == "min" & rate_pct_chng < 0 ~ "better",
@@ -493,7 +492,8 @@ combined_data <- combined_data %>%
                      outcome_better == "worse" & disparity_better == "no change" ~ "Worse outcomes and the same disparity",
                      .default = "error"))
 
-# Calculate overall and mean difference in disparity
+##### findings calculations #####
+# 1. Calculate overall and mean difference in disparity
 id_change_sum <- sum(combined_data$id_pct_chng, na.rm=TRUE)
 id_change_mean <- mean(combined_data$id_pct_chng, na.rm=TRUE)
 
