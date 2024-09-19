@@ -3,7 +3,7 @@
 ### Script produces findings about how much an indicator's disparity has changed by calculating the % change btwn curr and prev Index of Disparity values.
 
 
-#install packages if not already installed
+##### Install and load packages #####
 packages <- c("tidyverse","RPostgreSQL","usethis")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
@@ -20,81 +20,33 @@ for(pkg in packages){
   library(pkg, character.only = TRUE) 
 } 
 
-# Load PostgreSQL driver and databases --------------------------------------------------
+###### Load PostgreSQL driver, source scripts, adjust settings #####
 source("W:\\RDA Team\\R\\credentials_source.R")
-con <- connect_to_db("racecounts")
-
-# Set Source for Index Functions script -----------------------------------
 source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Index_Functions.R")
 
-# remove exponentiation
-options(scipen = 100) 
+options(scipen = 100)
 
-# update each yr
+con <- connect_to_db("racecounts")
+
+
+##### UPDATE EACH YEAR: Define years to compare #####
 curr_rc_yr <- '2024'
 curr_rc_schema <- 'v6'
 prev_rc_yr <- '2023'
 prev_rc_schema <- 'v5'
 
-####################### ADD CURR state DATA #####################################
-c_1 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_incarceration_state_", curr_rc_yr))
-c_2 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_perception_of_safety_state_", curr_rc_yr))
-c_3 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_status_offenses_state_", curr_rc_yr))
-c_4 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_use_of_force_state_", curr_rc_yr))
-c_5 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_officer_initiated_stops_state_", curr_rc_yr))
+##### create helper function to clean data #####
+clean_data_z <- function(x, y, z) {
+  
+  # Select IDs. More info: https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=feyI80
+  x <- x %>% select(state_id, state_name, total_rate, asbest, index_of_disparity) %>% 
+    mutate(variable = y,
+           issue_area = z)
+  
+  return(x)
+}
 
-c_6 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_demo_census_participation_state_", curr_rc_yr))
-c_7 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_demo_diversity_of_candidates_state_", curr_rc_yr))
-c_8 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_demo_diversity_of_electeds_state_", curr_rc_yr))
-c_9 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_demo_registered_voters_state_", curr_rc_yr))
-c_10 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_demo_voting_midterm_state_", curr_rc_yr))
-c_11 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_demo_voting_presidential_state_", curr_rc_yr))
-
-c_12 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_econ_connected_youth_state_", curr_rc_yr))
-c_13 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_econ_employment_state_", curr_rc_yr))
-c_14 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_econ_internet_state_", curr_rc_yr))
-c_15 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_econ_officials_state_", curr_rc_yr))
-c_16 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_econ_per_capita_income_state_", curr_rc_yr))
-c_17 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_econ_real_cost_measure_state_", curr_rc_yr))
-c_18 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_econ_living_wage_state_", curr_rc_yr))
-
-c_19 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_educ_chronic_absenteeism_state_", curr_rc_yr))
-c_20 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_educ_hs_grad_state_", curr_rc_yr))
-c_21 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_educ_gr3_ela_scores_state_", curr_rc_yr))
-c_22 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_educ_gr3_math_scores_state_", curr_rc_yr))
-c_23 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_educ_suspension_state_", curr_rc_yr))
-c_24 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_educ_ece_access_state_", curr_rc_yr))
-c_25 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_educ_staff_diversity_state_", curr_rc_yr))
-
-c_26 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hlth_got_help_state_", curr_rc_yr))
-c_27 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hlth_health_insurance_state_", curr_rc_yr))
-c_28 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hlth_life_expectancy_state_", curr_rc_yr))
-c_29 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hlth_low_birthweight_state_", curr_rc_yr))
-c_30 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hlth_usual_source_of_care_state_", curr_rc_yr))
-c_31 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hlth_preventable_hospitalizations_state_", curr_rc_yr))
-
-c_32 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hben_drinking_water_state_", curr_rc_yr))
-c_33 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hben_food_access_state_", curr_rc_yr))
-c_34 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hben_haz_weighted_avg_state_", curr_rc_yr))
-c_35 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hben_toxic_release_state_", curr_rc_yr))
-c_36 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hben_asthma_state_", curr_rc_yr))
-c_37 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hben_lack_of_greenspace_state_", curr_rc_yr))
-
-c_38 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_cost_burden_owner_state_", curr_rc_yr))
-c_39 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_cost_burden_renter_state_", curr_rc_yr))
-c_40 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_denied_mortgages_state_", curr_rc_yr))
-c_41 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_eviction_filing_rate_state_", curr_rc_yr))
-c_42 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_foreclosure_state_", curr_rc_yr))
-c_43 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_homeownership_state_", curr_rc_yr))
-c_44 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_overcrowded_state_", curr_rc_yr))
-c_45 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_housing_quality_state_", curr_rc_yr))
-c_46 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_student_homelessness_state_", curr_rc_yr))
-c_47 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_subprime_state_", curr_rc_yr))
-
-dbDisconnect(con)
-
-
-## define variable names for clean_data_z function. you MUST UPDATE for each issue area.
+# define variable names for clean_data_z function. you MUST UPDATE for each issue area.
 varname1 <- 'incarceration'
 varname2 <- 'safety'
 varname3 <- 'offenses'
@@ -162,20 +114,64 @@ varname46 <- 'homeless'
 varname47 <- 'subprime'
 issue_area7 <- 'housing'
 
-# Select total, ID; add variable, issue to each table  -------------------------
-clean_data_z <- function(x, y, z) {
-  
-  # Select IDs. More info: https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=feyI80
-  x <- x %>% select(state_id, state_name, total_rate, asbest, index_of_disparity) %>% 
-    mutate(variable = y,
-           issue_area = z)
-  
-  return(x)
-}
+##### Collect, Clean, and Combine all CURR state DATA #####
+c_1 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_incarceration_state_", curr_rc_yr))
+c_2 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_perception_of_safety_state_", curr_rc_yr))
+c_3 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_status_offenses_state_", curr_rc_yr))
+c_4 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_use_of_force_state_", curr_rc_yr))
+c_5 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_officer_initiated_stops_state_", curr_rc_yr))
 
-# Clean data --------
-## apply the function
+c_6 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_demo_census_participation_state_", curr_rc_yr))
+c_7 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_demo_diversity_of_candidates_state_", curr_rc_yr))
+c_8 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_demo_diversity_of_electeds_state_", curr_rc_yr))
+c_9 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_demo_registered_voters_state_", curr_rc_yr))
+c_10 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_demo_voting_midterm_state_", curr_rc_yr))
+c_11 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_demo_voting_presidential_state_", curr_rc_yr))
 
+c_12 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_econ_connected_youth_state_", curr_rc_yr))
+c_13 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_econ_employment_state_", curr_rc_yr))
+c_14 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_econ_internet_state_", curr_rc_yr))
+c_15 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_econ_officials_state_", curr_rc_yr))
+c_16 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_econ_per_capita_income_state_", curr_rc_yr))
+c_17 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_econ_real_cost_measure_state_", curr_rc_yr))
+c_18 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_econ_living_wage_state_", curr_rc_yr))
+
+c_19 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_educ_chronic_absenteeism_state_", curr_rc_yr))
+c_20 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_educ_hs_grad_state_", curr_rc_yr))
+c_21 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_educ_gr3_ela_scores_state_", curr_rc_yr))
+c_22 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_educ_gr3_math_scores_state_", curr_rc_yr))
+c_23 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_educ_suspension_state_", curr_rc_yr))
+c_24 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_educ_ece_access_state_", curr_rc_yr))
+c_25 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_educ_staff_diversity_state_", curr_rc_yr))
+
+c_26 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hlth_got_help_state_", curr_rc_yr))
+c_27 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hlth_health_insurance_state_", curr_rc_yr))
+c_28 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hlth_life_expectancy_state_", curr_rc_yr))
+c_29 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hlth_low_birthweight_state_", curr_rc_yr))
+c_30 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hlth_usual_source_of_care_state_", curr_rc_yr))
+c_31 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hlth_preventable_hospitalizations_state_", curr_rc_yr))
+
+c_32 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hben_drinking_water_state_", curr_rc_yr))
+c_33 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hben_food_access_state_", curr_rc_yr))
+c_34 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hben_haz_weighted_avg_state_", curr_rc_yr))
+c_35 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hben_toxic_release_state_", curr_rc_yr))
+c_36 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hben_asthma_state_", curr_rc_yr))
+c_37 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hben_lack_of_greenspace_state_", curr_rc_yr))
+
+c_38 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_cost_burden_owner_state_", curr_rc_yr))
+c_39 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_cost_burden_renter_state_", curr_rc_yr))
+c_40 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_denied_mortgages_state_", curr_rc_yr))
+c_41 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_eviction_filing_rate_state_", curr_rc_yr))
+c_42 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_foreclosure_state_", curr_rc_yr))
+c_43 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_homeownership_state_", curr_rc_yr))
+c_44 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_overcrowded_state_", curr_rc_yr))
+c_45 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_housing_quality_state_", curr_rc_yr))
+c_46 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_student_homelessness_state_", curr_rc_yr))
+c_47 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_hous_subprime_state_", curr_rc_yr))
+
+dbDisconnect(con)
+
+# Clean CURR data with helper function
 c_1 <- clean_data_z(c_1, varname1, issue_area1)
 c_2 <- clean_data_z(c_2, varname2, issue_area1)
 c_3 <- clean_data_z(c_3, varname3, issue_area1)
@@ -224,7 +220,7 @@ c_45 <- clean_data_z(c_45, varname45, issue_area7)
 c_46 <- clean_data_z(c_46, varname46, issue_area7)
 c_47 <- clean_data_z(c_47, varname47, issue_area7)
 
-# Join Data Together ------------------------------------------------------
+# Join All Curr Data Together 
 c_index <- full_join(c_1, c_2)
 c_index <- full_join(c_index, c_3)
 c_index <- full_join(c_index, c_4)
@@ -274,14 +270,8 @@ c_index <- full_join(c_index, c_47)
 
 curr_data <- c_index
 
-################################################
-######################################## OLD - SAME CODE AS ABOVE W DIF rc_yr, rc_schema
-#####################################
-
-
-# Load PostgreSQL driver and databases --------------------------------------------------
+##### Collect, Clean, and Combine all PREV state DATA #####
 con <- connect_to_db("racecounts")
-####################### ADD state DATA #####################################
 #commenting out c5 bc it is not available in prev year
 c_1 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", prev_rc_schema, ".arei_crim_incarceration_state_", prev_rc_yr))
 c_2 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", prev_rc_schema, ".arei_crim_perception_of_safety_state_", prev_rc_yr))
@@ -340,9 +330,7 @@ c_47 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_r
 dbDisconnect(con)
 
 
-# Clean data --------
-## apply the function
-
+# Clean PREV data
 c_1 <- clean_data_z(c_1, varname1, issue_area1)
 c_2 <- clean_data_z(c_2, varname2, issue_area1)
 c_3 <- clean_data_z(c_3, varname3, issue_area1)
@@ -391,9 +379,7 @@ c_45 <- clean_data_z(c_45, varname45, issue_area7)
 c_46 <- clean_data_z(c_46, varname46, issue_area7)
 c_47 <- clean_data_z(c_47, varname47, issue_area7)
 
-
-
-# Join Data Together ------------------------------------------------------
+# Join prev Data Together
 c_index <- full_join(c_1, c_2)
 c_index <- full_join(c_index, c_3)
 c_index <- full_join(c_index, c_4)
@@ -444,7 +430,7 @@ c_index <- full_join(c_index, c_47)
 prev_data <- c_index
 
 
-############################ join old and new data & analyze
+##### Combine ALL CURR and PREV data #####
 
 combined_data <- full_join(curr_data,
                            prev_data,
@@ -461,6 +447,7 @@ combined_data <- full_join(curr_data,
 names(combined_data) <- c("state", "total_rate_curr", "id_curr", "variable", 
                           "asbest","issue_area", "total_rate_prev", "id_prev")
 
+##### Add columns needed to run findings calcs #####
 # Calculate differences and percent differences in outcomes and disparity
 combined_data$rate_diff <- combined_data$total_rate_curr - combined_data$total_rate_prev
 combined_data$rate_pct_chng <- combined_data$rate_diff / combined_data$total_rate_prev * 100
@@ -513,7 +500,8 @@ issue_id_change <- combined_data %>% group_by(issue_area) %>% summarize(
 
 
 # 2. Calculate overall and mean difference in outcomes
-
+# Note: Because each indicator has an asbest value of either min/max, we need to 
+# take the absolute values of better or worse indicators to get the correct magnitude of improvement/regression
 
 
 indicators_better_outcomes_abs <- combined_data %>%
