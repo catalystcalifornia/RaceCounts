@@ -36,13 +36,13 @@ curr_rc_schema <- 'v6'
 prev_rc_yr <- '2023'
 prev_rc_schema <- 'v5'
 
-####################### ADD state DATA #####################################
+####################### ADD CURR state DATA #####################################
 #commenting out c5 bc it is not available both years
 c_1 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_incarceration_state_", curr_rc_yr))
 c_2 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_perception_of_safety_state_", curr_rc_yr))
 c_3 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_status_offenses_state_", curr_rc_yr))
 c_4 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_use_of_force_state_", curr_rc_yr))
-#c_5 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_officer_initiated_stops_state_", curr_rc_yr))
+c_5 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_crim_officer_initiated_stops_state_", curr_rc_yr))
 
 c_6 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_demo_census_participation_state_", curr_rc_yr))
 c_7 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", curr_rc_schema, ".arei_demo_diversity_of_candidates_state_", curr_rc_yr))
@@ -181,7 +181,7 @@ c_1 <- clean_data_z(c_1, varname1, issue_area1)
 c_2 <- clean_data_z(c_2, varname2, issue_area1)
 c_3 <- clean_data_z(c_3, varname3, issue_area1)
 c_4 <- clean_data_z(c_4, varname4, issue_area1)
-#c_5 <- clean_data_z(c_5, varname5, issue_area1)
+c_5 <- clean_data_z(c_5, varname5, issue_area1)
 c_6 <- clean_data_z(c_6, varname6, issue_area2)
 c_7 <- clean_data_z(c_7, varname7, issue_area2)
 c_8 <- clean_data_z(c_8, varname8, issue_area2)
@@ -229,7 +229,7 @@ c_47 <- clean_data_z(c_47, varname47, issue_area7)
 c_index <- full_join(c_1, c_2)
 c_index <- full_join(c_index, c_3)
 c_index <- full_join(c_index, c_4)
-#c_index <- full_join(c_index, c_5)
+c_index <- full_join(c_index, c_5)
 c_index <- full_join(c_index, c_6)
 c_index <- full_join(c_index, c_7)
 c_index <- full_join(c_index, c_8)
@@ -288,7 +288,7 @@ c_1 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_ra
 c_2 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", prev_rc_schema, ".arei_crim_perception_of_safety_state_", prev_rc_yr))
 c_3 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", prev_rc_schema, ".arei_crim_status_offenses_state_", prev_rc_yr))
 c_4 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", prev_rc_schema, ".arei_crim_use_of_force_state_", prev_rc_yr))
-#c_5 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", prev_rc_schema, ".arei_crim_officer_initiated_stops_state_", prev_rc_yr))
+# c_5 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", prev_rc_schema, ".arei_crim_officer_initiated_stops_state_", prev_rc_yr))
 
 c_6 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", prev_rc_schema, ".arei_demo_census_participation_state_", prev_rc_yr))
 c_7 <- dbGetQuery(con, statement = paste0("SELECT state_id, state_name, total_rate, asbest, index_of_disparity FROM ", prev_rc_schema, ".arei_demo_diversity_of_candidates_state_", prev_rc_yr))
@@ -348,7 +348,7 @@ c_1 <- clean_data_z(c_1, varname1, issue_area1)
 c_2 <- clean_data_z(c_2, varname2, issue_area1)
 c_3 <- clean_data_z(c_3, varname3, issue_area1)
 c_4 <- clean_data_z(c_4, varname4, issue_area1)
-#c_5 <- clean_data_z(c_5, varname5, issue_area1)
+# c_5 <- clean_data_z(c_5, varname5, issue_area1)
 c_6 <- clean_data_z(c_6, varname6, issue_area2)
 c_7 <- clean_data_z(c_7, varname7, issue_area2)
 c_8 <- clean_data_z(c_8, varname8, issue_area2)
@@ -398,7 +398,7 @@ c_47 <- clean_data_z(c_47, varname47, issue_area7)
 c_index <- full_join(c_1, c_2)
 c_index <- full_join(c_index, c_3)
 c_index <- full_join(c_index, c_4)
-#c_index <- full_join(c_index, c_5)
+# c_index <- full_join(c_index, c_5)
 c_index <- full_join(c_index, c_6)
 c_index <- full_join(c_index, c_7)
 c_index <- full_join(c_index, c_8)
@@ -457,11 +457,10 @@ combined_data <- full_join(curr_data,
          asbest.x,
          issue_area.x,
          total_rate.y,
-         index_of_disparity.y,
-         updated_data.x)
+         index_of_disparity.y)
 
 names(combined_data) <- c("state", "total_rate_curr", "id_curr", "variable", 
-                          "asbest","issue_area", "total_rate_prev", "id_prev", "updated_data")
+                          "asbest","issue_area", "total_rate_prev", "id_prev")
 
 # Calculate differences and percent differences in outcomes and disparity
 combined_data$rate_diff <- combined_data$total_rate_curr - combined_data$total_rate_prev
@@ -471,16 +470,17 @@ combined_data$id_diff <- combined_data$id_curr - combined_data$id_prev
 combined_data$id_pct_chng <- combined_data$id_diff / combined_data$id_prev * 100
 
 # Calculate overall and mean difference in disparity
-id_change_sum <- sum(combined_data$id_pct_chng)
-id_change_mean <- mean(combined_data$id_pct_chng)
+id_change_sum <- sum(combined_data$id_pct_chng, na.rm=TRUE)
+id_change_mean <- mean(combined_data$id_pct_chng, na.rm=TRUE)
 
 # Calculate difference in disparity by issue area
 issue_id_change <- combined_data %>% group_by(issue_area) %>% summarize(
-  id_curr=sum(id_curr),
-  id_prev=sum(id_prev),
-  id_diff=sum(id_curr) - sum(id_prev),
-  id_pct_chng=(sum(id_curr) - sum(id_prev))/ sum(id_prev) * 100
+  id_curr=sum(id_curr, na.rm=TRUE),
+  id_prev=sum(id_prev, na.rm=TRUE),
+  id_diff=sum(id_curr, na.rm=TRUE) - sum(id_prev, na.rm=TRUE),
+  id_pct_chng=(sum(id_curr, na.rm=TRUE) - sum(id_prev, na.rm=TRUE))/ sum(id_prev, na.rm=TRUE) * 100
 )
+
 
 # calculate overall and mean difference in outcomes
 combined_data <- combined_data %>% mutate(outcome_better = 
