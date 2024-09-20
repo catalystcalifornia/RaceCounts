@@ -40,7 +40,7 @@ region_urban <- st_read(con, query = paste0("select county_id AS geoid, region, 
   
   # format and clean tables
   index_tables_sort <- lapply(index_tables, function(i) i[order(i$county_id),]) # sort all list elements by county_id so they are all in the same order
-  index_tables_clean <- lapply(index_tables_sort, function(x) x%>% select(county_id, ends_with(c("disparity_z", "disparity_rank", "performance_z", "performance_rank"))))
+  index_tables_clean <- lapply(index_tables_sort, function(x) x%>% select(county_id, ends_with(c("disparity_z", "disparity_rank", "performance_z", "performance_rank", "quartile", "quadrant"))))
   index_df <- as.data.frame(do.call(cbind, index_tables_clean))                     # convert list to df
   names(index_df) <- gsub(x = names(index_df), pattern = ".*\\.", replacement = "") # clean up column names
   index_df = index_df[,!duplicated(names(index_df))]                                # drop duplicated county_id columns
@@ -74,13 +74,13 @@ unloadNamespace("plyr") # unload plyr bc conflicts with dplyr used elsewhere
 # Export to Postgres ------------------------------------------------------
 
 table_name <- "arei_multigeo_list"
-table_comment_source <- paste0("Based on arei_race_multigeo, composite index and all issue area index tables for cities and counties. Feeds RC.org scatterplots and map. Source: W:\\Project\\RACE COUNTS\\", rc_yr, "_", curr_schema, "\\Composite Index\\arei_multigeo_list.R")
+table_comment_source <- paste0("Created ", Sys.Date(), ". Based on arei_race_multigeo, arei_county_region_urban_type, composite index and all issue area index tables for cities and counties. Feeds RC.org scatterplots and map. Source: W:\\Project\\RACE COUNTS\\", rc_yr, "_", curr_schema, "\\Composite Index\\arei_multigeo_list.R")
 table_comment <- paste0("COMMENT ON TABLE ", curr_schema, ".", table_name, " IS '", table_comment_source, ".';")
 column_comment <- paste0("COMMENT ON COLUMN ", curr_schema, ".", table_name, ".county_id IS 'This is the RACE COUNTS-specific county id, not county FIPS code.';")
 
 # get list of multigeo col names
 cols <- colnames(multigeo_list)
-text_type <- grep("^geoid|^geo_name|^region|^urban_type|^geolevel", cols) # specify which cols should be text (geoid, geo_name, region, urban_type, geolevel)
+text_type <- grep("^geoid|^geo_name|^region|^urban_type|^geolevel|quartile$|quadrant$", cols) # specify which cols should be text (geoid, geo_name, region, urban_type, geolevel)
 cols[text_type] # confirm correct cols are there
 dblprecision_type <- grep("^pct|_z$", cols) # specify which cols should be double precision (pct_, _z)
 cols[dblprecision_type] # confirm correct cols are there
