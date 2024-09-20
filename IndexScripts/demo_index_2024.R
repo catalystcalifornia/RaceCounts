@@ -1,7 +1,7 @@
 #### Democracy (z-score) for RC v6 ####
 
 #install packages if not already installed
-packages <- c("tidyverse","RPostgreSQL","sf","usethis")  
+packages <- c("tidyverse","RPostgreSQL","sf","here","usethis")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -22,7 +22,7 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
 
 # Set Source for Index Functions script -----------------------------------
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Index_Functions.R")
+source(here("Functions/RC_Index_Functions.R"))
 
 # remove exponentiation
 options(scipen = 100) 
@@ -53,7 +53,7 @@ varname4 <- 'voter'
 varname5 <- 'midterm'
 varname6 <- 'president'
 
-region_urban_type <- st_read(con, query = paste0("SELECT geoid AS county_id, region, urban_type FROM ", rc_schema, ".arei_county_region_urban_type"))
+region_urban_type <- st_read(con, query = paste0("select county_id, region, urban_type from ", rc_schema, ".arei_county_region_urban_type")) # get region, urban_type
 
 
 # Clean data --------
@@ -104,15 +104,17 @@ c_index<- left_join(c_index, region_urban_type)
 c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("_rank"))
 c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("performance_z"))
 c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("disparity_z"))
+c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("quartile"))
+c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("quadrant"))
 
 # select/reorder final columns for index table
-index_table <- c_index %>% select(county_id, county_name, region, urban_type, ends_with("_rank"), quadrant, disp_avg, perf_avg, disp_values_count, perf_values_count, ends_with("_disparity_z"), ends_with("performance_z"), everything())
+index_table <- c_index %>% select(county_id, county_name, region, urban_type, ends_with("_rank"), ends_with("quadrant"), disp_avg, perf_avg, disp_values_count, perf_values_count, ends_with("_disparity_z"), ends_with("performance_z"), ends_with("disparity_z_quartile"), ends_with("performance_z_quartile"), everything())
 index_table <- index_table[order(index_table[[5]]), ]  # order by disparity rank
 View(index_table)
 
 # Send table to postgres 
 index_table_name <- paste0("arei_demo_index_", rc_yr)
-index <- "Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is"
+index <- paste0("Created ", Sys.Date(), ". Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is")
 
 index_to_postgres(index_table, rc_schema)
 dbDisconnect(con)
