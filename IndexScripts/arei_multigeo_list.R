@@ -70,6 +70,22 @@ library(plyr)
 final_multigeo_list <- rbind.fill(multigeo_list, city_multigeo_list) # use rbind.fill so cols missing in city table autofill with NA.
 unloadNamespace("plyr") # unload plyr bc conflicts with dplyr used elsewhere
 
+# clean geo_name column
+# clean place names
+clean_geo_names <- function(x){
+  
+  x$geo_name <- str_remove(x$geo_name, ", California")
+  x$geo_name <- str_remove(x$geo_name, " city")
+  x$geo_name <- str_remove(x$geo_name, " CDP")
+  x$geo_name <- str_remove(x$geo_name, " town")
+  x$geo_name <- gsub(" County", "", x$geo_name)
+  
+  return(x)
+}
+
+final_multigeo_list <- final_multigeo_list %>%
+  clean_geo_names
+
 
 # Export to Postgres ------------------------------------------------------
 
