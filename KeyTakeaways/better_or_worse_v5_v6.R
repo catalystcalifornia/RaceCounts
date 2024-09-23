@@ -481,23 +481,15 @@ combined_data <- combined_data %>%
 
 ##### findings calculations #####
 # 1. Calculate overall and mean difference in disparity across all indicators
-id_change_sum <- sum(combined_data$id_pct_chng, na.rm=TRUE)
-id_change_mean <- mean(combined_data$id_pct_chng, na.rm=TRUE)
+id_pct_change_sum <- sum(combined_data$id_pct_chng, na.rm=TRUE)
+id_pct_change_mean <- mean(combined_data$id_pct_chng, na.rm=TRUE) # -2.697086; overall decline
 
-# Since there are a different number of indicators from prev to curr, will take avg id of each year and compare
-# Note: if we exclude RIPA stops then id_avg_curr = 82.92587 (overall indicating a minor decrease in CA Racial Disparities - see id_change_mean above)
-# However, if we include RIPA stops then id_avg_curr = 86.46915 (overall indicating an increase in CA racial disparities - see id_avg_pct_chng below)
-id_avg_prev <- mean(combined_data$id_prev, na.rm=TRUE) # 83.65239
-id_avg_curr <- mean(combined_data$id_curr, na.rm=TRUE)
-id_avg_pct_chng <- (id_avg_curr - id_avg_prev) / id_avg_prev * 100  
-
-# Calculate difference in disparity by issue area
-issue_id_change <- combined_data %>% group_by(issue_area) %>% summarize(
-  id_curr=sum(id_curr, na.rm=TRUE),
-  id_prev=sum(id_prev, na.rm=TRUE),
-  id_diff=sum(id_curr, na.rm=TRUE) - sum(id_prev, na.rm=TRUE),
-  id_pct_chng=(sum(id_curr, na.rm=TRUE) - sum(id_prev, na.rm=TRUE))/ sum(id_prev, na.rm=TRUE) * 100)
-
+# 2. Calculate difference in disparity by issue area
+issue_id_change <- combined_data %>%
+  group_by(issue_area) %>% 
+  summarize(
+    id_pct_change_sum=sum(id_pct_chng, na.rm=TRUE),
+    id_pct_change_mean=mean(id_pct_chng, na.rm=TRUE))
 
 # 2. Calculate overall and mean difference in outcomes
 # Note: Because each indicator has an asbest value of either min/max, we need to 
