@@ -41,6 +41,7 @@ names(df) <- gsub("jail_pop", "raw", names(df))
 names(df) <- gsub("aapi", "nh_api", names(df))
 names(df) <- gsub("native", "nh_aian", names(df))
 names(df) <- gsub("black", "nh_black", names(df))
+names(df) <- gsub("white", "nh_white", names(df))
 names(df) <- gsub("latinx", "latino", names(df))
 df$geoname <- gsub(" County", "", df$geoname)
 
