@@ -58,7 +58,7 @@ source(here("IndexScripts", paste0("composite_index_city_calcs_", rc_yr, ".R")))
 
 # Export SCREENED index to postgres ------------------------------------------------------
 table_name <- paste0("arei_composite_index_city_", rc_yr)
-table_comment_source <- paste0("This is the SCREENED city index table including pop screen and threshold for representation across all issue areas and indicators.
+table_comment_source <- paste0("Created ", Sys.Date(), ". This is the SCREENED city index table including pop screen and threshold for representation across all issue areas and indicators.
 The UNSCREENED index has same name with _draft at the end. 
 R script: W://Project//RACE COUNTS//", rc_yr, "_", rc_schema, "//RC_Github//RaceCounts//IndexScripts//composite_index_city_", rc_yr, ".R 
 QA document: W://Project//RACE COUNTS//", rc_yr, "_", rc_schema, "//Composite Index//Documentation//QA_sheet_Composite_Index_City.docx") 
