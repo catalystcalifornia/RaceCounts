@@ -1,6 +1,6 @@
 ## Homeownership for RC v6 ##
 #install packages if not already installed
-list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis", "sf", "tigris")
+list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis", "sf", "tigris", "here")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
@@ -13,6 +13,7 @@ library(RPostgreSQL)
 library(sf)
 library(tigris)
 library(dplyr)
+library(here)
 library(usethis)
 
 # create connection for rda database
@@ -30,7 +31,7 @@ table_code = 'b25003'
 df_wide_multigeo <- st_read(con, query = paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state')")) # import rda_shared_data table
 
 ############## Pre-RC CALCS ##############
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
+source(here("Functions", "rdashared_functions.R"))
 df <- prep_acs(df_wide_multigeo, table_code, cv_threshold, pop_threshold)
 
 df_screened <- dplyr::select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"), -ends_with("_cv"))
@@ -40,7 +41,7 @@ d <- df_screened
 ############## CALC RACE COUNTS STATS ##############
 
 #set source for RC Functions script
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
+source(here("Functions", "RC_Functions.R"))
 
 # Adds asbest value for RC Functions
 d$asbest = asbest

@@ -185,94 +185,14 @@ prep_acs <- function(x, table_code, cv_threshold, pop_threshold) {
   }
   
   if(endsWith(table_code, "b25003")) {
-    ## Occupants per Room
     names(x) <- gsub("001e", "_pop", names(x))
     names(x) <- gsub("001m", "_pop_moe", names(x))
     
-    names(x) <- gsub("003e", "_raw", names(x))
-    names(x) <- gsub("003m", "_raw_moe", names(x))
+    names(x) <- gsub("002e", "_raw", names(x))
+    names(x) <- gsub("002m", "_raw_moe", names(x))
     
-    ## total data (more disaggregated than raced values so different prep needed)
-    
-    ### Extract total values to perform the various calculations needed
-    totals <- x %>%
-      select(geoid, starts_with("total"))
-    
-    total_e_cols <- totals %>%
-      select(matches("[0-9]e$")) %>%
-      colnames()
-    
-    total_m_cols <- totals %>%
-      select(matches("[0-9]m$")) %>%
-      colnames()
-    
-    totals <- totals %>% pivot_longer(all_of(total_e_cols), names_to="var_name", values_to = "estimate")
-    totals <- totals %>% pivot_longer(all_of(total_m_cols), names_to="var_name2", values_to = "moe")
-    totals$var_name <- substr(totals$var_name, 1, nchar(totals$var_name)-1)
-    totals$var_name2 <- substr(totals$var_name2, 1, nchar(totals$var_name2)-1)
-    totals <- totals[totals$var_name == totals$var_name2, ]
-    totals <- select(totals, -c(var_name, var_name2))
-    
-    ### sum the numerator columns 005e-013e (total_raw):
-    total_raw_values <- totals %>%
-      select(geoid, estimate) %>%
-      group_by(geoid) %>%
-      summarise(total_raw = sum(estimate))
-    
-    #### join these calculations back to x
-    x <- left_join(x, total_raw_values, by = "geoid")
-    
-    ### calculate the total_raw_moe using moe_sum (need to sort MOE values first to make sure highest MOE is used in case of multiple zero estimates)
-    ### methodology source is text under table on slide 52 here: https://www.census.gov/content/dam/Census/programs-surveys/acs/guidance/training-presentations/20180418_MOE.pdf
-    total_raw_moes <- totals %>%
-      select(geoid, estimate, moe) %>%
-      group_by(geoid) %>%
-      arrange(desc(moe), .by_group = TRUE) %>%
-      summarise(total_raw_moe = moe_sum(moe, estimate, na.rm=TRUE))   # https://walker-data.com/tidycensus/reference/moe_sum.html
-    
-    #### Spot checking moe_sum() -- still need to test that the arrange function is properly sorting moes 
-    #### resulting in the right calculation if multiple zero estimates present
-    
-    #####  test_moe_sum <- totals[1:6, c(1, 4:5)]
-    #####  moe_sum(test_moe_sum$moe, test_moe_sum$estimate, na.rm=TRUE)
-    ##### [1] 8632.893
-    
-    #####  norm(test_moe_sum$moe, type ="2")
-    #####[1] 8632.893
-    
-    #### join these calculations back to x
-    x <- left_join(x, total_raw_moes, by = "geoid")
-    
-    ### calculate total_rate
-    total_rates <- left_join(total_raw_values, totals[, 1:2])
-    total_rates$total_rate <- total_rates$total_raw/total_rates$total_pop*100
-    total_rates <- total_rates %>%
-      select(geoid, total_rate) %>%
-      distinct()
-    
-    #### join these calculations back to x
-    x <- left_join(x, total_rates, by = "geoid")
-    
-    ### calculate the moe for total_rate
-    total_pop_data <- totals %>%
-      select(geoid, total_pop, total_pop_moe) %>%
-      distinct()
-    total_rate_moes <- left_join(total_raw_values, total_raw_moes, by='geoid') %>%
-      left_join(., total_pop_data, by='geoid')
-    total_rate_moes$total_rate_moe <- moe_prop(total_rate_moes$total_raw,    # https://walker-data.com/tidycensus/reference/moe_prop.html
-                                               total_rate_moes$total_pop, 
-                                               total_rate_moes$total_raw_moe, 
-                                               total_rate_moes$total_pop_moe)
-    total_rate_moes <- total_rate_moes %>%
-      select(geoid, total_rate_moe)
-    
-    #### join these calculations back to x
-    x <- left_join(x, total_rate_moes, by = "geoid")
-    
-    
-    ## raced data (raw values don't need aggregation like total values do)
-    
-    ### calculate raced rates
+    # [race]_rate  ### UPDATE _POP == 0 TO _POP <= 0
+    x$total_rate <- ifelse(x$total_pop <= 0, NA, x$total_raw/x$total_pop*100)
     x$asian_rate <- ifelse(x$asian_pop <= 0, NA, x$asian_raw/x$asian_pop*100)
     x$black_rate <- ifelse(x$black_pop <= 0, NA, x$black_raw/x$black_pop*100)
     x$nh_white_rate <- ifelse(x$nh_white_pop <= 0, NA, x$nh_white_raw/x$nh_white_pop*100)
@@ -282,50 +202,51 @@ prep_acs <- function(x, table_code, cv_threshold, pop_threshold) {
     x$twoormor_rate <- ifelse(x$twoormor_pop <= 0, NA, x$twoormor_raw/x$twoormor_pop*100)
     x$aian_rate <- ifelse(x$aian_pop <= 0, NA, x$aian_raw/x$aian_pop*100)
     
+    # [race]_rate_moe
+    x$total_rate_moe <- moe_prop(x$total_raw,
+                                 x$total_pop,
+                                 x$total_raw_moe,
+                                 x$total_pop_moe)*100
     
-    ### calculate moes for raced rates
     x$asian_rate_moe <- moe_prop(x$asian_raw,
                                  x$asian_pop,
                                  x$asian_raw_moe,
-                                 x$asian_pop_moe)
+                                 x$asian_pop_moe)*100
+    
     x$black_rate_moe <- moe_prop(x$black_raw,
                                  x$black_pop,
                                  x$black_raw_moe,
-                                 x$black_pop_moe)
+                                 x$black_pop_moe)*100
+    
     x$nh_white_rate_moe <- moe_prop(x$nh_white_raw,
                                     x$nh_white_pop,
                                     x$nh_white_raw_moe,
-                                    x$nh_white_pop_moe)
+                                    x$nh_white_pop_moe)*100
+    
     x$latino_rate_moe <- moe_prop(x$latino_raw,
                                   x$latino_pop,
                                   x$latino_raw_moe,
-                                  x$latino_pop_moe)
+                                  x$latino_pop_moe)*100
+    
     x$other_rate_moe <- moe_prop(x$other_raw,
                                  x$other_pop,
                                  x$other_raw_moe,
-                                 x$other_pop_moe)
+                                 x$other_pop_moe)*100
+    
     x$pacisl_rate_moe <- moe_prop(x$pacisl_raw,
                                   x$pacisl_pop,
                                   x$pacisl_raw_moe,
-                                  x$pacisl_pop_moe)
+                                  x$pacisl_pop_moe)*100
+    
     x$twoormor_rate_moe <- moe_prop(x$twoormor_raw,
                                     x$twoormor_pop,
                                     x$twoormor_raw_moe,
-                                    x$twoormor_pop_moe)
+                                    x$twoormor_pop_moe)*100
+    
     x$aian_rate_moe <- moe_prop(x$aian_raw,
                                 x$aian_pop,
                                 x$aian_raw_moe,
-                                x$aian_pop_moe)
-    
-    
-    ### Convert any NaN to NA
-    x <- x %>% 
-      mutate_all(function(x) ifelse(is.nan(x), NA, x))
-    
-    ### drop the total006-013 e and m columns and pop_moe cols
-    x <- x %>%
-      select(-starts_with("total0"), -ends_with("_pop_moe"))
-    
+                                x$aian_pop_moe)*100
     
   }
   
