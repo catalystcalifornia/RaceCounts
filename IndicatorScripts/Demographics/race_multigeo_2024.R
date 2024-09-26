@@ -40,7 +40,7 @@ swana_df <- B04006 %>% select(geoid, geolevel, matches(vars_list_acs_swana)) %>%
 swana_df$swana_pop <- rowSums(swana_df[sapply(swana_df, is.numeric)], na.rm = TRUE) # calc SWANA pop
 races_df <- select(DP05, geoid, name, geolevel, dp05_0001e, dp05_0068e, dp05_0068pe,  dp05_0070e, dp05_0070pe, dp05_0073e, dp05_0073pe, dp05_0079e, dp05_0079pe, dp05_0080e, dp05_0080pe, dp05_0082e, dp05_0082pe,  dp05_0084e, dp05_0084pe, dp05_0085e, dp05_0085pe) %>% filter(geolevel %in% c('state', 'county', 'place'))
 pop_df <- races_df %>% left_join(swana_df %>% select(geoid, swana_pop), by = c("geoid"))
-pop_df <- pop_df %>% mutate(pct_swana_pop = swana_pop / pop_df$dp05_0001e * 100) %>% mutate_all(function(x) ifelse(is.nan(x), NA, x))
+pop_df <- pop_df %>% mutate(pct_swana_pop = round(swana_pop / pop_df$dp05_0001e * 100),1) %>% mutate_all(function(x) ifelse(is.nan(x), NA, x))
 
 
 vars_list_acs_soasian <- get_soasian_var(yr, "acs5") # use fx to generate current So asian ancestry vars
@@ -51,7 +51,7 @@ soasian_df$soasian_pop <- rowSums(soasian_df[sapply(soasian_df, is.numeric)], na
 soasian_pop <- soasian_df %>% select(geoid, geolevel, soasian_pop)
 
 pop_df <- pop_df %>% left_join(soasian_pop) %>% mutate(swanasa_pop = swana_pop + soasian_pop, 
-                                                       pct_swanasa_pop = swanasa_pop/pop_df$dp05_0001e * 100) %>% select(-soasian_pop)
+                                                       pct_swanasa_pop = round(swanasa_pop/pop_df$dp05_0001e * 100),1) %>% select(-soasian_pop)
 
 # check that DP05 variable names haven't changed by pulling in metadata from API
 dp05_vars <- load_variables(yr, "acs5/profile", cache = TRUE) %>% filter(grepl("DP05", name)) %>% mutate(name = tolower(name)) # get all DP05 vars
