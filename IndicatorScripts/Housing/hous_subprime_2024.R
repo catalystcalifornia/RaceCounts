@@ -32,6 +32,13 @@ con2 <- connect_to_db("rda_shared_data")
 setwd("W:/Data/Housing/HMDA/Subprime/2013-2017")
 
 
+# update each year: variables used throughout script
+acs_yr <- 2017         # last yr of acs 5y span that matches hmda yrs
+hmda_yr <- '2014-2017' # hmda data yrs
+rc_schema <- 'v6'
+rc_yr <- '2024'
+
+
 #### ALL APPLICATIONS DATA #### -------------------------------------------------------------------------
 # Create rda_shared_data all applications table
 # df_2013 <- read_csv("hmda_2013_ca_all-records_codes.csv")
@@ -288,7 +295,8 @@ d <- df_final
 ############ county_id and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
 #set source for RC Functions script
-source("W:/Project/RACE COUNTS/Functions/archive/RC_Functions.R")
+#source("W:/Project/RACE COUNTS/Functions/archive/RC_Functions.R")
+source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/refs/heads/main/Functions/RC_Functions.R")
 d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
 d <- count_values(d) #calculate number of "_rate" values
@@ -329,15 +337,15 @@ View(city_table)
 
 
 ###update info for postgres tables###
-county_table_name <- "arei_hous_subprime_county_2023"
-state_table_name <- "arei_hous_subprime_state_2023"
-city_table_name <- "arei_hous_subprime_city_2023"
-indicator <- "Number of higher priced Loans Per 100 Loans Originated from 2013-2017. Subgroups with fewer than 75 loans originated are excluded"
-source <- "HMDA historic Data: https://www.consumerfinance.gov/data-research/hmda/historic-data/, however Subprime filter/data is not available here. Created 8-17-23"
-rc_schema <- 'v5'
+county_table_name <- paste0("arei_hous_subprime_county_", rc_yr)
+state_table_name <- paste0("arei_hous_subprime_state_", rc_yr)
+city_table_name <- paste0("arei_hous_subprime_city_", rc_yr)
+indicator <- paste0("Number of higher priced Loans Per 100 Loans Originated from ", hmda_yr, ". Subgroups with fewer than ", threshold, " loans originated are excluded")
+source <- paste0("HMDA historic Data: https://www.consumerfinance.gov/data-research/hmda/historic-data/, however Subprime data is not available here. Created ", Sys.Date())
+
 
 #send to postgres
 #to_postgres(county_table, state_table)
 #city_to_postgres(city_table)
 
-
+dbDisconnect()
