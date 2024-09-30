@@ -312,8 +312,9 @@ final_df <- df %>% filter(!grepl('University', geo_name))
 #saveRDS(df_education_district, file = paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/df_education_district_", Sys.Date(), ".RData")) 
 
 ######## LOAD ALL DATA FROM RDATA FILE ######
-# final_df <- readRDS(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/final_df.RData"))
-# df_education_district <- readRDS(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/df_education_district.RData"))
+#### You may need to manually substitute the most recent date for Sys.Date() in the lines below.
+# final_df <- readRDS(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/final_df_", Sys.Date(), ".RData"))
+# df_education_district <- readRDS(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/df_education_district_", Sys.Date(), ".RData"))
 
 # NOTE: when you call final_df in your code chunk(s), rename it before running code on it bc it takes a LONG time to run again...
 # Clean geo names
