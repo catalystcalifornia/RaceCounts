@@ -30,7 +30,7 @@ options(scipen = 100)
 # udpate each yr
 rc_yr <- '2024'
 rc_schema <- 'v6'
-index <- "QA doc: W:\\Project\\RACE COUNTS\\2024_v6\\Composite Index\\QA_Sheet_Composite_Index.docx Includes all Issue area indexes. Composite index z-scores are the average z-scores for performance and disparity across all issue indexes. This data is"
+index <- paste0("Created on ", Sys.Date(), ". QA doc: W:\\Project\\RACE COUNTS\\2024_v6\\Composite Index\\QA_Sheet_Composite_Index.docx Includes all Issue area indexes. Composite index z-scores are the average z-scores for performance and disparity across all issue indexes. This data is")
 
 
 ## Add indexes and arei_county_region_urban_type ------------------------------------------------------
