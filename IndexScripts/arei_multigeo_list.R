@@ -71,7 +71,6 @@ final_multigeo_list <- rbind.fill(multigeo_list, city_multigeo_list) # use rbind
 unloadNamespace("plyr") # unload plyr bc conflicts with dplyr used elsewhere
 
 # clean geo_name column
-# clean place names
 clean_geo_names <- function(x){
   
   x$geo_name <- str_remove(x$geo_name, ", California")
