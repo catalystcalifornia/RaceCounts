@@ -310,7 +310,7 @@ df_screened <- df_calcs %>%
       )
 
 # keep only selected columns and places with non-NA _raw values
-d <- ungroup(df_screened) %>% select(!ends_with("involved")) %>% filter(!is.na(total_raw))  
+d <- ungroup(df_screened) %>% select(!ends_with("involved")) %>% select(!starts_with("nh_twoormor")) %>% filter(!is.na(total_raw))
 
 
 ############## CALC RACE COUNTS STATS ##############
