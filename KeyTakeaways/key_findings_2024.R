@@ -302,7 +302,7 @@ df <- bind_rows(df_city, df_county, df_state) %>% select(
 
 
 # remove records where city name is actually a university
-# v6: there is 1 place like this (University of California-Santa Barbara CDP, California) with 192 rows
+# v6: there is 1 place like this (University of California-Santa Barbara CDP, California) with 200 rows
 final_df <- df %>% filter(!grepl('University', geo_name))
 
 
@@ -607,7 +607,7 @@ rda_race_findings <- rda_race_findings %>% relocate(geo_level, .after = geo_name
 #dbWriteTable(con, c(curr_schema, "arei_findings_races_multigeo"), rda_race_findings, overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
-comment <- paste0("COMMENT ON TABLE ", curr_schema, ".arei_findings_races_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R. Created ", Sys.Date(), ".';",
+comment <- paste0("COMMENT ON TABLE ", curr_schema, ".arei_findings_races_multigeo IS ' Created ", Sys.Date(), ". Findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R.';",
                   "COMMENT ON COLUMN ", curr_schema, ".arei_findings_races_multigeo.finding_type
                          IS 'Categorizes findings: count of best and worst rates by race/geo combo, most disparate indicator by race/geo combo';",
                   "COMMENT ON COLUMN ", curr_schema, ".arei_findings_races_multigeo.src
@@ -817,7 +817,7 @@ findings_places_multigeo <- rbind(rda_places_findings, state_issue_area_findings
 #dbWriteTable(con, c(curr_schema, "arei_findings_places_multigeo"), findings_places_multigeo, overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
-comment <- paste0("COMMENT ON TABLE ", curr_schema, ".arei_findings_places_multigeo IS 'findings for Place pages (API) created using W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R. Created ", Sys.Date(), ".';",
+comment <- paste0("COMMENT ON TABLE ", curr_schema, ".arei_findings_places_multigeo IS ' Created ", Sys.Date(), ". Findings for Place pages (API) created using W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R.';",
                   "COMMENT ON COLUMN ", curr_schema, ".arei_findings_places_multigeo.finding_type
                         IS 'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below outcome, most disp indicator, worst outcome indicator';",
                   "COMMENT ON COLUMN ", curr_schema, ".arei_findings_places_multigeo.src
