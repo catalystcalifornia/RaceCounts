@@ -31,13 +31,26 @@ rc_schema <- "v6"
 # set city population threshold
 pop_threshold <- 10000
 
+# clean place names
+clean_geo_names <- function(x){
+  
+  x$geoname <- str_remove(x$geoname, ", California")
+  x$geoname <- str_remove(x$geoname, " city")
+  x$geoname <- str_remove(x$geoname, " CDP")
+  x$geoname <- str_remove(x$geoname, " town")
+  x$geoname <- gsub(" County)", ")", x$geoname)
+  
+  return(x)
+}
+
+
 # pull in city-district crosswalk and city population data
 crosswalk <- dbGetQuery(con, paste0("SELECT  city_id, city_name, dist_id, district_name, cdscode FROM ", rc_schema, ".arei_city_county_district_table"))
 pop_df <- dbGetQuery(con, paste0("SELECT geoid AS city_id, name AS city_name, total_pop AS city_total_pop FROM ", rc_schema, ".arei_race_multigeo WHERE geolevel = 'place'"))
 
 # Pull in Education city indicators -------------------------------------------------------
 ## These indicators require extra prep bc they are at school district not city level
-# pull in list of tables in racecounts.v5
+# pull in list of tables in racecounts current schema
 rc_list = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(schema = rc_schema))$table, function(x) slot(x, 'name'))))
 
 ## Pull in city (or district) level education indicators
@@ -84,7 +97,7 @@ city_tables_list_screened <- lapply(city_tables_list_join, function(x) x %>% fil
 city_tables_list_screened <- lapply(city_tables_list_screened, function(x) x %>% mutate(city_name.x = ifelse(!is.na(city_name.x), city_name.x, city_name.y))) # fill in missing city names using pop_df city names
 city_tables_list_screened <- lapply(city_tables_list_screened, function(x) x %>% rename(geoid = city_id, geoname = city_name.x)) # rename fields for RC functions
 city_tables_list_final <- lapply(city_tables_list_screened, function(x) x %>% select(-c(city_total_pop, city_name.y))) # drop city pop and dupe city name, add geolevel
-
+city_tables_list_final <- lapply(city_tables_list_screened, function(x) x %>% clean_geo_names()) # clean city names
 
 # Edited RC Functions -------------------------------------------------------------------------
 dist_list <- education_tables_list_final
@@ -92,7 +105,7 @@ city_list <- city_tables_list_final
 
 # edited calc_z function for this script only
 calc_z <- function(x) {
-  #####calculate county disparity z-scores ----
+  #####calculate city disparity z-scores ----
   ## Total/Overall disparity_z score ##
   id_table <- dplyr::select(x, geoid, index_of_disparity)
   avg_id = mean(id_table$index_of_disparity, na.rm = TRUE) #calc avg id and std dev of id
@@ -110,35 +123,25 @@ calc_z <- function(x) {
     pivot_wider(names_from=measure_diff, values_from=dispz)
   x <- x %>% left_join(diff_wide, by="geoid")                           #join new columns back to original table
   
-  #####calculate county performance z-scores
-  ## Total/Overall performance z_scores ## Note the perf_z results are slightly different than pgadmin, must be due to slight methodology differences
-  #tot_table <- dplyr::select(x, geoid, asbest, total_rate)
-  #new chunk#
+  #####calculate city performance z-scores
+  ## Total/Overall performance z_scores 
   tot_table <- dplyr::select(x, geoid, total_rate)
-  #end new chunk#
   avg_tot = mean(tot_table$total_rate, na.rm = TRUE)      #calc avg total_rate and std dev of total_rate
   sd_tot = sd(tot_table$total_rate, na.rm = TRUE)
-  
-  #new chunk#
   asbest_ = min(x$asbest, na.rm=TRUE)
-  #end new chunk# 
-  
+
   if (asbest_ == 'max') {
     tot_table$performance_z <- (tot_table$total_rate - avg_tot) / sd_tot          #calc perf_z scores if MAX is best
   } else
   {
     tot_table$performance_z <- ((tot_table$total_rate - avg_tot) / sd_tot) *-1   #calc perf_z scores if MIN is best
   }
-  #x$performance_z = tot_table$performance_z    #add performance_z to original table
-  
+
   tot_table <- tot_table %>% select(-c(total_rate))
   x <- x %>% left_join(tot_table, by="geoid")                           #join new columns back to original table
   
   ## Raced performance z_scores ##
-  #rates <- dplyr::select(x, geoid, asbest, ends_with("_rate"), -ends_with("_no_rate"), -ends_with("_moe_rate"), -total_rate)  #get geoid, avg, variance, and raced diff columns
-  #new chunk#
   rates <- dplyr::select(x, geoid, ends_with("_rate"), -ends_with("_no_rate"), -ends_with("_moe_rate"), -total_rate)  #get geoid, avg, variance, and raced diff columns
-  #end new chunk#
   avg_rates <- colMeans(rates[,3:ncol(rates)], na.rm = TRUE)                                        #calc average rates for each raced rate
   a <- as.data.frame(avg_rates)                                                                     #convert to data frame
   a$measure_rate  <- c(names(avg_rates))                                                            #create join field
@@ -167,12 +170,9 @@ calc_z <- function(x) {
 
 # edited calc_ranks function for this script only
 calc_ranks <- function(x) {
-  #ranks_table <- dplyr::select(x, geoid, asbest, total_rate, index_of_disparity, disparity_z, performance_z)
-  #new chunk#
   ranks_table <- dplyr::select(x, geoid, total_rate, index_of_disparity, disparity_z, performance_z)
   asbest_ = min(x$asbest, na.rm=TRUE)
-  #end new chunk#
-  
+
   #performance_rank: rank of 1 = best performance
   #if max is best then rank DESC / if min is best, then rank ASC. exclude NULLS.
   if(asbest_ == 'max'){
@@ -220,7 +220,6 @@ calc_ranks <- function(x) {
 
 
 # RC Calcs ----------------------------------------------------------------
-### Will add in disp and perf quartile calcs in later. ### Ref: W:\Project\RACE COUNTS\2023_v5\API\quartiles_quadrants\add_api_table_quadrants_quartiles.R (lines 146-225 and 229-255)
 #calculate DISTRICT z-scores
 dist_tables <- lapply(dist_list, function(x) calc_z(x))
 dist_tables <- lapply(dist_tables, function(x) calc_ranks(x))
@@ -255,8 +254,7 @@ for (i in 1:length(dist_tables)) {
 # Make list of api city table names
 table_names_c <- as.data.frame(names(city_list)) %>% rename('table_name' = 1) %>% mutate(table_name = gsub("arei_", "api_", table_name))
 table_names_c_ = table_names_c[['table_name']]  # convert to character vector
-source <- paste0("This is the screened city or district indicator table used by the API/website. It is based on the arei_ version of the table and contains data for the screened cities only including updated comparative calcs (everything after ID) based on the screened list of cities. Script: W:\\Project\\RACE COUNTS\\", curr_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\IndicatorScripts\\screened_city_stats.R")
-
+source <- paste0("Created on ", Sys.Date(), ". This is the screened city or district indicator table used by the API/website. It is based on the arei_ version of the table and contains data for the screened cities only including updated comparative calcs (everything after ID) based on the screened list of cities. Script: W:\\Project\\RACE COUNTS\\", curr_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\IndicatorScripts\\screened_city_stats.R")
 # loop to export individual tables
 for (i in 1:length(city_tables)) {
   
