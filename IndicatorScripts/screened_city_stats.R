@@ -126,7 +126,7 @@ calc_z <- function(x) {
   ## Raced disparity_z scores ##
   diff <- dplyr::select(x, geoid, avg, index_of_disparity, variance, ends_with("_diff"))          #get geoid, avg, variance, and raced diff columns
   diff <- diff[!is.na(diff$index_of_disparity),]                                           #exclude rows with 2+ raced values, min is best, and lowest rate is 0
-  diff_long <- pivot_longer(diff, 5:ncol(diff), names_to="measure_diff", values_to="diff") %>%   #pivot wide table to long on geoid & variance cols
+  diff_long <- pivot_longer(diff, cols = ends_with("_diff"), names_to="measure_diff", values_to="diff") %>%   #pivot wide table to long on geoid & variance cols
     mutate(dispz=(diff - avg) / sqrt(variance), na.rm = TRUE) %>%                                   #calc disparity z-scores
     mutate(measure_diff=sub("_diff", "_disparity_z", measure_diff))                                #create new column names for disparity z-scores
   diff_wide <- diff_long %>% dplyr::select(geoid, measure_diff, dispz) %>%      #pivot long table back to wide keeping only geoid and new columns
