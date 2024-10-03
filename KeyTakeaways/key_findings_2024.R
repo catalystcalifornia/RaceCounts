@@ -770,11 +770,12 @@ issue_area_findings_type_dict <- list(economy = "Economic Opportunity",
                                       crime = "Crime and Justice",
                                       hbe = "Healthy Built Environment")
 
-issue_area_findings$finding_type <- ifelse(issue_area_findings$issue_area == 'economy', "Economic Opportunity",
-                                           ifelse(issue_area_findings$issue_area == 'health', "Health Care Access",
-                                                  ifelse(issue_area_findings$issue_area == 'crime', "Crime and Justice",
-                                                         ifelse(issue_area_findings$issue_area == 'hbe', "Healthy Built Environment",
-                                                                str_to_title(issue_area_findings$issue_area)))))
+issue_area_findings$finding_type <- case_when(issue_area_findings$issue_area == 'economy' ~ "Economic Opportunity",
+                                              issue_area_findings$issue_area == 'health' ~ "Health Care Access",
+                                              issue_area_findings$issue_area == 'crime' ~ "Crime and Justice",
+                                              issue_area_findings$issue_area == 'hbe' ~ "Healthy Built Environment",
+                                              .default = str_to_title(issue_area_findings$issue_area))
+
 issue_area_findings$src <- "rda"
 
 issue_area_findings$citations <- ""
