@@ -4,7 +4,6 @@
 # Packages ----------------------------------------------------------------
 library(tidyverse)
 library(RPostgreSQL)
-library(sf)
 
 options(scipen=999) # disable scientific notation
 
@@ -329,7 +328,7 @@ race_names <- data.frame(race_generic, long_name)
 
 # Create indicator long name df -------------------------------------------
 ### NOTE: This list may need to be updated or re-ordered. ###
-indicator <- st_read(con, query = paste0("SELECT arei_indicator AS indicator, api_name AS indicator_short, arei_issue_area FROM ", curr_schema, ".arei_indicator_list_cntyst"))
+indicator <- dbGetQuery(con, paste0("SELECT arei_indicator AS indicator, api_name AS indicator_short, arei_issue_area FROM ", curr_schema, ".arei_indicator_list_cntyst"))
 
 # unique education indicators at school district level, for city key takeaways analysis later
 educ_indicators <- filter(indicator, arei_issue_area == 'Education')
@@ -724,8 +723,16 @@ worst_disp_outc <- union(worst_disp3, worst_outc3)
 # Finding 5: Above/Below Average Disparity/Outcome Findings - PLACE PAGE --------------------------------------
 ### This section creates findings for Place page - the summary statements above/below avg disparity/outcome across counties ####
 ## pull composite disparity/outcome z-scores for city and county; add urban type = NA for cities.
-index_county <- st_read(con, query = paste0("SELECT * FROM ", curr_schema, ".arei_composite_index_", curr_yr)) %>% select(county_id, county_name, urban_type, disparity_z, performance_z) %>% rename(geoid = county_id, geo_name = county_name) %>% mutate(geo_level = "county")
-index_city <- st_read(con, query = paste0("SELECT * FROM ", curr_schema, ".arei_composite_index_city_", curr_yr)) %>% select(city_id, city_name, disparity_z, performance_z) %>% rename(geoid = city_id, geo_name = city_name) %>% mutate(urban_type = NA, geo_level = "city")
+index_county <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_composite_index_", curr_yr)) %>% 
+  select(county_id, county_name, urban_type, disparity_z, performance_z) %>% 
+  rename(geoid = county_id, geo_name = county_name) %>% 
+  mutate(geo_level = "county")
+
+index_city <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_composite_index_city_", curr_yr)) %>% 
+  select(city_id, city_name, disparity_z, performance_z) %>% 
+  rename(geoid = city_id, geo_name = city_name) %>% 
+  mutate(urban_type = NA, geo_level = "city")
+
 index_county_city <- rbind(index_county, index_city)       
 index_county_city$geo_name <- ifelse(index_county_city$geo_level == 'county', paste0(index_county_city$geo_name, ' County'), index_county_city$geo_name)
 
