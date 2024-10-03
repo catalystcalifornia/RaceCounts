@@ -604,7 +604,7 @@ rda_race_findings <- rda_race_findings %>% relocate(geo_level, .after = geo_name
 
 
 ## Export postgres table
-#dbWriteTable(con, c(curr_schema, "arei_findings_races_multigeo"), rda_race_findings, overwrite = FALSE, row.names = FALSE)
+dbWriteTable(con, c(curr_schema, "arei_findings_races_multigeo"), rda_race_findings, overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
 comment <- paste0("COMMENT ON TABLE ", curr_schema, ".arei_findings_races_multigeo IS 'findings for Race pages (API) created using W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R. Created ", Sys.Date(), ".';",
@@ -617,7 +617,7 @@ comment <- paste0("COMMENT ON TABLE ", curr_schema, ".arei_findings_races_multig
                   "COMMENT ON COLUMN ", curr_schema, ".arei_findings_races_multigeo.findings_pos
                         IS 'Used to determine the order a set of findings should appear in on RC.org';")
 #print(comment)
-#dbSendQuery(con, comment)
+dbSendQuery(con, comment)
 
 
 # Finding 4: the most disparate and worst outcome indicators - PLACE PAGE ----------
@@ -779,7 +779,7 @@ issue_area_findings$src <- "rda"
 
 issue_area_findings$citations <- ""
 
-#dbWriteTable(con, c(curr_schema, "arei_findings_issues"), issue_area_findings, overwrite = FALSE, row.names = FALSE)
+dbWriteTable(con, c(curr_schema, "arei_findings_issues"), issue_area_findings, overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
 comment <- paste0("COMMENT ON TABLE ", curr_schema, ".arei_findings_issues IS 'findings for Issue Area pages (API) created using W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R. Created ", Sys.Date(), ".';",
@@ -792,7 +792,7 @@ comment <- paste0("COMMENT ON TABLE ", curr_schema, ".arei_findings_issues IS 'f
                   "COMMENT ON COLUMN ", curr_schema, ".arei_findings_issues.findings_pos
                        IS 'Used to determine the order a set of findings should appear in on RC.org';")
 # print(comment)
-# dbSendQuery(con, comment)
+dbSendQuery(con, comment)
 
 
 
@@ -814,7 +814,7 @@ findings_places_multigeo <- rbind(rda_places_findings, state_issue_area_findings
 
 
 ## Create postgres table
-#dbWriteTable(con, c(curr_schema, "arei_findings_places_multigeo"), findings_places_multigeo, overwrite = FALSE, row.names = FALSE)
+dbWriteTable(con, c(curr_schema, "arei_findings_places_multigeo"), findings_places_multigeo, overwrite = FALSE, row.names = FALSE)
 
 # comment on table and columns
 comment <- paste0("COMMENT ON TABLE ", curr_schema, ".arei_findings_places_multigeo IS 'findings for Place pages (API) created using W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R. Created ", Sys.Date(), ".';",
@@ -827,7 +827,7 @@ comment <- paste0("COMMENT ON TABLE ", curr_schema, ".arei_findings_places_multi
                   "COMMENT ON COLUMN ", curr_schema, ".arei_findings_places_multigeo.findings_pos
                         IS 'Used to determine the order a set of findings should appear in on RC.org';")
 #print(comment)
-#dbSendQuery(con, comment)
+dbSendQuery(con, comment)
 
 dbDisconnect(con)  
 
