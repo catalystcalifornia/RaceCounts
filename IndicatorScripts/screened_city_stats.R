@@ -158,7 +158,7 @@ calc_z <- function(x) {
   sd_rates <- sapply(rates[, endsWith(colnames(rates), "_rate")], sd, na.rm = TRUE)                                       #calc std dev for each raced rate
   s <- as.data.frame(sd_rates)                                                                      #convert to data frame
   s$measure_rate  <- c(names(sd_rates))                                                             #create join field
-  rates_long <- pivot_longer(rates,  -geoid, names_to="measure_rate", values_to="rate")           #pivot wide table to long on geoid & variance cols
+  rates_long <- pivot_longer(rates,  cols = ends_with("_rate"), names_to="measure_rate", values_to="rate")           #pivot wide table to long on geoid & variance cols
   rates_long <- left_join(rates_long, a, by="measure_rate")                                             #join avg rates for each raced rate
   rates_long <- left_join(rates_long, s, by="measure_rate")                                             #join std dev for each raced rate
   if (asbest_ == 'max') {
