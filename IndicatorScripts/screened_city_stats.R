@@ -173,7 +173,7 @@ calc_z <- function(x) {
   rates_wide <- rates_long %>% dplyr::select(geoid, measure_perf, perf) %>%          #pivot long table back to wide keeping only geoid and new columns
     pivot_wider(names_from=measure_perf, values_from=perf)
   
-  x <- x %>% left_join(rates_wide, by = "geoid") 
+  x <- x %>% left_join(rates_wide, by = "geoid")                                #join new columns back to original table
   
   return(x)
 }
