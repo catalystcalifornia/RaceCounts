@@ -450,21 +450,34 @@ df_lf2 <- df_lf2 %>%
   mutate(race_generic=replace(race_generic, race_generic=='swanasa', 'swana'))  
 
 #### Note: Code differs from Worst rates to account for when min is best and there is raced rate = 0, so we cannot use disparity_z for min asbest indicators ####
-best_table <- df_lf2 %>% #select(c(geoid, geo_name, issue, indicator, values_count, geo_level, asbest, rate, race_generic, dist_id, district_name, total_enroll)) %>% 
+best_table <- df_lf2 %>% 
   group_by(geoid, geo_level, indicator) %>% 
-  mutate(rk = ifelse(asbest == 'min', dense_rank(rate), ifelse(asbest == 'max', dense_rank(-rate), NA))) %>%  # rank based on which race has best outcome
-  mutate(best_rate = ifelse(rk == 1, race_generic, ""))    # identify race with best rate using rk (ties are ok)
+  mutate(
+    # rank based on which race has best outcome for given indicator (i.e., min or max)
+    rk = case_when(asbest == 'min' ~dense_rank(rate),
+                        asbest == 'max' ~dense_rank(-rate),
+                        .default = NA),
+    # identify race with best rate using rk (ties are ok)
+    best_rate = ifelse(rk == 1, race_generic, ""))  
 
-best_table2 <- subset(df_lf2, values_count > 1) %>%  # filter out indicators with only 1 raced rate 
-  left_join(select(best_table, geoid, indicator, best_rate, geo_level), by = c("geoid", "indicator", "geo_level")) %>%
+# Flagging this code chunk returns many-to-many warning - should add "relationship="many-to-many"" for QA clarification
+best_table2 <- df_lf2 %>%
+  filter(values_count > 1) %>%  # filter out indicators with only 1 raced rate 
+  left_join(
+    select(best_table, geoid, indicator, best_rate, geo_level), by = c("geoid", "indicator", "geo_level")) %>%
   mutate(best = ifelse((race_generic == best_rate), 1, 0)) %>%             
-  group_by(geoid, geo_name, geo_level, race_generic) %>% summarise(count = sum(best, na.rm = TRUE)) %>%
+  group_by(geoid, geo_name, geo_level, race_generic) %>% 
+  summarise(count = sum(best, na.rm = TRUE)) %>%
   left_join(race_names, by = c("race_generic")) %>%
   left_join(bestworst_screen, by = c("geoid", "race_generic"))
 
-best_rate_count <- filter(best_table2, !is.na(rate_count)) %>% mutate(finding_type = 'best count', findings_pos = 1) %>%
-  mutate(finding = ifelse(rate_count > wb_rate_threshold, paste0(geo_name, "'s ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for this analysis.")))
-
+best_rate_count <- best_table2 %>%
+  filter(!is.na(rate_count)) %>% 
+  mutate(finding_type = 'best count', 
+         findings_pos = 1,
+         finding = ifelse(rate_count > wb_rate_threshold, 
+                          paste0(geo_name, "'s ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), 
+                          paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for this analysis.")))
 
 
 ## Bind worst and best tables - RACE PAGE ## ----------------------------------------------
