@@ -281,9 +281,15 @@ df <- bind_rows(df_city, df_county, df_state) %>%
          values_count, geo_level, race_generic)
 
 # remove records where city name is actually a university
-# v6: there is 1 place like this (University of California-Santa Barbara CDP, California) with 192 rows
-final_df <- df %>% filter(!grepl('University', geo_name))
+# v6: there is 1 place like this (University of California-Santa Barbara CDP, California) with 200 rows
+university_check <- df %>%
+  filter(grepl('University', geo_name)) %>%
+  select(geo_name) %>%
+  distinct() %>%
+  pull(geo_name)
 
+final_df <- df %>% 
+  filter(!(geo_name %in% university_check))
 
 ######## NOTE: You MUST re-run the whole script and update the RData file if underlying data changes ###########
 # save df as .RData file, so don't have to re-run each time we update findings text, logic etc.
