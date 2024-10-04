@@ -505,30 +505,31 @@ impact_table <- worst_table2 %>%
   left_join(
     select(impact_screen, geoid, id_count), by = "geoid")
 
-# Check for counties with ties for group with the most worst rates: Amador, Imperial, San Mateo
+# Check for geos with ties for group with the most worst rates: Amador, Imperial, San Mateo
 ties_worst_rate <- impact_table %>%
   group_by(geoid, geo_name, geo_level, count) %>%
-  summarize(max_count = max(count),
-            number_of_ties=n()) %>%
-  ungroup() %>%
-  filter(number_of_ties>1  & count==max_count)
+  filter(n() > 1)
 
 ## the next few lines concatenate the names of the tied groups to prep for findings
-
-impact_table2 <- filter(impact_table, !is.na(id_count)) %>% 
+impact_table2 <- impact_table %>%
+  filter(!is.na(id_count)) %>% 
   group_by(geoid, geo_name, count) %>%
-  mutate(race_count = n()) # count the number of most impacted groups
+  mutate(race_count = n()) %>% # count the number of most impacted groups
+  arrange(long_name) %>% # order long race name alphabetically
+  mutate(group_order = paste0("group_", rank(long_name, ties.method = "first"))) %>% # number the most impacted groups grouped by geo
+  ungroup()
 
-impact_table2 <- impact_table2[order(impact_table2$long_name),] # order long race name alphabetically
-
-impact_table2 <- impact_table2 %>% mutate(group_order = paste0("group_", rank(long_name, ties.method = "first"))) # number the most impacted groups grouped by geo
-
-impact_table_wide <- impact_table2 %>% dplyr::select(geoid, geo_name, geo_level, id_count, race_count, group_order, long_name) %>%      #pivot long table back to wide
-  pivot_wider(names_from=group_order, values_from=long_name)
-
-impact_table_wide <- impact_table_wide %>% group_by(geoid) %>% mutate(long_name2 = ifelse(race_count == 1, group_1, 
-                                                                                          ifelse(race_count == 2, paste0(group_1, " and ", group_2),
-                                                                                                 ifelse(race_count == 3, paste0(group_1, ", ", group_2, ", and ", group_3), '99999')))) %>%
+impact_table_wide <- impact_table2 %>% 
+  select(geoid, geo_name, geo_level, id_count, race_count, group_order, long_name) %>%      #pivot long table back to wide
+  pivot_wider(names_from=group_order, values_from=long_name) %>%
+  group_by(geoid) %>% 
+  mutate(long_name2 = 
+           case_when(
+             race_count == 1 ~ group_1,
+             race_count == 2 ~ paste0(group_1, " and ", group_2),
+             race_count == 3 ~ paste0(group_1, ", ", group_2, ", and ", group_3),
+             race_count == 4 ~ paste0(group_1, ", ", group_2, ", ", group_3, ", and ", group_4),
+             .default = '99999'))  %>%
   select(geoid, geo_name, geo_level, id_count, race_count, long_name2)
 
 most_impacted <- impact_table_wide %>% mutate(finding_type = 'most impacted', 
