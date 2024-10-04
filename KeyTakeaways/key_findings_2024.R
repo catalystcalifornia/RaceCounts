@@ -572,6 +572,11 @@ df_ds <- df_ds %>%
 # data where race_generic == api is duplicated and race_generic is renamed as "asian" and "pacisl"
 df_ds <- api_split(df_ds) 
 
+# rename SWANASA as SWANA for findings purposes
+df_ds <- df_ds %>% 
+  mutate(race_generic=replace(race_generic, race_generic=='swanasa', 'swana'))  
+
+
 aian_ <- most_disp_by_race(df_ds, 'aian')
 
 asian_ <- most_disp_by_race(df_ds, 'asian')
