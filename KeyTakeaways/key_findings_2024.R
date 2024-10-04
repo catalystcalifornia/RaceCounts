@@ -624,7 +624,6 @@ rda_race_findings <- rda_race_findings %>%
          citations = '',
          race = ifelse(race == 'pacisl', 'nhpi', race))  # rename pacisl to nhpi to feed API - In all other tables we use 'pacisl'
 
-
 ## Export postgres table
 dbWriteTable(con, c(curr_schema, "arei_findings_races_multigeo"), rda_race_findings, overwrite = FALSE, row.names = FALSE)
 
@@ -648,7 +647,9 @@ dbSendQuery(con, comment)
 df_3 <- bind_rows(final_df, df_education_district_disparate_final) 
 
 ### This section creates findings for Place page - the most disparate and worst outcome indicators #####
-disp_long <- df_3 %>% filter(race == "total" & geo_level %in% c("county", "city")) %>% select(geoid, geo_name, dist_id, district_name, total_enroll, indicator, disparity_z_score, geo_level) %>% 
+disp_long <- df_3 %>% 
+  filter(race == "total" & geo_level %in% c("county", "city")) %>% 
+  select(geoid, geo_name, dist_id, district_name, total_enroll, indicator, disparity_z_score, geo_level) %>% 
   rename(variable = indicator, value = disparity_z_score)
 
 ### Worst Disparity - PLACE PAGE ----
@@ -659,7 +660,9 @@ disp_final <- disp_long %>%
   mutate(rk = min_rank(-value))
 
 ##### Select only worst/highest disparity indicator per county
-disp_final <- disp_final %>% filter(rk == 1) %>% arrange(geoid) 
+disp_final <- disp_final %>% 
+  filter(rk == 1) %>% 
+  arrange(geoid) 
 
 ##### Rename variable and value fields
 names(disp_final)[names(disp_final) == 'value'] <- 'worst_disp_z'
@@ -667,13 +670,16 @@ names(disp_final)[names(disp_final) == 'variable'] <- 'worst_disp_indicator'
 
 # join to get long indicator names for findings
 worst_disp <- select(disp_final, -c(rk, worst_disp_z)) %>%   # drop rank and z-score fields, join to indicator name equivalency table
-  left_join(indicator, by = c("worst_disp_indicator" = "indicator_short")) %>% rename(long_disp_indicator = indicator)
+  left_join(indicator, by = c("worst_disp_indicator" = "indicator_short")) %>% 
+  rename(long_disp_indicator = indicator)
 
 # Adjust for geos with tied indicators
 worst_disp2 <- worst_disp %>% 
   group_by(geoid,geo_name) %>% 
   mutate(disp_ties = n()) %>%
-  mutate(long_disp_indicator = paste0(long_disp_indicator, collapse = " and ")) %>% select(-c(worst_disp_indicator)) %>% unique() # RC v6: no ties
+  mutate(long_disp_indicator = paste0(long_disp_indicator, collapse = " and ")) %>% 
+  select(-c(worst_disp_indicator)) %>% 
+  unique() # RC v6: no ties
 
 
 # Write findings using ifelse statements
@@ -681,25 +687,30 @@ worst_disp3 <- subset(worst_disp2, !is.na(geo_name)) %>%
   mutate(finding_type = 'worst disparity', finding = paste0(long_disp_indicator, " is the most disparate indicator in ", geo_name, "."), 
          findings_pos = 4) %>% mutate(
            finding = ifelse(
-             arei_issue_area == 'Education' & geo_level == "city",
+             (arei_issue_area == 'Education' & geo_level == "city"),
              paste0(long_disp_indicator, " (", district_name, ") is the most disparate indicator in ", geo_name, "."),
-             finding
-           )
-         ) %>% select(geoid, geo_name, dist_id, district_name, total_enroll, geo_level, finding_type,finding, findings_pos)
+             finding)) %>% 
+  select(geoid, geo_name, dist_id, district_name, total_enroll, geo_level, finding_type,finding, findings_pos)
 
 
 ### Worst Outcome - PLACE PAGE ----
 
 ## Extra step: first identify the worst outcome district per city for each ed indicator, then merge the that district with df for cities
-df_education_district_worst_outcome <- df_education_district %>% filter(!is.na(geoid)) %>% group_by(geoid, race_generic) %>%
-  mutate(rk = dense_rank(performance_z_score)) %>% filter(rk == "1") %>% select(-rk) # RC v6 no ties
+df_education_district_worst_outcome <- df_education_district %>% 
+  filter(!is.na(geoid)) %>% 
+  group_by(geoid, race_generic) %>%
+  mutate(rk = dense_rank(performance_z_score)) %>% 
+  filter(rk == "1") %>% 
+  select(-rk) # RC v6 no ties
 
 # clean geo_name
 df_education_district_worst_outcome_final <- clean_geo_names(df_education_district_worst_outcome)
 
 df_4 <- bind_rows(final_df, df_education_district_worst_outcome_final) 
 
-outc_long <- df_4 %>% filter(race == "total" & geo_level %in% c("county", "city")) %>% select(geoid, geo_name, dist_id, district_name, total_enroll, indicator, performance_z_score, geo_level) %>%
+outc_long <- df_4 %>% 
+  filter(race == "total" & geo_level %in% c("county", "city")) %>% 
+  select(geoid, geo_name, dist_id, district_name, total_enroll, indicator, performance_z_score, geo_level) %>%
   rename(variable = indicator, value = performance_z_score)
 
 #### Rank indicators by perf_z with worst/lowest perf_z = 1
@@ -708,7 +719,9 @@ outc_final <- outc_long %>%
   mutate(rk = min_rank(value))
 
 ##### Select only worst/lowest outcome indicator per county
-outc_final <- outc_final %>% filter(rk == 1) %>% arrange(geoid)
+outc_final <- outc_final %>% 
+  filter(rk == 1) %>% 
+  arrange(geoid)
 
 ##### Rename variable and value fields
 names(outc_final)[names(outc_final) == 'value'] <- 'worst_perf_z'
@@ -716,27 +729,27 @@ names(outc_final)[names(outc_final) == 'variable'] <- 'worst_perf_indicator'
 
 # join to get long indicator names for findings
 worst_outc <- select(outc_final, -c(rk, worst_perf_z)) %>%   # drop rank and z-score fields, join to indicator name equivalency table
-  left_join(indicator, by = c("worst_perf_indicator" = "indicator_short")) %>% rename(long_perf_indicator = indicator)
+  left_join(indicator, by = c("worst_perf_indicator" = "indicator_short")) %>% 
+  rename(long_perf_indicator = indicator)
 
 # Adjust for counties with tied indicators
 worst_outc2 <- worst_outc %>% 
   group_by(geoid, geo_name) %>% 
   mutate(perf_ties = n()) %>%
-  mutate(long_perf_indicator = paste0(long_perf_indicator, collapse = " and ")) %>% select(-c(worst_perf_indicator)) %>% unique() # RC v6: no ties
+  mutate(long_perf_indicator = paste0(long_perf_indicator, collapse = " and ")) %>% 
+  select(-c(worst_perf_indicator)) %>% 
+  unique() # RC v6: no ties
 
 # Write Findings using ifelse statements
-worst_outc3 <- subset(worst_outc2, !is.na(geo_name)) %>%
-  mutate(finding_type = 'worst overall outcome', finding = ifelse(geo_level == "county", 
-                                                                  paste0(long_perf_indicator, " has the worst overall outcome in ", geo_name, "."), 
-                                                                  paste0(long_perf_indicator, " has the worst overall outcome in ", geo_name, ".") 
-  ), 
-  findings_pos = 5) %>% mutate(
-    finding = ifelse(
-      arei_issue_area == 'Education' & geo_level == "city",
-      paste0(long_perf_indicator, " (", district_name, ") has the worst overall outcome in ", geo_name, "."),
-      finding
-    )
-  ) %>% select(geoid, geo_name, dist_id, district_name, total_enroll, geo_level, finding_type, finding, findings_pos)
+worst_outc3 <- worst_outc2 %>%
+  filter(!is.na(geo_name)) %>%
+  mutate(finding_type = 'worst overall outcome', 
+         finding = 
+           case_when(
+             (arei_issue_area == 'Education' & geo_level == "city") ~ paste0(long_perf_indicator, " (", district_name, ") has the worst overall outcome in ", geo_name, "."),
+             .default = paste0(long_perf_indicator, " has the worst overall outcome in ", geo_name, ".")),
+         findings_pos = 5) %>% 
+  select(geoid, geo_name, dist_id, district_name, total_enroll, geo_level, finding_type, finding, findings_pos)
 
 
 # Combine findings into one final df
@@ -756,7 +769,8 @@ index_city <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_compo
   rename(geoid = city_id, geo_name = city_name) %>% 
   mutate(urban_type = NA, geo_level = "city")
 
-index_county_city <- rbind(index_county, index_city)       
+index_county_city <- rbind(index_county, index_city) 
+
 index_county_city$geo_name <- ifelse(index_county_city$geo_level == 'county', paste0(index_county_city$geo_name, ' County'), index_county_city$geo_name)
 
 # Above/Below Avg Disp/Outcome
@@ -767,21 +781,31 @@ avg_statement_df <- index_county_city %>%
          clean_geo_names()
 
 disp_avg_statement <- avg_statement_df %>%
-  mutate(finding_type = 'disparity', finding = ifelse(geo_level == "county", paste0(geo_name, "'s racial disparity across indicators is ", disp_type, " average for California counties."), 
-                                                      paste0(geo_name, "'s racial disparity across indicators is ", disp_type, " average for California cities.")),
-         finding = ifelse(is.na(disp_type), paste0("Data for ", geo_name, " is too limited for this analysis."), finding),
+  mutate(finding_type = 'disparity', 
+         finding = ifelse(geo_level == "county",
+                          paste0(geo_name, "'s racial disparity across indicators is ", disp_type, " average for California counties."), 
+                          paste0(geo_name, "'s racial disparity across indicators is ", disp_type, " average for California cities.")),
+         finding = ifelse(is.na(disp_type), 
+                          paste0("Data for ", geo_name, " is too limited for this analysis."), 
+                          finding),
          findings_pos = 2) %>% 
   select(geoid, geo_name, geo_level, finding_type, finding, findings_pos)
 
 outc_avg_statement <- avg_statement_df %>% 
-  mutate(finding_type = 'outcomes', finding = ifelse(geo_level == "county", paste0(geo_name, "'s overall outcomes across indicators are ", outc_type, " average for California counties."), 
-                                                     paste0(geo_name, "'s overall outcomes across indicators are ", outc_type, " average for California cities.")),
-         finding = ifelse(is.na(outc_type), paste0("Data for ", geo_name, " is too limited for this analysis."), finding),
+  mutate(finding_type = 'outcomes', 
+         finding = ifelse(geo_level == "county", 
+                          paste0(geo_name, "'s overall outcomes across indicators are ", outc_type, " average for California counties."),
+                          paste0(geo_name, "'s overall outcomes across indicators are ", outc_type, " average for California cities.")),
+         finding = ifelse(is.na(outc_type), 
+                          paste0("Data for ", geo_name, " is too limited for this analysis."), 
+                          finding),
          findings_pos = 3) %>% 
   select(geoid, geo_name, geo_level, finding_type, finding, findings_pos) 
 
 ## bind everything together
-worst_disp_outc_ <- worst_disp_outc %>% select(-c(dist_id, district_name, total_enroll))
+worst_disp_outc_ <- worst_disp_outc %>% 
+  select(-c(dist_id, district_name, total_enroll))
+
 rda_places_findings <- rbind(most_impacted, disp_avg_statement, outc_avg_statement, worst_disp_outc_) %>%
   mutate(src = 'rda', citations = '') %>%
   relocate(geo_level, .after = geo_name)
