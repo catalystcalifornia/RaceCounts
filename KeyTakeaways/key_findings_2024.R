@@ -406,22 +406,39 @@ worst_rate_count <- worst_table2 %>%
 ##### It is also different because there are ties for rank 1
 
 ## First, find school district with the best total_rate (overall outcome) per city+indicator combo
-df_education_district_best_outcome <- df_education_district %>% filter(values_count > 1 & !is.na(geoid)) %>% group_by(geoid, indicator, race) %>% 
-  mutate(rk = ifelse(asbest == 'min' & race == 'total', dense_rank(rate), 
-                     ifelse(asbest == 'max' & race == 'total', dense_rank(-rate), NA))) # using dense_rank means there can be ties, use enr as tie-breaker
+df_education_district_best_outcome <- df_education_district %>% 
+  filter(values_count > 1 & !is.na(geoid)) %>% 
+  group_by(geoid, indicator, race) %>% 
+  mutate(rk = case_when((asbest == 'min' & race == 'total') ~ dense_rank(rate),
+                        (asbest == 'max' & race == 'total') ~ dense_rank(-rate),
+                        .default = NA)) # using dense_rank means there can be ties, use enr as tie-breaker
+
 # clean geo_names
 df_education_district_best_outcome_final <- clean_geo_names(df_education_district_best_outcome)
 
 # tie-breaker when 2+ districts tie for best overall outcome for a city+indicator combo
-tiebreaker <- df_education_district_best_outcome_final %>% group_by(geoid, indicator, rk) %>% mutate(ties = ifelse(rk == '1', sum(rk), NA)) # if ties is >1 then there is a tie
-tiebreaker <- filter(tiebreaker, ties > 1) %>% group_by(geoid, indicator) %>% mutate(rk2 = ifelse(ties > 2, rank(-total_enroll), rk)) # break tie based on largest total_enrollment                                                                                     
-df_education_district_best_outcome_final <- df_education_district_best_outcome_final %>% mutate(old_rk = rk) %>% # preserve original ranks with ties
+tiebreaker <- df_education_district_best_outcome_final %>% 
+  group_by(geoid, indicator, rk) %>% 
+  mutate(ties = ifelse(rk == '1', sum(rk), NA)) %>%
+  ungroup() %>%
+  filter(ties > 1) %>% # if ties is >1 then there is a tie
+  group_by(geoid, indicator) %>% 
+  mutate(rk2 = rank(-total_enroll)) # break tie based on largest total_enrollment
+
+df_education_district_best_outcome_final <- df_education_district_best_outcome_final %>% 
+  mutate(old_rk = rk) %>% # preserve original ranks with ties
   left_join(select(tiebreaker, geoid, indicator, dist_id, race, rk2), by = c("geoid", "indicator", "dist_id", "race"))
-df_education_district_best_outcome_final <- df_education_district_best_outcome_final %>% mutate(rk = ifelse(!is.na(rk2), rk2, rk)) %>% select(-c(rk2)) # update rk to reflect tiebreaker
+
+df_education_district_best_outcome_final <- df_education_district_best_outcome_final %>% 
+  mutate(rk = ifelse(!is.na(rk2), rk2, rk)) %>% 
+  select(-c(rk2)) # update rk to reflect tiebreaker
 
 # keep indicator data for the best overall outcome district for each city+indicator combo only
-df_education_district_best_outcome_final <- df_education_district_best_outcome_final %>% group_by(geoid, dist_id, indicator) %>% fill(rk, .direction = "downup") %>%
-  filter(rk == 1) %>% select (-c(rk, old_rk))
+df_education_district_best_outcome_final <- df_education_district_best_outcome_final %>% 
+  group_by(geoid, dist_id, indicator) %>% 
+  fill(rk, .direction = "downup") %>%
+  filter(rk == 1) %>% 
+  select (-c(rk, old_rk))
 
 ## Now, bind this back with the df
 df_lf2 <- bind_rows(final_df, df_education_district_best_outcome_final) 
