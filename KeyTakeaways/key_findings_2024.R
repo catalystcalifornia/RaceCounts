@@ -425,26 +425,29 @@ tiebreaker <- df_education_district_best_outcome_final %>%
   group_by(geoid, indicator) %>% 
   mutate(rk2 = rank(-total_enroll)) # break tie based on largest total_enrollment
 
+# update df_education_district_best_outcome_final with revised ranks
 df_education_district_best_outcome_final <- df_education_district_best_outcome_final %>% 
   mutate(old_rk = rk) %>% # preserve original ranks with ties
-  left_join(select(tiebreaker, geoid, indicator, dist_id, race, rk2), by = c("geoid", "indicator", "dist_id", "race"))
-
-df_education_district_best_outcome_final <- df_education_district_best_outcome_final %>% 
-  mutate(rk = ifelse(!is.na(rk2), rk2, rk)) %>% 
-  select(-c(rk2)) # update rk to reflect tiebreaker
+  left_join(select(tiebreaker, geoid, indicator, dist_id, race, rk2), by = c("geoid", "indicator", "dist_id", "race")) %>%
+  mutate(rk = ifelse(!is.na(rk2), rk2, rk)) # update rk to reflect tiebreaker
 
 # keep indicator data for the best overall outcome district for each city+indicator combo only
 df_education_district_best_outcome_final <- df_education_district_best_outcome_final %>% 
   group_by(geoid, dist_id, indicator) %>% 
   fill(rk, .direction = "downup") %>%
   filter(rk == 1) %>% 
-  select (-c(rk, old_rk))
+  select (-c(rk, old_rk, rk2)) # clean up columns
 
 ## Now, bind this back with the df
 df_lf2 <- bind_rows(final_df, df_education_district_best_outcome_final) 
 df_lf2 <- filter(df_lf2, race != 'total')   # remove total rates bc all findings in this section are raced
 
+# data where race_generic == api is duplicated and race_generic is renamed as "asian" and "pacisl"
 df_lf2 <- api_split(df_lf2) # duplicate api rates as asian and pacisl
+
+# rename SWANASA as SWANA for findings purposes
+df_lf2 <- df_lf2 %>% 
+  mutate(race_generic=replace(race_generic, race_generic=='swanasa', 'swana'))  
 
 #### Note: Code differs from Worst rates to account for when min is best and there is raced rate = 0, so we cannot use disparity_z for min asbest indicators ####
 best_table <- df_lf2 %>% #select(c(geoid, geo_name, issue, indicator, values_count, geo_level, asbest, rate, race_generic, dist_id, district_name, total_enroll)) %>% 
