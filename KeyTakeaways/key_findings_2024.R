@@ -223,8 +223,7 @@ df_county <- df_merged_county %>%
   rename(geoid = county_id, geo_name = county_name)
 
 # State Data Tables -------------------------------------------------------------------
-# pull in list of tables in racecounts current schema
-
+# Note state tables do not have performance z scores
 # filter for only state level indicator tables
 state_list <- rc_list %>%
   filter(grepl(paste0("^arei_.*_state_", curr_yr, "$"), table_name)) %>%
@@ -234,53 +233,52 @@ state_list <- rc_list %>%
 # import all tables on state_list
 state_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", state_list), state_list), DBI::dbGetQuery, conn = con)
 
-
 # create column with indicator name
 state_tables <- map2(state_tables, names(state_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
 
-
-# call columns we want
-
-# you need to pivot wider
+# create a long df of race disparity values from every arei_ state table
 state_tables_disparity <- lapply(state_tables, function(x) x %>% select(state_id, asbest,ends_with("disparity_z"), indicator, values_count))
 
 
-state_disparity <- imap_dfr(state_tables_disparity, ~
-                              .x %>%
+state_disparity <- imap_dfr(state_tables_disparity, ~ .x %>%
                               pivot_longer(cols = ends_with("disparity_z"),
                                            names_to = "race",
-                                           values_to = "disparity_z_score")) %>% mutate(
-                                             race = (ifelse(race == 'disparity_z', 'total', race)),
-                                             race = gsub('_disparity_z', '', race))
+                                           values_to = "disparity_z_score")) %>%
+  mutate(race = (ifelse(race == 'disparity_z', 'total', race)),
+         race = gsub('_disparity_z', '', race))
 
-
+# create a long df of race rates from every arei_ state table
 state_tables_rate <- lapply(state_tables, function(x) x %>% select(state_id, asbest, ends_with("_rate"), indicator, values_count))
 
 state_rate <- imap_dfr(state_tables_rate , ~
                          .x %>%
                          pivot_longer(cols = ends_with("_rate"),
                                       names_to = "race",
-                                      values_to = "rate")) %>% mutate(
-                                        race = (ifelse(race == 'rate', 'total', race)),
-                                        race = gsub('_rate', '', race))
+                                      values_to = "rate")) %>% 
+  mutate(race = (ifelse(race == 'rate', 'total', race)),
+         race = gsub('_rate', '', race))
 
-# merge all 2
-df_merged_state <- state_disparity %>% full_join(state_rate)
+# merge all 2 (disparity, rate) long dfs - note: state tables do not have performance z scores
+df_merged_state <- state_disparity %>% 
+  full_join(state_rate)
 
 # create issue, indicator, geo_level, race generic columns for issue tables
-df_state <- df_merged_state %>% mutate(
-  issue = substring(indicator, 6,9),
-  indicator = substring(indicator, 11),
-  indicator = gsub(paste0('_state_', curr_yr), '', indicator),
-  geo_level = "state",
-  race_generic = gsub('nh_', '', race), # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
-  performance_z_score = NA
-) %>% left_join(arei_race_multigeo_state) %>% rename(geoid = state_id, geo_name = state_name)
+df_state <- df_merged_state %>% 
+  mutate(
+    issue = substring(indicator, 6,9),
+    indicator = substring(indicator, 11),
+    indicator = gsub(paste0('_state_', curr_yr), '', indicator),
+    geo_level = "state",
+    race_generic = gsub('nh_', '', race), # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
+    performance_z_score = NA) %>% 
+  left_join(arei_race_multigeo_state) %>% 
+  rename(geoid = state_id, geo_name = state_name)
 
-# merge city, county, state data
-df <- bind_rows(df_city, df_county, df_state) %>% select(
-  geoid, geo_name, issue, indicator, race, asbest, rate, disparity_z_score, performance_z_score, values_count, geo_level, race_generic)
-
+# merge city, county, state data (educ tables are excluded)
+df <- bind_rows(df_city, df_county, df_state) %>% 
+  select(geoid, geo_name, issue, indicator, race, asbest, 
+         rate, disparity_z_score, performance_z_score, 
+         values_count, geo_level, race_generic)
 
 # remove records where city name is actually a university
 # v6: there is 1 place like this (University of California-Santa Barbara CDP, California) with 192 rows
