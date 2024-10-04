@@ -39,7 +39,8 @@ rc_list <- dbGetQuery(con, rc_list_query)
 city_list <- rc_list %>%
   filter(grepl("^api_", table_name)) %>%
   filter(grepl(paste0("_city_",curr_yr, "$"),table_name)) %>% # remove index table in case already exists
-  arrange(table_name) # alphabetize
+  arrange(table_name) %>% # alphabetize
+  pull(table_name) # converts from df object to list; important for next steps using lapply
 
 # import all tables on city_list
 city_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", city_list), city_list), DBI::dbGetQuery, conn = con)
@@ -47,56 +48,52 @@ city_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", city_l
 # create column with indicator name
 city_tables <- map2(city_tables, names(city_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
 
-# pivot wider
+# create a long df of race disparity values from every api_ city table
 city_tables_disparity <- lapply(city_tables, function(x) x %>% select(city_id, asbest, ends_with("disparity_z"), indicator, values_count))
 
-
-disparity <- imap_dfr(city_tables_disparity, ~
-                        .x %>%
+disparity <- imap_dfr(city_tables_disparity, ~ .x %>%
                         pivot_longer(cols = ends_with("disparity_z"),
                                      names_to = "race",
-                                     values_to = "disparity_z_score")) %>% mutate(
-                                       race = (ifelse(race == 'disparity_z', 'total', race)),
-                                       race = gsub('_disparity_z', '', race))
+                                     values_to = "disparity_z_score")) %>% 
+  mutate(race = (ifelse(race == 'disparity_z', 'total', race)),
+         race = gsub('_disparity_z', '', race))
 
-
-
+# create a long df of race performance/outcome values from every api_ city table
 city_tables_performance <- lapply(city_tables, function(x) x %>% select(city_id, asbest, ends_with("performance_z"), indicator, values_count))
 
 
-performance <- imap_dfr(city_tables_performance, ~
-                          .x %>%
+performance <- imap_dfr(city_tables_performance, ~ .x %>%
                           pivot_longer(cols = ends_with("performance_z"),
                                        names_to = "race",
-                                       values_to = "performance_z_score")) %>% mutate(
-                                         race = (ifelse(race == 'performance_z', 'total', race)),
-                                         race = gsub('_performance_z', '', race))
+                                       values_to = "performance_z_score")) %>% 
+  mutate(race = (ifelse(race == 'performance_z', 'total', race)),
+         race = gsub('_performance_z', '', race))
 
-
+# create a long df of race rates from every api_ city table
 city_tables_rate <- lapply(city_tables, function(x) x %>% select(city_id, asbest, ends_with("_rate"), indicator, values_count))
 
-rate <- imap_dfr(city_tables_rate , ~
-                   .x %>%
+rate <- imap_dfr(city_tables_rate , ~ .x %>%
                    pivot_longer(cols = ends_with("_rate"),
                                 names_to = "race",
-                                values_to = "rate")) %>% mutate(
-                                  race = (ifelse(race == 'rate', 'total', race)),
-                                  race = gsub('_rate', '', race))
+                                values_to = "rate")) %>% 
+  mutate(race = (ifelse(race == 'rate', 'total', race)),
+         race = gsub('_rate', '', race))
 
-
-# merge all 3
-df_merged <- disparity %>% full_join(performance) %>% full_join(rate)
+# merge all 3 (disparity, performance, rate) long dfs
+df_merged <- disparity %>% 
+  full_join(performance) %>% 
+  full_join(rate)
 
 # create issue, indicator, geo_level, race generic columns for issue tables except for education
-df_city <- df_merged %>% mutate(
-  issue = substring(indicator, 5, 8),
-  indicator = substring(indicator, 10),
-  indicator = gsub(paste0("_city_",curr_yr), '', indicator),
-  geo_level = "city",
-  race_generic = gsub('nh_', '', race) # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
-
-) %>% left_join(arei_race_multigeo_city) %>% rename(geoid = city_id, geo_name = city_name)
-
+df_city <- df_merged %>% 
+  mutate(
+    issue = substring(indicator, 5, 8),
+    indicator = substring(indicator, 10),
+    indicator = gsub(paste0("_city_",curr_yr), '', indicator),
+    geo_level = "city",
+    race_generic = gsub('nh_', '', race)) %>%  # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
+  left_join(arei_race_multigeo_city) %>% 
+  rename(geoid = city_id, geo_name = city_name)
 
 # City (District) Education Tables: must be handled separately bc they are school district not city-level ----------------------------------------
 
