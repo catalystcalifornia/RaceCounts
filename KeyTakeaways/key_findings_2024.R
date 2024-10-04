@@ -37,8 +37,7 @@ rc_list <- dbGetQuery(con, rc_list_query)
 # filter for final ("api_") city tables, excluding index tables, and alphabetize table list
 # note: city education tables are handled separately (district tables)
 city_list <- rc_list %>%
-  filter(grepl("^api_", table_name)) %>%
-  filter(grepl(paste0("_city_",curr_yr, "$"),table_name)) %>% # remove index table in case already exists
+  filter(grepl(paste0("^api_.*_city_", curr_yr, "$"), table_name)) %>%
   arrange(table_name) %>% # alphabetize
   pull(table_name) # converts from df object to list; important for next steps using lapply
 
@@ -97,8 +96,7 @@ df_city <- df_merged %>%
 
 # City (District) Education Tables: must be handled separately bc they are school district not city-level ----------------------------------------
 education_list <- rc_list %>%
-  filter(grepl("^api_", table_name)) %>%
-  filter(grepl(paste0("_district_", curr_yr, "$"),table_name)) %>%
+  filter(grepl(paste0("^api_.*_district_", curr_yr, "$"), table_name)) %>%
   arrange(table_name) %>% # alphabetize
   pull(table_name) # converts from df object to list; important for next steps using lapply
 
@@ -164,8 +162,10 @@ df_education_district <- df_merged_education %>%
 # County Data Tables ------------------------------------------------------
 
 # filter for only county level indicator tables, drop all others including api_*_county_ current year tables
-county_list <- filter(rc_list, grepl(paste0("^arei_.*\\county_", curr_yr, "$"), table_name))
-county_list <- county_list[order(county_list$table_name), ] # alphabetize list of state tables, changes df to list the needed format for next step
+county_list <- rc_list %>%
+  filter(grepl(paste0("^arei_.*_county_", curr_yr, "$"), table_name)) %>%
+  arrange(table_name) %>% # alphabetize
+  pull(table_name) # converts from df object to list; important for next steps using lapply
 
 # import all tables on county_list
 county_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", county_list), county_list), DBI::dbGetQuery, conn = con)
@@ -230,8 +230,10 @@ df_county <- df_merged_county %>% mutate(
 # pull in list of tables in racecounts current schema
 
 # filter for only state level indicator tables
-state_list <- filter(rc_list, grepl(paste0("_state_", curr_yr),table_name))
-state_list <- state_list[order(state_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
+state_list <- rc_list %>%
+  filter(grepl(paste0("^arei_.*_state_", curr_yr, "$"), table_name)) %>%
+  arrange(table_name) %>% # alphabetize
+  pull(table_name) # converts from df object to list; important for next steps using lapply
 
 # import all tables on state_list
 state_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", state_list), state_list), DBI::dbGetQuery, conn = con)
