@@ -173,10 +173,7 @@ county_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", coun
 # create column with indicator name
 county_tables <- map2(county_tables, names(county_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
 
-
-# call columns we want
-
-# you need to pivot wider
+# create a long df of race disparity values from every arei_ county table
 county_tables_disparity <- lapply(county_tables, function(x) x %>% select(county_id, asbest, ends_with("disparity_z"), indicator, values_count))
 
 
@@ -184,47 +181,46 @@ county_disparity <- imap_dfr(county_tables_disparity, ~
                                .x %>%
                                pivot_longer(cols = ends_with("disparity_z"),
                                             names_to = "race",
-                                            values_to = "disparity_z_score")) %>% mutate(
-                                              race = (ifelse(race == 'disparity_z', 'total', race)),
-                                              race = gsub('_disparity_z', '', race))
+                                            values_to = "disparity_z_score")) %>% 
+  mutate(race = (ifelse(race == 'disparity_z', 'total', race)),
+         race = gsub('_disparity_z', '', race))
 
-
+# create a long df of race performance/outcome values from every arei_ county table
 county_tables_performance <- lapply(county_tables, function(x) x %>% select(county_id, asbest, ends_with("performance_z"), indicator, values_count))
 
 
-county_performance <- imap_dfr(county_tables_performance, ~
-                                 .x %>%
+county_performance <- imap_dfr(county_tables_performance, ~ .x %>%
                                  pivot_longer(cols = ends_with("performance_z"),
                                               names_to = "race",
-                                              values_to = "performance_z_score")) %>% mutate(
-                                                race = (ifelse(race == 'performance_z', 'total', race)),
-                                                race = gsub('_performance_z', '', race))
+                                              values_to = "performance_z_score")) %>% 
+  mutate(race = (ifelse(race == 'performance_z', 'total', race)),
+         race = gsub('_performance_z', '', race))
 
-
+# create a long df of race rates from every arei_ county table
 county_tables_rate <- lapply(county_tables, function(x) x %>% select(county_id, asbest, ends_with("_rate"), indicator, values_count))
 
-county_rate <- imap_dfr(county_tables_rate , ~
-                          .x %>%
+county_rate <- imap_dfr(county_tables_rate , ~ .x %>%
                           pivot_longer(cols = ends_with("_rate"),
                                        names_to = "race",
-                                       values_to = "rate")) %>% mutate(
-                                         race = (ifelse(race == 'rate', 'total', race)),
-                                         race = gsub('_rate', '', race))
+                                       values_to = "rate")) %>% 
+  mutate(race = (ifelse(race == 'rate', 'total', race)),
+         race = gsub('_rate', '', race))
 
-# merge all 3
-df_merged_county <- county_disparity %>% full_join(county_performance) %>% full_join(county_rate)
+# merge all 3 (disparity, performance, rate) long dfs
+df_merged_county <- county_disparity %>% 
+  full_join(county_performance) %>% 
+  full_join(county_rate)
 
 # create issue, indicator, geo_level, race generic columns for issue tables
-df_county <- df_merged_county %>% mutate(
-  issue = substring(indicator, 6,9),
-  indicator = substring(indicator, 11),
-  indicator = gsub(paste0('_county_', curr_yr), '', indicator),
-  geo_level = "county",
-  race_generic = gsub('nh_', '', race)) %>% # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
+df_county <- df_merged_county %>% 
+  mutate(
+    issue = substring(indicator, 6,9),
+    indicator = substring(indicator, 11),
+    indicator = gsub(paste0('_county_', curr_yr), '', indicator),
+    geo_level = "county",
+    race_generic = gsub('nh_', '', race)) %>% # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
   left_join(arei_race_multigeo_county) %>%
-  rename(geoid = county_id, geo_name = county_name)# %>% mutate(geo_name = paste0(geo_name, " County"))
-
-
+  rename(geoid = county_id, geo_name = county_name)
 
 # State Data Tables -------------------------------------------------------------------
 # pull in list of tables in racecounts current schema
