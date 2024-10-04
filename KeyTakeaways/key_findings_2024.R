@@ -391,8 +391,13 @@ worst_table2 <- df_lf %>%
 
 # NOTE: This df does include findings for non-RC race pg grps, however they won't appear on the site
 wb_rate_threshold <- 5  # suppress findings for race+geo combos with data for fewer than 6 indicators
-worst_rate_count <- filter(worst_table2, !is.na(rate_count)) %>% mutate(finding_type = 'worst count', findings_pos = 2) %>% 
-  mutate(finding = ifelse(rate_count > wb_rate_threshold, paste0(geo_name, "'s ", long_name, " residents have the worst rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for this analysis.")))
+worst_rate_count <- worst_table2 %>%
+  filter(!is.na(rate_count)) %>%
+  mutate(finding_type = 'worst count', 
+         findings_pos = 2,
+         finding = ifelse(rate_count > wb_rate_threshold, 
+                          paste0(geo_name, "'s ", long_name, " residents have the worst rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), 
+                          paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for this analysis."))) 
 
 
 # Part 2: Best rates ---------------------------------------------------
