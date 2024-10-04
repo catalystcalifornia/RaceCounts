@@ -96,68 +96,69 @@ df_city <- df_merged %>%
   rename(geoid = city_id, geo_name = city_name)
 
 # City (District) Education Tables: must be handled separately bc they are school district not city-level ----------------------------------------
-
-education_list <- filter(rc_list_api, grepl(paste0("_district_", curr_yr),table_name))
-education_list <- education_list[order(education_list$table_name), ] # alphabetize list of tables, changes df to list the needed format for next step
-
+education_list <- rc_list %>%
+  filter(grepl("^api_", table_name)) %>%
+  filter(grepl(paste0("_district_", curr_yr, "$"),table_name)) %>%
+  arrange(table_name) %>% # alphabetize
+  pull(table_name) # converts from df object to list; important for next steps using lapply
 
 # import all tables on education_list
 education_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", education_list), education_list), DBI::dbGetQuery, conn = con)
 
 # create column with indicator name
-education_tables <- map2(education_tables, names(education_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
+education_tables <- map2(education_tables, names(education_tables), ~ mutate(.x, indicator = .y))
 
-# call columns we want
-
-# you need to pivot wider
+# create a long df of race disparity values from every api_ district (edu) table
 education_tables_disparity <- lapply(education_tables, function(x) x %>% select(dist_id, district_name, asbest, ends_with("disparity_z"), indicator, values_count))
 
-
-education_disparity <- imap_dfr(education_tables_disparity, ~
-                                  .x %>%
+education_disparity <- imap_dfr(education_tables_disparity, ~ .x %>%
                                   pivot_longer(cols = ends_with("disparity_z"),
                                                names_to = "race",
-                                               values_to = "disparity_z_score")) %>% mutate(
-                                                 race = (ifelse(race == 'disparity_z', 'total', race)),
-                                                 race = gsub('_disparity_z', '', race),
-                                                 district_name = str_trim(district_name, "right"))
+                                               values_to = "disparity_z_score")) %>% 
+  mutate(race = (ifelse(race == 'disparity_z', 'total', race)),
+         race = gsub('_disparity_z', '', race),
+         district_name = str_trim(district_name, "right"))
 
-
+# create a long df of race performance/outcome values from every api_ district (edu) table
 education_tables_performance <- lapply(education_tables, function(x) x %>% select(dist_id, district_name, asbest, ends_with("performance_z"), indicator, values_count))
 
 
-education_performance <- imap_dfr(education_tables_performance, ~
-                                    .x %>%
+education_performance <- imap_dfr(education_tables_performance, ~ .x %>%
                                     pivot_longer(cols = ends_with("performance_z"),
                                                  names_to = "race",
-                                                 values_to = "performance_z_score")) %>% mutate(
-                                                   race = (ifelse(race == 'performance_z', 'total', race)),
-                                                   race = gsub('_performance_z', '', race),
-                                                   district_name = str_trim(district_name, "right"))
+                                                 values_to = "performance_z_score")) %>% 
+  mutate(race = (ifelse(race == 'performance_z', 'total', race)),
+         race = gsub('_performance_z', '', race),
+         district_name = str_trim(district_name, "right"))
 
+# create a long df of race rate values from every api_ district (edu) table
 education_tables_rate <- lapply(education_tables, function(x) x %>% select(dist_id, district_name, asbest, ends_with("_rate"), indicator, values_count))
 
-education_rate <- imap_dfr(education_tables_rate , ~
-                             .x %>%
+education_rate <- imap_dfr(education_tables_rate , ~ .x %>%
                              pivot_longer(cols = ends_with("_rate"),
                                           names_to = "race",
-                                          values_to = "rate")) %>% mutate(
-                                            race = (ifelse(race == 'rate', 'total', race)),
-                                            race = gsub('_rate', '', race),
-                                            district_name = str_trim(district_name, "right"))
+                                          values_to = "rate")) %>% 
+  mutate(race = (ifelse(race == 'rate', 'total', race)),
+         race = gsub('_rate', '', race),
+         district_name = str_trim(district_name, "right"))
 
-df_merged_education <- education_disparity %>% full_join(education_performance) %>% full_join(education_rate)
-
+# merge all 3 (disparity, performance, rate) long dfs
+df_merged_education <- education_disparity %>% 
+  full_join(education_performance) %>% 
+  full_join(education_rate)
 
 # create issue, indicator, geo_level, race generic columns for education table
-df_education_district <- df_merged_education %>% mutate(
-  issue = substring(indicator, 5, 8),
-  indicator = substring(indicator, 10),
-  indicator = gsub(paste0('_district_', curr_yr), '', indicator),
-  geo_level = "city",
-  race_generic = gsub('nh_', '', race)) %>% # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
-  left_join(crosswalk, by = "dist_id", relationship = 'many-to-many') %>% left_join(arei_race_multigeo_city, by = "city_id") %>%
-  filter(!is.na(race) & !grepl('University', city_name)) %>% rename(geoid = city_id, geo_name = city_name) %>%
+df_education_district <- df_merged_education %>% 
+  mutate(
+    issue = substring(indicator, 5, 8),
+    indicator = substring(indicator, 10),
+    indicator = gsub(paste0('_district_', curr_yr), '', indicator),
+    geo_level = "city",
+    race_generic = gsub('nh_', '', race)) %>% # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
+  left_join(crosswalk, by = "dist_id", relationship = 'many-to-many') %>% 
+  left_join(arei_race_multigeo_city, by = "city_id") %>%
+  filter(!is.na(race) & !grepl('University', city_name)) %>% 
+  rename(geoid = city_id, geo_name = city_name) %>%
   select(geoid, geo_name, dist_id, district_name, everything())
 
 # County Data Tables ------------------------------------------------------
