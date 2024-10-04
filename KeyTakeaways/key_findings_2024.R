@@ -563,11 +563,14 @@ most_impacted$geo_name <- gsub(" City", "", most_impacted$geo_name)
 ## Extra step: find most disparate indicator by geo_name and indicator
 
 # we already pulled the most disparate school district for each school in the previous analysis.
-df_ds <- bind_rows(final_df,df_education_district_disparate_final)
+df_ds <- bind_rows(final_df, df_education_district_disparate_final)
 # df_ds %>% filter(is.na(geo_name)) # why do some geo_names in housing don't have a geo_name? Some of them belong to census designated places with very low pop counts-- we'll filter this out later
-df_ds <- filter(df_ds, race != 'total')    # remove total rates bc all findings in this section are raced
-df_ds <- api_split(df_ds) # duplicate api rates as asian and pacisl
 
+df_ds <- df_ds %>%
+  filter(race != 'total')    # remove total rates bc all findings in this section are raced
+
+# data where race_generic == api is duplicated and race_generic is renamed as "asian" and "pacisl"
+df_ds <- api_split(df_ds) 
 
 aian_ <- most_disp_by_race(df_ds, 'aian')
 
@@ -590,26 +593,31 @@ most_disp <- bind_rows(aian_, asian_, black_, latinx_, pacisl_, white_, swana_) 
 # create findings
 n = 5 # indicator_count threshold
 
-most_disp_final <- most_disp %>% mutate(
-  finding = ifelse(indicator_count <= n,     ## Suppress finding if race+geo combo has 5 or fewer indicator disparity_z scores
-                   paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for this analysis."), 
-                   paste0(long_name, " residents face the most disparity with ", indicator, " in ", geo_name, "."))
-) %>% mutate(
-  
-  # add school district name to city education-related findings
-  finding = ifelse(
-    arei_issue_area == 'Education' & !grepl('too limited', finding) & !is.na(district_name), 
-    paste0(long_name, " residents face the most disparity with ", indicator, " (", district_name, ") in ", geo_name, "."),
-    finding),
-  
-  finding_type = 'most disparate', findings_pos = 3) %>%
-  select(geoid, geo_name, geo_level, dist_id, district_name, total_enroll, long_name, race, indicator, indicator_count, finding_type, findings_pos, finding) %>% filter(!is.na(geo_name)) # some geoids don't have geo_names. all of them belong in housing-- for example: Camp Pendleton North. They don't pass the indicator count threshold either way to be included in the finding, so we will remove these. 
+most_disp_final <- most_disp %>% 
+  mutate(
+    finding = 
+      case_when(
+        ## Suppress finding if race+geo combo has 5 or fewer indicator disparity_z scores
+        indicator_count <= n ~ paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for this analysis."),   
+        ## Finding when a geo's most disparate indicator is in education (specified district)
+        (indicator_count > n & arei_issue_area == 'Education' & !is.na(district_name)) ~ paste0(long_name, " residents face the most disparity with ", indicator, " (", district_name, ") in ", geo_name, "."),
+        .default = paste0(long_name, " residents face the most disparity with ", indicator, " in ", geo_name, ".")),
+    finding_type = 'most disparate', findings_pos = 3) %>%
+  select(geoid, geo_name, geo_level, dist_id, district_name, total_enroll, long_name, race, indicator, indicator_count, finding_type, findings_pos, finding) %>% 
+  # some geoids don't have geo_names. all of them belong in housing
+  # for example: Camp Pendleton North. They don't pass the indicator count threshold either way to be included in the finding, so we will remove these. 
+  filter(!is.na(geo_name)) 
 
 
 # Save most_disp, best_rate_counts, worst_rate_counts as 1 df
 rda_race_findings <- bind_rows(most_disp_final, worst_best_counts)
-rda_race_findings <- rda_race_findings %>% relocate(geo_level, .after = geo_name) %>% relocate(finding_type, .after = race) %>% mutate(src = 'rda', citations = '') %>%
-  mutate(race = ifelse(race == 'pacisl', 'nhpi', race))  # rename pacisl to nhpi to feed API - In all other tables we use 'pacisl'
+
+rda_race_findings <- rda_race_findings %>% 
+  relocate(geo_level, .after = geo_name) %>% 
+  relocate(finding_type, .after = race) %>% 
+  mutate(src = 'rda', 
+         citations = '',
+         race = ifelse(race == 'pacisl', 'nhpi', race))  # rename pacisl to nhpi to feed API - In all other tables we use 'pacisl'
 
 
 ## Export postgres table
