@@ -482,18 +482,37 @@ best_rate_count <- best_table2 %>%
 
 ## Bind worst and best tables - RACE PAGE ## ----------------------------------------------
 worst_best_counts <- bind_rows(worst_rate_count, best_rate_count)
-worst_best_counts <- rename(worst_best_counts, race = race_generic) %>% select(-long_name, -rate_count, -count)
+
+worst_best_counts <- rename(worst_best_counts, race = race_generic) %>% 
+  select(-long_name, -rate_count, -count)
 
 
 # Finding 2: Most Impacted Group - PLACE PAGE ---------------------------------------
 
 ### Table counting number of indicators with ID's (multiple raced disp_z scores) per geo, used for screening most impacted later ### 
-impact_screen <- df_lf %>% group_by(geoid, geo_name, indicator) %>% summarise(rate_count = sum(!is.na(disparity_z_score))) 
-impact_screen <- filter(impact_screen, rate_count > 1) %>% group_by(geoid, geo_name) %>% summarise(id_count = n())
+impact_screen <- df_lf %>% 
+  group_by(geoid, geo_name, indicator) %>% 
+  summarise(rate_count = sum(!is.na(disparity_z_score))) %>%
+  ungroup() %>%
+  filter(rate_count > 1) %>% 
+  group_by(geoid, geo_name) %>% 
+  summarise(id_count = n())
 
-impact_table <- worst_table2 %>% select(-rate_count) %>% group_by(geoid, geo_name) %>% top_n(1, count) %>% # get race most impacted by racial disparity by geo
-  left_join(select(impact_screen, geoid, id_count), by = "geoid")
-# 5 counties have ties for group with the most worst rates: Amador, Madera, Mono, San Mateo, Tulare
+impact_table <- worst_table2 %>% 
+  select(-rate_count) %>% 
+  group_by(geoid, geo_name) %>% 
+  top_n(1, count) %>% # get race most impacted by racial disparity by geo
+  left_join(
+    select(impact_screen, geoid, id_count), by = "geoid")
+
+# Check for counties with ties for group with the most worst rates: Amador, Imperial, San Mateo
+ties_worst_rate <- impact_table %>%
+  group_by(geoid, geo_name, geo_level, count) %>%
+  summarize(max_count = max(count),
+            number_of_ties=n()) %>%
+  ungroup() %>%
+  filter(number_of_ties>1  & count==max_count)
+
 ## the next few lines concatenate the names of the tied groups to prep for findings
 
 impact_table2 <- filter(impact_table, !is.na(id_count)) %>% 
