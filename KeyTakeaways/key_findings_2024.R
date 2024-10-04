@@ -302,15 +302,14 @@ final_df <- df %>%
 # df_education_district <- readRDS(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/df_education_district_", Sys.Date(), ".RData"))
 
 # NOTE: when you call final_df in your code chunk(s), rename it before running code on it bc it takes a LONG time to run again...
+
 # Clean geo names
 final_df <- clean_geo_names(final_df)
-
 
 # Get long form race names for findings ------------------------------------------------
 race_generic <- unique(final_df$race_generic)
 long_name <- c("Total", "American Indian / Alaska Native", "Latinx", "Asian", "Black", "Another Race", "Multiracial", "White", "Native Hawaiian / Pacific Islander", "Southwest Asian / North African / South Asian", "Asian / Pacific Islander", "Southwest Asian / North African", "Filipinx")
 race_names <- data.frame(race_generic, long_name)
-
 
 # Create indicator long name df -------------------------------------------
 ### NOTE: This list may need to be updated or re-ordered. ###
@@ -336,7 +335,9 @@ educ_indicators <- filter(indicator, arei_issue_area == 'Education')
 
 ### EXTRA STEP: find the most disparate school district for city+education indicator combo, then merge this with the long df later
 # rank overall district disparity z-scores for each city+indicator combo
-df_education_district_disparate <- df_education_district %>% filter(!is.na(geoid)) %>% group_by(geoid, indicator, race) %>% 
+df_education_district_disparate <- df_education_district %>% 
+  filter(!is.na(geoid)) %>% 
+  group_by(geoid, indicator, race) %>% 
   mutate(rk = ifelse(race == 'total', dense_rank(-disparity_z_score), NA))
 
 # clean geo_names
@@ -347,33 +348,44 @@ df_education_district_disparate_final <- clean_geo_names(df_education_district_d
 #temp <- temp %>% select(geoid, geo_name, indicator, rate) %>% group_by(geoid, indicator) %>% count(rate)
 
 # keep indicator data for the most disparate district for each city+indicator combo only
-df_education_district_disparate_final <- df_education_district_disparate_final %>% group_by(geoid, dist_id, indicator) %>% fill(rk, .direction = "downup") %>%
-  filter(rk == 1) %>% select (-c(rk))
+df_education_district_disparate_final <- df_education_district_disparate_final %>% 
+  group_by(geoid, dist_id, indicator) %>% 
+  fill(rk, .direction = "downup") %>%
+  filter(rk == 1) %>% 
+  select (-c(rk))
 
 # bind most disparate district with main df
 df_lf <- bind_rows(final_df, df_education_district_disparate_final) 
 df_lf <- filter(df_lf, race != 'total')   # remove total rates bc all findings in this section are raced
 
-
-df_lf <- api_split(df_lf) # duplicate/split api rates as asian and pacisl
+# data where race_generic == api is duplicated and race_generic is renamed as "asian" and "pacisl"
+df_lf <- api_split(df_lf) 
 
 # rename SWANASA as SWANA for findings purposes
-df_lf <- df_lf %>% mutate(race_generic=replace(race_generic, race_generic=='swanasa', 'swana'))  
+df_lf <- df_lf %>% 
+  mutate(race_generic=replace(race_generic, race_generic=='swanasa', 'swana'))  
 
 
 ### Table counting number of non-NA rates per race+geo combo, used for screening worst counts later ### 
-bestworst_screen <- df_lf %>% group_by(geoid, race_generic) %>% summarise(rate_count = sum(!is.na(rate)))
+bestworst_screen <- df_lf %>% 
+  group_by(geoid, race_generic) %>% 
+  summarise(rate_count = sum(!is.na(rate)))
 
 
 ### Worst rates - RACE PAGE ###
 worst_table <- df_lf %>% 
-  group_by(geoid, geo_level, indicator) %>% top_n(1, disparity_z_score) %>% # get worst raced disparity z-score by geo+indicator combo
-  rename(worst_rate = race_generic) %>% filter(values_count > 1) # filter out geo+indicator combos with only 1 raced rate
+  group_by(geoid, geo_level, indicator) %>% 
+  top_n(1, disparity_z_score) %>% # get worst raced disparity z-score by geo+indicator combo
+  rename(worst_rate = race_generic) %>% 
+  filter(values_count > 1) # filter out geo+indicator combos with only 1 raced rate
 
+# Flagging this code returns many-to-many warnings, should use "relationship = "many-to-many"" to QA clarification
 worst_table2 <- df_lf %>% 
-  left_join(select(worst_table, geoid, indicator, worst_rate, geo_level), by = c("geoid", "indicator", "geo_level")) %>%
+  left_join(
+    select(worst_table, geoid, indicator, worst_rate, geo_level), by = c("geoid", "indicator", "geo_level")) %>%
   mutate(worst = ifelse((race_generic == worst_rate), 1, 0)) %>% # worst = binary indicating whether the race+geo combo is the worst rate             
-  group_by(geoid, geo_name, geo_level, race_generic) %>% summarise(count = sum(worst, na.rm = TRUE)) %>% # count = num of worst rates for race+geo combo
+  group_by(geoid, geo_name, geo_level, race_generic) %>% 
+  summarise(count = sum(worst, na.rm = TRUE)) %>% # count = num of worst rates for race+geo combo
   left_join(race_names, by = "race_generic") %>%
   left_join(bestworst_screen, by = c("geoid", "race_generic")) 
 
