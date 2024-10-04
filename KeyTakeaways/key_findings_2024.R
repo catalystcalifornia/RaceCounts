@@ -4,6 +4,7 @@
 # Packages ----------------------------------------------------------------
 library(tidyverse)
 library(RPostgreSQL)
+library(xfun)
 
 options(scipen=999) # disable scientific notation
 
@@ -519,6 +520,8 @@ impact_table2 <- impact_table %>%
   mutate(group_order = paste0("group_", rank(long_name, ties.method = "first"))) %>% # number the most impacted groups grouped by geo
   ungroup()
 
+# Create long_name2 that combines race groups tied for most impacted (capped at 3 race groups, anything more is marked '99999')
+# long_name2 is used later to build the most impacted findings statement
 impact_table_wide <- impact_table2 %>% 
   select(geoid, geo_name, geo_level, id_count, race_count, group_order, long_name) %>%      #pivot long table back to wide
   pivot_wider(names_from=group_order, values_from=long_name) %>%
@@ -528,23 +531,27 @@ impact_table_wide <- impact_table2 %>%
              race_count == 1 ~ group_1,
              race_count == 2 ~ paste0(group_1, " and ", group_2),
              race_count == 3 ~ paste0(group_1, ", ", group_2, ", and ", group_3),
-             race_count == 4 ~ paste0(group_1, ", ", group_2, ", ", group_3, ", and ", group_4),
              .default = '99999'))  %>%
   select(geoid, geo_name, geo_level, id_count, race_count, long_name2)
 
-most_impacted <- impact_table_wide %>% mutate(finding_type = 'most impacted', 
-                                              finding = ifelse(id_count > 4 & long_name2 != '99999', 
-                                                               paste0("Across indicators, ", geo_name, " ", long_name2, " residents are most impacted by racial disparity."), 
-                                                               ifelse(id_count > 4 & long_name2 == '99999', 
-                                                                      paste0('There are more than three groups tied for most impacted in ', geo_name, "."), # added finding where 4+ groups tie for 'most impacted' bc finding becomes less meaningful
-                                                                      paste0("Data for residents of ", geo_name, " is too limited for this analysis."))),
-                                              findings_pos = 1)  
+# Find max race count for findings below
+max_race_count <- max(impact_table_wide$race_count)
 
+# Create most impacted findings
+# Findings are generated when a geo has more ids than the max race_count
 
-most_impacted <- most_impacted %>% select(c(geoid, geo_name, geo_level, finding_type, finding, findings_pos))
+most_impacted <- impact_table_wide %>% 
+  mutate(finding_type = 'most impacted',
+         finding = 
+           case_when(
+             (id_count > max_race_count & long_name2 != '99999') ~ paste0("Across indicators, ", geo_name, " ", long_name2, " residents are most impacted by racial disparity."), 
+             (id_count > max_race_count & long_name2 == '99999') ~ paste0('There are more than three groups tied for most impacted in ', geo_name, "."), # added finding where 4+ groups tie for 'most impacted' bc finding becomes less meaningful
+             .default = paste0("Data for residents of ", geo_name, " is too limited for this analysis.")),
+         findings_pos = 1) %>%
+  select(c(geoid, geo_name, geo_level, finding_type, finding, findings_pos)) 
+
 most_impacted$geo_name <- gsub(" County", "", most_impacted$geo_name) 
 most_impacted$geo_name <- gsub(" City", "", most_impacted$geo_name) 
-
 
 
 # Finding 3: Most disparate indicator by race & place - RACE PAGE ---------------------
