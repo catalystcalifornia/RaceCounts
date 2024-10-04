@@ -34,14 +34,12 @@ rc_list <- dbGetQuery(con, rc_list_query)
 
 # City Data Tables --------------------------------------------------------------------
 
-# pull in list of tables in racecounts.v6
-rc_list_api <- filter(rc_list, grepl("api_", table_name)) # filter for only final city tables ("api_" prefix)
-
-# pull in list of tables in racecounts current schema
-
-city_list <- filter(rc_list_api, grepl(paste0("_city_",curr_yr),table_name)) # filter for only current year city-level indicator tables
-city_list <- filter(city_list, !grepl("_index", table_name)) # remove index table in case already exists
-city_list <- city_list[order(city_list$table_name), ] # alphabetize list of state tables, changes df to list the needed format for next step
+# filter for final ("api_") city tables, excluding index tables, and alphabetize table list
+# note: city education tables are handled separately (district tables)
+city_list <- rc_list %>%
+  filter(grepl("^api_", table_name)) %>%
+  filter(grepl(paste0("_city_",curr_yr, "$"),table_name)) %>% # remove index table in case already exists
+  arrange(table_name) # alphabetize
 
 # import all tables on city_list
 city_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", city_list), city_list), DBI::dbGetQuery, conn = con)
