@@ -576,20 +576,20 @@ df_ds <- api_split(df_ds)
 df_ds <- df_ds %>% 
   mutate(race_generic=replace(race_generic, race_generic=='swanasa', 'swana'))  
 
+# Using the most_disp_by_race fn sourced from key_findings_functions.R
+aian_ <- most_disp_by_race(x=df_ds, y='aian')
 
-aian_ <- most_disp_by_race(df_ds, 'aian')
+asian_ <- most_disp_by_race(x=df_ds, y='asian')
 
-asian_ <- most_disp_by_race(df_ds, 'asian')
+black_ <- most_disp_by_race(x=df_ds, y='black')
 
-black_ <- most_disp_by_race(df_ds, 'black')
+latinx_ <- most_disp_by_race(x=df_ds, y='latino')
 
-latinx_ <- most_disp_by_race(df_ds, 'latino')
+pacisl_ <- most_disp_by_race(x=df_ds, y='pacisl')
 
-pacisl_ <- most_disp_by_race(df_ds, 'pacisl')
+white_ <- most_disp_by_race(x=df_ds, y='white')
 
-white_ <- most_disp_by_race(df_ds, 'white')
-
-swana_ <- most_disp_by_race(df_ds, 'swana')
+swana_ <- most_disp_by_race(x=df_ds, y='swana')
 
 most_disp <- bind_rows(aian_, asian_, black_, latinx_, pacisl_, white_, swana_) %>%
   select(geoid, geo_name, dist_id, district_name, total_enroll, race, long_name, indicator_count, ends_with("_ind"), everything())
