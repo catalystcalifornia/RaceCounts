@@ -35,59 +35,53 @@ api_split <- function(x) {
 most_disp_by_race <- function(x, y) {
   # Function to prep raced most_disparate tables 
   
-  # Nested function to pull the column with the max disp_z value ----------------------
-  find_first_max_index_na <- function(row) {
-    
-    head(which(row == max(row, na.rm=TRUE)), 1)[1]
-  }  
-  
-  # filter by race, pivot_wider, select the columns we want, get race long_name
+  # filter by race, pivot_wider, select the columns we want, get race long_name, reorder cols
   z <- x %>% 
-    filter(race_generic == y) %>% mutate(indicator = paste0(indicator, "_ind")) %>% 
+    filter(race_generic == y) %>% 
+    mutate(indicator = paste0(indicator, "_ind")) %>% 
     pivot_wider(names_from = indicator, values_from = disparity_z_score) %>% 
     group_by(geoid, geo_name) %>%  
     fill(ends_with("ind"), dist_id, district_name, total_enroll, .direction = 'updown')  %>% 
     filter(!duplicated(geo_name)) %>% 
-    select(-race) %>% rename(race = race_generic) %>% 
-    select(geoid, geo_name, race, dist_id, district_name, total_enroll, ends_with("ind"), geo_level)
-  
-  
-  z <- z %>% 
+    select(-race) %>% 
+    rename(race = race_generic) %>% 
+    select(geoid, geo_name, race, dist_id, district_name, total_enroll, ends_with("ind"), geo_level) %>% 
     inner_join(race_names, by = c('race' = 'race_generic')) %>% 
     select(geoid, geo_name, race,  dist_id, district_name, total_enroll, long_name, everything()) # add race long names
   
   # count non-null indicators by race/place
   indicator_count_ <- z %>% 
     ungroup() %>% 
-    select(-geo_name:-total_enroll)
+    select(geoid, long_name, ends_with("_ind"), geo_level) %>% 
+    mutate(indicator_count = rowSums(!is.na(select(., ends_with("_ind")))))
   
-  indicator_count_ <- indicator_count_ %>% 
-    mutate(indicator_count = rowSums(!is.na(select(., 3:ncol(indicator_count_)))))
+  # select columns to join back to z
+  indicator_count <- indicator_count_ %>%
+    select(geoid, long_name, indicator_count)
   
-  z$indicator_count <- indicator_count_$indicator_count # add indicator counts by race/place to original df
+  z <- z %>%
+    left_join(indicator_count, by=c("geoid", "long_name")) # add indicator counts by race/place to original df
   
-  # select columns we need
+  # reorder columns
   z <- z %>% 
     select(geoid, geo_name, dist_id, district_name, total_enroll, race, long_name, indicator_count, everything()) 
   
-  # unique indicators that apply to race
+  # get list of _ind cols that apply to race
   indicator_col <- z %>% 
     ungroup() %>% 
-    select(ends_with("_ind"))
+    select(ends_with("_ind")) %>%
+    names()
   
-  indicator_col <- names(indicator_col)
-  
-  # pull the column name with the maximum value
-  z$max_col <- colnames(z[indicator_col]) [
-    apply(
-      z[indicator_col],
-      MARGIN = 1,
-      find_first_max_index_na)
-  ]
+  # Get name of indicator with highest z-score
+  z <- z %>%
+    ungroup() %>%
+    rowwise() %>%
+    mutate(max_col = list(names(z[indicator_col])[which.max(c_across(indicator_col))])) 
   
   z$max_col <- gsub("_ind", "", z$max_col)
   
   ## merge with indicator
+  # Note script using this function must have already created the indicator table
   z <- left_join(z, indicator, by = c("max_col"="indicator_short"))
   
   return(z)
