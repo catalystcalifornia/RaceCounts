@@ -51,7 +51,10 @@ pop_df <- dbGetQuery(con, paste0("SELECT geoid AS city_id, name AS city_name, to
 # Pull in Education city indicators -------------------------------------------------------
 ## These indicators require extra prep bc they are at school district not city level
 # pull in list of tables in racecounts current schema
-rc_list = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con, DBI::Id(schema = rc_schema))$table, function(x) slot(x, 'name'))))
+city_table_query <- paste0("SELECT table_catalog, table_schema, table_name as table, table_type FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE' AND table_catalog = 'racecounts' AND table_schema = '", rc_schema, "' AND table_name like 'arei%' AND (table_name like '%_city_", curr_yr, "' OR table_name like '%_district_", curr_yr, "') order by table_name;")
+
+rc_list = dbGetQuery(con, city_table_query) %>%
+  select(table)
 
 ## Pull in city (or district) level education indicators
 education_list <- filter(rc_list, grepl(paste0("_district_", curr_yr),table))
@@ -79,14 +82,21 @@ education_tables_list_final <- lapply(education_tables_list_final, function(x) u
 # filter for only city level indicator tables
 city_list <- filter(rc_list, grepl(paste0("_city_", curr_yr),table))
 city_list <- filter(city_list, !grepl("index", table)) # filter out index in case there is a prev version in postgres
-city_list <- filter(city_list, !grepl("api_", table))  # filter out api_ tables in case there are prev versions in postgres
+# city_list <- filter(city_list, !grepl("api_", table))  # filter out api_ tables in case there are prev versions in postgres
 city_list <- city_list[order(city_list$table), ] # alphabetize list of tables, changes df to list the needed format for next step
 
 # import all tables on city_list
 city_tables_list <- lapply(setNames(paste0("select * from ", rc_schema, ".", city_list), city_list), DBI::dbGetQuery, conn = con)
 
 # drop unneeded cols, all cols after ID
-city_tables_list_ <- lapply(city_tables_list, function(x) x %>% select(city_id, city_name, ends_with("_raw"), ends_with("_rate"), ends_with("_pop"), asbest, values_count, best, ends_with("_diff"), avg, variance, index_of_disparity))
+city_tables_list_ <- lapply(city_tables_list, function(x) x %>% 
+                              select(city_id, city_name, 
+                                     ends_with("_raw"), 
+                                     ends_with("_rate"), 
+                                     ends_with("_pop"), 
+                                     ends_with("_diff"),
+                                     asbest, values_count, best,  
+                                     avg, variance, index_of_disparity))
 
 # remove cities that are actually universities/colleges: RC v5 there are 6 of them
 city_tables_list_ <- lapply(city_tables_list_, function(x) x %>% filter(!grepl('University', city_name)))
@@ -116,7 +126,7 @@ calc_z <- function(x) {
   ## Raced disparity_z scores ##
   diff <- dplyr::select(x, geoid, avg, index_of_disparity, variance, ends_with("_diff"))          #get geoid, avg, variance, and raced diff columns
   diff <- diff[!is.na(diff$index_of_disparity),]                                           #exclude rows with 2+ raced values, min is best, and lowest rate is 0
-  diff_long <- pivot_longer(diff, 5:ncol(diff), names_to="measure_diff", values_to="diff") %>%   #pivot wide table to long on geoid & variance cols
+  diff_long <- pivot_longer(diff, cols = ends_with("_diff"), names_to="measure_diff", values_to="diff") %>%   #pivot wide table to long on geoid & variance cols
     mutate(dispz=(diff - avg) / sqrt(variance), na.rm = TRUE) %>%                                   #calc disparity z-scores
     mutate(measure_diff=sub("_diff", "_disparity_z", measure_diff))                                #create new column names for disparity z-scores
   diff_wide <- diff_long %>% dplyr::select(geoid, measure_diff, dispz) %>%      #pivot long table back to wide keeping only geoid and new columns
@@ -129,26 +139,26 @@ calc_z <- function(x) {
   avg_tot = mean(tot_table$total_rate, na.rm = TRUE)      #calc avg total_rate and std dev of total_rate
   sd_tot = sd(tot_table$total_rate, na.rm = TRUE)
   asbest_ = min(x$asbest, na.rm=TRUE)
-
+  
   if (asbest_ == 'max') {
     tot_table$performance_z <- (tot_table$total_rate - avg_tot) / sd_tot          #calc perf_z scores if MAX is best
   } else
   {
-    tot_table$performance_z <- ((tot_table$total_rate - avg_tot) / sd_tot) *-1   #calc perf_z scores if MIN is best
+    tot_table$performance_z <- ((tot_table$total_rate - avg_tot) / sd_tot) * -1   #calc perf_z scores if MIN is best
   }
-
+  
   tot_table <- tot_table %>% select(-c(total_rate))
   x <- x %>% left_join(tot_table, by="geoid")                           #join new columns back to original table
   
   ## Raced performance z_scores ##
   rates <- dplyr::select(x, geoid, ends_with("_rate"), -ends_with("_no_rate"), -ends_with("_moe_rate"), -total_rate)  #get geoid, avg, variance, and raced diff columns
-  avg_rates <- colMeans(rates[,3:ncol(rates)], na.rm = TRUE)                                        #calc average rates for each raced rate
+  avg_rates <- colMeans(rates[, endsWith(colnames(rates), "_rate")], na.rm = TRUE)                                        #calc average rates for each raced rate
   a <- as.data.frame(avg_rates)                                                                     #convert to data frame
   a$measure_rate  <- c(names(avg_rates))                                                            #create join field
-  sd_rates <- sapply(rates[,3:ncol(rates)], sd, na.rm = TRUE)                                       #calc std dev for each raced rate
+  sd_rates <- sapply(rates[, endsWith(colnames(rates), "_rate")], sd, na.rm = TRUE)                                       #calc std dev for each raced rate
   s <- as.data.frame(sd_rates)                                                                      #convert to data frame
   s$measure_rate  <- c(names(sd_rates))                                                             #create join field
-  rates_long <- pivot_longer(rates, 3:ncol(rates), names_to="measure_rate", values_to="rate")           #pivot wide table to long on geoid & variance cols
+  rates_long <- pivot_longer(rates,  cols = ends_with("_rate"), names_to="measure_rate", values_to="rate")           #pivot wide table to long on geoid & variance cols
   rates_long <- left_join(rates_long, a, by="measure_rate")                                             #join avg rates for each raced rate
   rates_long <- left_join(rates_long, s, by="measure_rate")                                             #join std dev for each raced rate
   if (asbest_ == 'max') {
