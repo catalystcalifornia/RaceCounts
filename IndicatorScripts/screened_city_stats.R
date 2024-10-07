@@ -17,6 +17,7 @@ for(pkg in packages){
   library(pkg, character.only = TRUE) 
 } 
 
+options(scipen=999) # disable scientific notation
 
 # Load PostgreSQL driver and databases --------------------------------------------------
 # create connection for rda database
@@ -58,7 +59,6 @@ rc_list = dbGetQuery(con, city_table_query) %>%
 
 ## Pull in city (or district) level education indicators
 education_list <- filter(rc_list, grepl(paste0("_district_", curr_yr),table))
-education_list <- filter(education_list, !grepl("api_", table)) # filter out api_ tables in case there are prev versions in postgres
 education_list <- education_list [order(education_list$table), ] # alphabetize list of state tables, changes df to list the needed format for next step
 
 # import all tables on education_list
@@ -82,7 +82,6 @@ education_tables_list_final <- lapply(education_tables_list_final, function(x) u
 # filter for only city level indicator tables
 city_list <- filter(rc_list, grepl(paste0("_city_", curr_yr),table))
 city_list <- filter(city_list, !grepl("index", table)) # filter out index in case there is a prev version in postgres
-# city_list <- filter(city_list, !grepl("api_", table))  # filter out api_ tables in case there are prev versions in postgres
 city_list <- city_list[order(city_list$table), ] # alphabetize list of tables, changes df to list the needed format for next step
 
 # import all tables on city_list
@@ -107,7 +106,7 @@ city_tables_list_screened <- lapply(city_tables_list_join, function(x) x %>% fil
 city_tables_list_screened <- lapply(city_tables_list_screened, function(x) x %>% mutate(city_name.x = ifelse(!is.na(city_name.x), city_name.x, city_name.y))) # fill in missing city names using pop_df city names
 city_tables_list_screened <- lapply(city_tables_list_screened, function(x) x %>% rename(geoid = city_id, geoname = city_name.x)) # rename fields for RC functions
 city_tables_list_final <- lapply(city_tables_list_screened, function(x) x %>% select(-c(city_total_pop, city_name.y))) # drop city pop and dupe city name, add geolevel
-city_tables_list_final <- lapply(city_tables_list_screened, function(x) x %>% clean_geo_names()) # clean city names
+city_tables_list_final <- lapply(city_tables_list_final, function(x) x %>% clean_geo_names()) # clean city names
 
 # Edited RC Functions -------------------------------------------------------------------------
 dist_list <- education_tables_list_final
@@ -249,7 +248,7 @@ View(city_tables)
 # Make list of api district table names
 table_names_d <- as.data.frame(names(dist_list)) %>% rename('table_name' = 1) %>% mutate(table_name = gsub("arei_", "api_", table_name))
 table_names_d_ = table_names_d[['table_name']]  # convert to character vector
-source <- paste0("This is the screened city or district indicator table used by the API/website. It is based on the arei_ version of the table and contains data for the screened cities only including updated comparative calcs (everything after ID) based on the screened list of cities. Script: W:\\Project\\RACE COUNTS\\", curr_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\IndicatorScripts\\screened_city_stats.R")
+source <- paste0("Created on ", Sys.Date(), ". This is the screened city or district indicator table used by the API/website. It is based on the arei_ version of the table and contains data for the screened cities only including updated comparative calcs (everything after ID) based on the screened list of cities. Script: W:\\Project\\RACE COUNTS\\", curr_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\IndicatorScripts\\screened_city_stats.R")
 
 # loop to export individual tables
 for (i in 1:length(dist_tables)) {
