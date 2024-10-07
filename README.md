@@ -1,5 +1,5 @@
 # RACE COUNTS
-### October 2024
+### January 2024
 
 <base target="_blank">
 
@@ -41,15 +41,15 @@ The website [RACECOUNTS.org](https://www.racecounts.org?target=_blank) is one pa
 # About The Data
 
 ## Indicators
-RACE COUNTS includes 47 county/state indicators, and 29 city indicators, across seven issues. The issues include: Crime & Justice, Democracy, Economic Opportunity, Education, Health Care Access, Healthy Built Environment, and Housing. These issues and indicators were selected through a collaborative process with our partners. Find out more about our partners here: [https://www.racecounts.org/about/](https://www.racecounts.org/about/). For each indicator, counties and cities receive a rank for racial disparity and a rank for overall outcomes. The county or city ranked one for disparity is the most racially disparate, while a county or city ranked one for outcomes has the best outcomes. 
+RACE COUNTS includes 46 county/state indicators, and 28 city indicators, across seven issues. The issues include: Crime & Justice, Democracy, Economic Opportunity, Education, Health Care Access, Healthy Built Environment, and Housing. These issues and indicators were selected through a collaborative process with our partners. Find out more about our partners here: [https://www.racecounts.org/about/](https://www.racecounts.org/about/). For each indicator, counties and cities receive a rank for racial disparity and a rank for overall outcomes. The county or city ranked one for disparity is the most racially disparate, while a county or city ranked one for outcomes has the best outcomes. 
 
 ## Indexes
-At county level only, we calculate one index for each of the seven issue indexes including all, or most, indicators in that issue. At both city and county level, we calculate an overall Racial Equity Index combining all indicators. In all indexes, each county and city receives a rank for racial disparity and a rank for overall outcomes. The county or city ranked one for disparity is the most racially disparate, while a county ranked one for outcomes has the best outcomes.
+At county level only, we calculate one index for each of the seven issue indexes including all, or most, indicators in that issue. At city and county level, we calculate an overall Racial Equity Index combining all indicators. In all indexes, each county and city receives a rank for racial disparity and a rank for overall outcomes. The county or city ranked one for disparity is the most racially disparate, while a county ranked one for outcomes has the best outcomes.
 
 ## Data Methodology
 [RACE COUNTS: Indicator Methodology for County and State](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/IndicatorMethodology_CountyState.pdf) <br>
 [RACE COUNTS: Indicator Methodology for City](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/IndicatorMethodology_City.pdf) <br> 
-[RACE COUNTS: Race & Ethnicity Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md) <br>
+[RACE COUNTS: Race & Ethnicity Methodology)](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md) <br>
 
 <!--[RACE COUNTS: Key Takeaways Methodology (2023)](https://github.com/catalystcalifornia/RaceCounts/blob/main/KeyTakeaways/README_Key_Takeaways.md) <br>-->
 
@@ -76,17 +76,15 @@ First, race is incredibly intersectional and RACE COUNTS primarily focuses on th
 
 Second, RACE COUNTS primarily includes data at city, county, and state levels. The county and state results can obscure important trends at sub-county levels.  
 
-Finally, while RACE COUNTS is the most comprehensive compilation of data about racial equity by county in California, clear weaknesses in available data are evident. Data availability in the Democracy issue was particularly challenging for less populous places. The availability of data by race at sub-state levels was challenging across the board, and we created weighted averages to address this issue in some cases such as Lack of Greenspace. 
-
-For more, please see our [RACE COUNTS: Race & Ethnicity Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md).
+Finally, while RACE COUNTS is the most comprehensive compilation of data about racial equity by county in California, clear weaknesses in available data are evident. Data availability in the Democracy issue was particularly challenging for less populous places. The availability of data by race at sub-state levels was challenging across the board, and we created weighted averages to address this issue in some cases such as Lack of Greenspace.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
 ## Contributors
 * [Alexandra Baker, Research & Data Analyst II](https://github.com/bakeralexan)
-* [Alicia Vo, Research & Data Analyst I](https://github.com/avoCC)
 * [Chris Ringewald, Senior Director of Research & Data Analysis](https://github.com/cringewald)
+* [David Segovia, Research & Data Analyst I](https://github.com/davidseg1997)
 * [Elycia Mulholland Graves, Director of Research & Data Analysis](https://github.com/elyciamg)
 * [Hillary Khan, Database Architect Manager](https://github.com/hillarykhan)
 * [Jennifer Zhang, Senior Research & Data Analyst](https://github.com/jzhang514)
