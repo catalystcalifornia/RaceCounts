@@ -239,7 +239,7 @@ View(city_tables)
 # Make list of api district table names
 table_names_d <- as.data.frame(names(dist_list)) %>% rename('table_name' = 1) %>% mutate(table_name = gsub("arei_", "api_", table_name))
 table_names_d_ = table_names_d[['table_name']]  # convert to character vector
-source <- paste0("This is the screened city or district indicator table used by the API/website. It is based on the arei_ version of the table and contains data for the screened cities only including updated comparative calcs (everything after ID) based on the screened list of cities. Script: W:\\Project\\RACE COUNTS\\", curr_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\IndicatorScripts\\screened_city_stats.R")
+source <- paste0("Created on ", Sys.Date(), ". This is the screened city or district indicator table used by the API/website. It is based on the arei_ version of the table and contains data for the screened cities only including updated comparative calcs (everything after ID) based on the screened list of cities. Script: W:\\Project\\RACE COUNTS\\", curr_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\IndicatorScripts\\screened_city_stats.R")
 
 # loop to export individual tables
 for (i in 1:length(dist_tables)) {
