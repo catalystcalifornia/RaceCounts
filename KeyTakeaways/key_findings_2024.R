@@ -1,10 +1,19 @@
 ### Key Takeaways RC v6 ###
 ####### Produces arei_findings_races_multigeo, arei_findings_places_multigeo, and arei_findings_issues tables
 
-# Packages ----------------------------------------------------------------
-library(tidyverse)
-library(RPostgreSQL)
-library(xfun)
+# Set up ----------------------------------------------------------------
+packages <- c("tidyverse", "RPostgreSQL", "xfun", "usethis") 
+
+install_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
+if(length(install_packages) > 0) {
+  install.packages(install_packages)
+} else {
+  print("All required packages are already installed.")
+}
+
+for(pkg in packages){
+  library(pkg, character.only = TRUE)
+}
 
 options(scipen=999) # disable scientific notation
 
@@ -534,19 +543,19 @@ impact_table_wide <- impact_table2 %>%
              .default = '99999'))  %>%
   select(geoid, geo_name, geo_level, id_count, race_count, long_name2)
 
-# Find max race count for findings below
-max_race_count <- max(impact_table_wide$race_count)
+
 
 # Create most impacted findings
-# Findings are generated when a geo has more ids than the max race_count
+# Findings depend on whether a geo has more ids than the min_id_count AND on how many groups are tied for most impacted.
+min_id_count <- 4  # minimum threshold for # of Index of Disparity values a geo must have to get a non-null finding
 
 most_impacted <- impact_table_wide %>% 
   mutate(finding_type = 'most impacted',
          finding = 
            case_when(
-             (id_count > max_race_count & long_name2 != '99999') ~ paste0("Across indicators, ", geo_name, " ", long_name2, " residents are most impacted by racial disparity."), 
-             (id_count > max_race_count & long_name2 == '99999') ~ paste0('There are more than three groups tied for most impacted in ', geo_name, "."), # added finding where 4+ groups tie for 'most impacted' bc finding becomes less meaningful
-             .default = paste0("Data for residents of ", geo_name, " is too limited for this analysis.")),
+             (id_count > min_id_count & long_name2 != '99999') ~ paste0("Across indicators, ", geo_name, " ", long_name2, " residents are most impacted by racial disparity."), 
+             (id_count > min_id_count & long_name2 == '99999') ~ paste0('There are more than three groups tied for most impacted in ', geo_name, "."), # added finding where 4+ groups tie for 'most impacted' bc finding becomes less meaningful
+             .default = paste0("Data for residents of ", geo_name, " is too limited for this analysis.")), # null finding when geo does not meet ID threshold
          findings_pos = 1) %>%
   select(c(geoid, geo_name, geo_level, finding_type, finding, findings_pos)) 
 
@@ -596,7 +605,7 @@ most_disp <- bind_rows(aian_, asian_, black_, latinx_, pacisl_, white_, swana_) 
 
 
 # create findings
-n = 5 # indicator_count threshold
+n <- 5 # minimum # of indicator disparity_z scores threshold
 
 most_disp_final <- most_disp %>% 
   mutate(
@@ -604,9 +613,9 @@ most_disp_final <- most_disp %>%
       case_when(
         ## Suppress finding if race+geo combo has 5 or fewer indicator disparity_z scores
         indicator_count <= n ~ paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for this analysis."),   
-        ## Finding when a geo's most disparate indicator is in education (specified district)
-        (indicator_count > n & arei_issue_area == 'Education' & !is.na(district_name)) ~ paste0(long_name, " residents face the most disparity with ", indicator, " (", district_name, ") in ", geo_name, "."),
-        .default = paste0(long_name, " residents face the most disparity with ", indicator, " in ", geo_name, ".")),
+        ## When a geo's most disparate indicator is in education include district name in finding
+        (indicator_count > n & arei_issue_area == 'Education' & !is.na(district_name)) ~ paste0("In ", geo_name, " (", district_name, "), ", indicator, " is the most disparate indicator for ", long_name, " residents."),
+        .default = paste0("In ", geo_name, ", ", indicator, " is the most disparate indicator for ", long_name, " residents.")),
     finding_type = 'most disparate', findings_pos = 3) %>%
   select(geoid, geo_name, geo_level, dist_id, district_name, total_enroll, long_name, race, indicator, indicator_count, finding_type, findings_pos, finding) %>% 
   # some geoids don't have geo_names. all of them belong in housing
@@ -740,7 +749,7 @@ worst_outc2 <- worst_outc %>%
   select(-c(worst_perf_indicator)) %>% 
   unique() # RC v6: no ties
 
-# Write Findings using ifelse statements
+# Write Findings using case_when statements
 worst_outc3 <- worst_outc2 %>%
   filter(!is.na(geo_name)) %>%
   mutate(finding_type = 'worst overall outcome', 
