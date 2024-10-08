@@ -309,7 +309,7 @@ final_df <- clean_geo_names(final_df)
 
 # Get long form race names for findings ------------------------------------------------
 race_generic <- unique(final_df$race_generic)
-long_name <- c("Total", "American Indian / Alaska Native", "Latinx", "Asian", "Black", "Another Race", "Multiracial", "White", "Native Hawaiian / Pacific Islander", "Southwest Asian / North African / South Asian", "Asian / Pacific Islander", "Southwest Asian / North African", "Filipinx")
+long_name <- c("Total", "American Indian / Alaska Native", "Latinx", "Asian", "Black", "Another Race", "Multiracial", "White", "Native Hawaiian / Pacific Islander", "South West Asian / North African / South Asian", "Asian / Pacific Islander", "South West Asian / North African", "Filipinx")
 race_names <- data.frame(race_generic, long_name)
 
 # Create indicator long name df -------------------------------------------
