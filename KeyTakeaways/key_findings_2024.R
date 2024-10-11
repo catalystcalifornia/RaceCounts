@@ -823,11 +823,12 @@ rda_places_findings <- rbind(most_impacted, disp_avg_statement, outc_avg_stateme
 
 # Finding 6: State-Level issue area findings (manually generated) - CA PLACE PAGE, ISSUE PAGES --------
 
-issue_area_findings <- read.csv(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/RaceCounts/KeyTakeaways/manual_findings_", curr_schema, "_", curr_yr, ".csv"), encoding = "UTF-8", check.names = FALSE)
-colnames(issue_area_findings) <- c("issue_area", "finding", "findings_pos")
+issue_area_findings <- read.csv(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/RaceCounts/KeyTakeaways/manual_findings_", curr_schema, "_", curr_yr, ".csv"), fileEncoding="UTF-8-BOM", check.names = FALSE)
 
-issue_area_findings_type_dict <- dbGetQuery(con, paste0("SELECT api_name, arei_issue_area AS finding_type FROM ", curr_schema, ".arei_issue_list"))
-issue_area_findings <- issue_area_findings %>% left_join(issue_area_findings_type_dict, by = c("issue_area" = "api_name"))
+issue_area_findings_type_dict <- dbGetQuery(con, paste0("SELECT api_name, arei_issue_area AS finding_type FROM ", curr_schema, ".arei_issue_list")) 
+issue_area_findings <- issue_area_findings %>% left_join(issue_area_findings_type_dict, by = c("issue_area" = "api_name")) 
+issue_area_findings$finding_type[issue_area_findings$finding_type=="Crime & Justice"] <- "Crime and Justice"
+
   
 issue_area_findings$src <- "rda"
 
