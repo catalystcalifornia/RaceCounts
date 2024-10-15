@@ -408,7 +408,7 @@ state_table_name <- "arei_crim_use_of_force_state_2023"
 city_table_name <- "arei_crim_use_of_force_city_2023"
 rc_schema <- 'v5'
 
-indicator <- "Annual average number of people injured in Law Enforcement Use of force Incidents per 100,000 People over 6 years. Raw is total number of people injured over 6 years. Note, we use the flipped rates for disparity calcs, but display the regular rates on RC.org. This data is"
+indicator <- paste0("Created on ", Sys.Date(), ". Annual average number of people injured in Law Enforcement Use of force Incidents per 100,000 People over 6 years. Raw is total number of people injured over 6 years. Note, we use the flipped rates for disparity calcs, but display the regular rates on RC.org. This data is")
 source <- "CADOJ 2016-2021 https://openjustice.doj.ca.gov/data"
 
 #send tables to postgres
