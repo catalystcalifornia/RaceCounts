@@ -92,7 +92,7 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
 county_table_name <- paste0("arei_econ_employment_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
 state_table_name <- paste0("arei_econ_employment_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
 city_table_name <- paste0("arei_econ_employment_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
-indicator <- "Employment to Population Rate (%)"                 # See most recent Indicator Methodology for indicator description
+indicator <- paste0("Created on ", Sys.Date(), ". Employment to Population Rate (%)")                 # See most recent Indicator Methodology for indicator description
 start_yr <- curr_yr-4
 source <- paste0(start_yr,"-",curr_yr,"ACS 5-Year Estimates, Table S2301, https://data.census.gov/cedsci/")   # See most recent Indicator Methodology for source info
 

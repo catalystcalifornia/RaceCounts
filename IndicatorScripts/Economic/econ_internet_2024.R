@@ -89,7 +89,7 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
   county_table_name <- paste0("arei_econ_internet_county_", rc_yr)    # See most recent RC Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
   state_table_name <- paste0("arei_econ_internet_state_", rc_yr)      # See most recent RC Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
   city_table_name <- paste0("arei_econ_internet_city_", rc_yr)        # See most recent RC Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
-  indicator <- "Persons with Internet Access (%)"  
+  indicator <- paste0("Created on ", Sys.Date(), ". Persons with Internet Access (%)")  
   start_yr <- curr_yr-4
   # See most recent Indicator Methodology for indicator description
   source <- paste0(start_yr, "-", rc_yr, " ACS 5-Year Estimates, Table S2802, https://data.census.gov/cedsci/")   # See most recent Indicator Methodology for source info
