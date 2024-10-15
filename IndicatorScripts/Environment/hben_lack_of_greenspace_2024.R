@@ -205,8 +205,8 @@ state_table_name <- paste0("arei_hben_lack_of_greenspace_state_",rc_yr)
 city_table_name <- paste0("arei_hben_lack_of_greenspace_city_",rc_yr)
 start_yr <- curr_yr - 4
 
-indicator <- "Impervious Landcover (%) is the weighted average of percentage of impervious land cover out of all land cover by race. Impervious land cover includes roads, roof tops, and parking lots"
-source <- paste0("Multi-Resolution Land Characteristics Consortium, National Land Cover Database (", curr_yr, "), ACS DP05 (", start_yr, "-", curr_yr, "). Created ", Sys.Date())
+indicator <- paste0("Created on ", Sys.Date(), ". Impervious Landcover (%) is the weighted average of percentage of impervious land cover out of all land cover by race. Impervious land cover includes roads, roof tops, and parking lots")
+source <- paste0("Multi-Resolution Land Characteristics Consortium, National Land Cover Database (", curr_yr, "), ACS DP05 (", start_yr, "-", curr_yr, ").")
 
 
 #send tables to postgres
