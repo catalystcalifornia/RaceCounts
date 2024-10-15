@@ -139,7 +139,7 @@ colnames(county_table)[1:2] <- c("county_name", "county_id")
 ### info for postgres tables will auto update ###
 county_table_name <- paste0("arei_hlth_preventable_hospitalizations_county_",rc_yr)      
 state_table_name <- paste0("arei_hlth_preventable_hospitalizations_state_",rc_yr)      
-indicator <- "Preventable Hospitalizations (Rate per 100k)"                         # See most recent Indicator Methodology for indicator description
+indicator <- paste0("Created on ", Sys.Date(), ". Preventable Hospitalizations (Rate per 100k)")                         # See most recent Indicator Methodology for indicator description
 source <- paste0("California Office of Statewide Health Planning and Development OSHPD Patient Discharge Data (", curr_yr, ") http://www.oshpd.ca.gov/")
 
 
