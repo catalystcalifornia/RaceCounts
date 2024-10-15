@@ -214,7 +214,7 @@ county_table_name <- paste0("arei_educ_gr3_",test,"_scores_county_",yr)
 state_table_name <- paste0("arei_educ_gr3_",test,"_scores_state_",yr)
 city_table_name <- paste0("arei_educ_gr3_",test,"_scores_district_",yr)
 
-indicator <- "Students scoring proficient or better on 3rd grade Math (%)"
+indicator <- paste0("Created on ", Sys.Date(), ". Students scoring proficient or better on 3rd grade Math (%)")
 source <- paste0("CAASPP ", curr_yr, " ", dwnld_url)
 
 #send tables to postgres
