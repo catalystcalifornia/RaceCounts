@@ -220,7 +220,7 @@ state_table_name <- "arei_demo_census_participation_state_2023_new"
 city_table_name <- "arei_demo_census_participation_city_2023"
 rc_schema <- 'v5'
 
-indicator <- "The number of households that filled out their 2020 Census questionnaire per 100 households (weighted average total and raced rates). NOTE: _pop fields represent householders not people"
+indicator <- paste0("Created on ", Sys.Date(), ". The number of households that filled out their 2020 Census questionnaire per 100 households (weighted average total and raced rates). NOTE: _pop fields represent householders not people")
 source <- "U.S. Census Bureau (2020) Census response rates and householders by race"
 
 

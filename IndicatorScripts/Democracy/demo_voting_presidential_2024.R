@@ -682,7 +682,7 @@ county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 county_table_name <- "arei_demo_voting_presidential_county_2022"
 state_table_name <- "arei_demo_voting_presidential_state_2022"
 
-indicator <- "Annual average percent of voters voting in presidential elections among eligible voting age population. This data is"
+indicator <- paste0("Created on ", Sys.Date(), ". Annual average percent of voters voting in presidential elections among eligible voting age population. This data is")
 
 source <- "CPS 2012, 2016, and 2020 average https://www.census.gov/topics/public-sector/voting/data.html"
 

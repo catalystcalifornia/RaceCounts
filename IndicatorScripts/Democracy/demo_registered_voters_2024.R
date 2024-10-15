@@ -251,7 +251,7 @@ View(county_table)
 county_table_name <- paste0("arei_demo_registered_voters_county_", rc_yr)
 state_table_name <- paste0("arei_demo_registered_voters_state_", rc_yr)
 
-indicator <- "Annual average percent of registered voters among the citizen voting age population."
+indicator <- paste0("Created on ", Sys.Date(), ". "Annual average percent of registered voters among the citizen voting age population.")
 
 source <- paste0("CPS (", paste(cps_yr, collapse = ", "), ") average https://www.census.gov/topics/public-sector/voting/data.html")
 
