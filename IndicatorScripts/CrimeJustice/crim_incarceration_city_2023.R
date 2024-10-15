@@ -139,7 +139,7 @@ raw_df <- df %>% rename(ct_geoid =  fips_code_2020, total_raw = number_of_people
 
 
 ## merge raw with city weighted averages
-city_wa <- city_wa %>% left_join(raw_df, by = c("geoid" = "place_geoid")) %>% dplyr::relocate(total_raw, .after = geoname) %>% dplyr::relocate(total_rate, .after = total_raw)
+city_wa <- city_wa %>% left_join(raw_df, by = c("geoid" = "place_geoid")) %>% dplyr::relocate(total_rate, .after = geoname) %>% select(-c(total_raw))  # remove total_raw bc should not appear on website
 
 # final df
 d <- city_wa
