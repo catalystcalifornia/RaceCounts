@@ -150,7 +150,7 @@ county_table_name <- paste0("arei_educ_suspension_county_", rc_yr)
 state_table_name <- paste0("arei_educ_suspension_state_", rc_yr)
 city_table_name <- paste0("arei_educ_suspension_district_", rc_yr)
 
-indicator <- "Unduplicated students suspended, cumulative enrollment, and unduplicated suspension rate. This data is"
+indicator <- paste0("Created on ", Sys.Date(), ". Unduplicated students suspended, cumulative enrollment, and unduplicated suspension rate. This data is")
 source <- paste0("CDE ", curr_yr, " https://www.cde.ca.gov/ds/ad/filessd.asp")
 
 #send tables to postgres

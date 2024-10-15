@@ -115,7 +115,7 @@ View(county_table)
 ###info for postgres tables - automatically updates###
 county_table_name <- paste0("arei_crim_perception_of_safety_county_",yr)
 state_table_name <- paste0("arei_crim_perception_of_safety_state_",yr)
-indicator <- "Adults who Feel Safe in Their Neighborhood (%)"
+indicator <- paste0("Created on ", Sys.Date(), ". Adults who Feel Safe in Their Neighborhood (%)")
 source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url)
 
 #send tables to postgres

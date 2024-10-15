@@ -92,7 +92,7 @@ View(county_table)
 ###update info for postgres tables###
 county_table_name <- paste0("arei_crim_incarceration_county_", rc_yr)
 state_table_name <- paste0("arei_crim_incarceration_state_", rc_yr)
-indicator <- "Jail population per 100,000 15 to 64 year olds"
+indicator <- paste0("Created on ", Sys.Date(), ". Jail population per 100,000 15 to 64 year olds")
 source <- paste0("Vera Institute (", curr_yr, ")")
 
 #send tables to postgres

@@ -20,8 +20,14 @@ library(usethis)
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
-############## UPDATE FOR SPECIFIC INDICATOR HERE ##############
+
+### Update these variables each year ###
 curr_yr = 2022 # you MUST UPDATE each year
+rc_yr <- '2024'
+rc_schema <- 'v6'
+
+
+### Variables that do not need updates ###
 cv_threshold = 40         
 pop_threshold = 100       
 asbest = 'max'            
@@ -86,13 +92,13 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
 ############### COUNTY, STATE, CITY METADATA  ##############
 
 ###update info for postgres tables###
-county_table_name <- "arei_hous_homeownership_county_2024"      # See most recent RC Workflow SQL Views for table name (remember to update year)
-state_table_name <- "arei_hous_homeownership_state_2024"        # See most recent RC Workflow SQL Views for table name (remember to update year)
-city_table_name <- "arei_hous_homeownership_city_2024"          # See most recent RC Workflow SQL Views for table name (remember to update year)
-indicator <- "Owner-Occupied Housing Units (%)"                 # See most recent Indicator Methodology for indicator description
+county_table_name <- paste0("arei_hous_homeownership_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
+state_table_name <- paste0("arei_hous_homeownership_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
+city_table_name <- paste0("arei_hous_homeownership_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
 start_yr <- curr_yr-4
-source <- "2018-2022 ACS 5-Year Estimates, Tables B25003B-I, https://data.census.gov/cedsci/"   # See most recent Indicator Methodology for source info
-rc_schema <- "v6"
+
+indicator <- paste0("Created on ", Sys.Date(), ". Owner-Occupied Housing Units (%)")                 # See most recent Indicator Methodology for indicator description
+source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, Tables B25003B-I, https://data.census.gov/cedsci/")   # See most recent Indicator Methodology for source info
 
 
 ####### SEND TO POSTGRES #######

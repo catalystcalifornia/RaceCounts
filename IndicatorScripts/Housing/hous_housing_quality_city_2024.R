@@ -301,7 +301,7 @@ View(city_table)
 city_table_name <- paste0("arei_hous_housing_quality_city_", rc_yr)
 start_yr <- curr_yr-4
 
-indicator <- "Average percent of households that lack kitchen, plumbing, and heat in comparison to total households."
-source <- paste0("American Community Survey 5-Year Estimates (", start_yr,"-",curr_yr, ") Tables B25048, B25052, B25003B-I, B25040. Created ", Sys.Date(), " W:/Project/RACE COUNTS/2024_v6/Housing/Documentation/QA_Housing_Quality_City.docx")
+indicator <- paste0("Created on ", Sys.Date(), ". Average percent of households that lack kitchen, plumbing, and heat in comparison to total households.")
+source <- paste0("American Community Survey 5-Year Estimates (", start_yr,"-",curr_yr, ") Tables B25048, B25052, B25003B-I, B25040. W:/Project/RACE COUNTS/2024_v6/Housing/Documentation/QA_Housing_Quality_City.docx")
 
 # city_to_postgres(city_table)

@@ -182,7 +182,7 @@ View(county_table)
 county_table_name <- paste0("arei_econ_connected_youth_county_", rc_yr)
 state_table_name <- paste0("arei_econ_connected_youth_state_", rc_yr)
 start_yr <- curr_yr - 4
-indicator <- "Connected Youth out of all Youth (%). Connected Youth are those ages 16-24 who are in school and/or employed. PUMAs contained by 1 county and PUMAs with 60%+ of their area contained by 1 county are included in the calcs, we also screened by pop and CV. White, Black, Asian, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN and NHPI are Latinx-inclusive so they are also included in Latinx counts. AIAN, SWANA, and NHPI include AIAN, SWANA, and NHPI Alone and in Combo, so non-Latinx AIAN, SWANA, and NHPI in combo are also included in Two or More. This data is"
+indicator <- paste0("Created on ", Sys.Date(), ". Connected Youth out of all Youth (%). Connected Youth are those ages 16-24 who are in school and/or employed. PUMAs contained by 1 county and PUMAs with 60%+ of their area contained by 1 county are included in the calcs, we also screened by pop and CV. White, Black, Asian, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN and NHPI are Latinx-inclusive so they are also included in Latinx counts. AIAN, SWANA, and NHPI include AIAN, SWANA, and NHPI Alone and in Combo, so non-Latinx AIAN, SWANA, and NHPI in combo are also included in Two or More. This data is")
 source <- paste0("ACS PUMS (", start_yr, "-", curr_yr, ")")
 
 #send tables to postgres
