@@ -1,5 +1,5 @@
 # RACE COUNTS: Race & Ethnicity Methodology
-### Fall 2023
+### October 2024
 
 <base target="_blank">
 
@@ -40,12 +40,22 @@ In RACE COUNTS, we measure outcomes, racial disparity, and population impacts fo
 
 We use one simplified set of terms for the RACE COUNTS website and publications, with a few exceptions. We have standard labels and definitions for each of those groups that we use in our calculations, or match as closely as possible given data limitations. We selected the terms and definitions listed below as our standard based on conversations with our partners and advocates from these communities.
 
-<img src="https://github.com/catalystcalifornia/RaceCounts/blob/main/images/race_labels.png" alt="race labels">
+| Race  | One Race or In Combination | Latinx Inclusion |
+| :---------- | :------------ | :-------- |
+| American Indian / Alaska Native | Alone or in combination with another race  | Includes |
+| Asian | Alone | Excludes |
+| Black | Alone | Excludes |
+| Filipinx | Alone | Excludes |
+| Latinx | Alone or in combination with another race  | Includes |
+| Native Hawaiian / Pacific Islander | Alone or in combination with another race  | Includes |
+| Southwest Asian / North African | Alone or in combination with another race  | Includes |
+| White | Alone | Excludes |
+| Another Race | Alone | Excludes |
+| Multiracial | Alone or in combination with another race  | Excludes |
 
-There are instances where we use different terms, or definitions, due to considerations like the preferences of our partners on a specific project or data limitations.
+There are instances where we use different terms, or definitions, due to considerations like the preferences of our partners on a specific project or data considerations.
 
-<!-- Need to add in City Methodology doc later -->
-The specific definition of each race / ethnicity for each indicator can be found in the [County & State Indicator Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/IndicatorMethodology_CountyState.pdf) document.
+The specific definition of each race / ethnicity for each indicator can be found in the [Indicator Methodology documents](https://github.com/catalystcalifornia/RaceCounts/tree/main/Methodology).
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -56,9 +66,13 @@ There are three main data source limitations in relation to data cut by race: va
 
 Examples:
 * American Community Survey tables do include many that are cut by race/ethnicity. However, while these tables provide separate statistics for non-Latinx White residents and all White residents (Latinx and non-Latinx combined) more often than for they do not do the same for other groups.
+
 * California Department of Education data includes statistics for Filipinx students, while most other data sources do not include disaggregated data for Filipinx people. At the same time, their data includes a much more limited definition of American Indian / Alaska Natives and Native Hawaiian / Pacific Islanders than our standard RACE COUNTS definitions do. They include only those who identify as either of those two groups alone, not in combination with another group, and also exclude Latinxs from those groups.
 
 * California Department of Justice and others include statistics for a combined Asian and Pacific Islander group that masks varied experiences.
+
+* Public data collection systematically erases Southwest Asian / North African (SWANA) people by grouping them as White, though many do not identify that way. In addition, inconsistent definitions of SWANA lead to questions around data reliability and comparisons.
+
 * Other datasets, such as American Community Survey Public Use Microdata (PUMS) include rich detail allowing us to calculate statistics for our standard RACE COUNTS race/ethnicity groupings.
 
 Reliability of data is often low for groups that have smaller populations such as American Indian / Alaska Natives due to data collectors having inadequate sample sizes. As a result, we do our best to strike a balance between including data for as many groups as possible, while also only presenting statistics that we are confident are strong enough for advocacy and policymaking. At times this may mean that we suppress data for one or more groups.
@@ -67,7 +81,7 @@ Reliability of data is often low for groups that have smaller populations such a
 
 
 ## Race Pages on RACECOUNTS Website
-We currently have Race pages for Asian, American Indian / Alaska Native, Black, Latinx, and Native Hawaiian / Pacific Islander Californians on the website. These groups have data for most RACE COUNTS indicators for many places. We do not have pages for other groups including Another Race, Multiracial, Filipinx and more. The Another Race and Multiracial groups can be hard to define and often include people with very different lived experiences, making it less meaningful to compare across indicators. Additional groups with unique experiences, such as Filipinx Californians or those with origins in the Middle East, Southwest Asia and North Africa (MENA or SWANA) are not represented on a race page due to limited data availability. At the same time, we are always working to expand our methodologies and include data for some of the groups without Race pages on the Place and Issue pages on the website.
+We currently have Race pages for Asian, American Indian / Alaska Native, Black, Latinx, and Native Hawaiian / Pacific Islander Californians on the website. These groups have data for most RACE COUNTS indicators for many places. We do not have pages for other groups including Southwest Asian / North African, Another Race, Multiracial, Filipinx and more. The Another Race and Multiracial groups can be hard to define and often include people with very different lived experiences, making it less meaningful to compare across indicators. Additional groups with unique experiences, such as Filipinx Californians or those with origins in the Middle East, Southwest Asia and North Africa (MENA or SWANA) are not represented on a race page due to data availability issues. At the same time, we are always working to expand our methodologies and include data for some of the groups without Race pages on the Place and Issue pages on the website.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
