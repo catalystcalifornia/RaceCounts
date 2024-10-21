@@ -294,7 +294,7 @@ View(county_table)
 county_table_name <- paste0("arei_hlth_low_birthweight_county_",rc_yr)
 state_table_name <- paste0("arei_hlth_low_birthweight_state_",rc_yr)
 
-indicator <- "Percentage of infants born at low birthweight (less than 2,500 grams or about 5lbs. 5oz) of all live births, by race/ethnicity of mother. This data is"
+indicator <- paste0("Created on ", Sys.Date(), ". Percentage of infants born at low birthweight (less than 2,500 grams or about 5lbs. 5oz) of all live births, by race/ethnicity of mother. This data is")
 source <- paste0("US Department of Health and Human Services, Centers for Disease Control and Prevention (CDC), National Center for Health Statistics, Division of Vital Statistics, CDC WONDER Online Database (",curr_yr,"): https://wonder.cdc.gov/natality-expanded-current.html")
 
 #send tables to postgres

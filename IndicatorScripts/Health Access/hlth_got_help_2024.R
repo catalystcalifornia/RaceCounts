@@ -115,7 +115,7 @@ View(county_table)
 ###info for postgres tables - automatically updates###
 county_table_name <- paste0("arei_hlth_got_help_county_",yr)
 state_table_name <- paste0("arei_hlth_got_help_state_",yr)
-indicator <- "Adults who Got Help for Mental/Emotional or Alcohol/Drug Issues (%)"
+indicator <- paste0("Created on ", Sys.Date(), ". Adults who Got Help for Mental/Emotional or Alcohol/Drug Issues (%)")
 source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url)
 
 #send tables to postgres

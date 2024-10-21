@@ -176,7 +176,7 @@ view(county_table)
 county_table_name <- paste0("arei_hlth_life_expectancy_county_", rc_yr)
 state_table_name <- paste0("arei_hlth_life_expectancy_state_", rc_yr)
 
-indicator <- "The number of years a baby can be expected to live if they experience current age-specific mortality rates throughout their life. This data is"
+indicator <- paste0("Created on ", Sys.Date(), ". The number of years a baby can be expected to live if they experience current age-specific mortality rates throughout their life. This data is")
 
 source <- paste0("from the ",rc_yr," Robert Wood Johnson Foundation County Health Rankings that use ",curr_yr," life exp data. 
 https://www.countyhealthrankings.org/health-data/california/data-and-resources (and for state raced data only - https://www.cdph.ca.gov/Programs/OPP/CDPH%20Document%20Library/California-State-of-Public-Health-Summary-Report-2024.pdf). QA Doc: W:/Project/RACE COUNTS/2024_v6/Health Access/QA_Life_Expectancy_2024.docx")

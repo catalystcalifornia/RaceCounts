@@ -139,7 +139,7 @@ raw_df <- df %>% rename(ct_geoid =  fips_code_2020, total_raw = number_of_people
 
 
 ## merge raw with city weighted averages
-city_wa <- city_wa %>% left_join(raw_df, by = c("geoid" = "place_geoid")) %>% dplyr::relocate(total_raw, .after = geoname) %>% dplyr::relocate(total_rate, .after = total_raw)
+city_wa <- city_wa %>% left_join(raw_df, by = c("geoid" = "place_geoid")) %>% dplyr::relocate(total_rate, .after = geoname) %>% select(-c(total_raw))  # remove total_raw bc should not appear on website
 
 # final df
 d <- city_wa
@@ -174,8 +174,8 @@ View(city_table)
 city_table_name <- "arei_crim_incarceration_city_2023"
 rc_schema <- 'v5'
 
-indicator <- "Number of people in prison in 2020 - weighted average by race"
-source <- "NOTE: This is a different source than the county/state incarceration indicator. Prison Policy Org https://www.prisonpolicy.org/origin/ca/2020/tract.html. Created 7-11-23"
+indicator <- paste0("Created on ", Sys.Date(), ". Number of people in prison in 2020 - weighted average by race")
+source <- "NOTE: This is a different source than the county/state incarceration indicator. Prison Policy Org https://www.prisonpolicy.org/origin/ca/2020/tract.html."
 
 #send to postgres
 #city_to_postgres(city_table)

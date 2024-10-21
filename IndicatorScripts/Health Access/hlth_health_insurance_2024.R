@@ -86,7 +86,7 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
 county_table_name <- "arei_hlth_health_insurance_county_2024"      # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
 state_table_name <- "arei_hlth_health_insurance_state_2024"        # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
 city_table_name <- "arei_hlth_health_insurance_city_2024"         # See RC 2022 Workflow/v3 2021 SQL Views for table name (remember to update year to 2022)
-indicator <- "Uninsured Population (%)"                         # See Indicator Methodology 2021 for indicator description
+indicator <- paste0("Created on ", Sys.Date(), ". Uninsured Population (%)")                         # See Indicator Methodology 2021 for indicator description
 start_yr <- curr_yr-4
 source <- "2018-2022 ACS 5-Year Estimates, Table S2701, https://data.census.gov/cedsci/"   # See Indicator Methodology 2021 for source info
 rc_schema <- "v6"

@@ -96,7 +96,7 @@ state_table_name <- paste0("arei_hous_overcrowded_state_", rc_yr)
 city_table_name <- paste0("arei_hous_overcrowded_city_", rc_yr)          
 start_yr <- curr_yr -4
 
-indicator <- "Overcrowded Housing Units (%) (> 1 person per room)"                         # See most recent Indicator Methodology for indicator description
+indicator <- paste0("Created on ", Sys.Date(), ". Overcrowded Housing Units (%) (> 1 person per room)")                         # See most recent Indicator Methodology for indicator description
 source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, Tables B25014B-I, https://data.census.gov/cedsci/")
 
 ####### SEND TO POSTGRES #######

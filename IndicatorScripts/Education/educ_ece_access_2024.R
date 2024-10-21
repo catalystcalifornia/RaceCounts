@@ -238,7 +238,7 @@ View(county_table)
 ### update info for postgres tables - automatically updates based on variables at top of script ###
 county_table_name <- paste0("arei_educ_ece_access_county_",yr)
 state_table_name <- paste0("arei_educ_ece_access_state_",yr)
-indicator <- "ECE Access"
+indicator <- paste0("Created on ", Sys.Date(), ". ECE Access")
 source <- paste0("CCCRRN https://rrnetwork.org/ and AIR ELNAT https://elneedsassessment.org/ (", curr_yr, ")")
 
 #send tables to postgres

@@ -340,8 +340,8 @@ View(city_table)
 county_table_name <- paste0("arei_hous_subprime_county_", rc_yr)
 state_table_name <- paste0("arei_hous_subprime_state_", rc_yr)
 city_table_name <- paste0("arei_hous_subprime_city_", rc_yr)
-indicator <- paste0("Number of higher priced Loans Per 100 Loans Originated from ", hmda_yr, ". Subgroups with fewer than ", threshold, " loans originated are excluded")
-source <- paste0("HMDA historic Data: https://www.consumerfinance.gov/data-research/hmda/historic-data/, however Subprime data is not available here. Created ", Sys.Date())
+indicator <- paste0("Created on ", Sys.Date(), ". Number of higher priced Loans Per 100 Loans Originated from ", hmda_yr, ". Subgroups with fewer than ", threshold, " loans originated are excluded")
+source <- paste0("HMDA historic Data: https://www.consumerfinance.gov/data-research/hmda/historic-data/, however Subprime data is not available here.")
 
 
 #send to postgres

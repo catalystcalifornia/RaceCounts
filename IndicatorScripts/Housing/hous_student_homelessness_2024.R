@@ -140,7 +140,7 @@ county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "count
 county_table_name <- paste0("arei_hous_student_homelessness_county_", rc_yr)
 state_table_name <- paste0("arei_hous_student_homelessness_state_", rc_yr)
 
-indicator <- "Student homelessness rates. Data for groups with enrollment under 50 are excluded from the calculations. Homelessness rate calculated as a percent of enrollment for each group"
+indicator <- paste0("Created on ", Sys.Date(), ". Student homelessness rates. Data for groups with enrollment under 50 are excluded from the calculations. Homelessness rate calculated as a percent of enrollment for each group")
 source <- paste0("CDE ", curr_yr, " https://www.cde.ca.gov/ds/ad/fileshse.asp")
 
 #send tables to postgres

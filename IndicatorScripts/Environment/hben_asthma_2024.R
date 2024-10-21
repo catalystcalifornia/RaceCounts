@@ -115,7 +115,7 @@ View(county_table)
 ###info for postgres tables - automatically updates###
 county_table_name <- paste0("arei_hben_asthma_county_",yr)
 state_table_name <- paste0("arei_hben_asthma_state_",yr)
-indicator <- "People ever Diagnosed with Asthma (%)"
+indicator <- paste0("Created on ", Sys.Date(), ". People ever Diagnosed with Asthma (%)")
 source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url)
 
 #send tables to postgres

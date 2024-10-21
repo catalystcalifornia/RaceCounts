@@ -163,7 +163,7 @@ state_table_name <- "arei_educ_chronic_absenteeism_state_2024"
 city_table_name <- "arei_educ_chronic_absenteeism_district_2024"
 rc_schema <- "v6"
 
-indicator <- "Chronic Absenteeism Eligible Cumulative Enrollment, Chronic Absenteeism Count, and Chronic Absenteeism Rate. This data is"
+indicator <- paste0("Created on ", Sys.Date(), ". Chronic Absenteeism Eligible Cumulative Enrollment, Chronic Absenteeism Count, and Chronic Absenteeism Rate. This data is")
 
 source <- "CDE 2022-23 https://www.cde.ca.gov/ds/ad/filesabd.asp"
 

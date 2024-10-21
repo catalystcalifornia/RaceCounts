@@ -234,7 +234,7 @@ state_table_name <- "arei_educ_staff_diversity_state_2023"
 city_table_name <- "arei_educ_staff_diversity_district_2023"
 rc_schema <- "v5"
 
-indicator <- "Staff and Teacher Diversity Count and Rate. This data is"
+indicator <- paste0("Created on ", Sys.Date(), ". Staff and Teacher Diversity Count and Rate. This data is")
 source <- "CDE 2018-2019 https://www.cde.ca.gov/ds/ad/filesabd.asp"
 
 # send tables to postgres

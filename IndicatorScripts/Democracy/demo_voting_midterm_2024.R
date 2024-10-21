@@ -263,7 +263,7 @@ county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 county_table_name <- paste0("arei_demo_voting_midterm_county_", rc_yr)
 state_table_name <- paste0("arei_demo_voting_midterm_state_", rc_yr)
 
-indicator <- "Annual average percent of voters voting in midterm elections among eligible voting age population. This data is"
+indicator <- paste0("Created on ", Sys.Date(), ". Annual average percent of voters voting in midterm elections among eligible voting age population. This data is")
 source <- paste0("CPS (", paste(cps_yr, collapse = ", "), ") average https://www.census.gov/topics/public-sector/voting/data.html")
 
 #to_postgres(county_table, state_table)

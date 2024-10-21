@@ -1,5 +1,7 @@
 #### SCREENED Composite Index (z-score) for RC v6 ####
-#### Same script as W:\Project\RACE COUNTS\2024_v6\Composite Index\composite_index_city_2024_draft.R EXCEPT this script uses "api_" tables and exports the unscreened index table
+#### Same script as W:\Project\RACE COUNTS\2024_v6\Composite Index\composite_index_city_2024_draft.R
+####### EXCEPT this script uses "api_" tables and exports the screened index table
+######### and the source for the composite_index_city_calcs.R script is your Personal local github folder NOT the Main local Github folder
 
 #install packages if not already installed
 packages <- c("tidyverse","RPostgreSQL","sf","here","usethis")  

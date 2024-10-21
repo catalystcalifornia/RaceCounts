@@ -188,7 +188,7 @@ View(county_table)
 ###update info for postgres tables###
 county_table_name <- paste0("arei_hous_housing_quality_county_", rc_yr)
 state_table_name <- paste0("arei_hous_housing_quality_state_", rc_yr)
-indicator <- "The percentage of low-quality housing units out of all housing units (lack of available kitchen, heating, or plumbing) by race of head of household. PUMAs contained by 1 county and PUMAs with 60%+ of their area contained by 1 county are included in the calcs. We also screened by pop (100) and CV (35%). White, Black, Asian, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN and NHPI are Latinx-inclusive so they are also included in Latinx counts. AIAN, SWANA, and NHPI include AIAN, SWANA, and NHPI Alone and in Combo, so non-Latinx AIAN and NHPI in combo are also included in Two or More. This data is"
+indicator <- paste0("Created on ", Sys.Date(), ". The percentage of low-quality housing units out of all housing units (lack of available kitchen, heating, or plumbing) by race of head of household. PUMAs contained by 1 county and PUMAs with 60%+ of their area contained by 1 county are included in the calcs. We also screened by pop (100) and CV (35%). White, Black, Asian, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN and NHPI are Latinx-inclusive so they are also included in Latinx counts. AIAN, SWANA, and NHPI include AIAN, SWANA, and NHPI Alone and in Combo, so non-Latinx AIAN and NHPI in combo are also included in Two or More. This data is")
 source <- paste0("ACS PUMS (", start_yr, "-", curr_yr, ")")
 #send tables to postgres
 to_postgres()

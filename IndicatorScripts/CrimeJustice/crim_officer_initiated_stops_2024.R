@@ -425,7 +425,7 @@ county_table_name <- paste0("arei_crim_officer_initiated_stops_county_", rc_yr)
 state_table_name <- paste0("arei_crim_officer_initiated_stops_state_", rc_yr)
 city_table_name <- paste0("arei_crim_officer_initiated_stops_city_", rc_yr)
 
-indicator <- paste0("Officer initiated stops per 1,000 people. Raw is total number of officer initiated stops. Note: City data is based only on the largest agency in that city. In addition, stops are assigned to the geography where the law enforcement agency is located, not where the stop occurred. This data is")
+indicator <- paste0("Created on ", Sys.Date(), ". Officer initiated stops per 1,000 people. Raw is total number of officer initiated stops. Note: City data is based only on the largest agency in that city. In addition, stops are assigned to the geography where the law enforcement agency is located, not where the stop occurred. This data is")
 source <- paste0("CADOJ RIPA ",curr_yr, " https://openjustice.doj.ca.gov/data")
 
 # #send tables to postgres

@@ -293,7 +293,7 @@ View(city_table)
 county_table_name <- paste0("arei_hous_foreclosure_county_", rc_yr)
 state_table_name <- paste0("arei_hous_foreclosure_state_", rc_yr)
 city_table_name <- paste0("arei_hous_foreclosure_city_", rc_yr)
-indicator <- "Foreclosures per 10k owner households by race (WA). The data is"
+indicator <- paste0("Created on ", Sys.Date(), ". Foreclosures per 10k owner households by race (WA). The data is")
 source <- paste0("DataQuick (", curr_yr, "), purchased from DQNews and raced via weighted average using ACS ", curr_yr, " data")
 
 #send tables to postgres
