@@ -172,6 +172,20 @@ city_index <- unique(city_index) %>% select(city_id, city_name, all_indicators_d
                                     healthy_built_environment_disp_z, healthy_built_environment_perf_z, health_care_access_disp_z, health_care_access_perf_z, 
                                     housing_disp_z, housing_perf_z, region, county_id, county_name, total_pop, disparity_z_quartile, performance_z_quartile) %>% arrange(-disparity_z)
 
+# clean city_name column
+clean_geo_names <- function(x){
+  
+  x$city_name <- str_remove(x$city_name, ", California")
+  x$city_name <- str_remove(x$city_name, " city")
+  x$city_name <- str_remove(x$city_name, " CDP")
+  x$city_name <- str_remove(x$city_name, " town")
+  x$city_name <- gsub(" County", "", x$city_name)
+  
+  return(x)
+}
+
+city_index <- clean_geo_names(city_index)
+
 print("Composite index calculated.")
 
 

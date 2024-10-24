@@ -120,7 +120,7 @@ View(county_table)
 county_table_name <- paste0("arei_econ_real_cost_measure_county_", rc_yr)
 state_table_name <- paste0("arei_econ_real_cost_measure_state_", rc_yr)
 
-indicator <- paste0("Households above the real cost of living (data from ", data_yr, "). This data is")
+indicator <- paste0("Created on ", Sys.Date(), ". Households above the real cost of living (data from ", data_yr, "). This data is")
 source <- paste0("United Ways of California ", curr_yr, " ", dwnld_url)
 
 #to_postgres(county_table,state_table)

@@ -19,7 +19,7 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
 # define variables used in several places that must be updated each year
-curr_yr <- "2011-22"  # must keep same format
+curr_yr <- "2011_22"  # must keep same format
 dwnld_url <- "https://ask.chis.ucla.edu/"
 rc_schema <- "v6"
 yr <- "2024"
@@ -115,7 +115,7 @@ View(county_table)
 ###info for postgres tables - automatically updates###
 county_table_name <- paste0("arei_hben_asthma_county_",yr)
 state_table_name <- paste0("arei_hben_asthma_state_",yr)
-indicator <- "People ever Diagnosed with Asthma (%)"
+indicator <- paste0("Created on ", Sys.Date(), ". People ever Diagnosed with Asthma (%)")
 source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url)
 
 #send tables to postgres

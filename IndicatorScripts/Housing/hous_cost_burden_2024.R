@@ -23,6 +23,13 @@ library(sf)
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
+
+# update each year: variables used throughout script
+rc_schema <- "v6"
+rc_yr <- '2024'
+data_yrs <- c("2016", "2017", "2018", "2019") # all data yrs included in analysis
+
+
 ############# Pull rda_shared_data table ######################
 dict <- read_excel("W:/Data/Housing/HUD/CHAS/2016-2020//CHAS-data-dictionary-16-20.xlsx", sheet = "Table 9")
 
@@ -326,14 +333,13 @@ city_table <- city_table %>%
 # View(city_table)
 
 ###update info for postgres tables###
-county_table_name <- "arei_hous_cost_burden_renter_county_2024"
-state_table_name <- "arei_hous_cost_burden_renter_state_2024"
-city_table_name <- "arei_hous_cost_burden_renter_city_2024"
-rc_schema <- "v6"
+county_table_name <- paste0("arei_hous_cost_burden_renter_county_", rc_yr)
+state_table_name <- paste0("arei_hous_cost_burden_renter_state_", rc_yr)
+city_table_name <- paste0("arei_hous_cost_burden_renter_city_", rc_yr)
 
-indicator <- "The percentage of rented housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. This data is"
-source <- "HUD CHAS (2016-2020) for city, county, and state from https://www.huduser.gov/portal/datasets/cp.html#data_2006-2020"
-
+indicator <- paste0("Created on ", Sys.Date(), ". The percentage of rented housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Another includes another race and multiracial, and is Latinx-exclusive. This data is")
+source <- paste0("HUD CHAS (", paste(data_yrs, collapse = ", "), ") https://www.huduser.gov/portal/datasets/cp.html")
+                                                                                                                   
 # #send tables to postgres
 #to_postgres(county_table, state_table)
 #city_to_postgres()

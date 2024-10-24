@@ -667,7 +667,7 @@ state_table_name <- "arei_demo_diversity_of_electeds_state_2023"
 city_table_name <- "arei_demo_diversity_of_electeds_city_2023"
 rc_schema <- 'v5'
 
-indicator <- "Annual average number of elected official of a race per 100k constituents of the same race. This data is"
+indicator <- paste0("Created on ", Sys.Date(), ". Annual average number of elected official of a race per 100k constituents of the same race. This data is")
 source <- "Who Leads Us Campaign (county & state: 2017, 2019, and 2020; city: 2019, 2020)  https://wholeads.us/research, American Community Survey 5-Year Estimates, Table DP05 (2016-2020)"
 
 #send tables to postgres

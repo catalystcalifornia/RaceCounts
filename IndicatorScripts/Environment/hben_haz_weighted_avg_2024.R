@@ -205,8 +205,8 @@ state_table_name <- paste0("arei_hben_haz_weighted_avg_state_", rc_yr)
 city_table_name <- paste0("arei_hben_haz_weighted_avg_city_", rc_yr)
 start_yr <- acs_yr - 4
 
-indicator <- "Proximity to Hazards Score (sum of weighted EnviroStor cleanup sites within buffered distances to populated blocks of census tracts)"
-source <- paste0("CalEnviroScreen ", ces_v, " (", curr_yr, ") https://oehha.ca.gov/calenviroscreen/report/calenviroscreen-40, ACS DP05 (", start_yr, "-", acs_yr, "). Created ", Sys.Date())
+indicator <- paste0("Created on ", Sys.Date(), ". Proximity to Hazards Score (sum of weighted EnviroStor cleanup sites within buffered distances to populated blocks of census tracts)")
+source <- paste0("CalEnviroScreen ", ces_v, " (", curr_yr, ") https://oehha.ca.gov/calenviroscreen/report/calenviroscreen-40, ACS DP05 (", start_yr, "-", acs_yr, ").")
 
 #send tables to postgres
 to_postgres(county_table, state_table)

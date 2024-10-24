@@ -287,7 +287,7 @@ View(county_table)
 ###update info for postgres tables###
 county_table_name <- paste0("arei_econ_living_wage_county_", rc_yr)
 state_table_name <- paste0("arei_econ_living_wage_state_", rc_yr)
-indicator <- "Percent of workers earning above living wage ($15.50). Includes workers ages 18-64 who were at work last week or were employed but not at work.  Excludes those with zero earnings and self-employed or unpaid family workers. PUMAs contained by 1 county and PUMAs with 60%+ of their area contained by 1 county are included in the calcs. We also screened by pop (400) and CV (30%). White, Black, Asian, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN and NHPI are Latinx-inclusive so they are also included in Latinx counts. AIAN, SWANA, and NHPI include AIAN, SWANA, and NHPI Alone and in combo, so non-Latinx AIAN and NHPI in combo are also included in Two or More. This data is"
+indicator <- paste0("Created on ", Sys.Date(), ". Percent of workers earning above living wage ($15.50). Includes workers ages 18-64 who were at work last week or were employed but not at work.  Excludes those with zero earnings and self-employed or unpaid family workers. PUMAs contained by 1 county and PUMAs with 60%+ of their area contained by 1 county are included in the calcs. We also screened by pop (400) and CV (30%). White, Black, Asian, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN and NHPI are Latinx-inclusive so they are also included in Latinx counts. AIAN, SWANA, and NHPI include AIAN, SWANA, and NHPI Alone and in combo, so non-Latinx AIAN and NHPI in combo are also included in Two or More. This data is")
 source <- paste0("ACS PUMS (", start_yr, "-", curr_yr, ")")
 
 #send tables to postgres

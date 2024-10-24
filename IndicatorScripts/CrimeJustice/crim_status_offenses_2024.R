@@ -137,7 +137,7 @@ View(county_table)
 county_table_name <- paste0("arei_crim_status_offenses_county_", rc_yr)
 state_table_name <- paste0("arei_crim_status_offenses_state_", rc_yr)
 
-indicator <- paste0("Annual average number of arrests for status offenses over ", num_yrs, " years. Raw is also ", num_yrs, "-yr annual average. This data is")
+indicator <- paste0("Created on ", Sys.Date(), ". Annual average number of arrests for status offenses over ", num_yrs, " years. Raw is also ", num_yrs, "-yr annual average. This data is")
 source <- paste0("CADOJ ", curr_yr, " ", dwnld_url)
 
 #to_postgres(county_table,state_table)

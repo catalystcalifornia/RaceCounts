@@ -155,7 +155,7 @@ city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" 
 county_table_name <- paste0("arei_educ_hs_grad_county_",rc_yr)
 state_table_name <- paste0("arei_educ_hs_grad_state_",rc_yr)
 city_table_name <- paste0("arei_educ_hs_grad_district_",rc_yr)
-indicator <- "Four-year adjusted cohort graduation rate"
+indicator <- paste0("Created on ", Sys.Date(), ". Four-year adjusted cohort graduation rate")
 source <- paste0("CDE ",curr_yr," https://www.cde.ca.gov/ds/ad/filesacgr.asp")
 
 
