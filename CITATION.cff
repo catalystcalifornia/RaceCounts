@@ -1,30 +1,8 @@
-authors:
-- family-names: "Baker"
-  given-names: "Alexandra"
-  orcid: "https://github.com/bakeralexan"
-- family-names: "Forouzan"
-  given-names: "Leila"
-  orcid: "https://github.com/lforouzan"
-- family-names: "Khan"
-  given-names: "Hillary"
-  orcid: "https://github.com/hillarykhan"
-- family-names: "Khan"
-  given-names: "Maria"
-  orcid: "https://github.com/mariatkhan"  
-- family-names: "Mullholland-Graves"
-  given-names: "Elycia"
-  orcid: "https://github.com/elyciamg"
-- family-names: "Ringewald"
-  given-names: "Chris"
-  orcid: "https://github.com/cringewald"
-- family-names: "Segovia"
-  given-names: "David"
-  orcid: "https://github.com/davidseg1997"
-- family-names: "Zhang"
-  given-names: "Jennifer"
-  orcid: "https://github.com/jzhang514"
-title: "RaceCounts"
-version: 4.0
+message: "If you use this software, please cite it as below."
+authors: 
+- family-names: "RACE COUNTS"
+orcid: "https://www.racecounts.org/"          
+title: "racecounts.org"
 # doi: 10.5281/zenodo.1234
-date-released: 2022-12-18
-url: "https://github.com/advancementprojectca-rda/RaceCounts"
+date-released: 2024-10-18
+url: "https://github.com/catalystcalifornia/RaceCounts"
