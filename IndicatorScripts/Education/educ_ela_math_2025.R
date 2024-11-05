@@ -21,7 +21,8 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
 # define variables used in several places that must be updated each year
-curr_yr <- "2023_24"  # must keep same format
+curr_yr <- "2023_24"  # CAASPP year - must keep same format
+acs_yr <- 2022        # county geoid year - match as closely to curr_yr
 dwnld_url <- "https://caaspp-elpac.ets.org/caaspp/ResearchFileListSB?ps=true&lstTestYear=2024&lstTestType=B&lstCounty=00&lstDistrict=00000" # try just updating the yr in the URL
 data_url <- "https://caaspp-elpac.ets.org/caaspp/researchfiles/sb_ca2024_1_ascii_v1.zip"          # Copy URL for CA Statewide research file, All Students, fixed width (TXT) on dwndl_url
 entities_url <- "https://caaspp-elpac.ets.org/caaspp/researchfiles/sb_ca2024entities_ascii.zip"   # Copy URL for Entities List, fixed width (TXT) on dwndl_url
@@ -29,7 +30,8 @@ layout_url <- "https://caaspp-elpac.ets.org/caaspp/ResearchFileFormatSB?ps=true&
 layout_dwlnd_url <- "https://caaspp-elpac.ets.org/caaspp/docs/2024_SBAC_Research%20File%20Layout.xlsx" # try just updating the year in the URL
 rc_schema <- "v7"
 yr <- "2025"
-# You must also update the xpath in the "html_nodes" line in the get_caaspp_data{} in rdashared_functions.R. More info in that file. #
+# You must also update the xpath in the "html_nodes" line in the get_caaspp_data{} and in get_caaspp_metadata{} in rdashared_functions.R. #
+  ## More info in that script. #
 
 
 ############### PREP CAASPP RDA_SHARED_DATA TABLE ########################
@@ -78,14 +80,12 @@ yr <- "2025"
 # Get County GEOIDS --------------------------------------------------------------------
 ### Always run this code before running ELA or Math sections.
 ##### Used in clean_ela_math{} later
-census_api_key(census_key1, overwrite=TRUE) # In practice, may need to include install=TRUE if switching between census api keys
 Sys.getenv("CENSUS_API_KEY") # confirms value saved to .renviron
 
 counties <- get_acs(geography = "county",
                     variables = c("B01001_001"), 
                     state = "CA", 
-# Update 'year' to match CAASPP data year.
-                    year = 2022)      
+                    year = acs_yr)      
 
 counties <- counties[,1:2]
 counties$NAME <- gsub(" County, California", "", counties$NAME) 
@@ -94,10 +94,10 @@ names(counties) <- c("geoid", "geoname")
 
 ###### ELA: PREP FOR RC FUNCTIONS #######
 # comment out code to pull data from CDE above and use this once rda_shared_data table is created
-df <- dbGetQuery(con, "SELECT * FROM education.caaspp_multigeo_school_research_file_reformatted_2022_23")
+df <- dbGetQuery(con, paste0("SELECT * FROM education.caaspp_multigeo_school_research_file_reformatted_", curr_yr))
 
 # set functions source
-source("W:/Project/RACE COUNTS/Functions/RC_ELA_Math_Functions.R")
+source(here("Functions", "RC_ELA_Math_Functions.R"))
 # define test_id as "01" for ELA or "02" for Math
 test_id <- "01" # ELA
 
