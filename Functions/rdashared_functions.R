@@ -1,5 +1,5 @@
 #install packages if not already installed
-list.of.packages <- c("readr", "DBI", "RPostgreSQL", "rvest", "tidyverse", "stringr", "dplyr")
+list.of.packages <- c("readr", "DBI", "RPostgreSQL", "rvest", "tidyverse", "stringr", "dplyr", "rpostgis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
@@ -11,6 +11,7 @@ library(rvest) # to scrape metadata table from cde website
 library(stringr) # cleaning up data
 library(data.table) # %like% function
 library(dplyr)
+library(rpostgis)
 
 
 ### For prep_acs: Check table variables each year as they may change. Modify the URLs below by year and table. ###
@@ -422,6 +423,127 @@ prep_acs <- function(x, table_code, cv_threshold, pop_threshold) {
   return(df)
 }
 
+### Use this fx to get CDE Public Schools data ####
+get_cde_schools <- function(school_url, school_dwnld_url, school_layout_url, table_source) {
+                # Create rda_shared_data table metadata -----------------------------------
+                table_name <- paste0("cde_public_schools_",curr_yr)
+                table_comment_source <- paste0("Downloaded from ", school_dwnld_url,". File layout: ", school_layout_url)				
+                
+                df <- read_delim(file = school_url, delim = "\t", na = c("*", ""))
+                
+                #add latitude and longitude numeric type columns, used later to add geom field
+                df$latitude <- as.numeric(df$Latitude, na.rm = TRUE)
+                df$longitude <- as.numeric(df$Longitude, na.rm = TRUE)
+                df <- df %>% select(-c(Latitude, Longitude))                # drop varchar lat/long columns
+                df <- df %>% relocate(latitude, .after = last_col())              # ensure lat/long columns are last 2 columns in dataframe
+                df <- df %>% relocate(longitude, .after = last_col())
+                
+                #format column names
+                names(df) <- str_replace_all(names(df), "[^[:alnum:]]", "") # remove non-alphanumeric characters
+                names(df) <- gsub(" ", "", names(df)) # remove spaces
+                names(df) <- tolower(names(df))  # make col names lowercase
+                Encoding(df$school) <- "ISO 8859-1"  # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+                Encoding(df$district) <- "ISO 8859-1"  # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+                print("Schools list downloaded, imported to R, and cleaned.")
+                
+                
+                #  WRITE TABLE TO POSTGRES DB
+                
+                # make character vector for field types in postgres table
+                charvect = rep('varchar', dim(df)[2]) 
+                
+                # add names to the character vector
+                names(charvect) <- colnames(df)
+                lat_pos <- length(charvect) - 1   # define position of lat column, lat column already moved to 2nd to last position above
+                long_pos <- length(charvect)      # define position of long column, long column already moved to last position above
+                
+                charvect[(lat_pos:long_pos)] <- "numeric" # specify lat/long as numeric
+                charvect
+                
+                dbWriteTable(con, c(table_schema, table_name), df, 
+                             overwrite = FALSE, row.names = FALSE,
+                             field.types = charvect)
+                print("Schools table exported to postgres.")
+                
+                # Add geom field to postgres table based on lat/long
+                geom <- paste0("alter table ", table_schema, ".", table_name, " add column geom Geometry('POINT', 3310);
+                            update ", table_schema, ".", table_name, " set geom = st_setsrid(st_point(longitude, latitude), 3310);")
+                dbSendQuery(conn = con, geom)
+                print("Geom column added to schools postgres table.")
+                
+                
+                # write comment to table, and the first three fields that won't change.
+                table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
+                
+                # send table comment to database
+                dbSendQuery(conn = con, table_comment)      			
+                print("Schools table comment exported to postgres.")
+                
+                return(df)
+}
+
+### Use this fx to get CDE Public Schools metadata ####
+get_cde_schools_metadata <- function(school_layout_url, html_nodes, table_schema) {
+  table_name <- paste0("cde_public_schools_",curr_yr)
+  
+  # See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
+  df_metadata <- school_layout_url %>% 
+    read_html() %>% 
+    html_nodes(html_nodes) %>% 
+    html_table(fill = T) %>% data.frame()
+  
+  df_metadata <- df_metadata %>% rename(label_meta = Field.Name) 	  # rename 1st needed column
+  df_metadata <- df_metadata %>% rename(variable = Description) 		# rename 2nd needed column         
+  df_metadata$label_meta <- tolower(df_metadata$label_meta)		   	  # make colnames lower case
+  
+  # Manual fixes due to label_meta and label fields not matching in   # check that colcomments are correct step below. These fixes address items in colcomments_diff.
+  df_metadata <- df_metadata %>% mutate(label_meta = ifelse(label_meta == 'phone ext', 'ext', label_meta))          
+  df_metadata <- df_metadata %>% mutate(label_meta = ifelse(label_meta == 'yearround', 'yearroundyn', label_meta))          
+  
+  
+  df_metadata <- df_metadata[order(df_metadata$label_meta == 'latitude'), ]	# ensure lat/long columns are last 2 columns in dataframe
+  df_metadata <- df_metadata[order(df_metadata$label_meta == 'longitude'), ]
+  df_metadata$variable <- gsub("/", "-", df_metadata$variable) 	   			# clean variable values
+  df_metadata$variable <- gsub("'", '', df_metadata$variable)  	   			# clean variable values
+  
+  print("Metadata file prepped and imported to R.")
+  
+  # format metadata
+  df_names <- data.frame(names(schools))  # pull in df col names 
+  colcomments <- df_metadata %>%
+    mutate(label = df_names$names.schools.) # bring schools col names into label column
+  
+  # make character vectors for column names and metadata. 
+  colcomments_charvar <- colcomments$variable
+  colname_charvar <- colcomments$label
+  
+  # check that colcomments are correct
+  if (identical(colcomments[['label_meta']],colcomments[['label']]) == TRUE) {
+    print("Column comments are ready, label_meta and label columns match.")
+    # loop through the columns that will change depending on the table. This loop writes comments for all columns, then sends to the postgres db.
+    for (i in seq_along(colname_charvar)){
+      sqlcolcomment <-
+        paste0("COMMENT ON COLUMN ", table_schema, ".", table_name, ".",
+               colname_charvar[[i]], " IS '", colcomments_charvar[[i]], "'; COMMENT ON COLUMN ", table_schema, ".", table_name, ".",
+               colname_charvar[[i]], " IS '", colcomments_charvar[[i]], "';" )
+      
+      # send sql comment to database
+      dbSendQuery(conn = con, sqlcolcomment)
+    }
+    print("Column comments sent to postgres.")
+    
+  } else {
+    print("Column comments are not ready. Please review colcomments_diff. The label_meta (metadata colnames) and label (data file colnames) need to match. 
+                      You will need to update the label_meta and variable fields in colcomments in get_cde_schools_metadata{} to match the order of the label field and then re-run the fx.")
+    colcomments_diff = subset(colcomments, colcomments$label_meta != colcomments$label)
+    View(colcomments_diff)                             
+  }
+  View(colcomments)
+  
+  return(colcomments)
+}
+
+
 #### Use this fx to get most CDE data ####
 get_cde_data <- function(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) {
                 df <- read_delim(file = filepath, delim = "\t", na = c("*", ""))#, #name_repair=make.names ),
@@ -505,14 +627,14 @@ return(colcomments)
 }
 
 ### Use this fx to get CAASPP (ELA/Math testing) data ####
-get_caaspp_data <- function(url, zipfile, file, url2, zipfile2, file2, url3, exdir)  {
+get_caaspp_data <- function(url, zipfile, file, url2, zipfile2, file2, url3, dwnld_url, exdir, table_source)  {
   # Create rda_shared_data table metadata -----------------------------------
   table_name <- paste0("caaspp_multigeo_school_research_file_reformatted_",curr_yr)
-  table_comment_source <- paste0("Downloaded from ", dwnld_url,". File layout: ", layout_url)
+  table_comment_source <- paste0("Downloaded from ", dwnld_url,". File layout: ", url3)
   
   #Download and unzip data ------------------------------------------------
   # Layout File
-  df_layout <- layout_url %>%
+  df_layout <- url3 %>%
     read_html() %>%
     # the following line doesn't work unless it's 'hardcoded'. will need to be updated each year. follow instructions here to get xpath when there is more than 1 table on the page: 
     # https://www.r-bloggers.com/2015/01/using-rvest-to-scrape-an-html-table/
@@ -531,16 +653,16 @@ get_caaspp_data <- function(url, zipfile, file, url2, zipfile2, file2, url3, exd
   
    #Read in Data File
   all_student_groups <- read_fwf(file, na = c("*", ""),
-                                 fwf_widths(c(df_layout$Length),  				 # assign column breaks using df_layout
+                                 fwf_widths(c(df_layout$Length),  				      # assign column breaks using df_layout
                                             col_names = c(df_layout$variable))) # assign colnames using df_layout
   
    #Prep Data File
   colnames(all_student_groups) <- gsub(" ", "_", colnames(all_student_groups))   # replace spaces with "_" in colnames
-  colnames(all_student_groups) <- tolower(colnames(all_student_groups))			 # make column names lower case
-  all_student_groups <- all_student_groups %>% select(-c(filler))				 # drop 'filler' column
+  colnames(all_student_groups) <- tolower(colnames(all_student_groups))			     # make column names lower case
+  all_student_groups <- all_student_groups %>% select(-c(filler))				         # drop 'filler' column
   all_student_groups$cdscode <- paste0(all_student_groups$county_code, all_student_groups$district_code, all_student_groups$school_code) # create cdscode field
-  Encoding(all_student_groups$school_name) <- "ISO 8859-1"  # added this piece in 2023 script bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
-  Encoding(all_student_groups$district_name) <- "ISO 8859-1"  # added this piece in 2023 script bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+  Encoding(all_student_groups$school_name) <- "ISO 8859-1"    # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+  Encoding(all_student_groups$district_name) <- "ISO 8859-1"  # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
   print("Prepped CAASPP data imported to R.")
   
   # Entities File
@@ -562,18 +684,19 @@ get_caaspp_data <- function(url, zipfile, file, url2, zipfile2, file2, url3, exd
   
   #make character vector for field types in postgres table
   charvect = rep('numeric', dim(df)[2])
-  charvect[c(1:8,10:13)] <- "varchar" # specify which cols are characters (cdscode, geoname, district name, school name)
+  charvect[c(1:8,10:13)] <- "varchar" # specify which cols are characters (cdscode, geoname, district name, school name, etc)
   
    #add names to the character vector
   names(charvect) <- colnames(df)
   print(charvect)
+  print("Check that charvect has correct column types.")
   
   dbWriteTable(con, c(table_schema, table_name), df,
                overwrite = FALSE, row.names = FALSE,
                field.types = charvect)
   print("Table sent to postgres.")
   
-   #write comment to table, and the first three fields that won't change.
+   #write comment to table.
   table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
   
    #send table comment to database
@@ -584,8 +707,11 @@ get_caaspp_data <- function(url, zipfile, file, url2, zipfile2, file2, url3, exd
 }
 
 ### Use this fx to get CAASPP (ELA/Math testing) metadata ####
-get_caaspp_metadata <- function(url3, table_schema, table_name)  {
-  df_metadata <- layout_url %>%
+get_caaspp_metadata <- function(url3, table_schema)  {
+  # Create rda_shared_data table metadata -----------------------------------
+  table_name <- paste0("caaspp_multigeo_school_research_file_reformatted_",curr_yr)
+  
+  df_metadata <- url3 %>%
     read_html() %>%
     # the following line doesn't work unless it's 'hardcoded'. will need to be updated each year. follow instructions here to get xpath when there is more than 1 table on the page: 
     # https://www.r-bloggers.com/2015/01/using-rvest-to-scrape-an-html-table/
@@ -595,58 +721,57 @@ get_caaspp_metadata <- function(url3, table_schema, table_name)  {
   #Read in and Prep Layout File     
   names(df_metadata)[length(names(df_metadata))] <- "label_meta" 	  # rename 1st needed column
   df_metadata <- df_metadata %>% rename(variable = Data.Element) 	  # rename 2nd needed column
-  df_metadata <- df_metadata %>% select(c("label_meta","variable"))	  # drop unneeded columns
+  df_metadata <- df_metadata %>% select(c("label_meta","variable"))	# drop unneeded columns
   `%nin%` <- Negate(`%in%`)
   df_metadata <- df_metadata %>% filter(label_meta %nin% c("Filler","Overall Total")) %>% filter(!grepl(" Count ", label_meta)) %>% # drop unneeded rows
     filter(!grepl(" Total", label_meta)) %>% filter(!grepl("Composite ", label_meta))
-  df_metadata <- df_metadata %>% add_row(label_meta = "cdscode") %>% add_row(label_meta = "geoname") # add rows for cols added
+  df_metadata <- df_metadata %>% add_row(label_meta = "cdscode") %>% add_row(label_meta = "geoname")                                # add rows for cols added
   df_metadata$label_meta <- gsub(" ", "_", df_metadata$label_meta)     	   # replace spaces with "_" in label_meta col
-  df_metadata$label_meta <- tolower(df_metadata$label_meta)		   		   # make colnames lower case
+  df_metadata$label_meta <- tolower(df_metadata$label_meta)		   		       # make colnames lower case
   df_metadata$variable <- gsub("/", "-", df_metadata$variable) 	   # clean variable values
   df_metadata$variable <- gsub("'", '', df_metadata$variable)  	   # clean variable values
   df_metadata <- df_metadata %>% mutate(variable = ifelse(df_metadata$label_meta == 'geoname', "County Name", df_metadata$variable)) # add variable value for geoname
   num_rows <- nrow(df_metadata)
   df_metadata <- rbind(tail(df_metadata, 1), head(df_metadata, -1)) # move geoname to first row
   df_metadata <- rbind(tail(df_metadata, 1), head(df_metadata, -1)) # move cdscode to first row
-  df_metadata <- cbind(df_metadata, label=NA) # add blank label column to be populated using data table (df)
+  df_metadata <- cbind(df_metadata, label=NA)                       # add blank label column to be populated using data table (df) later 
   
   print("Metadata file prepped and imported to R.")
-  
   
   # format metadata
   df_names <- data.frame(names(df))  # pull in df col names
   colcomments <- df_metadata %>%
     mutate(label = df_names$names.df.) # bring df col names into label column
   
-  # check that colcomments are correct
-  if (identical(colcomments[['label_meta']],colcomments[['label']]) == TRUE) {
-    print("Column comments are correct.")
-  } else {
-    print("Column comments are not ready. Please review colcomments df. label_meta (metadata colnames) and label (data file colnames) should match.")
-    return(colcomments)
-  }
-  View(colcomments)
-  
-  # Adapted from W:\RDA Team\R\ACS Updates\Update Detailed Tables - template.R
   # make character vectors for column names and metadata.
   colcomments_charvar <- colcomments$variable
   colname_charvar <- colcomments$label
   
-  # loop through the columns that will change depending on the table. This loop writes comments for all columns, then sends to the postgres db.
-  for (i in seq_along(colname_charvar)){
-    sqlcolcomment <-
-      paste0("COMMENT ON COLUMN ", table_schema, ".", table_name, ".",
-             colname_charvar[[i]], " IS '", colcomments_charvar[[i]], "'; COMMENT ON COLUMN ", table_schema, ".", table_name, ".",
-             colname_charvar[[i]], " IS '", colcomments_charvar[[i]], "';" )
-    
-    # send sql comment to database
-    dbSendQuery(conn = con, sqlcolcomment)
+  # check that colcomments are correct
+  if (identical(colcomments[['label_meta']],colcomments[['label']]) == TRUE) {
+    print("Column comments are ready, label_meta and label columns match.")
+    # loop through the columns that will change depending on the table. This loop writes comments for all columns, then sends to the postgres db.
+    for (i in seq_along(colname_charvar)){
+      sqlcolcomment <-
+        paste0("COMMENT ON COLUMN ", table_schema, ".", table_name, ".",
+               colname_charvar[[i]], " IS '", colcomments_charvar[[i]], "'; COMMENT ON COLUMN ", table_schema, ".", table_name, ".",
+               colname_charvar[[i]], " IS '", colcomments_charvar[[i]], "';" )
+      
+      # send sql comment to database
+      dbSendQuery(conn = con, sqlcolcomment)
+    }
     print("Column comments sent to postgres.")
+    
+  } else {
+    print("Column comments are not ready. Please review colcomments_diff. The label_meta (metadata colnames) and label (data file colnames) need to match. 
+                      You will need to update the label_meta and variable fields in colcomments in get_caaspp_metadata{} to match the order of the label field and then re-run the fx.")
+    colcomments_diff = subset(colcomments, colcomments$label_meta != colcomments$label)
+    View(colcomments_diff)                             
   }
+  View(colcomments)
   
   return(colcomments)
 }
-
 ### Use this fx to get URSUS (Use of Force) data ####
 get_ursus_data <- function(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) {
         # CA DOJ Use of Force data
