@@ -23,12 +23,13 @@ con <- connect_to_db("rda_shared_data")
 # define variables used in several places that must be updated each year
 curr_yr <- "2023_24"  # CAASPP year - must keep same format
 acs_yr <- 2022        # county geoid year - match as closely to curr_yr
-dwnld_url <- "https://caaspp-elpac.ets.org/caaspp/ResearchFileListSB?ps=true&lstTestYear=2024&lstTestType=B&lstCounty=00&lstDistrict=00000" # try just updating the yr in the URL
-data_url <- "https://caaspp-elpac.ets.org/caaspp/researchfiles/sb_ca2024_1_ascii_v1.zip"          # Copy URL for CA Statewide research file, All Students, fixed width (TXT) on dwndl_url
-entities_url <- "https://caaspp-elpac.ets.org/caaspp/researchfiles/sb_ca2024entities_ascii.zip"   # Copy URL for Entities List, fixed width (TXT) on dwndl_url
-layout_url <- "https://caaspp-elpac.ets.org/caaspp/ResearchFileFormatSB?ps=true&lstTestYear=2024&lstTestType=B" # try just updating the year in the URL
 rc_schema <- "v7"
 yr <- "2025"
+dwnld_url <- "https://caaspp-elpac.ets.org/caaspp/ResearchFileListSB?ps=true&lstTestYear=2024&lstTestType=B&lstCounty=00&lstDistrict=00000" # try just updating the yr in the URL
+data_url <- "https://caaspp-elpac.ets.org/caaspp/researchfiles/sb_ca2024_all_ascii_v1.zip"        # Copy URL for CA Statewide "combined research file, All Student Groups, fixed width" (TXT) on dwndl_url
+entities_url <- "https://caaspp-elpac.ets.org/caaspp/researchfiles/sb_ca2024entities_ascii.zip"   # Copy URL for Entities List, fixed width (TXT) on dwndl_url
+layout_url <- "https://caaspp-elpac.ets.org/caaspp/ResearchFileFormatSB?ps=true&lstTestYear=2024&lstTestType=B" # try just updating the year in the URL
+
 
 school_dwnld_url <- "https://www.cde.ca.gov/ds/si/ds/pubschls.asp"           # this link may or may not need to be updated.
 school_url <- "https://www.cde.ca.gov/schooldirectory/report?rid=dl1&tp=txt" # this link may or may not need to be updated. check school_dwnld_url to find out.
@@ -37,55 +38,47 @@ school_layout_url <- "https://www.cde.ca.gov/ds/si/ds/fspubschls.asp"        # t
 # You must also update the xpath in the "html_nodes" line in the get_caaspp_data{} and in get_caaspp_metadata{} in rdashared_functions.R. #
 ## More info in that script. #
 
-############### PREP CAASPP RDA_SHARED_DATA TABLE ########################
+############### PREP SCHOOLS AND CAASPP RDA_SHARED_DATA TABLES (IF NEEDED) ########################
 
 # SKIP THIS CODE AFTER SCHOOLS AND CAASPP RDA_SHARED_DATA TABLES HAVE BEEN CREATED AND GO TO NEXT STEP.
-      table_schema <- "education"
-      table_source <- "Wide data format, multigeo table with state, county, district, and school"
-
-      ## Create test data download URL and filenames
-       url = data_url      # "All Student Groups" txt file.
-       data_file <- str_remove_all(data_url, "https://caaspp-elpac.ets.org/caaspp/researchfiles/|.zip")
-       zipfile = paste0("W:\\Data\\Education\\CAASPP\\",curr_yr,"\\",data_file,".zip")  
-       file = paste0("W:\\Data\\Education\\CAASPP\\",curr_yr,"\\",data_file,".txt")     
-      
-       exdir = paste0("W:\\Data\\Education\\CAASPP\\", curr_yr)  # set data download filepath
-      
-       ## Create entities data download URL and filenames
-       url2 = entities_url   
-       entities_file <- str_remove_all(entities_url, "https://caaspp-elpac.ets.org/caaspp/researchfiles/|.zip")
-       zipfile2 = paste0("W:\\Data\\Education\\CAASPP\\",curr_yr,"\\",entities_file,".zip") 
-       file2 = paste0("W:\\Data\\Education\\CAASPP\\",curr_yr,"\\",entities_file,".txt")    
-      
-       ## Create layout URL
-       url3 = layout_url
-
-       ## Run fx to create schools rda_shared_table
-       source(here("Functions", "rdashared_functions.R"))         # set functions source
-
-       schools <- get_cde_schools(school_url, school_dwnld_url, school_layout_url, table_source)
-       
-           # Run function to add schools rda_shared_data column comments ------------------------------------------------------------------
-           # See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
-           html_nodes <- "table"
-           school_colcomments <- get_cde_schools_metadata(school_layout_url, html_nodes, table_schema)
-           
-           # If colcomments are ready, run this loop to send col comments to postgres. 
-           # If colcomments are not ready, you must fix colcomments in get_cde_schools_metadata{} before running this loop.
-
-           
-              
-       ## Run fx to create CAASPP rda_shared_table
-       #### NOTE: EACH YEAR, the xpath needs to be updated in get_caaspp_data{} in rdashared_functions.R ###
-       df <- get_caaspp_data(url, zipfile, file, url2, zipfile2, file2, url3, exdir, table_source)
-       head(df)
-      
-           # Run function to add CAASPP rda_shared_data column comments ------------------------------------------------------------------
-           #### NOTE: EACH YEAR, the xpath needs to be updated in get_caaspp_metadata{} in rdashared_functions.R ###
-           colcomments <- get_caaspp_metadata(url3, table_schema)
-           View(colcomments)
-
-
+      # table_schema <- "education"
+      # table_source <- "Wide data format, multigeo table with state, county, district, and school"
+      # source(here("Functions", "rdashared_functions.R"))         # set functions source
+      # 
+      # ## Create test data download URL and filenames
+      #  url = data_url      # "All Student Groups" txt file.
+      #  data_file <- str_remove_all(data_url, "https://caaspp-elpac.ets.org/caaspp/researchfiles/|.zip")
+      #  zipfile = paste0("W:\\Data\\Education\\CAASPP\\",curr_yr,"\\",data_file,".zip")  
+      #  file = paste0("W:\\Data\\Education\\CAASPP\\",curr_yr,"\\",data_file,".txt")     
+      # 
+      #  exdir = paste0("W:\\Data\\Education\\CAASPP\\", curr_yr)  # set data download filepath
+      # 
+      #  ## Create entities data download URL and filenames
+      #  url2 = entities_url   
+      #  entities_file <- str_remove_all(entities_url, "https://caaspp-elpac.ets.org/caaspp/researchfiles/|.zip")
+      #  zipfile2 = paste0("W:\\Data\\Education\\CAASPP\\",curr_yr,"\\",entities_file,".zip") 
+      #  file2 = paste0("W:\\Data\\Education\\CAASPP\\",curr_yr,"\\",entities_file,".txt")    
+      # 
+      #  ## Create layout URL
+      #  url3 = layout_url
+      # 
+      #  ## Run fx to create schools rda_shared_table ------------------------------------------------------------------
+      #  schools <- get_cde_schools(school_url, school_dwnld_url, school_layout_url, table_source)
+      #  
+      #      # Run function to add schools rda_shared_data column comments 
+      #      # See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
+      #      html_nodes <- "table"
+      #      school_colcomments <- get_cde_schools_metadata(school_layout_url, html_nodes, table_schema)
+      #      
+      #  ## Run fx to create CAASPP rda_shared_table: This may take awhile bc the file is large.  ------------------------------------------------------------------
+      #  #### NOTE: EACH YEAR, the xpath needs to be updated in get_caaspp_data{} in rdashared_functions.R ###
+      #  df <- get_caaspp_data(url, zipfile, file, url2, zipfile2, file2, url3, dwnld_url, exdir, table_source)
+      #  head(df)
+      # 
+      #      # Run function to add CAASPP rda_shared_data column comments
+      #      #### NOTE: EACH YEAR, the xpath needs to be updated in get_caaspp_metadata{} in rdashared_functions.R ###
+      #      colcomments <- get_caaspp_metadata(url3, table_schema)
+      #      View(colcomments)
 
 # Get County GEOIDS --------------------------------------------------------------------
 ### Always run this code before running ELA or Math sections.

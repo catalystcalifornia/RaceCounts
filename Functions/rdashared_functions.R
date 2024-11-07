@@ -543,7 +543,6 @@ get_cde_schools_metadata <- function(school_layout_url, html_nodes, table_schema
   return(colcomments)
 }
 
-
 #### Use this fx to get most CDE data ####
 get_cde_data <- function(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) {
                 df <- read_delim(file = filepath, delim = "\t", na = c("*", ""))#, #name_repair=make.names ),
@@ -647,63 +646,66 @@ get_caaspp_data <- function(url, zipfile, file, url2, zipfile2, file2, url3, dwn
   print("Layout file prepped imported to R.")
   
   # Data File
-  if(!file.exists(file)) { download.file(url=url, destfile=zipfile) } # download file ONLY if it is not already in exdir
-  if(!file.exists(file)) { unzip(zipfile, exdir = exdir) }
-  print("Data file downloaded and unzipped.")
+  if(file.exists(zipfile)) { print(paste0("Zip file already exists in ", exdir))}		  # print message if zip file is already in exdir
+  if(!file.exists(zipfile)) { download.file(url=url, destfile=zipfile) } 				      # download file ONLY if it is not already in exdir
+  if(file.exists(file)) { print(paste0("Unzipped file already exists in ", exdir))} 	# print message if zip file is already in exdir
+  if(!file.exists(file)) { print("Unzipping file now... This may take awhile.")} 	    # print message if zip file is already in exdir
+  if(!file.exists(file)) { unzip(zipfile, exdir = exdir) }								            # unzip file ONLY if it is not already in exdir
+  print("Unzipped data file ready for prep.")
   
-   #Read in Data File
-  all_student_groups <- read_fwf(file, na = c("*", ""),
-                                 fwf_widths(c(df_layout$Length),  				      # assign column breaks using df_layout
-                                            col_names = c(df_layout$variable))) # assign colnames using df_layout
+  #Read in Data File
+   all_student_groups <- read_fwf(file, na = c("*", ""),
+                                  fwf_widths(c(df_layout$Length),  				      # assign column breaks using df_layout
+                                             col_names = c(df_layout$variable))) # assign colnames using df_layout
   
-   #Prep Data File
-  colnames(all_student_groups) <- gsub(" ", "_", colnames(all_student_groups))   # replace spaces with "_" in colnames
-  colnames(all_student_groups) <- tolower(colnames(all_student_groups))			     # make column names lower case
-  all_student_groups <- all_student_groups %>% select(-c(filler))				         # drop 'filler' column
-  all_student_groups$cdscode <- paste0(all_student_groups$county_code, all_student_groups$district_code, all_student_groups$school_code) # create cdscode field
-  Encoding(all_student_groups$school_name) <- "ISO 8859-1"    # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
-  Encoding(all_student_groups$district_name) <- "ISO 8859-1"  # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
-  print("Prepped CAASPP data imported to R.")
+    #Prep Data File
+   colnames(all_student_groups) <- gsub(" ", "_", colnames(all_student_groups))   # replace spaces with "_" in colnames
+   colnames(all_student_groups) <- tolower(colnames(all_student_groups))			     # make column names lower case
+   all_student_groups <- all_student_groups %>% select(-c(filler))				         # drop 'filler' column
+   all_student_groups$cdscode <- paste0(all_student_groups$county_code, all_student_groups$district_code, all_student_groups$school_code) # create cdscode field
+   Encoding(all_student_groups$school_name) <- "ISO 8859-1"    # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+   Encoding(all_student_groups$district_name) <- "ISO 8859-1"  # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+   print("Prepped CAASPP data ready.")
   
-  # Entities File
-  if(!file.exists(file2)) { download.file(url=url2, destfile=zipfile2) } # download file ONLY if it is not already in exdir
-  if(!file.exists(file2)) { unzip(zipfile2, exdir = exdir) } 
-  print("Entities file downloaded and unzipped.")
+   # Entities File
+   if(!file.exists(file2)) { download.file(url=url2, destfile=zipfile2) } # download file ONLY if it is not already in exdir
+   if(!file.exists(file2)) { unzip(zipfile2, exdir = exdir) }             # unzip file ONLY if it is not already in exdir
+   print("Entities file downloaded and unzipped.")
   
-   #Read in Entities File
-  entities <- read_fwf(file2, fwf_widths(c(14,2,4,4,25), col_names = c("cdscode", "type_id", "filler", "test_year", "geoname")))
-  entities <- entities %>% select(-c(filler))   # drop 'filler' column
-  print("Prepped Entities file imported to R.")
+    #Read in Entities File
+   entities <- read_fwf(file2, fwf_widths(c(14,2,4,4,25), col_names = c("cdscode", "type_id", "filler", "test_year", "geoname")))
+   entities <- entities %>% select(-c(filler))   # drop 'filler' column
+   print("Prepped Entities file ready.")
   
-  df <-left_join(x=all_student_groups,y=entities,by= c("cdscode", "test_year", "type_id")) %>%  # join data and entities tables
-    select(cdscode, everything())  
-  df <- df %>% dplyr::relocate(geoname, .after = cdscode) %>% select(-c(starts_with("composite"), contains("_count_"), ends_with("_total"), overall_total)) # drop unneeded cols
-  print("CAASPP data and Entities file joined.")
+   df <-left_join(x=all_student_groups,y=entities,by= c("cdscode", "test_year", "type_id")) %>%  # join data and entities tables
+     select(cdscode, everything())
+   df <- df %>% dplyr::relocate(geoname, .after = cdscode) %>% select(-c(starts_with("composite"), contains("_count_"), ends_with("_total"), overall_total)) # drop unneeded cols
+   print("CAASPP data and Entities file joined.")
+  
+   # WRITE TABLE TO POSTGRES DB
+  
+   #make character vector for field types in postgres table
+   charvect = rep('numeric', dim(df)[2])
+   charvect[c(1:8,10:13)] <- "varchar" # specify which cols are characters (cdscode, geoname, district name, school name, etc)
+  
+    #add names to the character vector
+   names(charvect) <- colnames(df)
+   print(charvect)
+   print("Check that charvect has correct column types.")
+  
+   dbWriteTable(con, c(table_schema, table_name), df,
+                overwrite = FALSE, row.names = FALSE,
+                field.types = charvect)
+   print("Table sent to postgres and imported to R.")
+  
+  #write comment to table.
+   table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
+  
+  #send table comment to database
+   dbSendQuery(conn = con, table_comment)
+   print("Table comment sent to postgres.")
 
-  # WRITE TABLE TO POSTGRES DB
-  
-  #make character vector for field types in postgres table
-  charvect = rep('numeric', dim(df)[2])
-  charvect[c(1:8,10:13)] <- "varchar" # specify which cols are characters (cdscode, geoname, district name, school name, etc)
-  
-   #add names to the character vector
-  names(charvect) <- colnames(df)
-  print(charvect)
-  print("Check that charvect has correct column types.")
-  
-  dbWriteTable(con, c(table_schema, table_name), df,
-               overwrite = FALSE, row.names = FALSE,
-               field.types = charvect)
-  print("Table sent to postgres.")
-  
-   #write comment to table.
-  table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
-  
-   #send table comment to database
-  dbSendQuery(conn = con, table_comment)
-  print("Table comment sent to postgres.")
-  
-  return(df)
+   return(df)
 }
 
 ### Use this fx to get CAASPP (ELA/Math testing) metadata ####
