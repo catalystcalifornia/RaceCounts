@@ -3,8 +3,8 @@
 ### Script produces findings about how much an indicator's disparity has changed by calculating the % change btwn curr and prev Index of Disparity values.
 
 
-#install packages if not already installed
-packages <- c("tidyverse","RPostgreSQL","sf","here","usethis")  
+#install and load packages if not already installed
+packages <- c("tidyverse","RPostgreSQL","here","usethis")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -20,9 +20,8 @@ for(pkg in packages){
   library(pkg, character.only = TRUE) 
 } 
 
-# Load PostgreSQL driver and databases --------------------------------------------------
+# Load PostgreSQL driver --------------------------------------------------
 source("W:\\RDA Team\\R\\credentials_source.R")
-con <- connect_to_db("racecounts")
 
 # Set Source for Index Functions script -----------------------------------
 source(here("Functions", "RC_Index_Functions.R"))
@@ -30,11 +29,14 @@ source(here("Functions", "RC_Index_Functions.R"))
 # remove exponentiation
 options(scipen = 100) 
 
+con <- connect_to_db("racecounts")
+
 # update each yr
 curr_rc_yr <- '2024'
 curr_rc_schema <- 'v6'
 prev_rc_yr <- '2023'
 prev_rc_schema <- 'v5'
+
 
 ####################### GET STATE DATA #####################################
 ## CURR STATE DATA ##
