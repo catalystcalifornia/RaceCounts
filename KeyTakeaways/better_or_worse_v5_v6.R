@@ -83,6 +83,208 @@ combined_data <- state_tables_long %>% inner_join(prev_state_tables_long %>% sel
 combined_data <- combined_data %>% relocate(indicator, .after = state_name) %>% relocate(issue, .after = state_name) %>% relocate(asbest, .after = indicator)  # reposition columns
 
 
+# HK Analysis -------------------------------------------------------------
+
+##### Add columns needed to run findings calcs #####
+combined_data <- combined_data %>% 
+  
+  # Calculate differences and percent differences in outcomes and disparity
+  mutate(rate_diff = curr_total_rate - prev_total_rate,
+         rate_pct_chng_nominal = rate_diff / prev_total_rate * 100,
+         rate_pct_chng_abs = abs(rate_pct_chng_nominal),
+         id_diff = curr_id - prev_id,
+         id_pct_chng = id_diff / prev_id * 100
+  ) %>%
+  
+  # Classify differences in outcome, disparity, and both 
+  # (e.g., create conclusions like: Better and more equitable outcomes, Worse and more inequitable outcomes, etc.)
+  mutate(outcome_change =
+           case_when(asbest == "min" & rate_pct_chng_nominal < 0 ~ "better",
+                     asbest == "min" & rate_pct_chng_nominal > 0 ~ "worse",
+                     asbest == "max" & rate_pct_chng_nominal > 0 ~ "better",
+                     asbest == "max" & rate_pct_chng_nominal < 0 ~ "worse", 
+                     .default = "no_change"),
+         disparity_change =
+           case_when(id_pct_chng > 0 ~ "worse",
+                     id_pct_chng < 0 ~ "better",
+                     .default = "no_change"),
+         conclusion = 
+           case_when(outcome_change == "better" & disparity_change == "better" ~ "Better and more equitable outcomes",
+                     outcome_change == "better" & disparity_change == "worse" ~ "Better but more inequitable outcomes",
+                     outcome_change == "better" & disparity_change == "no_change" ~ "Better outcomes and the same disparity",
+                     outcome_change == "no_change" & disparity_change == "better" ~ "Same but more equitable outcomes",
+                     outcome_change == "no_change" & disparity_change == "worse" ~ "Same but more inequitable outcomes",
+                     outcome_change == "no_change" & disparity_change == "no_change" ~ "no_changes",
+                     outcome_change == "worse" & disparity_change == "better" ~ "Worse but more equitable outcomes",
+                     outcome_change == "worse" & disparity_change == "worse" ~ "Worse and more inequitable outcomes",
+                     outcome_change == "worse" & disparity_change == "no_change" ~ "Worse outcomes and the same disparity",
+                     .default = "error")) %>%
+  
+  # Add "real" calculations by indicator to incorporate if _pct_chng_nominal is a positive or negative change (i.e., with respect to asbest)
+  # will use to calc aggregate findings (e.g., across all indicators and by issue area)
+  mutate(real_flag = 
+           case_when(outcome_change=="worse" ~ -1, 
+                     outcome_change=="better" ~ 1,
+                     .default = 0),
+         rate_pct_chng_real = real_flag * rate_pct_chng_abs)
+
+##### findings calculations #####
+##### 1. Are State outcomes better or worse?:  Calculate overall and mean difference in outcomes across all indicators #####
+outcome_pct_change_real_sum <- sum(combined_data$rate_pct_chng_real, na.rm=TRUE)
+outcome_pct_change_real_mean <- mean(combined_data$rate_pct_chng_real, na.rm=TRUE) # -4.073114; overall worse (outcomes went down)
+
+## Alternative: calculate overall and mean difference in outcomes (excl. indicators that weren't updated)
+combined_data %>%
+  select(indicator, real_flag, rate_pct_chng_real) %>%
+  filter(real_flag != 0) %>%
+  summarize(mean = mean(rate_pct_chng_real)) # -5.510683
+
+## Look at frequency of indicators that improved, worsened, or stayed the same
+as.data.frame(table(combined_data$outcome_change)) # more indicators improved than worsened or stayed the same
+
+## Average overall outcomes by issue area and include counts of indicator changes
+issues_ranked <- combined_data %>%
+  select(indicator, issue, outcome_change, rate_pct_chng_real) %>%
+  group_by(issue) %>%
+  summarize(avg_pct_chng = mean(rate_pct_chng_real)) %>%
+  arrange(-avg_pct_chng) 
+
+issue_indicators_freq <- as.data.frame(table(combined_data$issue, combined_data$outcome_change)) %>%
+  pivot_wider(names_from = Var2, values_from = Freq) %>%
+  select(Var1, better, worse, no_change)
+
+issues_ranked_outcomes <- issues_ranked %>%
+  left_join(issue_indicators_freq, by = c("issue" = "Var1"))
+
+
+##### 2. Are State outcomes more or less disparate?: Calculate overall and mean difference in disparity across all indicators #####
+id_pct_change_sum <- sum(combined_data$id_pct_chng, na.rm=TRUE)   # 55.29939; if positive number then, overall worse disparity on average.
+id_pct_change_mean <- mean(combined_data$id_pct_chng, na.rm=TRUE) # 1.202161; if positive number then, overall worse disparity on average.
+
+## Look at frequency of indicators that improved, worsened, or stayed the same
+as.data.frame(table(combined_data$disparity_change)) # more indicators improved than worsened or stayed the same
+
+## Average overall disparity by issue area and include counts of indicator changes
+issues_ranked <- combined_data %>%
+  select(indicator, issue, disparity_change, id_pct_chng) %>%
+  group_by(issue) %>%
+  summarize(avg_pct_chng = mean(id_pct_chng)) %>%
+  arrange(avg_pct_chng) 
+
+issue_indicators_freq <- as.data.frame(table(combined_data$issue, combined_data$disparity_change)) %>%
+  pivot_wider(names_from = Var2, values_from = Freq) %>%
+  select(Var1, better, worse, no_change)
+
+issues_ranked_disparity <- issues_ranked %>%
+  left_join(issue_indicators_freq, by = c("issue" = "Var1"))
+
+##### 3. Indicators with greatest outcome percentage change (good) #####
+## 5 most improved indicators
+top_5_outcomes <- combined_data %>%
+  filter(outcome_change=="better") %>%
+  arrange(-rate_pct_chng_real) %>%
+  head(5)
+
+
+##### 4. Indicators with greatest outcome percentage change (bad) #####
+## 5 most declined indicators
+bottom_5_outcomes <- combined_data %>%
+  filter(outcome_change=="worse") %>%
+  arrange(rate_pct_chng_real) %>%
+  head(5)
+
+
+##### 5. Indicators with greatest disparity percentage change (good) #####
+## 5 most improved indicators
+top_5_improved_disparity <- combined_data %>%
+  filter(disparity_change=="better") %>%
+  arrange(id_pct_chng) %>%
+  head(5)
+
+
+##### 6. Indicators with greatest disparity percentage change (bad) #####
+## 5 most declined indicators
+bottom_5_worsened_disparity <- combined_data %>%
+  filter(disparity_change=="worse") %>%
+  arrange(-id_pct_chng) %>%
+  head(5)
+
+
+##### Extra tables #####
+## Freq of conclusions covering both outcome and disparity changes
+conclusions <- as.data.frame(table(combined_data$conclusion))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # CALCULATE CHANGES IN OUTCOMES & DISPARITY -------------------------------
 combined_data$rate_diff <- combined_data$curr_total_rate - combined_data$prev_total_rate
 combined_data$rate_pct_chng <- combined_data$rate_diff / combined_data$prev_total_rate * 100
@@ -110,7 +312,6 @@ combined_data <- combined_data %>% mutate(outcome_better =
                                                                  ifelse(asbest == "max" & rate_pct_chng < 0, "worse", "no change"
                                                                  )))))
 
-combined_data$rate_pct_chng_abs <- abs(combined_data$rate_pct_chng)  # add absolute value of rate_pct_chng since min/max asbest varies by indicator
 
 rate_change_sum <- combined_data %>% group_by(outcome_better) %>% summarize(sum_rate_pct_chng = sum(rate_pct_chng), n=n())
 
