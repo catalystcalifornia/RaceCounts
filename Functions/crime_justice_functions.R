@@ -1,7 +1,7 @@
 ## Functions used for RC Crime & Justice indicators ##
 
 
-# RIPA race-ethnicity codes. source: https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-01/RIPA%20Dataset%20Read%20Me%202022.pdf 
+# RIPA race-ethnicity codes. source: W:\Data\Crime and Justice\CA DOJ\RIPA Stop Data\RIPA Dataset Read Me 2022 - 20241112.pdf
 latino_code <- "1"
 nh_code <- "0"
 nh_asian_code <- "1"

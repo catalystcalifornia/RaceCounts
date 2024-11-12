@@ -2,7 +2,7 @@
 
 ## Set up ----------------------------------------------------------------
 #install packages if not already installed
-list.of.packages <- c("DBI", "tidyverse", "RPostgreSQL", "tidycensus", "readxl", "sf", "janitor", "stringr", "data.table", "openxlsx", "usethis")
+list.of.packages <- c("DBI", "tidyverse", "RPostgreSQL", "tidycensus", "readxl", "sf", "janitor", "stringr", "data.table", "openxlsx", "here", "usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
@@ -30,6 +30,10 @@ rc_schema <- 'v6'
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 con2 <- connect_to_db("racecounts")
+
+
+# Before running rest of script, ensure that RIPA race/eth codes. See: W:\Data\Crime and Justice\CA DOJ\RIPA Stop Data\RIPA Dataset Read Me 2022 - 20241112.pdf # --------
+
 
 ########## Prep rda_shared_data table: Comment out these sections once table has been created ###########
 
@@ -307,7 +311,7 @@ ripa_cfs <- ripa_final %>% mutate(state_id = '06')
 
 
 #### Calc counts by race ####
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/crime_justice_functions.R")
+source(here("Functions", "crime_justice_functions.R"))
 state_calcs <- stops_by_state(ripa_cfs)
 county_calcs <- stops_by_county(ripa_cfs) %>% mutate(county = gsub(" County", "", county))
 agency_calcs <- stops_by_agency(ripa_cfs) # this df includes agencies at all levels: state, county, city, school district, etc.
@@ -381,7 +385,7 @@ d <- df_screened %>% select(-c(contains(c("_stops")), starts_with(c("nh_twoormor
 ############ geoid and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
 #set source for RC Functions script
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
+source(here("Functions", "RC_Functions.R"))
 
 d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'. 
 
