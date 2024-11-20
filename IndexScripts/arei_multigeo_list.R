@@ -1,4 +1,4 @@
-#### arei_multigeo_list for RC v6 ####
+#### arei_multigeo_list for RC v7 ####
 
 #install packages if not already installed
 list.of.packages <- c("tidyverse","RPostgreSQL","sf","usethis")
