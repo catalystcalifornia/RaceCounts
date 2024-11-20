@@ -366,11 +366,6 @@ df_1 <- filter(df_1, race != 'total')   # remove total rates bc all findings in 
 # data where race_generic == api is duplicated and race_generic is renamed as "asian" and "pacisl"
 df_1 <- api_split(df_1) 
 
-# rename SWANASA as SWANA for findings purposes
-df_1 <- df_1 %>% 
-    mutate(race_generic=replace(race_generic,race_generic=='swanasa', 'swana'))  
-
-
 ### Table counting number of non-NA rates per race+geo combo, used for screening worst counts later ### 
 bestworst_screen <- df_1 %>% 
     group_by(geoid, race_generic) %>% 
@@ -445,10 +440,6 @@ df_12 <- filter(df_12, race != 'total')   # remove total rates bc all findings i
 
 # data where race_generic == api is duplicated and race_generic is renamed as "asian" and "pacisl"
 df_12 <- api_split(df_12) # duplicate api rates as asian and pacisl
-
-# rename SWANASA as SWANA for findings purposes
-df_12 <- df_12 %>% 
-  mutate(race_generic=replace(race_generic, race_generic=='swanasa', 'swana'))  
 
 ### Note: Code differs from Worst rates to account for when min is best and there is raced rate = 0, so we cannot use disparity_z for min asbest indicators ###
 best_table <- df_12 %>% 
