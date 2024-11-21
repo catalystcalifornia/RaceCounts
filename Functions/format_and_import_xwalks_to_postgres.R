@@ -16,7 +16,6 @@ if(length(install_packages) > 0) {
   install.packages(install_packages) 
   
 } else { 
-  
   print("All required packages are already installed.") 
 } 
 
@@ -40,7 +39,7 @@ geo_names_short <- c("tract", "zcta", "puma", "county", "usd", "esd", "ssd", "as
 # names used in table comments
 geo_names_long <- c("Census Tract", "ZCTA", "PUMA", "County", "Unified School District", "Elementary School District", "Secondary School District", "State Assembly", "State Senate")
 
-# create short names to long names crosswalk
+# create short names to long names table
 geo_names <- as.data.frame(geo_names_short) %>% cbind(geo_names_long)
 geo_names  # check needed geonames are present, and that all are correct
 
