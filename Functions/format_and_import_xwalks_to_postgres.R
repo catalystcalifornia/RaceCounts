@@ -48,7 +48,7 @@ geo_names  # check needed geonames are present, and that all are correct
 ### Fx to prep xwalk postgres tables --------------------------------------
 prep_tables <- function(target_geo, target_geo_yr, source_geo, source_geo_yr) {
 
-  # is the crosswalk already in pgmin?
+  # check if the crosswalk already in pgadmin
   table_name <- paste0(source_geo, "_", source_geo_yr, "_state_", target_geo, "_", target_geo_yr)  # generate postgres table name
   check_tables_sql <- paste0("SELECT * FROM information_schema.tables WHERE table_schema = '",
                              rda_schema, "' AND table_name ='", table_name, "';")
@@ -57,15 +57,11 @@ prep_tables <- function(target_geo, target_geo_yr, source_geo, source_geo_yr) {
   
   con <- connect_to_db("rda_shared_data")
   
-  if (nrow(check_tables)==1) {
-    # the crosswalk already exists
+  if (nrow(check_tables)==1) {          # the crosswalk already exists in db
     print("The crosswalk already exists in pgadmin. Aborting function...")
     dbDisconnect(con)
-    
-    return(ca_zctas)
-    
-  } else if (nrow(check_tables)==0) {
-    # the crosswalk does not exist in db
+
+  } else if (nrow(check_tables)==0) {   # the crosswalk does not exist in db
     print("The crosswalk is not already in pgadmin. Creating now...")
   
     # generate filepath to crosswalk csv
