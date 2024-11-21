@@ -121,45 +121,40 @@ prep_tables <- function(target_geo, target_geo_yr, source_geo, source_geo_yr) {
   crosswalk <- crosswalk %>% 
     mutate(geo_id = paste0(county, substr(tract, 1, 4), substr(tract, 6, 7)),
            geo_name = tract)  
-  print("Crosswalk cleaned.")
   } else if (source_geo == "zcta") {
     # rename geo_id, name, filter out parts of districts not in ZCTAs or out of state
     crosswalk <- crosswalk %>% 
       filter(zip_name != "[not in a ZCTA]") %>%   # drop parts of districts not in ZCTAs
       filter(!str_starts(zcta, "8")) %>%          # drop ZCTAs not really in CA
       rename(geo_id = zcta, geo_name = zip_name) 
-    print("Crosswalk cleaned.")
   } else if (source_geo == "puma") {
     # rename geo_id, name, and select only columns we want
     crosswalk <- crosswalk %>% 
       rename_with(~'geo_name', ends_with('name')) %>%
       rename_with(~'geo_id', starts_with('puma')) 
-    print("Crosswalk cleaned.")
   } else if (source_geo == "county") {
     # rename geo_id and select only columns we want
     crosswalk <- crosswalk %>% 
       rename(geo_id = county, 
              geo_name = county_name) 
-    print("Crosswalk cleaned.")
   } else if (source_geo == "usd") {
     # rename geo_id and select only columns we want
     crosswalk <- crosswalk %>% 
       rename_with(~'geo_name', starts_with('uschlnm')) %>%
       rename_with(~'geo_id', starts_with('sduni')) 
-    print("Crosswalk cleaned.")
   } else if (source_geo == "esd") {
     # rename geo_id and select only columns we want
     crosswalk <- crosswalk %>% 
       rename_with(~'geo_name', starts_with('eschlnm')) %>%
       rename_with(~'geo_id', starts_with('sdelem')) 
-    print("Crosswalk cleaned.")
   } else if (source_geo == "ssd") {
     # rename geo_id and select only columns we want
     crosswalk <- crosswalk %>% 
       rename_with(~'geo_name', starts_with('sschlnm')) %>%
       rename_with(~'geo_id', starts_with('sdsec')) 
-    print("Crosswalk cleaned.")
   }
+  
+  print("Crosswalk cleaned.")
   
   # rearrange columns and drop unneeded columns
   crosswalk <- crosswalk %>% select(geo_id, geo_name, district_id_col, paste0("pop", pop_yr), int_pt_lat, int_pt_lon, afact2, afact)
