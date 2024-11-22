@@ -1,9 +1,9 @@
-# Make crosswalks and export to postgres for
-# 2020 Census Tracts to 2022 and 2024 State Senate & Assembly Districts
-# 2020 ZCTAs to 2022 and 2024 State Senate & Assembly Districts
-# 2020 PUMAs to 2024 State Senate & Assembly Districts
-# 2020 Counties to 2024 State Senate & Assembly Districts
-# 2020 Unified, Secondary, and Elementary School Districts to 2024 State Senate & Assembly Districts
+# Prep crosswalk tables and export to postgres database: 
+## 2020 Census Tracts to 2022 and 2024 State Senate & Assembly Districts
+## 2020 ZCTAs to 2022 and 2024 State Senate & Assembly Districts
+## 2020 PUMAs to 2024 State Senate & Assembly Districts
+## 2020 Counties to 2024 State Senate & Assembly Districts
+## 2020 Unified, Secondary, and Elementary School Districts to 2024 State Senate & Assembly Districts
 
 ### Set Up ### ------------------------------------------------------------------
 
@@ -31,6 +31,8 @@ rda_schema <- "crosswalks"
 rc_schema <- 'v7'
 rc_yr <- '2025'
 pop_yr <- '20' # 2-digit format, so '20' means '2020'. update, as appropriate, based on which pop vintage was used for pop-weighting on Geocorr
+
+# Note: Crosswalks downloaded from: MO Census Data Center at https://mcdc.missouri.edu/applications/geocorr2022.html
 geocorr_yr <- '2022' # version of geocorr used. update, as appropriate.
 
 ### Source Geos - Will not need updates unless adding a new source geo. ------------------------------------------------------
