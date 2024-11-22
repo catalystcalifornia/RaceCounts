@@ -5,4 +5,8 @@ orcid: "https://www.racecounts.org/"
 title: "RACE COUNTS, racecounts.org"
 # doi: 10.5281/zenodo.1234
 date-released: 2024-10-18
+<<<<<<< HEAD
 url: "https://github.com/catalystcalifornia/RaceCounts"
+=======
+url: "https://github.com/catalystcalifornia/RaceCounts"
+>>>>>>> cbdcbb770e8156c73ac95b0b12256a3cabf8d07b

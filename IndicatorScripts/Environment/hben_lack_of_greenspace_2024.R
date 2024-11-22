@@ -23,8 +23,8 @@ con <- connect_to_db("rda_shared_data")
 con2 <-connect_to_db("racecounts")
 
 #set source for RC Functions script
-source("W:/RDA Team/R/Functions/Cnty_St_Wt_Avg_Functions.R")
-source("W:/RDA Team/R/ACS Updates/SWANA_Ancestry_List.R")
+source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
+source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/SWANA_Ancestry_List.R")
 
 # update variables used throughout each year
 curr_yr <- 2021
