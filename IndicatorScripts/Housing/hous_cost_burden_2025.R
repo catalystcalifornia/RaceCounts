@@ -36,7 +36,7 @@ chas_table <- paste0("housing.hud_chas_cost_burden_multigeo_", data_yrs[[1]], "_
 dict <- read_excel(paste0("W:/Data/Housing/HUD/CHAS/", data_yrs[[1]], "-", data_yrs[length(data_yrs)], "/", metadata_file), sheet = "Table 9")
 chas_data <- dbGetQuery(con, paste0("SELECT * FROM ", chas_table, " WHERE geolevel IN ('city', 'county', 'state')")) 
 
-###################### Begin Analysis ######################
+############# Clean and reformat raw data ######################
 # data cleaning
 names(dict) <- gsub(" ", "_", names(dict))
 names(dict) <- gsub("/", "_", names(dict))
@@ -81,53 +81,54 @@ chas_data_long <- filter(chas_data_long, !(burden %in% c('not_computed','All')),
 chas_data_long$cost_burdened <- ifelse(chas_data_long$burden == "0.30", 0, 1) 
 
 # save margins of error for later
-moe <- filter(chas_data_long, substring(variable, 4, 6) == "moe") %>% select(-c(tenure, race, burden, cost_burdened))
+moe <- filter(chas_data_long, substring(variable, 4, 6) == "moe") %>% 
+  select(-c(tenure, race, burden, cost_burdened)) %>% 
+  left_join(chas_data_long %>% select(geoid, variable_generic, race, tenure), by =c("geoid", "variable_generic")) %>% # fill in missing race / tenure info
+  filter(!is.na(race)) %>%
+  rename(num_moe = housing_units)
 
-chas_data_long <- filter(chas_data_long, !str_detect(chas_data_long$variable, 'moe'))
+chas_data_ <- filter(chas_data_long, !str_detect(chas_data_long$variable, 'moe'))
 
-### calc by race
+############# Raced Calcs ######################
 
-## calculate raw number first
-costburden_race <- chas_data_long %>%
+## calculate raw counts
+costburden_race <- chas_data_ %>%
   group_by(geoid, geoname, race, cost_burdened, tenure, geolevel, variable_generic) %>%  
-  summarise(raw = sum(housing_units)) %>%   
-  left_join(chas_data_long %>%                                                   
-  group_by(geoid, geoname, race, tenure, geolevel) %>% #, variable_generic) %>%                                  
-  summarise(pop = sum(housing_units)))
+  summarize(raw = sum(housing_units)) %>%
+  left_join(chas_data_) 
 # View(costburden_race)
 
-## calculate rate moe
-costburden_moe <- moe %>%
-  group_by(geoid, geoname, variable_generic) %>% #, race, cost_burdened, tenure, geolevel) %>%  
-  summarise(num_moe = norm(housing_units, type = "2")) %>%   # for info on type, see p51  https://www.census.gov/content/dam/Census/library/publications/2018/acs/acs_general_handbook_2018_ch08.pdf
-  left_join(moe %>%                                                   
-  group_by(geoid, geoname) %>% #, race, tenure, geolevel) %>%                                  
-  summarise(den_moe = norm(housing_units, type = "2")))
-
-## put it all together
-costburden_race <- costburden_race %>% 
-  left_join(costburden_moe, by = c("geoid", "geoname", "variable_generic")) %>%
+## calculate den moe
+costburden_moe <- costburden_race %>% 
+  left_join(moe, by = c("geoid", "geoname", "variable_generic", "race", "tenure")) %>%
   select(-c(variable_generic)) %>%
-  group_by(geoid, geoname, race, cost_burdened, tenure, geolevel) %>%
-  summarise_at(vars(raw:den_moe), sum, na.rm = TRUE) %>%
+  group_by(geoid, geoname, race, tenure) %>%
+  summarize(pop = sum(raw),
+            den_moe = moe_sum(num_moe, raw))
+  
+## put it all together
+costburden_race_ <- costburden_race %>% 
+  left_join(moe, by = c("geoid", "geoname", "geolevel", "variable_generic", "race", "tenure")) %>%
+  select(-c(variable_generic)) %>%
+  group_by(geoid, geoname, geolevel, race, cost_burdened, tenure) %>%
+  summarize(raw = sum(raw),
+            num_moe = moe_sum(num_moe, raw)) %>%
+  left_join(costburden_moe, by = c("geoid", "geoname", "race", "tenure"), relationship = "many-to-many") %>%
   mutate(rate = raw/pop * 100,                                      
          rate_moe = moe_prop(raw, pop, num_moe, den_moe) * 100,   
          rate_cv = ifelse(rate == 0, NA, (rate_moe/1.645)/rate * 100)) 
 
-### calc by total
+############# Total Calcs ######################
 
-## calculate raw number first
-costburden_tot <-
-  chas_data_long %>%
+## calculate raw counts
+costburden_tot <- chas_data_ %>%
+  select(c(geoid, geoname, cost_burdened, tenure, geolevel, housing_units)) %>%
   group_by(geoid, geoname, cost_burdened, tenure, geolevel) %>%  
-  summarise(raw = sum(housing_units)) %>%       
-  left_join(chas_data_long %>%                                                   
-  group_by(geoid, geoname, tenure, geolevel) %>%                                  
-  summarise(pop = sum(housing_units)))
+  summarize(raw = sum(housing_units))
 
 ## calculate raw moe
 costburden_moe_tot <- moe %>%
-  group_by(geoid, geoname) %>%  
+  group_by(geoid, geoname, variable_generic) %>%  
   summarise(num_moe = norm(housing_units, type = "2")) %>%       
   left_join(moe %>%                                                   
   group_by(geoid, geoname) %>%                                  
