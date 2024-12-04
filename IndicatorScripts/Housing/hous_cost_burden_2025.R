@@ -203,7 +203,7 @@ df <- df %>% relocate(ends_with("_raw"), .after = ends_with("_pop")) # reorder f
 #Create an owners dataframe so that it creates two sets of graphs for the RC_Functions for each owners and renters
 owners <- filter(df, tenure == "owner")
 
-# set variables used in RC table exports
+# set variables used in RC tables
 hud_yrs <- paste(first(data_yrs), last(data_yrs), sep = "-")
 source <- paste0("HUD CHAS (", hud_yrs, ") for city, county, and state from https://www.huduser.gov/portal/datasets/cp.html")
 
@@ -212,7 +212,7 @@ source <- paste0("HUD CHAS (", hud_yrs, ") for city, county, and state from http
 #set source for RC Functions script
 source(here("Functions", "RC_Functions.R"))
 
-# assign d so that it runs the calculations with owners data
+# assign d so that it runs RC calculations with owners data
 d <- owners
 
 d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
@@ -258,7 +258,7 @@ city_table_name <- paste0("arei_hous_cost_burden_owner_city_", rc_yr)
 
 indicator <- "The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. This data is"
 
-# #send tables to postgres
+# send tables to postgres
 to_postgres(county_table, state_table)
 city_to_postgres()
 
@@ -267,7 +267,7 @@ city_to_postgres()
 
 renters <- filter(df, tenure == "renter")
 
-#reassign d so that it runs the same calculations with renters data
+#reassign d so that it runs the RC calculations with renters data
 d <- renters
 
 ########## CALC RACE COUNTS STATS ##############
@@ -318,7 +318,7 @@ city_table_name <- paste0("arei_hous_cost_burden_renter_city_", rc_yr)
 
 indicator <- paste0("Created on ", Sys.Date(), ". The percentage of rented housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Another includes another race and multiracial, and is Latinx-exclusive. This data is")
 
-# #send tables to postgres
+# send tables to postgres
 to_postgres(county_table, state_table)
 city_to_postgres()
 
