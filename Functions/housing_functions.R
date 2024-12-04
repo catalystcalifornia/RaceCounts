@@ -22,7 +22,7 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
 
-# Download and Export CHAS data to postgres -------------------------------------------
+############## Download and Export CHAS data to postgres -------------------------------------------
 ## Update variables each year
 ## To update "_file" variables below, first download data from https://www.huduser.gov/portal/datasets/cp.html
 ### Select most current data year and download, state, county, census places, and CT files in csv format 
