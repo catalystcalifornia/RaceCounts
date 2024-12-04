@@ -1,4 +1,6 @@
 ## Housing Cost Burden for RC v7 ##
+#### Run W:\Project\RACE COUNTS\2025_v7\RC_Github\staging\RaceCounts\Functions\housing_functions.R to prep rda_shared_data tables first.
+
 
 # Install and load packages ------------------------------
 packages <- c("data.table", "stringr", "dplyr", "RPostgreSQL", "dbplyr", 
