@@ -1,4 +1,4 @@
-# Prep crosswalk tables and export to postgres database: 
+# Script used to prep crosswalk tables and export to postgres database by defining source_geo/source_geo_yr and target_geo/target_geo_yr: 
 ## 2020 Census Tracts to 2022 and 2024 State Senate & Assembly Districts
 ## 2020 ZCTAs to 2022 and 2024 State Senate & Assembly Districts
 ## 2020 PUMAs to 2024 State Senate & Assembly Districts
