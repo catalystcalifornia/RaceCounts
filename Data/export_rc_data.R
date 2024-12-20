@@ -1,9 +1,4 @@
-# Export RC data for the Healthy Places Index website
-#copied "W:\Project\RACE COUNTS\2024_v6\RaceCounts\LA_YDD_Ask\export_la_city_data.R"
-#removed LA City filter, changed names from la_rate, la_raw to city_tables_rate, city_tables_raw
-#joined city names via arei_multigeo city (in making df_city)
-#removed LAUSD filter, changed names from la_edu_rate, la_edu_raw to edu_tables_rare, edu_tables_raw
-#removed commented out code in making df_education_district
+# Export RC data and metadata
 
 
 # Set up workspace ----------------------------------------------------------------
@@ -168,9 +163,9 @@ metadata <- metadata %>% rename("indicator" = "api_name",
   select(indicator, everything())
 
 
-write_xlsx(df_city, "W:\\Project\\RACE COUNTS\\2024_v6\\RaceCounts\\HPI_Ask\\rc_city_data.xlsx")
-write_xlsx(df_education_district, "W:\\Project\\RACE COUNTS\\2024_v6\\RaceCounts\\HPI_Ask\\rc_school_district_data.xlsx")
-write_xlsx(metadata, "W:\\Project\\RACE COUNTS\\2024_v6\\RaceCounts\\HPI_Ask\\rc_city_school_district_metadata.xlsx")
+write_xlsx(df_city, paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\Data\\rc_city_data.xlsx"))
+write_xlsx(df_education_district, paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\Data\\rc_school_district_data.xlsx"))
+write_xlsx(metadata, paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\Data\\rc_city_school_district_metadata.xlsx"))
 
 
 # County & State Data Tables ------------------------------------------------------
@@ -181,14 +176,14 @@ geolevel <- 'county'
 df_county <- export_RCdata(rc_list, geolevel)
 
 # export county data Excel file
-write_xlsx(df_county, "W:\\Project\\RACE COUNTS\\2024_v6\\RaceCounts\\HPI_Ask\\rc_county_data.xlsx")
+write_xlsx(df_county, paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\Data\\rc_county_data.xlsx"))
 
 # create state df for export
 geolevel <- 'state'
 df_state <- export_RCdata(rc_list, geolevel)
 
 # export state data Excel file
-write_xlsx(df_state, "W:\\Project\\RACE COUNTS\\2024_v6\\RaceCounts\\HPI_Ask\\rc_state_data.xlsx")
+write_xlsx(df_state, paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\Data\\rc_state_data.xlsx"))
 
 
 # Indicator metadata table from curr_schema.arei_indicator_list_cntyst ------------------------------------------------------
@@ -203,7 +198,7 @@ metadata <- metadata %>% rename("indicator" = "api_name",
   select(indicator, everything())
 
 # export metadata Excel file
-write_xlsx(metadata, "W:\\Project\\RACE COUNTS\\2024_v6\\RaceCounts\\HPI_Ask\\rc_county_state_metadata.xlsx")
+write_xlsx(metadata, paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\Data\\rc_county_state_metadata.xlsx"))
 
 
 #close connection
