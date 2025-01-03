@@ -48,7 +48,7 @@ We use one simplified set of terms for the RACE COUNTS website and publications,
 | Filipinx | Alone | Excludes |
 | Latinx | Alone or in combination with another race  | Includes |
 | Native Hawaiian / Pacific Islander | Alone or in combination with another race  | Includes |
-| South Asian+ | Alone or in combination with another race  | Includes |
+| South Asian* | Alone or in combination with another race  | Includes |
 | Southwest Asian / North African* | Alone or in combination with another race  | Includes |
 | White | Alone | Excludes |
 | Another Race | Alone | Excludes |
@@ -56,7 +56,7 @@ We use one simplified set of terms for the RACE COUNTS website and publications,
 
 There are instances where we use different terms, or definitions, due to considerations like the preferences of our partners on a specific project or data considerations.
 
-See our [this document](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/SWANA_SoAsian_Ancestry.xlsx) for the list of ancestries included in Southwest Asian / North African and South Asian categories.
+*See our [this document](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/SWANA_SoAsian_Ancestry.xlsx) for the list of ancestries included in Southwest Asian / North African and South Asian categories.
 
 The specific definition of each race / ethnicity for each indicator can be found in the [Indicator Methodology documents](https://github.com/catalystcalifornia/RaceCounts/tree/main/Methodology).
 
