@@ -46,11 +46,23 @@ curr_yr <- '2024'
 ```{r}
 ##### IMPORT METHODOLOGY DATA FROM POSTGRESQL DATABASE
 geo <- 'cntyst'  # once we convert this to an fx, this will be a input into the fx so it works for cntyst/city/leg dist
-methodology <- dbGetQuery(con, paste0("SELECT arei_indicator, arei_issue_area, methodology, bar_chart_header, data_source FROM ", curr_schema, ".arei_indicator_list_", geo))
+methodology <- dbGetQuery(con, paste0("SELECT arei_indicator, arei_issue_area, methodology, bar_chart_header, data_source, race_type FROM ", curr_schema, ".arei_indicator_list_", geo))
 issues <- dbGetQuery(con, paste0("SELECT arei_issue_area, api_name_short FROM ", curr_schema, ".arei_issue_list"))
+races_ <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_race_type"))
 
-# join api_name_short to methodology
-methodology <- methodology %>% left_join(issues) 
+# generate race-eth strings
+races_ <- races_[order(races_$race_type, races_$race_label_short), ]
+
+races_$race_eth = ave(as.character(races_$race_label_long),
+  races_$race_type,
+  FUN = function(x){
+    paste0(x,collapse = ", ")
+  })
+races <- races_ %>% select(race_type, race_eth) %>% unique()
+
+# join api_name_short and race_eth to methodology
+methodology <- methodology %>% left_join(issues) %>%
+  left_join(races)
 
 ### REMOVE AFTER WE'VE ADDED LINKS AND RACE/ETHNICITY NOTES TO PGADMIN TABLES
 links <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\RaceCounts\\data_src_links.xlsx") %>% select(-c(api_name_short)) %>%
@@ -77,11 +89,17 @@ indicators <- function(x) {
     cat(x$methodology[i], "\n", "\n")
     cat("\t", "Source: ", x$data_source[i], "\n")
     cat("\t", "Link(s): ", x$links[i], "\n")
-    cat("\t", "Racial/Ethnic Categories: ", "[race/eth placeholder]", "\n")
+    cat("\t", "Racial/Ethnic Categories: ", x$race_eth[i], "\n")
     cat("\n")
     }
 }
 ``` 
+
+
+### A note on Racial/Ethnic Categories: Race is a social construct and a biological construct, neither of which are discussed in depth in this analysis. Thus, we use a simplified view of race to portray racial data to a broader audience. Ethnicity is also treated lightly, and while Latinx is an ethnicity, it is generally treated and spoken about as a race, even though Latinxs can be of any race. Additionally, each data source uses slightly different terminology and categorization. Considering all these factors, we use one simplified set of labels for the RACE COUNTS website and publications for consistency while maintaining fidelity to the data sources as much as possible. To find out more, please see our [Race & Ethnicity Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md) documentation. 
+
+### In this document, groups marked with * are Latinx-inclusive, those without * are non-Latinx. Groups marked with ^ are that race alone or in combination with another race, groups without are that one race alone. Latinx always includes Latinxs of any race. 
+
 
 # `r first(method_list[[1]][['arei_issue_area']])`
 ```{r, comment = ""}
