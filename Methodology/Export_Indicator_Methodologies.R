@@ -19,7 +19,7 @@ for(pkg in packages){
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
 
-### UPDATE VARIABLES EACH YEAR ####
+#### UPDATE VARIABLES EACH YEAR ####
 curr_yr <- '2024'       # RC release year
 curr_schema <- 'v6'     # RC postgres db schema
 date <- 'October 2024'  # RC data release date
