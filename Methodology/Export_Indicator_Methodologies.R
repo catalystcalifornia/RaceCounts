@@ -1,5 +1,7 @@
 # Run automated Indicator Methodology documents: County / State, City, Legislative District
 
+
+#### Set Up Environment ####
 packages <- c("formattable", "knitr", "stringr", "tidyr", "dplyr", "tidyverse", "RPostgreSQL", "glue", "formatR", "readxl", "usethis", "here")
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
