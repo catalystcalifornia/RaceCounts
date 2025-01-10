@@ -1,139 +1,111 @@
 ---
-title: "RACE COUNTS: Indicator Methodology"
-subtitle: "County and State Data"
-date: "October 2024"
+title: "Indicator Methodology"
 output: 
-  word_document:
+  html_document:
     toc: true
-    toc_depth: 3
+    toc_depth: 4
+    toc_float:
+      collapsed: true
 
 ---
  
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, comment = FALSE, message = FALSE, warning = FALSE, dpi = 300, tidy.opts = list((width.cutoff = 80), tidy = TRUE))
 
-## install and load packages ------------------------------
-packages <- c("formattable", "data.table", "ggplot2", "flextable", "officer", "RColorBrewer", "knitr", "ggthemes", "stringr", "cowplot", "extrafont", "grid", "tidyr",   "dplyr", "tidyverse", "RPostgreSQL", "glue", "formatR", "readxl", "fedmatch", "usethis", "here")
-install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
+```
 
-if(length(install_packages) > 0) { 
-  install.packages(install_packages) 
-  
-} else { 
-  
-  print("All required packages are already installed.") 
-} 
+```{css echo=FALSE}
+body {
+  background-color: #F1F0F2; /* Light grey background */
+}
 
-for(pkg in packages){ 
-  library(pkg, character.only = TRUE) 
-} 
-
-# create connection for rda database
-source("W:\\RDA Team\\R\\credentials_source.R")
-con <- connect_to_db("racecounts")
-
+.bold-inline {
+  font-weight: 700
+}
 
 ```
 
 
-```{r}
-#### UPDATE EACH YEAR
-curr_schema <- 'v6'
-curr_yr <- '2024'
-```
-
-
-```{r}
-##### IMPORT METHODOLOGY DATA FROM POSTGRESQL DATABASE
-geo <- 'cntyst'  # once we convert this to an fx, this will be a input into the fx so it works for cntyst/city/leg dist
-methodology <- dbGetQuery(con, paste0("SELECT arei_indicator, arei_issue_area, methodology, bar_chart_header, data_source FROM ", curr_schema, ".arei_indicator_list_", geo))
-issues <- dbGetQuery(con, paste0("SELECT arei_issue_area, api_name_short FROM ", curr_schema, ".arei_issue_list"))
-
-# join api_name_short to methodology
-methodology <- methodology %>% left_join(issues) 
-
-### REMOVE AFTER WE'VE ADDED LINKS AND RACE/ETHNICITY NOTES TO PGADMIN TABLES
-links <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\RaceCounts\\data_src_links.xlsx") %>% select(-c(api_name_short)) %>%
-  mutate(clean_ind = clean_strings(arei_indicator)) %>% mutate(links = ifelse(!is.na(link2), paste0(link1, ", ", link2), link1))
-methodology$clean_ind <- clean_strings(methodology$arei_indicator) 
-methodology <- methodology %>% left_join(links %>% select(c(clean_ind, links)), by = 'clean_ind')
-###
-
-# split methodology into list by issue area
-method_list <- split(methodology, f = methodology$api_name_short)
-
-# convert list elements into dfs
-invisible(list2env(method_list,envir=.GlobalEnv))
-
-#text <- paste0(first(justice$arei_issue_area), " has ", nrow(justice), " indicators.")
-```
-
-```{r, comment = ""}
-# Function to print methodology for each indicator within an issue area
+```{r, comment = "", results = 'asis'}
+# Function to create methodology for each indicator within an issue area
 indicators <- function(x) {
-  for(i in 1:nrow(x)) { 
-    cat(x$arei_indicator[i], "\n")
-    cat("Indicator: ", x$bar_chart_header[i], "\n")
-    cat(x$methodology[i], "\n", "\n")
-    cat("\t", "Source: ", x$data_source[i], "\n")
-    cat("\t", "Link(s): ", x$links[i], "\n")
-    cat("\t", "Racial/Ethnic Categories: ", "[race/eth placeholder]", "\n")
+  for(i in 1:nrow(x)) {
+    cat("###",x$arei_indicator[i], "\n")
     cat("\n")
-    }
+    cat(sprintf("<span class='bold-inline'>Indicator: </span>"), x$bar_chart_header[i], "\n")
+    cat(x$methodology[i], "\n", "\n")
+    cat(sprintf("<span class='bold-inline'>Source: </span>"), x$data_source[i], "\n", "\n")
+    cat(sprintf("<span class='bold-inline'>Link(s): </span>"), x$links[i], "\n", "\n")
+    cat(sprintf("<span class='bold-inline'>Racial/Ethnic Categories: </span>"), x$race_eth[i], "\n", "\n")
+    cat("\n")
+  }
 }
 ``` 
 
+<!-- <img src="W:/Project/RACE COUNTS/2025_v7/RC_Github/LF/RaceCounts/images/dark-logo.pdf" alt="RACE COUNTS Logo"> -->
+Placeholder for RC logo
+
+
+### `r ifelse(geoname == 'County_State', paste0(gsub("_", " / ", geoname), ": "), paste0(geoname, ": "))` `r date `
+
+### Notes on Racial/Ethnic Categories
+Race is a social construct and a biological construct, neither of which are discussed in depth in this analysis. Thus, we use a simplified view of race to portray racial data to a broader audience. Ethnicity is also treated lightly, and while Latinx is an ethnicity, it is generally treated and spoken about as a race, even though Latinxs can be of any race. Additionally, each data source uses slightly different terminology and categorization. Considering all these factors, we use one simplified set of labels for the RACE COUNTS website and publications for consistency while maintaining fidelity to the data sources as much as possible. To find out more, please see our [Race & Ethnicity Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md) documentation. 
+
+In this document, groups marked with * are Latinx-inclusive, those without * are non-Latinx. Groups marked with ^ are that race alone or in combination with another race, groups without ^ are that one race alone. Latinx always includes Latinxs of any race. 
+
+\pagebreak
+
 # `r first(method_list[[1]][['arei_issue_area']])`
-```{r, comment = ""}
+
+```{r, comment = "", results = 'asis'}
 indicators(method_list[[1]])
 ``` 
-
+<p align="right">(<a href="#top">back to top</a>)</p>
 \pagebreak
 
 # `r first(method_list[[2]][['arei_issue_area']])`
 
-```{r, comment = ""}
+```{r, comment = "", results = 'asis'}
 indicators(method_list[[2]])
 ```
-
+<p align="right">(<a href="#top">back to top</a>)</p>
 \pagebreak
 
 # `r first(method_list[[3]][['arei_issue_area']])`
 
-```{r, comment = ""}
+```{r, comment = "", results = 'asis'}
 indicators(method_list[[3]])
 ```
-
+<p align="right">(<a href="#top">back to top</a>)</p>
 \pagebreak
 
 # `r first(method_list[[4]][['arei_issue_area']])`
 
-```{r, comment = ""}
+```{r, comment = "", results = 'asis'}
 indicators(method_list[[4]])
 ```
-
-
+<p align="right">(<a href="#top">back to top</a>)</p>
 \pagebreak
 
 # `r first(method_list[[6]][['arei_issue_area']])`
 
-```{r, comment = ""}
+```{r, comment = "", results = 'asis'}
 indicators(method_list[[6]])
 ```
-
+<p align="right">(<a href="#top">back to top</a>)</p>
 \pagebreak
 
 # `r first(method_list[[5]][['arei_issue_area']])`
 
-```{r, comment = ""}
+```{r, comment = "", results = 'asis'}
 indicators(method_list[[5]])
 ```
-
-
+<p align="right">(<a href="#top">back to top</a>)</p>
 \pagebreak
 
 # `r first(method_list[[7]][['arei_issue_area']])`
 
-```{r, comment = ""}
+```{r, comment = "", results = 'asis'}
 indicators(method_list[[7]])
 ```
+<p align="right">(<a href="#top">back to top</a>)</p>
