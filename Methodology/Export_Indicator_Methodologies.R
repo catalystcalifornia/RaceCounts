@@ -2,7 +2,7 @@
 
 
 #### Set Up Environment ####
-packages <- c("formattable", "knitr", "stringr", "tidyr", "dplyr", "tidyverse", "RPostgreSQL", "glue", "formatR", "readxl", "usethis", "here")
+packages <- c("formattable", "knitr", "stringr", "tidyr", "dplyr", "tidyverse", "RPostgreSQL", "glue", "formatR", "readxl", "fedmatch", "usethis", "here")
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
 if(length(install_packages) > 0) { 
@@ -33,9 +33,10 @@ issues <- dbGetQuery(con, paste0("SELECT arei_issue_area, api_name_short FROM ",
   arrange(api_name_short) # reorder so matches order of issues in fx
 
 # get race types
-races_ <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_race_type"))
+races_ <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_race_type_updated"))  # remove _updated after all updates finalized
 races_ <- races_[order(races_$race_type, races_$race_label_short), ] # generate race-eth strings
-races_$race_eth = ave(as.character(races_$race_label_long),
+races_$race_label_long2 <- gsub("\\*", paste0("\\\\","*"), races_$race_label_long) # create new col with escape char for * so does not appear italicized
+races_$race_eth = ave(as.character(races_$race_label_long2),
                       races_$race_type,
                       FUN = function(x){
                         paste0(x,collapse = ", ")
