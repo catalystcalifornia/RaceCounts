@@ -1,0 +1,39 @@
+---
+title: "Hate Crimes"
+---
+
+```{r, include=FALSE}
+
+#### Load libraries ####
+library(dplyr)
+library(RPostgreSQL)
+library(flextable)
+library(officer)
+
+#### Add database connection ####
+source("W:\\RDA Team\\R\\credentials_source.R")
+
+conn <- connect_to_db("racecounts")
+con <- connect_to_db("rda_shared_data")
+options(scipen = 999)
+
+```
+
+```{r, include=FALSE}
+
+data <- read.csv("W:/Data/Crime and Justice/CA DOJ/Hate_Crimes/2001_2023/Hate-2001-2023.csv")
+
+```
+
+```{r, include=FALSE}
+
+df <- data %>% select(RecordId, MostSeriousBias) %>% filter(MostSeriousBias %in% c("Anti-Arab", "Anti-Islamic (Muslim)", "Anti-Jewish")) %>% group_by(MostSeriousBias) %>% summarize(hate_crimes=n())
+
+```
+
+```{r, include=FALSE}
+
+dbDisconnect(conn)
+dbDisconnect(con)
+
+```
