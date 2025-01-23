@@ -32,8 +32,8 @@ indicators <- function(x) {
   for(i in 1:nrow(x)) {
     cat("###",x$arei_indicator[i], "\n")
     cat("\n")
-    cat(sprintf("<span class='bold-inline'>Indicator: </span>"), x$bar_chart_header[i], "\n")
-    cat(x$methodology[i], "\n", "\n")
+    cat(sprintf("<span class='bold-inline'>Indicator: </span>"), x$bar_chart_header[i], "\n", "\n")
+    cat(x$method_long[i], "\n", "\n")
     cat(sprintf("<span class='bold-inline'>Source: </span>"), x$data_source[i], "\n", "\n")
     cat(sprintf("<span class='bold-inline'>Link(s): </span>"), x$links[i], "\n", "\n")
     cat(sprintf("<span class='bold-inline'>Racial/Ethnic Categories: </span>"), x$race_eth[i], "\n", "\n")
