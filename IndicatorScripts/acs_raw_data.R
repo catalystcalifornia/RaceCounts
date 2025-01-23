@@ -1,4 +1,4 @@
-### Create updated ACS raw data tables (in postgres db) to be used in RC v6 ###
+### Create updated ACS raw data tables (in postgres db) to be used in RC v7 ###
 
 ##### Source external functions/values #####
 # connect to rda_shared_data database, get census api key
@@ -7,15 +7,17 @@ conn <- connect_to_db("rda_shared_data")
 census_api_key(census_key1)
 readRenviron("~/.Renviron")
 
+rc_schema <- 'v7'
+rc_yr <- '2025'
 
 # Set source for ACS 5-Yr table update fx
-source("W:\\RDA Team\\R\\ACS Updates\\acs_rda_shared_tables.R") # This fx also creates or imports the correct vintage CA CBF ZCTA list
+source("W:\\RDA Team\\R\\GitHub\\RDA Functions\\main\\RDA-Functions\\acs_rda_shared_tables.R") # This fx also creates or imports the correct vintage CA CBF ZCTA list
 
 # Script file path, for postgres table comment
-filepath <- "W:/Project/RACE COUNTS/2024_v6/RC_Github/RaceCounts/IndicatorScripts/acs_raw_data.R"
+filepath <- paste("W:/Project/RACE COUNTS/", rc_yr, "_", rc_schema, "/RC_Github/RaceCounts/IndicatorScripts/acs_raw_data.R")
 
 # Define arguments for ACS table update fx
-yr <- 2022 # update for the ACS data/ZCTA vintage needed
+yr <- 2023 # update for the ACS data/ZCTA vintage needed
       
 ### If you add a new table, you must also update table_vars below
 rc_acs_indicators <- list(

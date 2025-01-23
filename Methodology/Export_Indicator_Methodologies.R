@@ -44,24 +44,16 @@ races_$race_eth = ave(as.character(races_$race_label_long2),
 races <- races_ %>% select(race_type, race_eth) %>% unique()
 
 
-### REMOVE AFTER WE'VE ADDED LINKS AND RACE/ETHNICITY NOTES TO PGADMIN TABLES
-links <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\RaceCounts\\data_src_links.xlsx") %>% select(-c(api_name_short)) %>%
-  mutate(clean_ind = clean_strings(arei_indicator)) %>% mutate(links = ifelse(!is.na(link2), paste0(link1, ", ", link2), link1))
-
-
 #### Methodology Functions ####
 # Function to prep specific geolevel methodology
 prep_method <- function (geo, curr_yr, curr_schema) {
-
-  methodology <- dbGetQuery(con, paste0("SELECT arei_indicator, arei_issue_area, methodology, bar_chart_header, data_source, race_type FROM ", curr_schema, ".arei_indicator_list_", geo))
+  # drop "_test" piece when ready
+  methodology <- dbGetQuery(con, paste0("SELECT arei_indicator, arei_issue_area, bar_chart_header, data_source, race_type, method_long, link1, link2 FROM ", curr_schema, ".arei_indicator_list_", geo, "_test"))
+  methodology$links = ifelse(!is.na(methodology$link2), paste0(gsub(" &&&", ",", methodology$link1), ", ", methodology$link2), gsub(" &&&", ",", methodology$link1))
   
   # join api_name_short and race_eth to methodology
   methodology <- methodology %>% left_join(issues) %>%
     left_join(races)
-  
-  ### REMOVE AFTER ADDING LINKS TO POSTGRES: join data src links to methodology
-  methodology$clean_ind <- clean_strings(methodology$arei_indicator) 
-  methodology <- methodology %>% left_join(links %>% select(c(clean_ind, links)), by = 'clean_ind')
   
   # split methodology into list by issue area
   method_list <- split(methodology, f = methodology$api_name_short)
@@ -96,21 +88,21 @@ geoname <- 'County_State'
 render_method(geoname, date, method_list)
 
 
-#### City Methodology####
+#### City Methodology ####
 # prep methodology
-geo <- 'city'  # fx input to set geolevel
-method_list <- prep_method(geo, curr_yr, curr_schema)
+# geo <- 'city'  # fx input to set geolevel
+# method_list <- prep_method(geo, curr_yr, curr_schema)
+# 
+# # render methodology
+# geoname <- 'City'
+# render_method(geoname, date, method_list)
 
-# render methodology
-geoname <- 'City'
-render_method(geoname, date, method_list)
 
-
-#### Legislative District Methodology####
+#### Legislative District Methodology ####
 # prep methodology
-geo <- 'leg'  # fx input to set geolevel
-method_list <- prep_method(geo, curr_yr, curr_schema)
-
-# render methodology
-geoname <- 'Leg_District'
-render_method(geoname, date, method_list)
+# geo <- 'leg'  # fx input to set geolevel
+# method_list <- prep_method(geo, curr_yr, curr_schema)
+# 
+# # render methodology
+# geoname <- 'Leg_District'
+# render_method(geoname, date, method_list)
