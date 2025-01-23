@@ -20,7 +20,8 @@ for(pkg in packages){
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
-# define variables used in several places that must be updated each year
+
+# update each year --------
 curr_yr <- "2023_24"  # CAASPP year - must keep same format
 acs_yr <- 2022        # county geoid year - match as closely to curr_yr
 rc_schema <- "v7"
@@ -29,7 +30,6 @@ dwnld_url <- "https://caaspp-elpac.ets.org/caaspp/ResearchFileListSB?ps=true&lst
 data_url <- "https://caaspp-elpac.ets.org/caaspp/researchfiles/sb_ca2024_all_ascii_v1.zip"        # Copy URL for CA Statewide "combined research file, All Student Groups, fixed width" (TXT) on dwndl_url
 entities_url <- "https://caaspp-elpac.ets.org/caaspp/researchfiles/sb_ca2024entities_ascii.zip"   # Copy URL for Entities List, fixed width (TXT) on dwndl_url
 layout_url <- "https://caaspp-elpac.ets.org/caaspp/ResearchFileFormatSB?ps=true&lstTestYear=2024&lstTestType=B" # try just updating the year in the URL
-
 
 school_dwnld_url <- "https://www.cde.ca.gov/ds/si/ds/pubschls.asp"           # this link may or may not need to be updated.
 school_url <- "https://www.cde.ca.gov/schooldirectory/report?rid=dl1&tp=txt" # this link may or may not need to be updated. check school_dwnld_url to find out.

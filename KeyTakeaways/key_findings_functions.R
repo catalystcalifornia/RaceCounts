@@ -1,7 +1,8 @@
+# Functions used to generate of Key Findings
 library(stringr)
 library(dplyr)
 
-
+# Clean geo names by removing type of geo and state name from name fields
 clean_geo_names <- function(x){
   # clean place names
   x$geo_name <- str_remove(x$geo_name, ", California")
@@ -13,9 +14,8 @@ clean_geo_names <- function(x){
   return(x)
 }
 
-
+# Duplicate API (Asian Pacific Islander) rows, assigning one set race_generic Asian and the other set PacIsl
 api_split <- function(x) {
-  # duplicate API (Asian Pacific Islander) rows, assigning one set race_generic Asian and the other set PacIsl
   api_asian <- filter(x, race_generic == 'api') %>% 
     mutate(race_generic = 'asian')
   
@@ -31,9 +31,25 @@ api_split <- function(x) {
   return(x)
 }
 
+# Get and remove records where city name is actually a university
+university_check <- function(x) {
+  univ_count <- x %>%
+    filter(grepl('University', geo_name)) %>%
+    select(geo_name) %>%
+    group_by(geo_name) %>% summarize(univ_count = n())
+  View(univ_count)
+  print("See univ_count for list of cities that are universities.")
+  
+  x <- x %>% 
+    filter(!(geo_name %in% univ_count$geo_name))
 
+  print("Data for cities that are actually universities have been removed.")
+    
+return(x)
+}
+
+# Function to prep raced most_disparate tables 
 most_disp_by_race <- function(x, y) {
-  # Function to prep raced most_disparate tables 
   
   # filter by race, pivot_wider, select the columns we want, get race long_name, reorder cols
   z <- x %>% 
@@ -49,7 +65,7 @@ most_disp_by_race <- function(x, y) {
     inner_join(race_names, by = c('race' = 'race_generic')) %>% 
     select(geoid, geo_name, race,  dist_id, district_name, total_enroll, long_name, everything()) # add race long names
   
-  # count non-null indicators by race/place
+  # count non-null indicators by race/place combo
   indicator_count_ <- z %>% 
     ungroup() %>% 
     select(geoid, long_name, ends_with("_ind"), geo_level) %>% 
@@ -60,7 +76,7 @@ most_disp_by_race <- function(x, y) {
     select(geoid, long_name, indicator_count)
   
   z <- z %>%
-    left_join(indicator_count, by=c("geoid", "long_name")) # add indicator counts by race/place to original df
+    left_join(indicator_count, by=c("geoid", "long_name")) # add indicator counts by race/place combo to original df
   
   # reorder columns
   z <- z %>% 
