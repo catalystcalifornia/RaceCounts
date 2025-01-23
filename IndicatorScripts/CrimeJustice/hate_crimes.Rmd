@@ -10,7 +10,7 @@ library(RPostgreSQL)
 library(flextable)
 library(officer)
 
-#### Add database connection ####
+#### Add database connections ####
 source("W:\\RDA Team\\R\\credentials_source.R")
 
 conn <- connect_to_db("racecounts")
@@ -21,17 +21,57 @@ options(scipen = 999)
 
 ```{r, include=FALSE}
 
+# read in data
+
 data <- read.csv("W:/Data/Crime and Justice/CA DOJ/Hate_Crimes/2001_2023/Hate-2001-2023.csv")
 
+# format data
+
+df <- data %>% select(RecordId, MostSeriousBias) %>% filter(MostSeriousBias %in% c("Anti-Arab", "Anti-Islamic (Muslim)", "Anti-Jewish")) %>% group_by(MostSeriousBias) %>% 
+  summarize(hate_crimes=n()) %>%
+  arrange(desc(hate_crimes)) %>%
+            bind_rows(summarise(., across(where(is.numeric), sum),
+                                   across(where(is.character), ~'Total')))
+
 ```
+
+People reported more than 4,000 hate crimes against SWANA Californians between 2001 and 2023, according to the California Department of Justice's Open Justice data portal. The majority of those hate crimes included a most serious bias against Jews, and nearly 1,000 hate crimes were primarily directed towards Islam and people categorized as Arabs. Partners report that hate crimes are vastly underreported due to barriers such as language and unawareness of reporting procedures.  
+
+```{r, echo=FALSE}
+
+# Visualize table
+
+ft<-flextable(df)%>%
+  set_header_labels(MostSeriousBias = "Most Serious Bias", hate_crimes = "Hate Crimes")%>%
+  align(align = c("left", "center"), part = "all") %>%
+  autofit()
+
+# Add borders
+
+ft <- border_remove(x = ft)
+ft <- hline(ft, part = "all", border =  fp_border(color = "gray"))
+
+# Bold caption
+
+ft <- set_caption(ft, as_paragraph(as_b("Reported Hate Crimes Against SWANAs in California 2001-23")))
+
+# Add source
+
+ft <- ft %>% add_footer_lines("Source: California Open Justice")
+ft <- fontsize(ft, size = 10, part = "footer")
+
+ft
+
+```
+
 
 ```{r, include=FALSE}
 
-df <- data %>% select(RecordId, MostSeriousBias) %>% filter(MostSeriousBias %in% c("Anti-Arab", "Anti-Islamic (Muslim)", "Anti-Jewish")) %>% group_by(MostSeriousBias) %>% summarize(hate_crimes=n())
+# save as image
 
-```
+save_as_image(x = ft, path = "W:/Project/RACE COUNTS/2025_v7/RC_Github/CR/IndicatorScripts/CrimeJustice/hate_crimes.svg")
 
-```{r, include=FALSE}
+# disconnect 
 
 dbDisconnect(conn)
 dbDisconnect(con)
