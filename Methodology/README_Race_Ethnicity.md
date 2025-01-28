@@ -48,12 +48,15 @@ We use one simplified set of terms for the RACE COUNTS website and publications,
 | Filipinx | Alone | Excludes |
 | Latinx | Alone or in combination with another race  | Includes |
 | Native Hawaiian / Pacific Islander | Alone or in combination with another race  | Includes |
-| Southwest Asian / North African | Alone or in combination with another race  | Includes |
+| South Asian* | Alone or in combination with another race  | Includes |
+| Southwest Asian / North African* | Alone or in combination with another race  | Includes |
 | White | Alone | Excludes |
 | Another Race | Alone | Excludes |
-| Multiracial | Alone or in combination with another race  | Excludes |
+| Multiracial | Combination of two or more races  | Excludes |
 
 There are instances where we use different terms, or definitions, due to considerations like the preferences of our partners on a specific project or data considerations.
+
+*See [this document](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/SWANA_SoAsian_Ancestry.xlsx) for the list of ancestries included in Southwest Asian / North African and South Asian categories.
 
 The specific definition of each race / ethnicity for each indicator can be found in the [Indicator Methodology documents](https://github.com/catalystcalifornia/RaceCounts/tree/main/Methodology).
 
@@ -75,7 +78,7 @@ Examples:
 
 * Other datasets, such as American Community Survey Public Use Microdata (PUMS) include rich detail allowing us to calculate statistics for our standard RACE COUNTS race/ethnicity groupings.
 
-Reliability of data is often low for groups that have smaller populations such as American Indian / Alaska Natives due to data collectors having inadequate sample sizes. As a result, we do our best to strike a balance between including data for as many groups as possible, while also only presenting statistics that we are confident are strong enough for advocacy and policymaking. At times this may mean that we suppress data for one or more groups.
+Reliability of data is often low for groups that have smaller populations such as American Indian / Alaska Natives due to data collectors having inadequate sample sizes. As a result, we do our best to strike a balance between including data for as many groups as possible, while also only presenting statistics that we are confident are strong enough for advocacy and policymaking. At times, this may mean that we suppress data for one or more groups.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 

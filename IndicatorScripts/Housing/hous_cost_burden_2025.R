@@ -258,7 +258,7 @@ county_table_name <- paste0("arei_hous_cost_burden_owner_county_", rc_yr)
 state_table_name <- paste0("arei_hous_cost_burden_owner_state_", rc_yr)
 city_table_name <- paste0("arei_hous_cost_burden_owner_city_", rc_yr)
 
-indicator <- "The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. This data is"
+indicator <- paste0("Created on ", Sys.date(), ". The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. This data is")
 
 # send tables to postgres
 to_postgres(county_table, state_table)

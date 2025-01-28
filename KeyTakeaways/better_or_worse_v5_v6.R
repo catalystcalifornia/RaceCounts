@@ -3,8 +3,8 @@
 ### Script produces findings about how much an indicator's disparity has changed by calculating the % change btwn curr and prev Index of Disparity values.
 
 
-#install and load packages if not already installed
-packages <- c("tidyverse","RPostgreSQL","here","usethis")  
+##### Install and load packages #####
+packages <- c("dplyr","RPostgreSQL","here","usethis")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -31,7 +31,7 @@ options(scipen = 100)
 
 con <- connect_to_db("racecounts")
 
-# update each yr
+##### UPDATE EACH YEAR: Define years to compare #####
 curr_rc_yr <- '2024'
 curr_rc_schema <- 'v6'
 prev_rc_yr <- '2023'
@@ -84,6 +84,7 @@ prev_state_tables_long <- prev_state_tables_long %>% rename(prev_id = index_of_d
 combined_data <- state_tables_long %>% inner_join(prev_state_tables_long %>% select(prev_id, prev_total_rate, indicator), by = "indicator")
 combined_data <- combined_data %>% relocate(indicator, .after = state_name) %>% relocate(issue, .after = state_name) %>% relocate(asbest, .after = indicator)  # reposition columns
 
+dbDisconnect(con)
 
 # HK Analysis -------------------------------------------------------------
 
@@ -215,72 +216,6 @@ bottom_5_worsened_disparity <- combined_data %>%
 ##### Extra tables #####
 ## Freq of conclusions covering both outcome and disparity changes
 conclusions <- as.data.frame(table(combined_data$conclusion))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

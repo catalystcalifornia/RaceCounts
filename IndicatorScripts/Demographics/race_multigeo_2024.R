@@ -87,7 +87,7 @@ dbWriteTable(con, c(rc_schema, table_name), pop_df,
 
 #comment on table and columns
 comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", table_name,  " IS ' Created on ", Sys.Date(), ". ", indicator, " from ", source, ".';
-                                                                                      COMMENT ON COLUMN v5.", table_name, ".geoid IS 'FIPS code';")
+                                                                                      COMMENT ON COLUMN ", rc_schema, ".", table_name, ".geoid IS 'FIPS code';")
 print(comment)            
 dbSendQuery(con, comment)
 
