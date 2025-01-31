@@ -19,7 +19,8 @@ con <- connect_to_db("racecounts")
 con2 <- connect_to_db("rda_shared_data")
 
 # define variables used in several places: Update each year
-curr_yr <- "2010-2022"  # must keep same format
+curr_yr <- "2010-2022"  # must keep same format, CA DOJ year
+acs_yr <- "2022"
 yrs_list <- c("2010","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020","2021","2022")
 rc_yr <- "2024"
 dwnld_url <- "https://openjustice.doj.ca.gov/data"
@@ -56,7 +57,7 @@ df_wide$county <-  gsub(" County", "", df_wide$county)
 
 # Population data by race and age ---------------------------------------------------
 ### Note: Black pop is Latinx-inclusive while Black Status Offense data is Latinx-exclusive
-pop <- st_read(con2, query = "SELECT * FROM demographics.acs_5yr_b01001_multigeo_2022") %>% filter(geolevel %in% c("state", "county"))
+pop <- st_read(con2, query = paste0("SELECT * FROM demographics.acs_5yr_b01001_multigeo_", acs_yr)) %>% filter(geolevel %in% c("state", "county"))
 pop$total_und_18_pop <- pop$b01001_003e + pop$b01001_004e + pop$b01001_005e + pop$b01001_006e + pop$b01001_027e + pop$b01001_028e + pop$b01001_029e + pop$b01001_030e
 pop$black_und_18_pop <- pop$b01001b_003e + pop$b01001b_004e + pop$b01001b_005e + pop$b01001b_006e + pop$b01001b_018e + pop$b01001b_019e + pop$b01001b_020e + pop$b01001b_021e
 pop$nh_white_und_18_pop <- pop$b01001h_003e + pop$b01001h_004e + pop$b01001h_005e + pop$b01001h_006e + pop$b01001h_018e + pop$b01001h_019e + pop$b01001h_020e + pop$b01001h_021e
