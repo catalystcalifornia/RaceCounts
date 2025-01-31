@@ -18,14 +18,14 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
 con2 <- connect_to_db("rda_shared_data")
 
-# define variables used in several places that must be updated each year
+# define variables used in several places: Update each year
 curr_yr <- "2010-2022"  # must keep same format
 yrs_list <- c("2010","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020","2021","2022")
 rc_yr <- "2024"
 dwnld_url <- "https://openjustice.doj.ca.gov/data"
 rc_schema <- "v6"
 
-# Read Data ---------------------------------------------------------------
+# Read Data: Update each year ---------------------------------------------------------------
 # Metadata: https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2022-08/Arrests%20Context_081122.pdf
 df_disposition <- read_csv("W:/Data/Crime and Justice/CA DOJ/Arrests/OnlineArrestDispoData1980-2022.csv") %>% filter(YEAR %in% yrs_list)
 
