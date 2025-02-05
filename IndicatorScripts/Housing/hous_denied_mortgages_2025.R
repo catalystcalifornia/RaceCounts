@@ -1,10 +1,9 @@
-## Denied Mortgages Applications for RC v6 ##
+## Denied Mortgages Applications for RC v7 ##
 
 list.of.packages <- c("openxlsx","tidyr","dplyr","stringr", "DBI", "RPostgreSQL","data.table", "openxlsx", "tidycensus", "tidyverse", "janitor")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
-#library(plyr)
 library(dplyr)
 library(DBI)
 library(RPostgreSQL)
@@ -24,12 +23,14 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con2 <- connect_to_db("rda_shared_data")
 
 ##### You must manually update variables each year ###
-    new_hmda_yrs = c('2019','2020','2021','2022') # yrs of data that need to be downloaded
-    data_yrs <- c("2019", "2020", "2021", "2022") # all data yrs included in analysis
+    new_hmda_yrs = c('2023') # yrs of data that need to be downloaded
+    data_yrs <- c("2019", "2020", "2021", "2022", "2023") # all data yrs included in analysis
     table_schema <- "housing"
-    rc_yr <- 2024
-    rc_schema <- "v6"
-    
+    rc_yr <- 2025
+    rc_schema <- "v7"
+
+#### City Counts section also requires update ####    
+        
 #### PULL DATA FROM HMDA API -------------------------------------------
 ### If the most current denied mortgage and loans originated tables are already in postgres, then skip to PREP DENIED MORTGAGES code chunk.
 ####### Info on HMDA API here: https://ffiec.cfpb.gov/documentation/api/data-browser/
@@ -57,15 +58,15 @@ con2 <- connect_to_db("rda_shared_data")
 ## If not, then leading zeroes may be missing or there may be other errors to check out.
 
     # for (i in 1:length(hmda_list)) {
-    #   print(paste0(names(hmda_list[i]), " has ", (nrow(filter(hmda_list[[list_elem_num]], nchar(hmda_list[[list_elem_num]]$census_tract) != 11))), " census_tract errors"))
+    #   print(paste0(names(hmda_list[i]), " has ", (nrow(filter(hmda_list[[i]], nchar(hmda_list[[i]]$census_tract) != 11))), " census_tract errors"))
     #   print(paste0(names(hmda_list[i]), " has ", (nrow(filter(hmda_list[[i]], nchar(hmda_list[[i]]$county_code) != 5))), " county_code errors"))
-    #   print(paste0(names(hmda_list[i]), " has ", (nrow(filter(hmda_list[[list_elem_num]], hmda_list[[list_elem_num]]$state_code != "CA"))), " state_code errors"))
+    #   print(paste0(names(hmda_list[i]), " has ", (nrow(filter(hmda_list[[i]], hmda_list[[i]]$state_code != "CA"))), " state_code errors"))
     # }
     # 
     # for (i in 1:length(hmda_list2)) {
-    #   print(paste0(names(hmda_list2[i]), " has ", (nrow(filter(hmda_list2[[list_elem_num]], nchar(hmda_list2[[list_elem_num]]$census_tract) != 11))), " census_tract errors"))
+    #   print(paste0(names(hmda_list2[i]), " has ", (nrow(filter(hmda_list2[[i]], nchar(hmda_list2[[i]]$census_tract) != 11))), " census_tract errors"))
     #   print(paste0(names(hmda_list2[i]), " has ", (nrow(filter(hmda_list2[[i]], nchar(hmda_list2[[i]]$county_code) != 5))), " county_code errors"))
-    #   print(paste0(names(hmda_list2[i]), " has ", (nrow(filter(hmda_list2[[list_elem_num]], hmda_list2[[list_elem_num]]$state_code != "CA"))), " state_code errors"))
+    #   print(paste0(names(hmda_list2[i]), " has ", (nrow(filter(hmda_list2[[i]], hmda_list2[[i]]$state_code != "CA"))), " state_code errors"))
     # }
 
       
@@ -73,7 +74,7 @@ con2 <- connect_to_db("rda_shared_data")
       # for(i in 1:length(hmda_list)){
       #   hmda_names <- names(hmda_list)
       #   table_name <- hmda_names[i]
-      #   table_comment_source <- "Denied Mortgages out of all Loan Applications" 
+      #   table_comment_source <- "Denied Mortgages out of all Loan Applications"
       #   table_source <- paste0("HMDA https://ffiec.cfpb.gov/data-browser/ downloaded on ", Sys.Date())
       #   table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
       # 
