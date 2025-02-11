@@ -65,7 +65,7 @@ return(method_list)
 
 }
 
-# Function to render specific geolevel methodology
+# Function to render specific geolevel methodology - this fx runs the RMD
 render_method <- function(geoname, date, method_list) {
 
   rmarkdown::render(#input = paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/LF/RaceCounts/Methodology/Indicator_Methodology_", geoname, ".Rmd"),
@@ -83,7 +83,7 @@ render_method <- function(geoname, date, method_list) {
 geo <- 'cntyst'  # fx input to set geolevel
 method_list <- prep_method(geo, curr_yr, curr_schema)
 
-# render methodology
+# render methodology - this code runs the RMD
 geoname <- 'County_State'
 render_method(geoname, date, method_list)
 
