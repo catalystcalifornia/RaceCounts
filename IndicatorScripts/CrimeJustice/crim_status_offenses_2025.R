@@ -27,7 +27,7 @@ dwnld_url <- "https://openjustice.doj.ca.gov/data"
 rc_schema <- "v7"
 
 # Read Data: Update each year ---------------------------------------------------------------
-# Metadata: https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2022-08/Arrests%20Context_081122.pdf
+# Metadata: https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-07/arrests-context-06062024.pdf
 df_disposition <- read_csv("W:/Data/Crime and Justice/CA DOJ/Arrests/OnlineArrestDispoData1980-2023.csv") %>% filter(YEAR %in% yrs_list)
 
 # make cols lower
@@ -50,14 +50,14 @@ df_wide <- df %>% pivot_wider(names_from = race, values_from = s_total)
 
 # calculate total for state and clean up table
 df_wide <- df_wide %>% adorn_totals("row") %>% as.data.frame(df_wide) # add state totals row
-names(df_wide)[-(1)] <- paste0(names(df_wide)[-(1)], "_sum_arrests") # add suffix to 10y sums
+names(df_wide)[-(1)] <- paste0(names(df_wide)[-(1)], "_sum_arrests")  # add suffix to multi-year sums
 df_wide$county[df_wide$county == 'Total'] <- 'California'
-df_wide$county <-  gsub(" County", "", df_wide$county)
+df_wide$county <- gsub(" County", "", df_wide$county)
 
 
 # Population data by race and age ---------------------------------------------------
 ### Note: Black pop is Latinx-inclusive while Black Status Offense data is Latinx-exclusive
-pop <- st_read(con2, query = paste0("SELECT * FROM demographics.acs_5yr_b01001_multigeo_", acs_yr)) %>% filter(geolevel %in% c("state", "county"))
+pop <- dbGetQuery(con2, paste0("SELECT * FROM demographics.acs_5yr_b01001_multigeo_", acs_yr)) %>% filter(geolevel %in% c("state", "county"))
 pop$total_und_18_pop <- pop$b01001_003e + pop$b01001_004e + pop$b01001_005e + pop$b01001_006e + pop$b01001_027e + pop$b01001_028e + pop$b01001_029e + pop$b01001_030e
 pop$black_und_18_pop <- pop$b01001b_003e + pop$b01001b_004e + pop$b01001b_005e + pop$b01001b_006e + pop$b01001b_018e + pop$b01001b_019e + pop$b01001b_020e + pop$b01001b_021e
 pop$nh_white_und_18_pop <- pop$b01001h_003e + pop$b01001h_004e + pop$b01001h_005e + pop$b01001h_006e + pop$b01001h_018e + pop$b01001h_019e + pop$b01001h_020e + pop$b01001h_021e
@@ -139,7 +139,7 @@ county_table_name <- paste0("arei_crim_status_offenses_county_", rc_yr)
 state_table_name <- paste0("arei_crim_status_offenses_state_", rc_yr)
 
 indicator <- paste0("Created on ", Sys.Date(), ". Annual average number of arrests for status offenses over ", num_yrs, " years. Raw is also ", num_yrs, "-yr annual average. This data is")
-source <- paste0("CADOJ ", curr_yr, " ", dwnld_url)
+source <- paste0("CADOJ ", curr_yr, " and ACS ", acs_yr, " 5y Table B01001 data. ", dwnld_url)
 
 #to_postgres(county_table,state_table)
 
