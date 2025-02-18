@@ -248,10 +248,35 @@ city_table <- calc_ranks(city_table)
 city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") 
 View(city_table)
 
+#split LEG DISTRICTS into separate tables and format id, name columns
+upper_table <- d[d$geolevel == 'upper', ]
+lower_table <- d[d$geolevel == 'lower', ]
+
+#calculate SLDU z-scores
+upper_table <- calc_z(upper_table)
+
+## Calc SLDU ranks##
+upper_table <- calc_ranks(upper_table)
+View(upper_table)
+
+#calculate SLDL z-scores
+lower_table <- calc_z(lower_table)
+
+## Calc SLDL ranks##
+lower_table <- calc_ranks(lower_table)
+View(lower_table)
+
+## Bind sldu and sldl tables into one leg_table##
+leg_table <- rbind(upper_table, lower_table)
+colnames(leg_table)[geoid] <- c("leg_id")
+
+
 ### info for postgres tables will auto update ###
 county_table_name <- paste0("arei_hben_drinking_water_county_", rc_yr)
 state_table_name <- paste0("arei_hben_drinking_water_state_", rc_yr)
 city_table_name <- paste0("arei_hben_drinking_water_city_", rc_yr)
+leg_table_name <- paste0("arei_hben_drinking_water_leg_", rc_yr)
+
 start_yr <- acs_yr - 4
 
 indicator <- paste0("Created on ", Sys.Date(), ". Exposure to Contaminated Drinking Water Score")
@@ -261,6 +286,7 @@ source <- paste0("CalEnviroScreen ", ces_v, " (", curr_yr, ") https://oehha.ca.g
 #send tables to postgres
 #to_postgres(county_table, state_table)
 #city_to_postgres(city_table)
+#leg_to_postgres(leg_table)
 
 
 
