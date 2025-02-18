@@ -22,8 +22,8 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
 #set source for Weighted-Average Functions script
-source("W:/RDA Team/R/Functions/Cnty_St_Wt_Avg_Functions.R")
-source("W:/RDA Team/R/ACS Updates/SWANA_Ancestry_List.R")
+source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
+source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/SWANA_Ancestry_List.R")
 
 # update variables used throughout each year
 curr_yr <- 2021 # yr of CES data release
@@ -38,6 +38,55 @@ rc_schema <- 'v6'
 ind_df <- st_read(con, query = paste0("select ct_geoid AS geoid, drinkwat from built_environment.oehha_ces4_tract_", curr_yr))
 ind_df <- dplyr::rename(ind_df, sub_id = geoid, indicator = drinkwat)       # rename columns for functions
 ind_df <- filter(ind_df, indicator >= 0) # screen out NA values of -999
+
+
+############# ASSEMBLY DISTRICTS ##################
+
+###### DEFINE VALUES FOR FUNCTIONS ######
+
+# set values for weighted average functions - You may need to update these
+subgeo <- c('tract')             # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
+targetgeolevel <- c('sldl')      # define your target geolevel: county (state is handled separately)
+survey <- "acs5"                 # define which Census survey you want
+pop_threshold = 250              # define population threshold for screening
+assm_geoid <- 'sldl24'			 # define column with Assm geoid
+
+### CT-Assm Crosswalk ### ---------------------------------------------------------------------
+#set source for CT-Assm Crosswalk fx
+xwalk_filter <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, " AS assm_geoid FROM crosswalks.tract_2020_state_assembly_2024"))
+assm <- dbGetQuery(con, paste0("SELECT ", assm_geoid, " AS assm_geoid FROM crosswalks.tract_2020_state_assembly_2024")) %>% unique()
+
+##### GET SUB GEOLEVEL POP DATA ######
+pop <- update_detailed_table(vars = vars_list_acs, yr = acs_yr, srvy = survey)  # subgeolevel pop
+pop <- as.data.frame(pop)
+
+# get SWANA pop
+vars_list_acs_swana <- get_swana_var(acs_yr, survey)
+pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = acs_yr, srvy = survey) %>% as.data.frame() %>%
+  group_by(GEOID, NAME, geolevel) %>% 
+  summarise(estimate=sum(estimate),
+            moe=moe_sum(moe,estimate)) %>% mutate(variable = "swana") # subgeolevel pop
+
+
+# combine DP05 groups with SWANA tract level estimates 
+pop_ <- rbind(pop, pop_swana %>% filter(geolevel == 'tract')) %>% rename(e = estimate, m = moe)
+
+# transform pop data to wide format 
+pop_wide <- pop_ %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = c(e, m), names_glue = "{variable}{.value}")
+
+
+#### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
+pop_wide <- as.data.frame(pop_wide) %>% right_join(select(xwalk_filter, c(ct_geoid, assm_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
+pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = assm_geoid) # rename to generic column names for WA functions
+
+
+# calc target geolevel pop and number of sub geolevels per target geolevel
+pop_df <- targetgeo_pop(pop_wide) 
+
+##### ASSM WEIGHTED AVG CALCS ######
+pct_df <- pop_pct_multi(pop_df)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
+assm_wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
+assm_wa <- assm_wa %>% mutate(geolevel = 'lower')  # change drop geometry, add geolevel
 
 
 ############# CITY ##################
