@@ -61,14 +61,14 @@ return(x)
 
 #####calculate difference from best#####
 calc_diff <- function(x) {
-  rates <- dplyr::select(x, geoid, best, ends_with("_rate"), -starts_with("total_"), -ends_with("_no_rate"))  #get geoid, raced rate and best columns
+  rates <- dplyr::select(x, geoid, geolevel, best, ends_with("_rate"), -starts_with("total_"), -ends_with("_no_rate"))  #get geoid, raced rate and best columns
   rates <- unique(rates) # 2/21/23 added due to prior step resulting in dupes for overcrowding
-  diff_long <- pivot_longer(rates, 3:ncol(rates), names_to="measure_rate", values_to="rate") %>%   #pivot wide table to long on geoid & best cols
+  diff_long <- pivot_longer(rates, 4:ncol(rates), names_to="measure_rate", values_to="rate") %>%   #pivot wide table to long on geoid & best cols
     mutate(diff=abs(best-rate)) %>%                                                     #calc diff from best
     mutate(measure_diff=sub("_rate", "_diff", measure_rate))                            #create new column names for diffs from best
-  diff_wide <- diff_long %>% dplyr::select(geoid, measure_diff, diff) %>%      #pivot long table back to wide
+  diff_wide <- diff_long %>% dplyr::select(geoid, geolevel, measure_diff, diff) %>%     #pivot long table back to wide
     pivot_wider(names_from=measure_diff, values_from=diff)
-  x <- x %>% left_join(diff_wide, by="geoid")                           #join new diff from best columns back to original table
+  x <- x %>% left_join(diff_wide, by=c("geoid","geolevel"))                     #join new diff from best columns back to original table
   
   return(x)
 }
@@ -76,11 +76,11 @@ calc_diff <- function(x) {
 
 #####calculate (row wise) mean difference from best#####
 calc_avg_diff <- function(x) {
-                diffs <- dplyr::select(x, geoid, values_count, ends_with("_diff"))
+                diffs <- dplyr::select(x, geoid, geolevel, values_count, ends_with("_diff"))
                 counts <- diffs %>% filter(values_count > 1) %>% dplyr::select(-c(values_count))     #filter for counts >1
-                counts$avg <- rowMeans(counts[,-1], na.rm = TRUE)                             #calc avg diff
-                counts <- dplyr::select(counts, -grep("_diff", colnames(counts)))                      #remove _diff cols before join
-                x <- x %>% left_join(counts, by="geoid")                                    #join new avg diff column back to original table
+                counts$avg <- rowMeans(counts[,-(1:2)], na.rm = TRUE)                                    #calc avg diff
+                counts <- dplyr::select(counts, -grep("_diff", colnames(counts)))                    #remove _diff cols before join
+                x <- x %>% left_join(counts, by=c("geoid","geolevel"))                               #join new avg diff column back to original table
 
 return(x)
 }
@@ -89,11 +89,11 @@ return(x)
 #####calculate (row wise) SAMPLE variance of differences from best - use for sample data like ACS or CHIS#####
 calc_s_var <- function(x) {
                 suppressWarnings(rm(var))   #removes object 'var' if had been previously defined
-                diffs <- dplyr::select(x, geoid, values_count, grep("_diff", colnames(x)))
+                diffs <- dplyr::select(x, geoid, geolevel, values_count, grep("_diff", colnames(x)))
                 counts <- diffs %>% filter(values_count > 1) %>% dplyr::select(-c(values_count))       #filter for counts >1
-                counts$variance <- apply(counts[,-1], 1, var, na.rm = T)                        #calc sample variance
+                counts$variance <- apply(counts[,-(1:2)], 1, var, na.rm = T)                        #calc sample variance
                 counts <- dplyr::select(counts, -grep("_diff", colnames(counts)))                      #remove _diff cols before join
-                x <- x %>% left_join(counts, by="geoid")                                    #join new variance column back to original table
+                x <- x %>% left_join(counts, by=c("geoid","geolevel"))                                 #join new variance column back to original table
 
 return(x)
 }
@@ -102,15 +102,15 @@ return(x)
 #####calculate (row wise) POPULATION variance of differences from best - use for non-sample data like Decennial Census, CDPH Births, or CADOJ Incarceration#####
 calc_p_var <- function(x) {
                 suppressWarnings(rm(var))   #removes object 'var' if had been previously defined
-                diffs <- dplyr::select(x, geoid, values_count, ends_with("_diff"))
+                diffs <- dplyr::select(x, geoid, geolevel, values_count, ends_with("_diff"))
                 counts <- diffs %>% filter(values_count > 1) #%>% dplyr::select(-c(values_count))       #filter for counts >1
-                counts$svar <- apply(counts[,3:ncol(counts)], 1, var, na.rm = T)                        #calc sample variance
+                counts$svar <- apply(counts[,4:ncol(counts)], 1, var, na.rm = T)                        #calc population variance
                 
                 #convert sample variance to population variance. checked that the svar and variance results match VARS.S/VARS.P Excel results.
                 #See more: https://stackoverflow.com/questions/37733239/population-variance-in-r
                 counts$variance <- counts$svar * (counts$values_count - 1) / counts$values_count
-                counts <- dplyr::select(counts, geoid, variance)                                        #remove extra cols before join
-                x <- x %>% left_join(counts, by="geoid")                                    #join new variance column back to original table
+                counts <- dplyr::select(counts, geoid, geolevel, variance)                               #remove extra cols before join
+                x <- x %>% left_join(counts, by=c("geoid","geolevel"))                                   #join new variance column back to original table
 
 return(x)
 }
@@ -261,7 +261,7 @@ calc_ranks <- function(x) {
 
 
 
-#####send city, county and state tables to postgres#####
+#####send city, county, state and leg district tables to postgres#####
 to_postgres <- function(x,y) {
                       # create connection for rda database
                       source("W:\\RDA Team\\R\\credentials_source.R")
@@ -314,7 +314,6 @@ to_postgres <- function(x,y) {
 return(x)
 }
 
-
 city_to_postgres <- function(x) {
 
   # create connection for rda database
@@ -342,3 +341,33 @@ city_to_postgres <- function(x) {
   dbSendQuery(con, comment)
 }
 
+leg_to_postgres <- function(x) {
+  # create connection for rda database
+  source("W:\\RDA Team\\R\\credentials_source.R")
+  con <- connect_to_db("racecounts")
+  
+  #STATE TABLE
+  leg_table <- as.data.frame(leg_table)
+  
+  # make character vector for field types in postgresql db
+  charvect = rep('numeric', dim(leg_table)[2])
+  
+  # change data type for first two columns
+  charvect[1:3] <- "varchar" # first two cols are characters for the geoid and names
+  
+  # add names to the character vector
+  names(charvect) <- colnames(leg_table)
+  
+  dbWriteTable(con, c(rc_schema, leg_table_name), leg_table,
+               overwrite = FALSE, row.names = FALSE)
+  
+  #comment on table and columns
+  comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", leg_table_name,  " IS '", indicator, " from ", source, ".';
+                                                                        COMMENT ON COLUMN ", rc_schema, ".", leg_table_name, ".leg_id IS 'Legislative District fips - note Assm and Sen fips are NOT unique. You must use combination of leg_id and geolevel to identify';")
+  print(comment)
+  dbSendQuery(con, comment)
+  
+  dbDisconnect(con)
+  
+  return(x)
+}

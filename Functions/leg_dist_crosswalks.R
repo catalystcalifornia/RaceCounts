@@ -71,6 +71,7 @@ prep_tables <- function(target_geo, target_geo_yr, source_geo, source_geo_yr) {
     source_name_long <- filter(geo_names, geo_names_short == source_geo) %>% select(geo_names_long)  # assign source geo long name based on source_geo
     target_name_long <- filter(geo_names, geo_names_short == target_geo) %>% select(geo_names_long)  # assign target geo long name based on target_geo
     
+# NOTE: This section may need to be updated (target_geo_yr, 3,4) when leg district vintage changes
     district_id_col <- if (target_geo == 'assembly') {paste0("sldl", substr(target_geo_yr, 3,4))     # generate leg dist (target) geoid column name
     } else                     {paste0("sldu", substr(target_geo_yr, 3,4))}
   
@@ -128,7 +129,8 @@ prep_tables <- function(target_geo, target_geo_yr, source_geo, source_geo_yr) {
     # rename geo_id, name, and select only columns we want
     crosswalk <- crosswalk %>% 
       rename_with(~'geo_name', ends_with('name')) %>%
-      rename_with(~'geo_id', starts_with('puma')) 
+      rename_with(~'geo_id', starts_with('puma')) %>%
+      mutate(geo_id = paste0("06", geo_id))
   } else if (source_geo == "county") {
     # rename geo_id and select only columns we want
     crosswalk <- crosswalk %>% 
@@ -138,23 +140,40 @@ prep_tables <- function(target_geo, target_geo_yr, source_geo, source_geo_yr) {
     # rename geo_id and select only columns we want
     crosswalk <- crosswalk %>% 
       rename_with(~'geo_name', starts_with('uschlnm')) %>%
-      rename_with(~'geo_id', starts_with('sduni')) 
+      rename_with(~'geo_id', starts_with('sduni')) %>%
+      mutate(geo_id = paste0("06", geo_id))
   } else if (source_geo == "esd") {
     # rename geo_id and select only columns we want
     crosswalk <- crosswalk %>% 
       rename_with(~'geo_name', starts_with('eschlnm')) %>%
-      rename_with(~'geo_id', starts_with('sdelem')) 
+      rename_with(~'geo_id', starts_with('sdelem')) %>%
+      mutate(geo_id = paste0("06", geo_id))
   } else if (source_geo == "ssd") {
     # rename geo_id and select only columns we want
     crosswalk <- crosswalk %>% 
       rename_with(~'geo_name', starts_with('sschlnm')) %>%
-      rename_with(~'geo_id', starts_with('sdsec')) 
+      rename_with(~'geo_id', starts_with('sdsec')) %>%
+      mutate(geo_id = paste0("06", geo_id))
   }
   
+# NOTE: This section needs to be updated (sldl24 and sldu24) when leg district vintage changes
+  if (target_geo == "assembly") {
+    crosswalk$sldl24 <- paste0("06",crosswalk$sldl24)
+    subgeo_count <- crosswalk %>% group_by(sldl24) %>% summarize(min(geo_name), num_dist = n())     # count pumas per dist
+    crosswalk <- crosswalk %>% left_join(subgeo_count %>% select(sldl24, num_dist), by = "sldl24")  # join puma_count per dist to xwalk
+    
+  } else if (target_geo == "senate") {
+    crosswalk$sldu24 <- paste0("06",crosswalk$sldu24)
+    subgeo_count <- crosswalk %>% group_by(sldu24) %>% summarize(min(geo_name), num_dist = n())     # count pumas per dist
+    crosswalk <- crosswalk %>% left_join(subgeo_count %>% select(sldu24, num_dist), by = "sldu24")  # join puma_count per dist to xwalk
+    
+  }
+  
+
   print("Crosswalk cleaned.")
   
   # rearrange columns and drop unneeded columns
-  crosswalk <- crosswalk %>% select(geo_id, geo_name, district_id_col, paste0("pop", pop_yr), int_pt_lat, int_pt_lon, afact2, afact)
+  crosswalk <- crosswalk %>% select(geo_id, geo_name, district_id_col, paste0("pop", pop_yr), num_dist, int_pt_lat, int_pt_lon, afact2, afact)
   
   # export to Postgres
   dbWriteTable(con, c(rda_schema, table_name), crosswalk,
@@ -168,13 +187,15 @@ prep_tables <- function(target_geo, target_geo_yr, source_geo, source_geo_yr) {
   print("Table comment sent to postgres.")
 
   column_comments <- paste0("COMMENT ON COLUMN ",rda_schema,".",table_name,".geo_id IS '", metadata[1,1] ,"';
-                              COMMENT ON COLUMN ",rda_schema,".",table_name,".geo_name IS '", metadata[1,3] ,"';
+                              COMMENT ON COLUMN ",rda_schema,".",table_name,".geo_name IS 'Clean leg dist geoid';
+                              COMMENT ON COLUMN ",rda_schema,".",table_name,".",district_id_col," IS '", metadata[1,2] ,"';
                               COMMENT ON COLUMN ",rda_schema,".",table_name,".",district_id_col," IS '", metadata[1,2] ,"';
                               COMMENT ON COLUMN ",rda_schema,".",table_name,".pop", pop_yr," IS '", metadata[1,4] ,"';
                               COMMENT ON COLUMN ",rda_schema,".",table_name,".int_pt_lat IS '", metadata[1,5] ,"';
                               COMMENT ON COLUMN ",rda_schema,".",table_name,".int_pt_lon IS '", metadata[1,6] ,"';
                               COMMENT ON COLUMN ",rda_schema,".",table_name,".afact2 IS '", metadata[1,7] ,"';
                               COMMENT ON COLUMN ",rda_schema,".",table_name,".afact IS '", metadata[1,8] ,"';
+                              
                          ")
   print(column_comments) 
   # send column comments
