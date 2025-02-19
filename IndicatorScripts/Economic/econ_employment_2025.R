@@ -47,7 +47,7 @@ d <- df_screened
 
 #set source for RC Functions script
 #source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
-source("W:\\Project\\RACE COUNTS\\2025_v7\\RC_Github\\LF\\RaceCounts\\Functions\\RC_Functions.R")
+source(".\\Functions\\RC_Functions.R")
 
 # Adds asbest value for RC Functions
 d$asbest = asbest
