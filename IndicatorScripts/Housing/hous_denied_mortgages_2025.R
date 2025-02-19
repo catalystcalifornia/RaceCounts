@@ -24,86 +24,88 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con2 <- connect_to_db("rda_shared_data")
 
 ##### You must manually update variables each year ###
-    new_hmda_yrs = c('2019','2020','2021','2022') # yrs of data that need to be downloaded
-    data_yrs <- c("2019", "2020", "2021", "2022") # all data yrs included in analysis
+    # new_hmda_yrs = c('2020','2021','2022','2023') # yrs of data that need to be downloaded #
+    # data_yrs <- c("2020", "2021", "2022","2023") # all data yrs included in analysis # 
+    new_hmda_yrs = c('2023') # yrs of data that need to be downloaded #
+    data_yrs <- c("2023") # all data yrs included in analysis # 
     table_schema <- "housing"
-    rc_yr <- 2024
-    rc_schema <- "v6"
+    rc_yr <- 2025
+    rc_schema <- "v7"
     
 #### PULL DATA FROM HMDA API -------------------------------------------
 ### If the most current denied mortgage and loans originated tables are already in postgres, then skip to PREP DENIED MORTGAGES code chunk.
 ####### Info on HMDA API here: https://ffiec.cfpb.gov/documentation/api/data-browser/
 
-# # NOTE: This loop may take up to 10 minutes to run...
-# hmda_list <- list()
-#  for (i in new_hmda_yrs) {  ### Denied Mortgages
-# 
-#    hmda_list[[paste0("hmda_tract_denied_mortgages_",i)]] <- GET(url=paste0("https://ffiec.cfpb.gov/v2/data-browser-api/view/csv?states=CA&actions_taken=3&years=",i)) %>% content("parsed")
-# 
-#  }
-# 
-# 
-# ## NOTE: This loop may take up to 10 minutes to run...
-# hmda_list2 <- list()
-# for (i in new_hmda_yrs) {   ### Loans Originated (aka applications)
-# 
-#   hmda_list2[[paste0("hmda_tract_loans_originated_",i)]] <- GET(url=paste0("https://ffiec.cfpb.gov/v2/data-browser-api/view/csv?states=CA&actions_taken=1&years=",i)) %>% content("parsed")
-# 
-# }
+# NOTE: This loop may take up to 10 minutes to run...
+hmda_list <- list()
+ for (i in new_hmda_yrs) {  ### Denied Mortgages
+
+   hmda_list[[paste0("hmda_tract_denied_mortgages_",i)]] <- GET(url=paste0("https://ffiec.cfpb.gov/v2/data-browser-api/view/csv?states=CA&actions_taken=3&years=",i)) %>% content("parsed")
+
+ }
+
+
+## NOTE: This loop may take up to 10 minutes to run...
+hmda_list2 <- list()
+for (i in new_hmda_yrs) {   ### Loans Originated (aka applications)
+
+  hmda_list2[[paste0("hmda_tract_loans_originated_",i)]] <- GET(url=paste0("https://ffiec.cfpb.gov/v2/data-browser-api/view/csv?states=CA&actions_taken=1&years=",i)) %>% content("parsed")
+
+}
 
 
 #### CREATE RDA_SHARED_DATA TABLES -------------------------------------------
 # Check if census tract, county code and state are the correct length bc in the past there have been some geoid errors.
 ## If not, then leading zeroes may be missing or there may be other errors to check out.
 
-    # for (i in 1:length(hmda_list)) {
-    #   print(paste0(names(hmda_list[i]), " has ", (nrow(filter(hmda_list[[list_elem_num]], nchar(hmda_list[[list_elem_num]]$census_tract) != 11))), " census_tract errors"))
-    #   print(paste0(names(hmda_list[i]), " has ", (nrow(filter(hmda_list[[i]], nchar(hmda_list[[i]]$county_code) != 5))), " county_code errors"))
-    #   print(paste0(names(hmda_list[i]), " has ", (nrow(filter(hmda_list[[list_elem_num]], hmda_list[[list_elem_num]]$state_code != "CA"))), " state_code errors"))
-    # }
-    # 
-    # for (i in 1:length(hmda_list2)) {
-    #   print(paste0(names(hmda_list2[i]), " has ", (nrow(filter(hmda_list2[[list_elem_num]], nchar(hmda_list2[[list_elem_num]]$census_tract) != 11))), " census_tract errors"))
-    #   print(paste0(names(hmda_list2[i]), " has ", (nrow(filter(hmda_list2[[i]], nchar(hmda_list2[[i]]$county_code) != 5))), " county_code errors"))
-    #   print(paste0(names(hmda_list2[i]), " has ", (nrow(filter(hmda_list2[[list_elem_num]], hmda_list2[[list_elem_num]]$state_code != "CA"))), " state_code errors"))
-    # }
+    for (i in 1:length(hmda_list)) {
+      print(paste0(names(hmda_list[i]), " has ", (nrow(filter(hmda_list[[list_elem_num]], nchar(hmda_list[[list_elem_num]]$census_tract) != 11))), " census_tract errors"))
+      print(paste0(names(hmda_list[i]), " has ", (nrow(filter(hmda_list[[i]], nchar(hmda_list[[i]]$county_code) != 5))), " county_code errors"))
+      print(paste0(names(hmda_list[i]), " has ", (nrow(filter(hmda_list[[list_elem_num]], hmda_list[[list_elem_num]]$state_code != "CA"))), " state_code errors"))
+    }
+
+    for (i in 1:length(hmda_list2)) {
+      print(paste0(names(hmda_list2[i]), " has ", (nrow(filter(hmda_list2[[list_elem_num]], nchar(hmda_list2[[list_elem_num]]$census_tract) != 11))), " census_tract errors"))
+      print(paste0(names(hmda_list2[i]), " has ", (nrow(filter(hmda_list2[[i]], nchar(hmda_list2[[i]]$county_code) != 5))), " county_code errors"))
+      print(paste0(names(hmda_list2[i]), " has ", (nrow(filter(hmda_list2[[list_elem_num]], hmda_list2[[list_elem_num]]$state_code != "CA"))), " state_code errors"))
+    }
 
       
 # Denied Mortgages
-      # for(i in 1:length(hmda_list)){
-      #   hmda_names <- names(hmda_list)
-      #   table_name <- hmda_names[i]
-      #   table_comment_source <- "Denied Mortgages out of all Loan Applications" 
-      #   table_source <- paste0("HMDA https://ffiec.cfpb.gov/data-browser/ downloaded on ", Sys.Date())
-      #   table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
-      # 
-      #   # send table and comment to postgres
-      #   dbWriteTable(con2, c(table_schema,hmda_names[i]), hmda_list[[i]], overwrite = FALSE, row.names = FALSE)
-      #   dbSendQuery(conn = con2, table_comment)
-      # 
-      #   # index the table
-      #   dbSendQuery(conn = con2, paste0("create index ", hmda_names[i], "_census_tract on ",
-      #                      table_schema, ".", hmda_names[i], " (census_tract);"))
-      # 
-      # }
+      for(i in 1:length(hmda_list)){
+        hmda_names <- names(hmda_list)
+        table_name <- hmda_names[i]
+        table_comment_source <- "Denied Mortgages out of all Loan Applications"
+        table_source <- paste0("HMDA https://ffiec.cfpb.gov/data-browser/ downloaded on ", Sys.Date())
+        table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
+
+        # send table and comment to postgres
+        dbWriteTable(con2, c(table_schema,hmda_names[i]), hmda_list[[i]], overwrite = FALSE, row.names = FALSE)
+        dbSendQuery(conn = con2, table_comment)
+
+        # index the table
+        dbSendQuery(conn = con2, paste0("create index ", hmda_names[i], "_census_tract on ",
+                           table_schema, ".", hmda_names[i], " (census_tract);"))
+
+      }
 
 # Loans Originated
-      # for(i in 1:length(hmda_list2)){
-      #   hmda_names <- names(hmda_list2)
-      #   table_name <- hmda_names[i]
-      #   table_comment_source <- "All Loans Originated (aka loan applications)"
-      #   table_source <- paste0("HMDA https://ffiec.cfpb.gov/data-browser/ downloaded on ", Sys.Date())
-      #   table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
-      # 
-      #   # send table and comment to postgres
-      #   dbWriteTable(con2, c(table_schema,hmda_names[i]), hmda_list2[[i]], overwrite = FALSE, row.names = FALSE)
-      #   dbSendQuery(conn = con2, table_comment)
-      # 
-      #   # index the table
-      #   dbSendQuery(conn = con2, paste0("create index ", hmda_names[i], "_census_tract on ",
-      #                      table_schema, ".", hmda_names[i], " (census_tract);"))
-      # 
-      # }
+      for(i in 1:length(hmda_list2)){
+        hmda_names <- names(hmda_list2)
+        table_name <- hmda_names[i]
+        table_comment_source <- "All Loans Originated (aka loan applications)"
+        table_source <- paste0("HMDA https://ffiec.cfpb.gov/data-browser/ downloaded on ", Sys.Date())
+        table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
+
+        # send table and comment to postgres
+        dbWriteTable(con2, c(table_schema,hmda_names[i]), hmda_list2[[i]], overwrite = FALSE, row.names = FALSE)
+        dbSendQuery(conn = con2, table_comment)
+
+        # index the table
+        dbSendQuery(conn = con2, paste0("create index ", hmda_names[i], "_census_tract on ",
+                           table_schema, ".", hmda_names[i], " (census_tract);"))
+
+      }
 
 
 #### PREP DENIED MORTGAGE RATES ----------------------------------------
@@ -117,8 +119,8 @@ loan_tbl_list <- loan_tbl_list[grepl(paste(data_yrs, collapse="|"), loan_tbl_lis
 loan_tbl_list <- loan_tbl_list[!grepl("2019_20", loan_tbl_list)] # filter out old multi-yr tables
 
 # Check your lists contain all the required tables
-      #mtg_tbl_list
-      #loan_tbl_list
+      mtg_tbl_list
+      loan_tbl_list
 
 # Import data then filter out multifamily housing and subordinate liens. Keep only single family housing and first liens. Replace state_code with FIPS Code.
 mtg_tables <- lapply(setNames(paste0("select * from ", table_schema, ".", mtg_tbl_list), mtg_tbl_list), DBI::dbGetQuery, conn = con2)
