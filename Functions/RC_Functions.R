@@ -31,13 +31,16 @@ return(x)
 }
 
 
-#####calculate number of raced "_rate" values#####
+#####calculate number of non-NA raced "_rate" values#####
 count_values <- function(x) {
-                      rates <- dplyr::select(x, ends_with("_rate"), -ends_with("_no_rate"), -total_rate)
-                      rates$values_count <- rowSums(!is.na(rates))
-                      x$values_count <- rates$values_count
-
-return(x)
+  rates <- dplyr::select(x, geoid, geolevel, ends_with("_rate"), -ends_with("_no_rate"), -total_rate) %>%
+    mutate(values_count = rowSums(!is.na(select(., ends_with("_rate"))))) %>%
+    dplyr::select(geoid, geolevel, values_count)
+  
+  x <- x %>%
+    left_join(rates, by=c("geoid","geolevel"))
+  
+  return(x)
 }
 
 
