@@ -56,6 +56,7 @@ calc_best <- function(x) {
     # Prep: Replace 0 rates with NA 
     # Excludes superficially low rates where asbest is "min"
     mutate(across(ends_with("_rate"), ~if_else(. == 0, NA, .))) %>%
+    
     # Calculation
     rowwise() %>%
     mutate(best = case_when(
@@ -64,12 +65,13 @@ calc_best <- function(x) {
       .default = NA
     )) %>%
     ungroup() %>%
+    
     # Clean: If all rates in a row are NA, max()/min() will return "Inf" values
     # Replace Inf with NA 
     mutate(best = if_else(is.infinite(best), NA, best)) %>%
     dplyr::select(geoid, geolevel, best)
   
-  x %>% 
+  x <- x %>% 
     left_join(rates, by = c("geoid", "geolevel"))
   
   return(x)
@@ -78,14 +80,24 @@ calc_best <- function(x) {
 
 #####calculate difference from best#####
 calc_diff <- function(x) {
-  rates <- dplyr::select(x, geoid, geolevel, best, ends_with("_rate"), -starts_with("total_"), -ends_with("_no_rate"))  #get geoid, raced rate and best columns
-  rates <- unique(rates) # 2/21/23 added due to prior step resulting in dupes for overcrowding
-  diff_long <- pivot_longer(rates, 4:ncol(rates), names_to="measure_rate", values_to="rate") %>%   #pivot wide table to long on geoid & best cols
-    mutate(diff=abs(best-rate)) %>%                                                     #calc diff from best
-    mutate(measure_diff=sub("_rate", "_diff", measure_rate))                            #create new column names for diffs from best
-  diff_wide <- diff_long %>% dplyr::select(geoid, geolevel, measure_diff, diff) %>%     #pivot long table back to wide
+  # get geoid, raced rate and best columns
+  rates <- dplyr::select(x, geoid, geolevel, best, ends_with("_rate"), -starts_with("total_"), -ends_with("_no_rate"))  
+  # 2/21/23 added due to prior step resulting in dupes for overcrowding
+  rates <- unique(rates) 
+  
+  # pivot wide table to long on geoid & best cols
+  diff_long <- pivot_longer(rates, 4:ncol(rates), names_to="measure_rate", values_to="rate") %>%   
+    # calc diff from best
+    mutate(diff=abs(best-rate)) %>%
+    #create new column names for diffs from best
+    mutate(measure_diff=sub("_rate", "_diff", measure_rate))      
+  
+  # pivot long table back to wide
+  diff_wide <- diff_long %>% dplyr::select(geoid, geolevel, measure_diff, diff) %>%     
     pivot_wider(names_from=measure_diff, values_from=diff)
-  x <- x %>% left_join(diff_wide, by=c("geoid","geolevel"))                     #join new diff from best columns back to original table
+  
+  # join new diff from best columns back to original table
+  x <- x %>% left_join(diff_wide, by=c("geoid","geolevel"))                     
   
   return(x)
 }
