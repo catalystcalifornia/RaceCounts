@@ -125,9 +125,6 @@ calc_avg_diff <- function(x) {
 
 #####calculate (row wise) SAMPLE variance of differences from best - use for sample data like ACS or CHIS#####
 calc_s_var <- function(x) {
-  # removes object 'var' if had been previously defined
-  suppressWarnings(rm(var)) 
-  
   diffs <- x %>%
     # Prep
     filter(values_count > 1) %>%
