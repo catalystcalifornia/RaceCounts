@@ -106,16 +106,21 @@ calc_diff <- function(x) {
 
 #####calculate (row wise) mean difference from best#####
 calc_avg_diff <- function(x) {
-                diffs <- dplyr::select(x, geoid, geolevel, values_count, ends_with("_diff"))
-                counts <- diffs %>% 
-                  filter(values_count > 1) %>% 
-                  mutate(avg = rowMeans(across(ends_with("_diff")), na.rm = TRUE)) %>%
-                  #remove values_count, _diff cols before join
-                  dplyr::select(-c(values_count, ends_with("_diff")))   
-                #join new avg diff column back to original table
-                x <- x %>% left_join(counts, by=c("geoid","geolevel"))                               
-
-return(x)
+  diffs <- x %>%
+    # Prep: only run calc when 2 or more (non-NA) raced diff values are present
+    filter(values_count > 1) %>%
+    dplyr::select(geoid, geolevel, ends_with("_diff"))
+  
+  # Calculation: average absolute difference from best 
+  counts <- diffs %>%
+    mutate(avg = rowMeans(across(ends_with("_diff")), na.rm = TRUE)) %>%
+    dplyr::select(geoid, geolevel, avg)
+  
+  # join avg diff column back to original table
+  x <- x %>% 
+    left_join(counts, by=c("geoid","geolevel"))  
+  
+  return(x)
 }
 
 
