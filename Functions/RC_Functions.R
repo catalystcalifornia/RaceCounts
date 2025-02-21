@@ -109,16 +109,15 @@ calc_avg_diff <- function(x) {
   diffs <- x %>%
     # Prep: only run calc when 2 or more (non-NA) raced diff values are present
     filter(values_count > 1) %>%
-    dplyr::select(geoid, geolevel, ends_with("_diff"))
+    dplyr::select(geoid, geolevel, ends_with("_diff")) %>%
   
-  # Calculation: average absolute difference from best 
-  counts <- diffs %>%
+    # Calculation: average absolute difference from best 
     mutate(avg = rowMeans(across(ends_with("_diff")), na.rm = TRUE)) %>%
     dplyr::select(geoid, geolevel, avg)
   
   # join avg diff column back to original table
   x <- x %>% 
-    left_join(counts, by=c("geoid","geolevel"))  
+    left_join(diffs, by=c("geoid","geolevel"))  
   
   return(x)
 }
@@ -126,14 +125,23 @@ calc_avg_diff <- function(x) {
 
 #####calculate (row wise) SAMPLE variance of differences from best - use for sample data like ACS or CHIS#####
 calc_s_var <- function(x) {
-                suppressWarnings(rm(var))   #removes object 'var' if had been previously defined
-                diffs <- dplyr::select(x, geoid, geolevel, values_count, grep("_diff", colnames(x)))
-                counts <- diffs %>% filter(values_count > 1) %>% dplyr::select(-c(values_count))       #filter for counts >1
-                counts$variance <- apply(counts[,-(1:2)], 1, var, na.rm = T)                        #calc sample variance
-                counts <- dplyr::select(counts, -grep("_diff", colnames(counts)))                      #remove _diff cols before join
-                x <- x %>% left_join(counts, by=c("geoid","geolevel"))                                 #join new variance column back to original table
+  # removes object 'var' if had been previously defined
+  suppressWarnings(rm(var)) 
+  
+  diffs <- x %>%
+    # Prep
+    filter(values_count > 1) %>%
+    dplyr::select(geoid, geolevel, ends_with("_diff")) %>%
 
-return(x)
+    # Calculation 
+    mutate(variance = apply(dplyr::select(., ends_with("_diff")), 1, var, na.rm = TRUE)) %>%
+    dplyr::select(geoid, geolevel, variance)
+   
+    # Join new variance column back to original table
+    x <- x %>% 
+      left_join(diffs, by=c("geoid","geolevel"))    
+    
+    return(x)
 }
 
 
