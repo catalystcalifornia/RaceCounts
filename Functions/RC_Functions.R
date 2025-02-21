@@ -33,7 +33,8 @@ return(x)
 
 #####calculate number of non-NA raced "_rate" values#####
 count_values <- function(x) {
-  rates <- dplyr::select(x, geoid, geolevel, ends_with("_rate"), -ends_with("_no_rate"), -total_rate) %>%
+  rates <- x %>%
+    dplyr::select(geoid, geolevel, ends_with("_rate"), -ends_with("_no_rate"), -total_rate) %>%
     mutate(values_count = rowSums(!is.na(select(., ends_with("_rate"))))) %>%
     dplyr::select(geoid, geolevel, values_count)
   
@@ -80,12 +81,12 @@ calc_best <- function(x) {
 
 #####calculate difference from best#####
 calc_diff <- function(x) {
-  # get geoid and geolevel, raced rate and best columns
-  rates <- dplyr::select(x, geoid, geolevel, best, ends_with("_rate"), 
-                         -starts_with("total_"), -ends_with("_no_rate"))  
-  
-  # Prep: added due to prior step resulting in dupes for overcrowding
-  rates <- unique(rates) 
+  # Prep
+  rates <- x %>%
+    dplyr::select(geoid, geolevel, best, ends_with("_rate"), 
+                  -starts_with("total_"), -ends_with("_no_rate")) %>%
+    # remove duplicates from overcrowding
+    unique()
   
   # Calculation: pivot to long on _rate cols to simplify diff calc 
   # then pivot back to wide to join to original dataframe
@@ -134,7 +135,7 @@ calc_s_var <- function(x) {
     mutate(variance = apply(dplyr::select(., ends_with("_diff")), 1, var, na.rm = TRUE)) %>%
     dplyr::select(geoid, geolevel, variance)
    
-    # Join new variance column back to original table
+    # Join variance column back to original table
     x <- x %>% 
       left_join(diffs, by=c("geoid","geolevel"))    
     
@@ -161,16 +162,29 @@ return(x)
 
 #####calculate index of disparity#####
 calc_id <- function(x) {
-                diffs <- dplyr::select(x, geoid, best, asbest, values_count, ends_with("_diff"))
-                diffs$sumdiff <- ifelse(diffs$values_count==0, NA, rowSums(diffs[,-c(1:4)], na.rm=TRUE))    #calc sum of diff from best
-                #ID calc returns NA when there are <2 raced values OR where there are 2 raced values, MIN is best, and the sum of diffs = best.
-                #The second condition is where MIN is best, a geo has only 2 rates and one of them is 0.
-                diffs$index_of_disparity <- ifelse(diffs$values_count < 2 | diffs$values_count == 2 & diffs$asbest == 'min' & diffs$sumdiff == diffs$best, NA, (((diffs$sumdiff / diffs$best) / (diffs$values_count - 1)) * 100))
-                x$index_of_disparity <- diffs$index_of_disparity
+  diffs <- x %>%
+    filter(values_count>0) %>%
+    dplyr::select(geoid, geolevel, best, asbest, values_count, ends_with("_diff")) %>%
+    
+    # Calculation 1: sum of difference from best (needed for ID calc)
+    mutate(sumdiff = rowSums(select(., ends_with("_diff")), na.rm=TRUE)) %>%
+    
+    # Calculation 2: Index of Disparity (ID)
+    # Returns NA when (there are <2 raced values) OR (there are 2 raced values AND MIN is best AND the sum of diffs = best)
+    # Example: The second condition is where MIN is best, a geo has only 2 rates and one of them is 0.
+    mutate(index_of_disparity = ifelse((values_count < 2) | 
+                                          (values_count == 2 & asbest == 'min' & sumdiff == best),
+                                        NA, 
+                                        (((sumdiff / best) / (values_count - 1)) * 100))) %>%
+    dplyr::select(geoid, geolevel, index_of_disparity)
+  
+  # Join ID column back to original df
+  x <- x %>%
+    left_join(diffs, by=c("geoid","geolevel")) 
 
-                # Can add here? calc 'times findings', eg: The Latinx rate is X times the White rate.
-                
-return(x)
+  # Can add here? calc 'times findings', eg: The Latinx rate is X times the White rate.
+  
+  return(x)
 }
 
 
