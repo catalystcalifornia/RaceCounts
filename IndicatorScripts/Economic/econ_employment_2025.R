@@ -30,10 +30,10 @@ asbest = 'max'
 schema = 'economic'
 table_code = 's2301'
 
-
 df_wide_multigeo <- dbGetQuery(con, paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state', 'sldu', 'sldl')")) # import rda_shared_data table
 df_wide_multigeo$geolevel <- gsub("sldu", "upper", df_wide_multigeo$geolevel)  # update geolevel for sldu
 df_wide_multigeo$geolevel <- gsub("sldl", "lower", df_wide_multigeo$geolevel)  # update geolevel for sldl
+
 
 ############## Pre-RC CALCS ##############
 source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
@@ -41,19 +41,23 @@ df <- prep_acs(df_wide_multigeo, table_code, cv_threshold, pop_threshold)
 
 df_screened <- dplyr::select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"), -ends_with("_cv"))
 
-d <- df_screened
 
 ############## CALC RACE COUNTS STATS ##############
-
 #set source for RC Functions script
 #source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 source(".\\Functions\\RC_Functions.R")
 
+d <- df_screened
+
 # Adds asbest value for RC Functions
 d$asbest = asbest
 
-d <- count_values(d) #calculate number of "_rate" values
-d <- calc_best(d) #calculate best rates -- be sure asbest is correct before running this function.
+# Calculate number of non-NA "_rate" values
+d <- count_values(d) 
+
+# Calculate best rate: confirm asbest is correct before running this function.
+d <- calc_best(d) 
+
 d <- calc_diff(d) 
 d <- calc_avg_diff(d)
 d <- calc_s_var(d)
@@ -67,36 +71,31 @@ city_table <- d[d$geolevel == 'place', ]
 upper_table <- d[d$geolevel == 'upper', ]
 lower_table <- d[d$geolevel == 'lower', ]
 
-
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table) %>% dplyr::select(-c(geolevel))
 View(state_table)
 
-#calculate COUNTY z-scores
+#calculate COUNTY z-scores and ranks
 county_table <- calc_z(county_table) 
 
-## Calc county ranks##
 county_table <- calc_ranks(county_table) %>% dplyr::select(-c(geolevel))
 View(county_table)
 
-#calculate CITY z-scores
+#calculate CITY z-scores and ranks
 city_table <- calc_z(city_table)
 
-## Calc city ranks##
 city_table <- calc_ranks(city_table) %>% dplyr::select(-c(geolevel))
 View(city_table)
 
-#calculate SLDU z-scores
+#calculate SLDU z-scores and ranks
 upper_table <- calc_z(upper_table)
 
-## Calc SLDU ranks##
 upper_table <- calc_ranks(upper_table)
 View(upper_table)
 
-#calculate SLDL z-scores
+#calculate SLDL z-scores and ranks
 lower_table <- calc_z(lower_table)
 
-## Calc SLDL ranks##
 lower_table <- calc_ranks(lower_table)
 View(lower_table)
 
