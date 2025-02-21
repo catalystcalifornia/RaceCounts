@@ -440,12 +440,20 @@ get_cde_schools <- function(school_url, school_dwnld_url, school_layout_url, tab
                 
                 #format column names
                 names(df) <- str_replace_all(names(df), "[^[:alnum:]]", "") # remove non-alphanumeric characters
-                names(df) <- gsub(" ", "", names(df)) # remove spaces
-                names(df) <- tolower(names(df))  # make col names lowercase
-                Encoding(df$school) <- "ISO 8859-1"  # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+                names(df) <- gsub(" ", "", names(df))  # remove spaces
+                names(df) <- tolower(names(df))        # make col names lowercase
+                Encoding(df$school) <- "ISO 8859-1"    # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
                 Encoding(df$district) <- "ISO 8859-1"  # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
                 print("Schools list downloaded, imported to R, and cleaned.")
                 
+                # add geom based on lat/long
+                df$latitude <- ifelse(is.na(df$latitude), -999, df$latitude)    # sub in values for NA bc st_as_sf won't accept missing lat/long
+                df$longitude <- ifelse(is.na(df$longitude), -999, df$longitude) # sub in values for NA bc st_as_sf won't accept missing lat/long
+                df <- df %>% st_as_sf(coords = c("longitude", "latitude"), crs = 3310, remove = FALSE)
+                df_ <- df 
+                df_$geometry[df_$latitude == df$longitude] = st_point()
+                df <- df %>% st_make_valid(df)
+                print("Geom column added to schools based on lat/long values.")
                 
                 #  WRITE TABLE TO POSTGRES DB
                 
@@ -454,30 +462,39 @@ get_cde_schools <- function(school_url, school_dwnld_url, school_layout_url, tab
                 
                 # add names to the character vector
                 names(charvect) <- colnames(df)
-                lat_pos <- length(charvect) - 1   # define position of lat column, lat column already moved to 2nd to last position above
-                long_pos <- length(charvect)      # define position of long column, long column already moved to last position above
+                lat_pos <- length(charvect) - 2   # define position of lat column, lat column already at 3rd last position
+                long_pos <- length(charvect) -1   # define position of long column, long column already at 2nd to last position
+                geom_pos <- length(charvect)      # define position of geom column, geom column already at last position
                 
                 charvect[(lat_pos:long_pos)] <- "numeric" # specify lat/long as numeric
+                charvect[(geom_pos)] <- "geometry" # specify geometry as numeric
                 charvect
                 
-                dbWriteTable(con, c(table_schema, table_name), df, 
+                st_write(con, c(table_schema, table_name), df, 
                              overwrite = FALSE, row.names = FALSE,
                              field.types = charvect)
                 print("Schools table exported to postgres.")
                 
                 # Add geom field to postgres table based on lat/long
-                geom <- paste0("alter table ", table_schema, ".", table_name, " add column geom Geometry('POINT', 3310);
-                            update ", table_schema, ".", table_name, " set geom = st_setsrid(st_point(longitude, latitude), 3310);")
-                dbSendQuery(conn = con, geom)
-                print("Geom column added to schools postgres table.")
+                #add_geom <- paste0("alter table ", table_schema, ".", table_name, " add column geom_3310 Geometry('POINT', 3310);
+                #            update ", table_schema, ".", table_name, " set geom_3310 = st_setsrid(st_point(longitude, latitude), 3310);")
+                #dbSendQuery(conn = con, add_geom)
+                #print("Geom column added to schools postgres table.")
                 
                 
                 # write comment to table, and the first three fields that won't change.
                 table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
                 
                 # send table comment to database
-                dbSendQuery(conn = con, table_comment)      			
+                dbSendQuery(conn = con, table_comment)      
+                
                 print("Schools table comment exported to postgres.")
+                
+                geom_sql <- paste0("CREATE INDEX ", table_name, "_geom_3310_idx ON ", table_schema, ".", table_name, " USING gist(geometry);")
+                dbSendQuery(conn = con, geom_sql)
+                print("Geom Index added to postgres table.")
+                
+                geom_vaccuum_sql <- paste0("VACUUM ANALYZE ", table_schema, ".", table_name, ";")
                 
                 return(df)
 }
