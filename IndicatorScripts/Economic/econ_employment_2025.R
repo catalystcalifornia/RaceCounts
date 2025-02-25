@@ -1,15 +1,15 @@
 ## Employment for RC v7 ##
 #install packages if not already installed
-list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis", "sf")
+list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgres","tidycensus", "rvest", "tidyverse", "stringr", "usethis", "sf")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
 library(tidyr)
 library(stringr)
 library(tidycensus)
+library(RPostgres)
 library(dplyr)
 library(DBI)
-library(RPostgreSQL)
 library(usethis)
 library(tigris)
 library(dplyr)
