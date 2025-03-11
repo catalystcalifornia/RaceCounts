@@ -31,44 +31,75 @@ return(x)
 }
 
 
-#####calculate number of raced "_rate" values#####
+#####calculate number of non-NA raced "_rate" values#####
 count_values <- function(x) {
-                      rates <- dplyr::select(x, ends_with("_rate"), -ends_with("_no_rate"), -total_rate)
-                      rates$values_count <- rowSums(!is.na(rates))
-                      x$values_count <- rates$values_count
-
-return(x)
+  rates <- x %>%
+    dplyr::select(geoid, geolevel, ends_with("_rate"), -ends_with("_no_rate"), -total_rate) %>%
+    mutate(values_count = rowSums(!is.na(select(., ends_with("_rate"))))) %>%
+    dplyr::select(geoid, geolevel, values_count)
+  
+  x <- x %>%
+    left_join(rates, by=c("geoid","geolevel"))
+  
+  return(x)
 }
 
 
 #####calculate best rate#####
 calc_best <- function(x) {
-  options(scipen = 999) # disable scientific notation
-                    rates <- dplyr::select(x, asbest, ends_with("_rate"), -ends_with("_no_rate"), -total_rate)
-                    rates[rates==0] <- NA                                                         #sub-out zero rates for NA, so that min best calc works correctly
-                    if (min(rates$asbest) == 'max') {rates <- rates %>% rowwise() %>%
-                        dplyr::mutate(best = max(c_across(where(is.numeric)), na.rm = TRUE))
-                    } else
-                    if (min(rates$asbest) == 'min') {rates <- rates %>% rowwise() %>%
-                         dplyr::mutate(best = min(c_across(where(is.numeric)), na.rm = TRUE))
-                     }
-                    rates$best[rates$best == Inf | rates$best == -Inf] <- NA
-                    x$best <- rates$best
-
-return(x)
+  # disable scientific notation
+  options(scipen = 999) 
+  
+  rates <- x %>%
+    dplyr::select(geoid, geolevel, asbest, ends_with("_rate"), 
+                  -ends_with("_no_rate"), -total_rate) %>%
+    
+    # Prep: Replace 0 rates with NA 
+    # Excludes superficially low rates where asbest is "min"
+    mutate(across(ends_with("_rate"), ~if_else(. == 0, NA, .))) %>%
+    
+    # Calculation
+    rowwise() %>%
+    mutate(best = case_when(
+      asbest == "max" ~ max(c_across(ends_with("_rate")), na.rm = TRUE),
+      asbest == "min" ~ min(c_across(ends_with("_rate")), na.rm = TRUE),
+      .default = NA
+    )) %>%
+    ungroup() %>%
+    
+    # Clean: If all rates in a row are NA, max()/min() will return "Inf" values
+    # Replace Inf with NA 
+    mutate(best = if_else(is.infinite(best), NA, best)) %>%
+    dplyr::select(geoid, geolevel, best)
+  
+  x <- x %>% 
+    left_join(rates, by = c("geoid", "geolevel"))
+  
+  return(x)
 }
 
 
 #####calculate difference from best#####
 calc_diff <- function(x) {
-  rates <- dplyr::select(x, geoid, geolevel, best, ends_with("_rate"), -starts_with("total_"), -ends_with("_no_rate"))  #get geoid, raced rate and best columns
-  rates <- unique(rates) # 2/21/23 added due to prior step resulting in dupes for overcrowding
-  diff_long <- pivot_longer(rates, 4:ncol(rates), names_to="measure_rate", values_to="rate") %>%   #pivot wide table to long on geoid & best cols
-    mutate(diff=abs(best-rate)) %>%                                                     #calc diff from best
-    mutate(measure_diff=sub("_rate", "_diff", measure_rate))                            #create new column names for diffs from best
-  diff_wide <- diff_long %>% dplyr::select(geoid, geolevel, measure_diff, diff) %>%     #pivot long table back to wide
+  # Prep
+  rates <- x %>%
+    dplyr::select(geoid, geolevel, best, ends_with("_rate"), 
+                  -starts_with("total_"), -ends_with("_no_rate")) %>%
+    # remove duplicates from overcrowding
+    unique()
+  
+  # Calculation: pivot to long on _rate cols to simplify diff calc 
+  # then pivot back to wide to join to original dataframe
+  diff <- rates %>%
+    pivot_longer(ends_with("_rate"), names_to="measure_rate", values_to="rate") %>%   
+    mutate(diff=abs(best-rate)) %>%
+    mutate(measure_diff=sub("_rate", "_diff", measure_rate)) %>%
+    dplyr::select(geoid, geolevel, measure_diff, diff) %>%     
     pivot_wider(names_from=measure_diff, values_from=diff)
-  x <- x %>% left_join(diff_wide, by=c("geoid","geolevel"))                     #join new diff from best columns back to original table
+  
+  # join _diff columns back to original table
+  x <- x %>% 
+    left_join(diff, by=c("geoid","geolevel"))                     
   
   return(x)
 }
@@ -76,26 +107,39 @@ calc_diff <- function(x) {
 
 #####calculate (row wise) mean difference from best#####
 calc_avg_diff <- function(x) {
-                diffs <- dplyr::select(x, geoid, geolevel, values_count, ends_with("_diff"))
-                counts <- diffs %>% filter(values_count > 1) %>% dplyr::select(-c(values_count))     #filter for counts >1
-                counts$avg <- rowMeans(counts[,-(1:2)], na.rm = TRUE)                                    #calc avg diff
-                counts <- dplyr::select(counts, -grep("_diff", colnames(counts)))                    #remove _diff cols before join
-                x <- x %>% left_join(counts, by=c("geoid","geolevel"))                               #join new avg diff column back to original table
-
-return(x)
+  diffs <- x %>%
+    # Prep: only run calc when 2 or more (non-NA) raced diff values are present
+    filter(values_count > 1) %>%
+    dplyr::select(geoid, geolevel, ends_with("_diff")) %>%
+  
+    # Calculation: average absolute difference from best 
+    mutate(avg = rowMeans(across(ends_with("_diff")), na.rm = TRUE)) %>%
+    dplyr::select(geoid, geolevel, avg)
+  
+  # join avg diff column back to original table
+  x <- x %>% 
+    left_join(diffs, by=c("geoid","geolevel"))  
+  
+  return(x)
 }
 
 
 #####calculate (row wise) SAMPLE variance of differences from best - use for sample data like ACS or CHIS#####
 calc_s_var <- function(x) {
-                suppressWarnings(rm(var))   #removes object 'var' if had been previously defined
-                diffs <- dplyr::select(x, geoid, geolevel, values_count, grep("_diff", colnames(x)))
-                counts <- diffs %>% filter(values_count > 1) %>% dplyr::select(-c(values_count))       #filter for counts >1
-                counts$variance <- apply(counts[,-(1:2)], 1, var, na.rm = T)                        #calc sample variance
-                counts <- dplyr::select(counts, -grep("_diff", colnames(counts)))                      #remove _diff cols before join
-                x <- x %>% left_join(counts, by=c("geoid","geolevel"))                                 #join new variance column back to original table
+  diffs <- x %>%
+    # Prep
+    filter(values_count > 1) %>%
+    dplyr::select(geoid, geolevel, ends_with("_diff")) %>%
 
-return(x)
+    # Calculation 
+    mutate(variance = apply(dplyr::select(., ends_with("_diff")), 1, var, na.rm = TRUE)) %>%
+    dplyr::select(geoid, geolevel, variance)
+   
+    # Join variance column back to original table
+    x <- x %>% 
+      left_join(diffs, by=c("geoid","geolevel"))    
+    
+    return(x)
 }
 
 
@@ -118,16 +162,29 @@ return(x)
 
 #####calculate index of disparity#####
 calc_id <- function(x) {
-                diffs <- dplyr::select(x, geoid, best, asbest, values_count, ends_with("_diff"))
-                diffs$sumdiff <- ifelse(diffs$values_count==0, NA, rowSums(diffs[,-c(1:4)], na.rm=TRUE))    #calc sum of diff from best
-                #ID calc returns NA when there are <2 raced values OR where there are 2 raced values, MIN is best, and the sum of diffs = best.
-                #The second condition is where MIN is best, a geo has only 2 rates and one of them is 0.
-                diffs$index_of_disparity <- ifelse(diffs$values_count < 2 | diffs$values_count == 2 & diffs$asbest == 'min' & diffs$sumdiff == diffs$best, NA, (((diffs$sumdiff / diffs$best) / (diffs$values_count - 1)) * 100))
-                x$index_of_disparity <- diffs$index_of_disparity
+  diffs <- x %>%
+    filter(values_count>0) %>%
+    dplyr::select(geoid, geolevel, best, asbest, values_count, ends_with("_diff")) %>%
+    
+    # Calculation 1: sum of difference from best (needed for ID calc)
+    mutate(sumdiff = rowSums(select(., ends_with("_diff")), na.rm=TRUE)) %>%
+    
+    # Calculation 2: Index of Disparity (ID)
+    # Returns NA when (there are <2 raced values) OR (there are 2 raced values AND MIN is best AND the sum of diffs = best)
+    # Example: The second condition is where MIN is best, a geo has only 2 rates and one of them is 0.
+    mutate(index_of_disparity = ifelse((values_count < 2) | 
+                                          (values_count == 2 & asbest == 'min' & sumdiff == best),
+                                        NA, 
+                                        (((sumdiff / best) / (values_count - 1)) * 100))) %>%
+    dplyr::select(geoid, geolevel, index_of_disparity)
+  
+  # Join ID column back to original df
+  x <- x %>%
+    left_join(diffs, by=c("geoid","geolevel")) 
 
-                # Can add here? calc 'times findings', eg: The Latinx rate is X times the White rate.
-                
-return(x)
+  # Can add here? calc 'times findings', eg: The Latinx rate is X times the White rate.
+  
+  return(x)
 }
 
 
