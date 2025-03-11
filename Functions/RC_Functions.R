@@ -145,16 +145,22 @@ calc_s_var <- function(x) {
 
 #####calculate (row wise) POPULATION variance of differences from best - use for non-sample data like Decennial Census, CDPH Births, or CADOJ Incarceration#####
 calc_p_var <- function(x) {
-                suppressWarnings(rm(var))   #removes object 'var' if had been previously defined
-                diffs <- dplyr::select(x, geoid, geolevel, values_count, ends_with("_diff"))
-                counts <- diffs %>% filter(values_count > 1) #%>% dplyr::select(-c(values_count))       #filter for counts >1
-                counts$svar <- apply(counts[,4:ncol(counts)], 1, var, na.rm = T)                        #calc population variance
-                
-                #convert sample variance to population variance. checked that the svar and variance results match VARS.S/VARS.P Excel results.
-                #See more: https://stackoverflow.com/questions/37733239/population-variance-in-r
-                counts$variance <- counts$svar * (counts$values_count - 1) / counts$values_count
-                counts <- dplyr::select(counts, geoid, geolevel, variance)                               #remove extra cols before join
-                x <- x %>% left_join(counts, by=c("geoid","geolevel"))                                   #join new variance column back to original table
+  diffs <- x %>% 
+    # Prep
+    filter(values_count > 1) %>%
+    dplyr::select(geoid, geolevel, values_count, ends_with("_diff")) %>%
+    
+    # Calculation
+    mutate(svar = apply(dplyr::select(., ends_with("_diff")), 1, var, na.rm = TRUE)) %>%   
+    
+    # Convert sample variance to population variance. Checked that the svar and variance results match VARS.S/VARS.P Excel results.
+    #See more: https://stackoverflow.com/questions/37733239/population-variance-in-r
+    mutate(variance = svar * (values_count - 1) / values_count) %>%
+    dplyr::select(geoid, geolevel, variance)                               
+  
+  # Join variance column back to original table
+  x <- x %>% 
+    left_join(diffs, by=c("geoid","geolevel"))    
 
 return(x)
 }
