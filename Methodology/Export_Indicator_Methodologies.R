@@ -2,7 +2,7 @@
 
 
 #### Set Up Environment ####
-packages <- c("formattable", "knitr", "stringr", "tidyr", "dplyr", "tidyverse", "RPostgreSQL", "glue", "formatR", "readxl", "fedmatch", "usethis", "here")
+packages <- c("formattable", "knitr", "stringr", "tidyr", "dplyr", "tidyverse", "RPostgreSQL", "glue", "formatR", "readxl", "fedmatch", "listr", "usethis", "here")
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
 if(length(install_packages) > 0) { 
@@ -30,6 +30,7 @@ date <- 'October 2024'  # RC data release date
 #### Prep Methodology: All Geolevels ####
 # get short api issue names
 issues <- dbGetQuery(con, paste0("SELECT arei_issue_area, api_name_short FROM ", curr_schema, ".arei_issue_list")) %>%
+  mutate(api_name_short = ifelse(api_name_short == "crim", "safe", api_name_short)) %>%
   arrange(api_name_short) # reorder so matches order of issues in fx
 
 # get race types
@@ -48,19 +49,23 @@ races <- races_ %>% select(race_type, race_eth) %>% unique()
 # Function to prep specific geolevel methodology
 prep_method <- function (geo, curr_yr, curr_schema) {
   # drop "_test" piece when ready
-  methodology <- dbGetQuery(con, paste0("SELECT arei_indicator, arei_issue_area, bar_chart_header, data_source, race_type, method_long, link1, link2 FROM ", curr_schema, ".arei_indicator_list_", geo, "_test"))
+  methodology <- dbGetQuery(con, paste0("SELECT arei_indicator, arei_issue_area, bar_chart_header, data_source, race_type, method_long, link1, link2, ind_order FROM ", curr_schema, ".arei_indicator_list_", geo, "_test"))
   methodology$links = ifelse(!is.na(methodology$link2), paste0(gsub(" &&&", ",", methodology$link1), ", ", methodology$link2), gsub(" &&&", ",", methodology$link1))
   
   # join api_name_short and race_eth to methodology
   methodology <- methodology %>% left_join(issues) %>%
     left_join(races)
-  
+  methodology$arei_issue_area = ifelse(methodology$arei_issue_area == "Crime & Justice", "Safety & Justice", methodology$arei_issue_area)
+  methodology <- methodology %>% arrange(arei_issue_area, ind_order)
+    
   # split methodology into list by issue area
   method_list <- split(methodology, f = methodology$api_name_short)
-  
+  method_list <- list_rename(method_list, hlthy = "hben")         # rename hben to hlthy so issues can be ordered as on website
+  method_list <- method_list[order(names(method_list))]           # put list into alpha order as issues are ordered on website
+    
   # convert list elements into dfs
   invisible(list2env(method_list,envir=.GlobalEnv))
-
+  
 return(method_list)
 
 }

@@ -1,5 +1,5 @@
 ---
-title: "Indicator Methodology"
+title: "RACE COUNTS Indicator Methodology"
 output: 
   html_document:
     toc: true
@@ -15,16 +15,20 @@ knitr::opts_chunk$set(echo = FALSE, comment = FALSE, message = FALSE, warning = 
 ```
 
 ```{css echo=FALSE}
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Rubik">
+
 body {
   background-color: #F1F0F2; /* Light grey background */
+  font-family: 'Rubik', sans-serif;  
+
 }
 
 .bold-inline {
   font-weight: 700
 }
 
-```
 
+```
 
 ```{r, comment = "", results = 'asis'}
 # Function to create methodology for each indicator within an issue area
@@ -48,10 +52,10 @@ Placeholder for RC logo
 
 ### `r ifelse(geoname == 'County_State', paste0(gsub("_", " / ", geoname), ": "), paste0(geoname, ": "))` `r date `
 
-### Notes on Racial/Ethnic Categories
+# Notes on Racial/Ethnic Categories
 Race is a social construct and a biological construct, neither of which are discussed in depth in this analysis. Thus, we use a simplified view of race to portray racial data to a broader audience. Ethnicity is also treated lightly, and while Latinx is an ethnicity, it is generally treated and spoken about as a race, even though Latinxs can be of any race. Additionally, each data source uses slightly different terminology and categorization. Considering all these factors, we use one simplified set of labels for the RACE COUNTS website and publications for consistency while maintaining fidelity to the data sources as much as possible. To find out more, please see our [Race & Ethnicity Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md) documentation. 
 
-In this document, groups marked with * are Latinx-inclusive, those without * are non-Latinx. Groups marked with ^ are that race alone or in combination with another race, groups without ^ are that one race alone. Latinx always includes Latinxs of any race. 
+**In this document, groups marked with * are Latinx-inclusive, those without * are non-Latinx. Groups marked with ^ are that race alone or in combination with another race, groups without ^ are that one race alone. Latinx always includes Latinxs of any race.** 
 
 \pagebreak
 
@@ -87,18 +91,18 @@ indicators(method_list[[4]])
 <p align="right">(<a href="#top">back to top</a>)</p>
 \pagebreak
 
-# `r first(method_list[[6]][['arei_issue_area']])`
-
-```{r, comment = "", results = 'asis'}
-indicators(method_list[[6]])
-```
-<p align="right">(<a href="#top">back to top</a>)</p>
-\pagebreak
-
 # `r first(method_list[[5]][['arei_issue_area']])`
 
 ```{r, comment = "", results = 'asis'}
 indicators(method_list[[5]])
+```
+<p align="right">(<a href="#top">back to top</a>)</p>
+\pagebreak
+
+# `r first(method_list[[6]][['arei_issue_area']])`
+
+```{r, comment = "", results = 'asis'}
+indicators(method_list[[6]])
 ```
 <p align="right">(<a href="#top">back to top</a>)</p>
 \pagebreak
