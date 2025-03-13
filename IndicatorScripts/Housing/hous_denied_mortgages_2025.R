@@ -1,17 +1,12 @@
-<<<<<<< HEAD
-## Denied Mortgages Applications for RC v6 ##
-=======
+
 ## Denied Mortgages Applications for RC v7 ##
->>>>>>> f979f5bb5d22292e8447ca61b9372c117c35a20c
+
 
 list.of.packages <- c("openxlsx","tidyr","dplyr","stringr", "DBI", "RPostgreSQL","data.table", "openxlsx", "tidycensus", "tidyverse", "janitor")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
-<<<<<<< HEAD
-#library(plyr)
-=======
->>>>>>> f979f5bb5d22292e8447ca61b9372c117c35a20c
+
 library(dplyr)
 library(DBI)
 library(RPostgreSQL)

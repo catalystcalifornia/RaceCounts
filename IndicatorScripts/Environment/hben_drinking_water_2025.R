@@ -113,7 +113,7 @@ pop <- as.data.frame(pop)
 vars_list_acs_swana <- get_swana_var(acs_yr, survey)
 pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = acs_yr, srvy = survey) %>% as.data.frame() %>%
   group_by(GEOID, NAME, geolevel) %>% 
-      summarise(estimate=sum(estimate),
+  summarise(estimate=sum(estimate),
             moe=moe_sum(moe,estimate)) %>% mutate(variable = "swana") # subgeolevel pop
 
 
@@ -160,7 +160,7 @@ pop <- update_detailed_table(vars = vars_list_acs, yr = acs_yr, srvy = survey)  
 
 pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = acs_yr, srvy = survey) %>% as.data.frame() %>%
   group_by(GEOID, NAME, geolevel)%>%
-      summarise(estimate=sum(estimate),
+  summarise(estimate=sum(estimate),
             moe=moe_sum(moe,estimate)) %>% mutate(variable = "swana") # subgeolevel pop
 
 # combine DP05 groups with swana estimates 
@@ -196,7 +196,7 @@ ca_pct_df <- ca_pop_pct(ca_pop_wide)
 ca_wa <- ca_wt_avg(ca_pct_df) %>% mutate(geolevel = 'state')   # add geolevel type
 
 ############ JOIN CITY, COUNTY & STATE WA TABLES  ##################
-wa_all <- union(wa, ca_wa) %>% union(city_wa)
+wa_all <- union(wa, ca_wa) %>% union(city_wa) 
 wa_all <- rename(wa_all, geoid = target_id, geoname = target_name)   # rename columns for RC functions
 wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid)# move geoname column
 
@@ -208,8 +208,7 @@ View(d)
 ############ county_id and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
 #set source for RC Functions script
-# source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
-source("W:/Project/RACE COUNTS/2025_v7/RC_Github/LF/RaceCounts/Functions/RC_Functions.R")
+source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 
 d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
@@ -288,8 +287,3 @@ source <- paste0("CalEnviroScreen ", ces_v, " (", curr_yr, ") https://oehha.ca.g
 #to_postgres(county_table, state_table)
 #city_to_postgres(city_table)
 #leg_to_postgres(leg_table)
-
-
-
-
-
