@@ -336,15 +336,19 @@ to_postgres <- function(x,y) {
                       # add names to the character vector
                       names(charvect) <- colnames(state_table)
 
-                      dbWriteTable(con, c(rc_schema, state_table_name), state_table,
-                                   overwrite = FALSE, row.names = FALSE)
-
+                      dbWriteTable(con,
+                                   Id(schema = rc_schema, table = state_table_name),
+                                   state_table, overwrite = FALSE)
+                      
                       #comment on table and columns
-                      comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", state_table_name,  " IS '", indicator, " from ", source, ".';
-                                                                        COMMENT ON COLUMN ", rc_schema, ".", state_table_name, ".state_id IS 'State fips';")
+                      comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", state_table_name, "\"", " IS 'Table created on ", Sys.Date(), ". ", indicator, " from ", source, ".';")
+                      col_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", state_table_name, "\"", ".state_id IS 'State fips';")
                       print(comment)
-                      dbSendQuery(con, comment)
-
+                      print(col_comment)
+                      
+                      dbExecute(con, comment)
+                      dbExecute(con, col_comment)
+                      
                       #COUNTY TABLE
                       county_table <- as.data.frame(county_table)
 
@@ -357,14 +361,18 @@ to_postgres <- function(x,y) {
                       # add names to the character vector
                       names(charvect) <- colnames(county_table)
 
-                      dbWriteTable(con, c(rc_schema, county_table_name), county_table,
-                                   overwrite = FALSE, row.names = FALSE)
-
+                      dbWriteTable(con,
+                                   Id(schema = rc_schema, table = county_table_name),
+                                   county_table, overwrite = FALSE)
+                      
                       #comment on table and columns
-                      comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", county_table_name,  " IS '", indicator, " from ", source, ".';
-                                         COMMENT ON COLUMN ", rc_schema, ".", county_table_name, ".county_id IS 'County fips';")
+                      comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", county_table_name, "\"", " IS 'Table created on ", Sys.Date(), ". ", indicator, " from ", source, ".';")
+                      col_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", county_table_name, "\"", ".county_id IS 'County fips';")
                       print(comment)
-                      dbSendQuery(con, comment)
+                      print(col_comment)
+                      
+                      dbExecute(con, comment)
+                      dbExecute(con, col_comment)
 
                       dbDisconnect(con)
 
@@ -389,13 +397,15 @@ city_to_postgres <- function(x) {
   # add names to the character vector
   names(charvect) <- colnames(city_table)
 
-  dbWriteTable(con, c(rc_schema, city_table_name), city_table,
-               overwrite = FALSE, row.names = FALSE)
-
+  dbWriteTable(con,
+               Id(schema = rc_schema, table = city_table_name),
+               city_table, overwrite = FALSE)
+  
   #comment on table and columns
-  comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", city_table_name,  " IS '", indicator, " from ", source, ".';")
+  comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", city_table_name, "\"", " IS 'Table created on ", Sys.Date(), ". ", indicator, " from ", source, ".';")
   print(comment)
-  dbSendQuery(con, comment)
+
+  dbExecute(con, comment)
 }
 
 leg_to_postgres <- function(x) {
@@ -415,14 +425,20 @@ leg_to_postgres <- function(x) {
   # add names to the character vector
   names(charvect) <- colnames(leg_table)
   
-  dbWriteTable(con, c(rc_schema, leg_table_name), leg_table,
-               overwrite = FALSE, row.names = FALSE)
+  dbWriteTable(con,
+               Id(schema = rc_schema, table = leg_table_name),
+               leg_table, overwrite = FALSE)
+
   
   #comment on table and columns
-  comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", leg_table_name,  " IS '", indicator, " from ", source, ".';
-                                                                        COMMENT ON COLUMN ", rc_schema, ".", leg_table_name, ".leg_id IS 'Legislative District fips - note Assm and Sen fips are NOT unique. You must use combination of leg_id and geolevel to identify';")
+  comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", leg_table_name, "\"", " IS 'Table created on ", Sys.Date(), ". ", indicator, " from ", source, ".';")
+  col_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", leg_table_name, "\"", ".leg_id IS 'Legislative District fips - note Assm and Sen fips are NOT unique. You must use combination of leg_id and geolevel to identify';")
+  
   print(comment)
-  dbSendQuery(con, comment)
+  print(col_comment)
+  dbExecute(con, comment)
+  dbExecute(con, col_comment)
+  
   
   dbDisconnect(con)
   
