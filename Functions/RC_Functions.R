@@ -342,14 +342,29 @@ to_postgres <- function(x,y) {
                       # add names to the character vector
                       names(charvect) <- colnames(state_table)
 
-                      dbWriteTable(con, c(rc_schema, state_table_name), state_table,
+                      dbWriteTable(con, Id(schema = rc_schema, table = state_table_name), state_table,
                                    overwrite = FALSE, row.names = FALSE)
 
+                      # Start a transaction
+                      dbBegin(con)
+                      
                       #comment on table and columns
-                      comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", state_table_name,  " IS '", indicator, " from ", source, ".';
-                                                                        COMMENT ON COLUMN ", rc_schema, ".", state_table_name, ".state_id IS 'State fips';")
-                      print(comment)
-                      dbSendQuery(con, comment)
+                      table_comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", state_table_name, "\"", 
+                                              " IS '", indicator, " from ", source, ". QA doc: ", qa_filepath, "';
+                                        COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", state_table_name, ".state_id IS 'State fips';")
+                      # Execute table comment
+                      dbExecute(con, table_comment)
+                      print(table_comment)
+                      
+                      column_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", county_table_name, "\".\"state_id\" IS 'State fips';")
+                      
+                      dbExecute(con, column_comment)
+                      
+                      
+                      # Commit the transaction if everything succeeded
+                      dbCommit(con)
+                      return("Table and columns comments added to table!")
+
 
                       #COUNTY TABLE
                       county_table <- as.data.frame(county_table)
@@ -363,14 +378,29 @@ to_postgres <- function(x,y) {
                       # add names to the character vector
                       names(charvect) <- colnames(county_table)
 
-                      dbWriteTable(con, c(rc_schema, county_table_name), county_table,
+                      dbWriteTable(con, Id(schema = rc_schema, table = county_table_name), county_table,
                                    overwrite = FALSE, row.names = FALSE)
-
+                      
+                      # Start a transaction
+                      dbBegin(con)
+                      
                       #comment on table and columns
-                      comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", county_table_name,  " IS '", indicator, " from ", source, ".';
-                                         COMMENT ON COLUMN ", rc_schema, ".", county_table_name, ".county_id IS 'County fips';")
-                      print(comment)
-                      dbSendQuery(con, comment)
+                      table_comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", county_table_name, "\"", 
+                                              " IS '", indicator, " from ", source, ". QA doc: ", qa_filepath, "';
+                                         COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", county_table_name, ".county_id IS 'County fips';")
+                      # Execute table comment
+                      dbExecute(con, table_comment)
+                      print(table_comment)
+                      
+                      column_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", county_table_name, "\".\"county_id\" IS 'County fips';")
+                      
+                      dbExecute(con, column_comment)
+                      
+                      
+                      # Commit the transaction if everything succeeded
+                      dbCommit(con)
+                      return("Table and columns comments added to table!")
+
 
                       dbDisconnect(con)
 
@@ -395,13 +425,30 @@ city_to_postgres <- function(x) {
   # add names to the character vector
   names(charvect) <- colnames(city_table)
 
-  dbWriteTable(con, c(rc_schema, city_table_name), city_table,
+  dbWriteTable(con,  Id(schema = rc_schema, table = city_table_name), city_table,
                overwrite = FALSE, row.names = FALSE)
-
+  
+  # Start a transaction
+  dbBegin(con)
+  
   #comment on table and columns
-  comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", city_table_name,  " IS '", indicator, " from ", source, ".';")
-  print(comment)
-  dbSendQuery(con, comment)
+  table_comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", city_table_name, "\"", 
+                          " IS '", indicator, " from ", source, ". QA doc: ", qa_filepath, "';")
+  # Execute table comment
+  dbExecute(con, table_comment)
+  print(table_comment)
+  
+  column_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", city_table_name, "\".\"city_id\" IS 'City fips';")
+  
+  dbExecute(con, column_comment)
+  
+  
+  # Commit the transaction if everything succeeded
+  dbCommit(con)
+  return("Table and columns comments added to table!")
+  
+  dbDisconnect(con)
+  return(x)
 }
 
 leg_to_postgres <- function(x) {
@@ -421,16 +468,28 @@ leg_to_postgres <- function(x) {
   # add names to the character vector
   names(charvect) <- colnames(leg_table)
   
-  dbWriteTable(con, c(rc_schema, leg_table_name), leg_table,
+  dbWriteTable(con,  Id(schema = rc_schema, table = leg_table_name), leg_table,
                overwrite = FALSE, row.names = FALSE)
   
+  # Start a transaction
+  dbBegin(con)
+  
   #comment on table and columns
-  comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", leg_table_name,  " IS '", indicator, " from ", source, ".';
-                                                                        COMMENT ON COLUMN ", rc_schema, ".", leg_table_name, ".leg_id IS 'Legislative District fips - note Assm and Sen fips are NOT unique. You must use combination of leg_id and geolevel to identify';")
-  print(comment)
-  dbSendQuery(con, comment)
+  table_comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", leg_table_name, "\"", 
+                    " IS '", indicator, " from ", source, ". QA doc: ", qa_filepath, "';")
+  # Execute table comment
+  dbExecute(con, table_comment)
+  print(table_comment)
+
+  column_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", leg_table_name, "\".\"leg_id\" IS 'Legislative District fips - note Assm and Sen fips are NOT unique. You must use combination of leg_id and geolevel to identify';")
   
+  dbExecute(con, column_comment)
+
+    
+  # Commit the transaction if everything succeeded
+  dbCommit(con)
+  return("Table and columns comments added to table!")
+
   dbDisconnect(con)
-  
   return(x)
 }
