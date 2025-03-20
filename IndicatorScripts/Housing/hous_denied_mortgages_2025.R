@@ -1,8 +1,11 @@
+
 ## Denied Mortgages Applications for RC v7 ##
+
 
 list.of.packages <- c("openxlsx","tidyr","dplyr","stringr", "DBI", "RPostgreSQL","data.table", "openxlsx", "tidycensus", "tidyverse", "janitor")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
+
 
 library(dplyr)
 library(DBI)
@@ -23,6 +26,7 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con2 <- connect_to_db("rda_shared_data")
 
 ##### You must manually update variables each year ###
+
     new_hmda_yrs = c('2023') # yrs of data that need to be downloaded
     data_yrs <- c("2019", "2020", "2021", "2022", "2023") # all data yrs included in analysis
     table_schema <- "housing"
@@ -31,11 +35,13 @@ con2 <- connect_to_db("rda_shared_data")
 
 #### City Counts section also requires update ####    
         
+
 #### PULL DATA FROM HMDA API -------------------------------------------
 ### If the most current denied mortgage and loans originated tables are already in postgres, then skip to PREP DENIED MORTGAGES code chunk.
 ####### Info on HMDA API here: https://ffiec.cfpb.gov/documentation/api/data-browser/
 
-## NOTE: This loop may take up to 10 minutes to run...
+
+# # NOTE: This loop may take up to 10 minutes to run...
 # hmda_list <- list()
 #  for (i in new_hmda_yrs) {  ### Denied Mortgages
 # 
@@ -53,9 +59,11 @@ con2 <- connect_to_db("rda_shared_data")
 # }
 
 
+
 #### CREATE RDA_SHARED_DATA TABLES -------------------------------------------
 # Check if census tract, county code and state are the correct length bc in the past there have been some geoid errors.
 ## If not, then leading zeroes may be missing or there may be other errors to check out.
+
 
     # for (i in 1:length(hmda_list)) {
     #   print(paste0(names(hmda_list[i]), " has ", (nrow(filter(hmda_list[[i]], nchar(hmda_list[[i]]$census_tract) != 11))), " census_tract errors"))
@@ -107,6 +115,7 @@ con2 <- connect_to_db("rda_shared_data")
       # }
 
 
+
 #### PREP DENIED MORTGAGE RATES ----------------------------------------
 # pull in list tables needed for calcs
 table_list = as.data.frame(do.call(rbind, lapply(DBI::dbListObjects(con2, DBI::Id(schema = curr_schema))$table, function(x) slot(x, 'name'))))
@@ -118,8 +127,10 @@ loan_tbl_list <- loan_tbl_list[grepl(paste(data_yrs, collapse="|"), loan_tbl_lis
 loan_tbl_list <- loan_tbl_list[!grepl("2019_20", loan_tbl_list)] # filter out old multi-yr tables
 
 # Check your lists contain all the required tables
+
       #mtg_tbl_list
       #loan_tbl_list
+
 
 # Import data then filter out multifamily housing and subordinate liens. Keep only single family housing and first liens. Replace state_code with FIPS Code.
 mtg_tables <- lapply(setNames(paste0("select * from ", table_schema, ".", mtg_tbl_list), mtg_tbl_list), DBI::dbGetQuery, conn = con2)
