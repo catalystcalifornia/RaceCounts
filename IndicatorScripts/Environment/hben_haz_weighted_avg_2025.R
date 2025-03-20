@@ -1,7 +1,7 @@
 ### Proximity to Hazards (Weighted Avg) RC v6 ###
 
 ##install packages if not already installed ------------------------------
-list.of.packages <- c("dplyr","data.table","tidycensus","sf","DBI","Rostgres","RPostgreSQL","stringr","tidyr","tigris","usethis")
+list.of.packages <- c("dplyr","data.table","tidycensus","sf","DBI","RPostgres","RPostgreSQL","stringr","tidyr","tigris","usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 
 if(length(new.packages)) install.packages(new.packages)
