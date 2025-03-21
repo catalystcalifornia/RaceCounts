@@ -1,4 +1,4 @@
-## Internet Access RC v6 ##
+## Internet Access RC v7 ##
 #install packages if not already installed
 list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis", "sf")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
@@ -19,9 +19,9 @@ con <- connect_to_db("rda_shared_data")
 
 
 ############## UPDATE FOR SPECIFIC INDICATOR HERE ##############
-curr_yr = 2022     # you MUST UPDATE each year
-rc_yr <- '2024'    # you MUST UPDATE each year
-rc_schema <- "v6"  # you MUST UPDATE each year
+curr_yr = 2023     # you MUST UPDATE each year with the last year from the 5-year ACS you're using
+rc_yr <- '2025'    # you MUST UPDATE each year
+rc_schema <- "v7"  # you MUST UPDATE each year
 cv_threshold = 40         
 pop_threshold = 100       
 asbest = 'max'            
