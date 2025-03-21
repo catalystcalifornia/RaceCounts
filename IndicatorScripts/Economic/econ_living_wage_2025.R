@@ -1,6 +1,6 @@
-### Living Wage RC v6###
+### Living Wage RC v7###
 
-
+# Set up workspace --------------------------------------------------------
 # Install packages if not already installed
 packages <- c("data.table", "stringr", "dplyr", "RPostgreSQL", "dbplyr", "srvyr", "tidycensus", "rpostgis",  "tidyr", "here", "sf", "usethis") 
 
@@ -22,38 +22,36 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
 # define variables used throughout - update each year
-curr_yr <- 2022 
-rc_yr <- '2024'
-rc_schema <- 'v6'
+curr_yr <- 2023 
+rc_yr <- '2025'
+rc_schema <- 'v7'
 
 ##### GET PUMA-COUNTYCROSSWALKS ######
-# and rename fields to distinguish vintages
-crosswalk10 <- st_read(con, query = "select county_id AS geoid, county_name AS geoname, puma, num_county from crosswalks.puma_county_2021")
-crosswalk10 <- crosswalk10 %>% rename(puma10 = puma, geoid10 = geoid, geoname10 = geoname) 
-
-crosswalk20 <- st_read(con, query = "select county_id AS geoid, county_name AS geoname, puma, num_county from crosswalks.puma_county_2022")
-crosswalk20 <- crosswalk20 %>% rename(puma20 = puma, geoid20 = geoid, geoname20 = geoname) 
+crosswalk <- dbGetQuery(con, "select county_id AS geoid, county_name AS geoname, puma, num_county from crosswalks.puma_county_2022")
+assm_crosswalk <- dbGetQuery(con, "select geo_id AS puma, sldl24 AS geoid, num_dist AS num_assm from crosswalks.puma_2020_state_assembly_2024") %>%
+                  rename(assm_geoid = geoid)
+sen_crosswalk <- dbGetQuery(con, "select geo_id AS puma, sldu24 AS geoid, num_dist AS num_sen from crosswalks.puma_2020_state_senate_2024") %>%
+                  rename(sen_geoid = geoid)
 
 # Get PUMS Data -----------------------------------------------------------
-# Data Dictionary: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2022.pdf
+# Data Dictionary: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
 # path where my data lives (not pulling pums data from the postgres db, takes too long to run calcs that way) 
 start_yr <- curr_yr - 4  # autogenerate start yr of 5yr estimates
 root <- paste0("W:/Data/Demographics/PUMS/CA_", start_yr, "_", curr_yr, "/")
 
 # Load ONLY the PUMS columns needed for this indicator
 cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0)) # get all PUMS cols 
-cols_ <- grep("^PWGTP*", cols, value = TRUE)                                # filter for PUMS weight colnames
+cols_ <- grep("^PWGTP*", cols, value = TRUE)                   # filter for PUMS weight colnames
 
-ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE,  select = c(cols_, "AGEP", "ESR", "SCH", "PUMA10",
-             "PUMA20", "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P", "RAC3P", "RACAIAN", "RACPI", "RACNH", "ADJINC",
-             "WAGP","PERNP", "COW", "WKHP","WKW","WKL", "WRK","WKWN"),
-             colClasses = list(character = c("PUMA10", "PUMA20", "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P", "RAC3P", "RACAIAN", "RACPI", "RACNH", "ADJINC",
-                                             "WAGP","PERNP", "COW", "WKHP","WKW","WKL", "ESR","WRK","WKWN")))
+ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE,  select = c(cols_, "AGEP", "ESR", "SCH", "PUMA",
+             "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P19", "RAC2P23", "RAC3P", "RACAIAN", "RACPI", "RACNH", "ADJINC",
+             "WAGP", "PERNP", "COW", "WKHP", "WKL", "WRK", "WKWN"),
+             colClasses = list(character = c("PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P19", "RAC2P23", "RAC3P", "RACAIAN", "RACPI", "RACNH", "ADJINC",
+                                             "WAGP", "PERNP", "COW", "WKHP", "WKL", "ESR", "WRK", "WKWN")))
 
 # Add state_geoid to ppl, add state_geoid to PUMA id, so it aligns with crosswalks.puma_county_2020
 ppl$state_geoid <- "06"
-ppl$puma_id10 <- paste0(ppl$state_geoid, ppl$PUMA10)
-ppl$puma_id20 <- paste0(ppl$state_geoid, ppl$PUMA20)
+ppl$puma_id <- paste0(ppl$state_geoid, ppl$PUMA)
 
 # create list of replicate weights
 repwlist = rep(paste0("PWGTP", 1:80))
@@ -62,22 +60,15 @@ repwlist = rep(paste0("PWGTP", 1:80))
 orig_data <- ppl
 
 # join county crosswalk using left join function
-ppl <- left_join(orig_data, crosswalk10, by=c("puma_id10" = "puma10"))    # specify the field join
-ppl <- left_join(ppl, crosswalk20, by=c("puma_id20" = "puma20"))    # specify the field join
-
-# create one field using both crosswalks
-ppl <- ppl %>% mutate(geoid = ifelse(is.na(ppl$geoid10) & is.na(ppl$geoid20), NA, 
-                                     ifelse(is.na(ppl$geoid10), ppl$geoid20, ppl$geoid10)))
-
-
-ppl <- ppl %>% mutate(geoname = ifelse(is.na(ppl$geoname10) & is.na(ppl$geoname20), NA, 
-                                       ifelse(is.na(ppl$geoname10), ppl$geoname20, ppl$geoname10)))
+ppl <- left_join(orig_data, crosswalk, by=c("puma_id" = "puma"))   # specify the field join
+ppl <- left_join(ppl, assm_crosswalk, by=c("puma_id" = "puma"), relationship = "many-to-many")
+ppl <- left_join(ppl, sen_crosswalk, by=c("puma_id" = "puma"), relationship = "many-to-many")
 
 
 ############## Data Dictionary: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2022.pdf ###############
 
 ##### Reclassify Race/Ethnicity ########
-source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/PUMS_Functions_new.R")
+source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/PUMS_Functions_new.R")        # TEMPORARY re-direct to LF branch
 # check how many records there are for RACAIAN (AIAN alone/combo) versus RAC1P (AIAN alone) and same for NHPI
 #View(subset(ppl, RACAIAN =="1"))
 #View(subset(ppl, RAC1P >= 3 & ppl$RAC1P <=5))
