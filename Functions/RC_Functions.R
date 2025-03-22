@@ -325,7 +325,7 @@ calc_ranks <- function(x) {
 
 
 #####send city, county, state and leg district tables to postgres#####
-to_postgres <- function(x,y) {
+to_postgres <- function() {
                       # create connection for rda database
                       source("W:\\RDA Team\\R\\credentials_source.R")
                       con <- connect_to_db("racecounts")
@@ -350,20 +350,20 @@ to_postgres <- function(x,y) {
                       
                       #comment on table and columns
                       table_comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", state_table_name, "\"", 
-                                              " IS '", indicator, " from ", source, ". QA doc: ", qa_filepath, "';
-                                        COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", state_table_name, ".state_id IS 'State fips';")
+                                              " IS '", indicator, " from ", source, ". QA doc: ", qa_filepath, "';")
+                      
                       # Execute table comment
                       dbExecute(con, table_comment)
                       print(table_comment)
                       
-                      column_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", county_table_name, "\".\"state_id\" IS 'State fips';")
+                      column_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", state_table_name, "\".\"state_id\" IS 'State fips';")
                       
                       dbExecute(con, column_comment)
                       
                       
                       # Commit the transaction if everything succeeded
                       dbCommit(con)
-                      return("Table and columns comments added to table!")
+                      print("Table and columns comments added to table!")
 
 
                       #COUNTY TABLE
@@ -386,8 +386,7 @@ to_postgres <- function(x,y) {
                       
                       #comment on table and columns
                       table_comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", county_table_name, "\"", 
-                                              " IS '", indicator, " from ", source, ". QA doc: ", qa_filepath, "';
-                                         COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", county_table_name, ".county_id IS 'County fips';")
+                                              " IS '", indicator, " from ", source, ". QA doc: ", qa_filepath, "';")
                       # Execute table comment
                       dbExecute(con, table_comment)
                       print(table_comment)
@@ -399,12 +398,10 @@ to_postgres <- function(x,y) {
                       
                       # Commit the transaction if everything succeeded
                       dbCommit(con)
-                      return("Table and columns comments added to table!")
+                      print("Table and columns comments added to table!")
 
 
                       dbDisconnect(con)
-
-return(x)
 }
 
 city_to_postgres <- function(x) {
