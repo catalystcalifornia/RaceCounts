@@ -97,7 +97,7 @@ source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/SWANA_Ancestry_Lis
 vars_list_acs_swana <- get_swana_var(curr_yr, "acs5") # use fx to generate current swana ancestry vars
 
 swana_df <- B04006 %>% select(geoid, geolevel, matches(vars_list_acs_swana)) %>% 
-  select(!ends_with("m")) %>% 
+  select(!ends_with("m")) 
 swana_df$swana_pop <- rowSums(swana_df[sapply(swana_df, is.numeric)], na.rm = TRUE) # calc SWANA pop
 
 pop_df <- races_df %>% 
@@ -107,7 +107,7 @@ pop_df <- races_df %>%
 vars_list_acs_soasian <- get_soasian_var(curr_yr, "acs5") # use fx to generate current So asian ancestry vars
 
 soasian_df <- B02018 %>% select(geoid, geolevel, matches(vars_list_acs_soasian)) %>% 
-  select(!ends_with("m")) %>% 
+  select(!ends_with("m"))
 soasian_df$soasian_pop <- rowSums(soasian_df[sapply(soasian_df, is.numeric)], na.rm = TRUE) # calc So Asian pop
 
 pop_df <- pop_df %>% 
