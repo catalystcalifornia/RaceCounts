@@ -49,8 +49,7 @@ prev_dp05_vars$label <- gsub("Estimate!!|HISPANIC OR LATINO AND RACE!!", "", pre
 all.equal(dp05_vars, prev_dp05_vars)  # if NOT equal, you will likely need to revise the list of dp05 variables selected to create races_df below 
 
 ## Clean and join pop tables
-races_df <- select(DP05, geoid, name, geolevel, dp05_0001e, dp05_0071e, dp05_0073e, dp05_0076e, dp05_0082e, dp05_0083e, dp05_0085e, dp05_0087e, dp05_0088e) %>% 
-  filter(geolevel %in% c('state', 'county', 'sldu', 'sldl', 'place'))
+races_df <- select(DP05, geoid, name, geolevel, dp05_0001e, dp05_0071e, dp05_0073e, dp05_0076e, dp05_0082e, dp05_0083e, dp05_0085e, dp05_0087e, dp05_0088e)
 
 races_df <- races_df %>% mutate(dp05_0071pe = round((races_df$dp05_0071e / races_df$dp05_0001e * 100),1), 
                                 dp05_0073pe = round((races_df$dp05_0073e / races_df$dp05_0001e * 100),1), 
@@ -99,7 +98,6 @@ vars_list_acs_swana <- get_swana_var(curr_yr, "acs5") # use fx to generate curre
 
 swana_df <- B04006 %>% select(geoid, geolevel, matches(vars_list_acs_swana)) %>% 
   select(!ends_with("m")) %>% 
-  filter(geolevel %in% c('state', 'county', 'sldu', 'sldl', 'place'))
 swana_df$swana_pop <- rowSums(swana_df[sapply(swana_df, is.numeric)], na.rm = TRUE) # calc SWANA pop
 
 pop_df <- races_df %>% 
@@ -110,7 +108,6 @@ vars_list_acs_soasian <- get_soasian_var(curr_yr, "acs5") # use fx to generate c
 
 soasian_df <- B02018 %>% select(geoid, geolevel, matches(vars_list_acs_soasian)) %>% 
   select(!ends_with("m")) %>% 
-  filter(geolevel %in% c('state', 'county', 'sldl', 'sldu', 'place'))
 soasian_df$soasian_pop <- rowSums(soasian_df[sapply(soasian_df, is.numeric)], na.rm = TRUE) # calc So Asian pop
 
 pop_df <- pop_df %>% 
