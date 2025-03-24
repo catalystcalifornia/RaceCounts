@@ -95,7 +95,7 @@ B02018$name <- gsub("; California", "", B02018$name)
 
 ## Clean and join pop tables
 source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/SWANA_Ancestry_List.R") # current swana_ancestry() list
-vars_list_acs_swana <- get_swana_var(yr, "acs5") # use fx to generate current swana ancestry vars
+vars_list_acs_swana <- get_swana_var(curr_yr, "acs5") # use fx to generate current swana ancestry vars
 
 swana_df <- B04006 %>% select(geoid, geolevel, matches(vars_list_acs_swana)) %>% 
   select(!ends_with("m")) %>% 
