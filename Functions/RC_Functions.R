@@ -158,9 +158,9 @@ calc_p_var <- function(x) {
     mutate(variance = svar * (values_count - 1) / values_count) %>%
     dplyr::select(geoid, geolevel, variance)                               
   
-    # Join variance column back to original table
-    x <- x %>% 
-      left_join(diffs, by=c("geoid","geolevel"))    
+  # Join variance column back to original table
+  x <- x %>% 
+    left_join(diffs, by=c("geoid","geolevel"))    
 
 return(x)
 }
@@ -345,15 +345,21 @@ to_postgres <- function(x,y) {
                       dbWriteTable(con,
                                    Id(schema = rc_schema, table = state_table_name),
                                    state_table, overwrite = FALSE)
-                      
-                      #comment on table and columns
-                      comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", state_table_name, "\"", " IS 'Table created on ", Sys.Date(), ". ", indicator, " from ", source, ".';")
-                      col_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", state_table_name, "\"", ".state_id IS 'State fips';")
-                      print(comment)
-                      print(col_comment)
-                      
-                      dbExecute(con, comment)
-                      dbExecute(con, col_comment)
+
+                        # Start a transaction
+                        dbBegin(con)
+
+                        #comment on table and columns
+                        comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", state_table_name, "\"", " IS 'Table created on ", Sys.Date(), ". ", indicator, " from ", source, ".';")
+                        print(comment)
+                        dbExecute(con, comment)
+
+                        col_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", state_table_name, "\"", ".state_id IS 'State fips';")
+                        print(col_comment)                  
+                        dbExecute(con, col_comment)
+
+                        # Commit the transaction if everything succeeded
+                        dbCommit(con)
                       
                       #COUNTY TABLE
                       county_table <- as.data.frame(county_table)
@@ -371,82 +377,105 @@ to_postgres <- function(x,y) {
                                    Id(schema = rc_schema, table = county_table_name),
                                    county_table, overwrite = FALSE)
                       
-                      #comment on table and columns
-                      comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", county_table_name, "\"", " IS 'Table created on ", Sys.Date(), ". ", indicator, " from ", source, ".';")
-                      col_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", county_table_name, "\"", ".county_id IS 'County fips';")
-                      print(comment)
-                      print(col_comment)
-                      
-                      dbExecute(con, comment)
-                      dbExecute(con, col_comment)
+                       # Start a transaction
+                        dbBegin(con)
 
-                      dbDisconnect(con)
+                        #comment on table and columns
+                        comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", county_table_name, "\"", " IS 'Table created on ", Sys.Date(), ". ", indicator, " from ", source, ".';")
+                        print(comment)
+                        dbExecute(con, comment)
+
+                        col_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", county_table_name, "\"", ".county_id IS 'County fips';")
+                        print(col_comment)
+                        dbExecute(con, col_comment)
+
+                        # Commit the transaction if everything succeeded
+                        dbCommit(con)
+                        return("Table and columns comments added to table!")
+
+                        dbDisconnect(con)
 
 return(x)
 }
 
 city_to_postgres <- function(x) {
 
-  # create connection for rda database
-  source("W:\\RDA Team\\R\\credentials_source.R")
-  con <- connect_to_db("racecounts")
+                      # create connection for rda database
+                      source("W:\\RDA Team\\R\\credentials_source.R")
+                      con <- connect_to_db("racecounts")
 
-  #CITY TABLE
-  city_table <- as.data.frame(city_table)
+                      #CITY TABLE
+                      city_table <- as.data.frame(city_table)
 
-  # make character vector for field types in postgresql db
-  charvect = rep('numeric', dim(city_table)[2])
+                      # make character vector for field types in postgresql db
+                      charvect = rep('numeric', dim(city_table)[2])
 
-  # change data type for first two columns
-  charvect[1:2] <- "varchar" # first two cols are characters for the geoid and names
+                      # change data type for first two columns
+                      charvect[1:2] <- "varchar" # first two cols are characters for the geoid and names
 
-  # add names to the character vector
-  names(charvect) <- colnames(city_table)
+                      # add names to the character vector
+                      names(charvect) <- colnames(city_table)
 
-  dbWriteTable(con,
-               Id(schema = rc_schema, table = city_table_name),
-               city_table, overwrite = FALSE)
+                      dbWriteTable(con,
+                                   Id(schema = rc_schema, table = city_table_name),
+                                   city_table, overwrite = FALSE)
+
+                      # Start a transaction
+                      dbBegin(con)
+
+                      #comment on table and columns
+                      comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", city_table_name, "\"", " IS 'Table created on ", Sys.Date(), ". ", indicator, " from ", source, ".';")
+                      print(comment)
+
+                      dbExecute(con, comment)
+
+                      # Commit the transaction if everything succeeded
+                      dbCommit(con)
+                      return("Table and columns comments added to table!")
+
+                      dbDisconnect(con)
   
-  #comment on table and columns
-  comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", city_table_name, "\"", " IS 'Table created on ", Sys.Date(), ". ", indicator, " from ", source, ".';")
-  print(comment)
-
-  dbExecute(con, comment)
-}
+  return(x)
+ }
 
 leg_to_postgres <- function(x) {
-  # create connection for rda database
-  source("W:\\RDA Team\\R\\credentials_source.R")
-  con <- connect_to_db("racecounts")
-  
-  #STATE TABLE
-  leg_table <- as.data.frame(leg_table)
-  
-  # make character vector for field types in postgresql db
-  charvect = rep('numeric', dim(leg_table)[2])
-  
-  # change data type for first two columns
-  charvect[1:3] <- "varchar" # first two cols are characters for the geoid and names
-  
-  # add names to the character vector
-  names(charvect) <- colnames(leg_table)
-  
-  dbWriteTable(con,
-               Id(schema = rc_schema, table = leg_table_name),
-               leg_table, overwrite = FALSE)
+                      # create connection for rda database
+                      source("W:\\RDA Team\\R\\credentials_source.R")
+                      con <- connect_to_db("racecounts")
 
-  
-  #comment on table and columns
-  comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", leg_table_name, "\"", " IS 'Table created on ", Sys.Date(), ". ", indicator, " from ", source, ".';")
-  col_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", leg_table_name, "\"", ".leg_id IS 'Legislative District fips - note Assm and Sen fips are NOT unique. You must use combination of leg_id and geolevel to identify';")
-  
-  print(comment)
-  print(col_comment)
-  dbExecute(con, comment)
-  dbExecute(con, col_comment)
-  
-  
-  dbDisconnect(con)
+                      #STATE TABLE
+                      leg_table <- as.data.frame(leg_table)
+
+                      # make character vector for field types in postgresql db
+                      charvect = rep('numeric', dim(leg_table)[2])
+
+                      # change data type for first two columns
+                      charvect[1:3] <- "varchar" # first two cols are characters for the geoid and names
+
+                      # add names to the character vector
+                      names(charvect) <- colnames(leg_table)
+
+                      dbWriteTable(con,
+                                   Id(schema = rc_schema, table = leg_table_name),
+                                   leg_table, overwrite = FALSE)
+
+                      # Start a transaction
+                      dbBegin(con)
+
+                      #comment on table and columns
+                      comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", leg_table_name, "\"", " IS 'Table created on ", Sys.Date(), ". ", indicator, " from ", source, ".';")
+                      print(comment)
+                      dbExecute(con, comment)
+
+                      col_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", leg_table_name, "\"", ".leg_id IS 'Legislative District fips - note Assm and Sen fips are NOT unique. You must use combination of leg_id and geolevel to identify';")
+                      print(col_comment)
+                      dbExecute(con, col_comment)
+
+                      # Commit the transaction if everything succeeded
+                      dbCommit(con)
+                      return("Table and columns comments added to table!")
+
+                      dbDisconnect(con)
   
   return(x)
 }
