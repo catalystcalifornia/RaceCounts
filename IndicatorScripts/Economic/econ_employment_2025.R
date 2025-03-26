@@ -29,8 +29,8 @@ schema = 'economic'
 table_code = 's2301'
 
 df_wide_multigeo <- dbGetQuery(con, paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state', 'sldu', 'sldl')")) # import rda_shared_data table
-df_wide_multigeo$geolevel <- gsub("sldu", "upper", df_wide_multigeo$geolevel)  # update geolevel for sldu
-df_wide_multigeo$geolevel <- gsub("sldl", "lower", df_wide_multigeo$geolevel)  # update geolevel for sldl
+df_wide_multigeo$name <- str_remove(df_wide_multigeo$name,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
+df_wide_multigeo$name <- gsub("; California", "", df_wide_multigeo$name)
 
 
 ############## Pre-RC CALCS ##############
@@ -66,8 +66,8 @@ d <- calc_id(d)
 state_table <- d[d$geolevel == 'state', ]
 county_table <- d[d$geolevel == 'county', ]
 city_table <- d[d$geolevel == 'place', ]
-upper_table <- d[d$geolevel == 'upper', ]
-lower_table <- d[d$geolevel == 'lower', ]
+upper_table <- d[d$geolevel == 'sldu', ]
+lower_table <- d[d$geolevel == 'sldl', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table) %>% dplyr::select(-c(geolevel))
@@ -99,7 +99,7 @@ View(lower_table)
 
 ## Bind sldu and sldl tables into one leg_table##
 leg_table <- rbind(upper_table, lower_table)
-
+View(leg_table)
 
 #rename geoid to state_id, county_id, city_id
 colnames(state_table)[1:2] <- c("state_id", "state_name")
@@ -116,9 +116,9 @@ state_table_name <- paste0("arei_econ_employment_state_", rc_yr)
 city_table_name <- paste0("arei_econ_employment_city_", rc_yr)          
 leg_table_name <- paste0("arei_econ_employment_leg_", rc_yr)            
 
-indicator <- paste0("Created on ", Sys.Date(), ". Employment to Population Rate (%)")                 # See most recent Indicator Methodology for indicator description
+indicator <- "Employment to Population Rate (%)"                 # See most recent Indicator Methodology for indicator description
 start_yr <- curr_yr-4
-source <- paste0(start_yr,"-",curr_yr," ACS 5-Year Estimates, Table S2301, https://data.census.gov/cedsci/")   # See most recent Indicator Methodology for source info
+source <- paste0(start_yr,"-",curr_yr," ACS 5-Year Estimates, Table S2301, https://data.census.gov/cedsci/. Script: ")   # See most recent Indicator Methodology for source info
 
 ####### SEND TO POSTGRES #######
 #to_postgres(county_table, state_table)
