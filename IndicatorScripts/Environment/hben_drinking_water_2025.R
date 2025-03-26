@@ -1,7 +1,7 @@
 ### Drinking Water Contamination (Weighted Avg) RC v6 ### 
 
 ##install packages if not already installed ------------------------------
-list.of.packages <- c("dplyr","data.table","sf","tigris","readr","tidyr","DBI","RPostgreSQL","tidycensus","rvest","tidyverse","stringr","usethis")
+list.of.packages <- c("dplyr","data.table","sf","tigris","readr","tidyr","DBI","RPostgres","tidycensus","rvest","tidyverse","stringr","usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 
 if(length(new.packages)) install.packages(new.packages)
@@ -9,7 +9,7 @@ library(dplyr)
 library(data.table)
 library(tidycensus)
 library(sf)
-library(RPostgreSQL)
+library(RPostgres)
 library(stringr)
 library(tidyr)
 library(tigris)
