@@ -374,8 +374,8 @@ qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Environment\\QA_Sheet_Lack_of
 
 
 #send tables to postgres
-to_postgres(county_table, state_table)
-city_to_postgres(city_table)
-leg_to_postgres(leg_table)
-
-dbDisconnect(conn)
+# to_postgres(county_table, state_table)
+# city_to_postgres(city_table)
+# leg_to_postgres(leg_table)
+# 
+# dbDisconnect(conn)
