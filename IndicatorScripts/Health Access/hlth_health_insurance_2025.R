@@ -26,7 +26,7 @@ schema = 'health'
 table_code = 's2701'     # YOU MUST UPDATE based on Indicator Methodology 2021 or RC 2022 Workflow/Cnty-State Indicator Tracking
 rc_yr = '2025'
 
-df_wide_multigeo <- dbGetQuery(con, query = paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state', 'sldu', 'sldl')")) # import rda_shared_data table
+df_wide_multigeo <- dbGetQuery(con, paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state', 'sldu', 'sldl')")) # import rda_shared_data table
 
 df_wide_multigeo$name <- str_remove(df_wide_multigeo$name,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
 df_wide_multigeo$name <- gsub("; California", "", df_wide_multigeo$name)
@@ -106,15 +106,15 @@ colnames(leg_table)[1:2] <- c("leg_id", "leg_name")
 ############### COUNTY, STATE, CITY METADATA  ##############
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_hlth_health_insurance_county_2025", rc_yr)      
-state_table_name <- paste0("arei_hlth_health_insurance_state_2025", rc_yr)       
-city_table_name <- paste0("arei_hlth_health_insurance_city_2025", rc_yr)        
-leg_table_name <- paste0("arei_econ_employment_leg_", rc_yr)
+county_table_name <- paste0("arei_hlth_health_insurance_county_", rc_yr)      
+state_table_name <- paste0("arei_hlth_health_insurance_state_", rc_yr)       
+city_table_name <- paste0("arei_hlth_health_insurance_city_", rc_yr)        
+leg_table_name <- paste0("arei_hlth_health_insurance_leg_", rc_yr)
 indicator <- paste0("Created on ", Sys.Date(), ". Uninsured Population (%)")                         # See Indicator Methodology 2021 for indicator description
 start_yr <- curr_yr-4
 source <- "2019-2023 ACS 5-Year Estimates, Table S2701, https://data.census.gov/cedsci/"   # See Indicator Methodology 2021 for source info
 rc_schema <- "v7"
-
+qa_filepath <- "W:/Project/RACE COUNTS/2025_v7/Health Access/QA_Healthinsurance.docx"
 
 ####### SEND TO POSTGRES #######
 to_postgres(county_table,state_table)
