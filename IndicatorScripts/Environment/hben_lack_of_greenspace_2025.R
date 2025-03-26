@@ -1,7 +1,7 @@
 ### Lack of Greenspace RC v7 ### 
 
 #install packages if not already installed
-packages <- c("dplyr","data.table","tidycensus","sf","DBI","Rostgres","RPostgreSQL","stringr","tidyr","tigris","usethis")  
+packages <- c("dplyr","data.table","tidycensus","sf","DBI","RPostgres","RPostgreSQL","stringr","tidyr","tigris","usethis")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -30,6 +30,7 @@ source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/SWANA_Ancestry_Lis
 
 # update variables used throughout each year
 curr_yr <- 2021
+acs_yr <- 2020
 rc_yr <- '2025'
 rc_schema <- 'v7'
 
@@ -367,14 +368,14 @@ leg_table_name <- paste0("arei_hben_lack_of_greenspace_leg_", rc_yr)
 
 start_yr <- curr_yr - 4
 
-indicator <- paste0("Created on ", Sys.Date(), ". Impervious Landcover (%) is the weighted average of percentage of impervious land cover out of all land cover by race. Impervious land cover includes roads, roof tops, and parking lots")
+indicator <- " Impervious Landcover (%) is the weighted average of percentage of impervious land cover out of all land cover by race. Impervious land cover includes roads, roof tops, and parking lots"
 source <- paste0("Multi-Resolution Land Characteristics Consortium, National Land Cover Database (", curr_yr, "), ACS DP05 (", start_yr, "-", curr_yr, ").")
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Environment\\QA_Sheet_Lack_of_Greenspace.docx"
 
 
 #send tables to postgres
-# to_postgres(county_table, state_table)
-# city_to_postgres(city_table)
-# leg_to_postgres(leg_table)
+to_postgres(county_table, state_table)
+city_to_postgres(city_table)
+leg_to_postgres(leg_table)
 
 dbDisconnect(conn)
