@@ -1,6 +1,6 @@
 ### Drinking Water Contamination (Weighted Avg) RC v7 ### 
 #install packages if not already installed
-packages <- c("dplyr","data.table","tidycensus","sf","DBI","RPostgres","RPostgreSQL","stringr","tidyr","tigris","usethis")  
+packages <- c("dplyr","data.table","tidycensus","sf","DBI","RPostgres","RPostgres","stringr","tidyr","tigris","usethis")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -23,7 +23,7 @@ options(scipen=999)
 source("W:\\RDA Team\\R\\credentials_source.R")
 conn <- connect_to_db("rda_shared_data")
 
-#set source for Weighted-Average Functions script
+#set source for Weighted Average Functions script
 source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
 source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/SWANA_Ancestry_List.R")
 
@@ -55,7 +55,7 @@ assm_geoid <- 'sldl24'			     # NOTE: This may need to be updated. Define column
 assm_xwalk <- 'tract_2020_state_assembly_2024'  # NOTE: This may need to be updated.
 
 ### CT-Assm Crosswalk ### ---------------------------------------------------------------------
-# Import CT-Assm Crosswalk fx
+# Import CT-Assm Crosswalk
 xwalk_filter <- dbGetQuery(conn, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, " AS assm_geoid FROM crosswalks.", assm_xwalk))
 assm <- dbGetQuery(conn, paste0("SELECT ", assm_geoid, " AS assm_geoid FROM crosswalks.", assm_xwalk)) %>%
   unique()
@@ -125,8 +125,8 @@ pop_threshold = 250              # define population threshold for screening
 sen_geoid <- 'sldu24'			       # NOTE: This may need to be updated. define column with senate geoid
 sen_xwalk <- 'tract_2020_state_senate_2024'  # NOTE: This may need to be updated.
 
-### CT-sen Crosswalk ### ---------------------------------------------------------------------
-#set source for CT-sen Crosswalk fx
+### CT-Sen Crosswalk ### ---------------------------------------------------------------------
+# Import CT-Sen Crosswalk
 xwalk_filter <- dbGetQuery(conn, paste0("SELECT geo_id AS ct_geoid, ", sen_geoid, " AS sen_geoid FROM crosswalks.", sen_xwalk))
 sen <- dbGetQuery(con, paste0("SELECT ", sen_geoid, " AS sen_geoid FROM crosswalks.", sen_xwalk)) %>%
   unique()
@@ -246,7 +246,7 @@ city_wa <- city_wa %>%
 
 # set values for weighted average functions - You may need to update these
 subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- c('county')     # define your target geolevel: place
+targetgeolevel <- c('county')     # define your target geolevel: county
 survey <- "acs5"                  # define which Census survey you want
 pop_threshold = 250               # define population threshold for screening
 
@@ -274,7 +274,8 @@ pop_wide <- lapply(pop, to_wide)
 pop_wide <- pop_wide$GEOID %>% as.data.frame()
 
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
-pop_wide <- as.data.frame(pop_wide) %>% mutate(target_id = substr(GEOID, 1, 5))  # use left 5 characters as target_id
+pop_wide <- as.data.frame(pop_wide) %>% 
+  mutate(target_id = substr(GEOID, 1, 5))  # use left 5 characters as target_id
 
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID)                              # rename to generic column name for WA functions
 
@@ -391,7 +392,7 @@ leg_table_name <- paste0("arei_hben_drinking_water_leg_", rc_yr)
 start_yr <- acs_yr - 4
 indicator <- "Exposure to Contaminated Drinking Water Score"
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Environment\\QA_Sheet_Drinking_Water.docx"
-source <- paste0("CalEnviroScreen ", ces_v, " (", curr_yr, ") https://oehha.ca.gov/calenviroscreen/report/calenviroscreen-40, ACS DP05 (", start_yr, "-", acs_yr, "). QA filepath: ", qa_filepath)
+source <- paste0("CalEnviroScreen ", ces_v, " (", curr_yr, ") https://oehha.ca.gov/calenviroscreen/report/calenviroscreen-40, ACS DP05 (", start_yr, "-", acs_yr, "). QA doc: ", qa_filepath)
 
 
 #send tables to postgres
