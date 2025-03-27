@@ -19,14 +19,14 @@ con <- connect_to_db("rda_shared_data")
 
 
 ############## UPDATE FOR SPECIFIC INDICATOR HERE ##############
-curr_yr = 2023      # you MUST UPDATE each year with the last year from the 5-year ACS you're using
-rc_yr = '2025'      # you MUST UPDATE each year
-rc_schema <- "v7"   # you MUST UPDATE each year
-cv_threshold = 40         
-pop_threshold = 150       
-asbest = 'max'            
-schema = 'economic'
-table_code = 's2301'
+curr_yr = 2023          # you MUST UPDATE each year with the last year from the 5-year ACS you're using
+rc_yr = '2025'          # you MUST UPDATE each year
+rc_schema <- "v7"       # you MUST UPDATE each year
+cv_threshold = 40       # You may need to update     
+pop_threshold = 150     # You may need to update      
+asbest = 'max'          # Do not update      
+schema = 'economic'     # Do not update
+table_code = 's2301'    # Do not update
 
 df_wide_multigeo <- dbGetQuery(con, paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state', 'sldu', 'sldl')")) # import rda_shared_data table
 df_wide_multigeo$name <- str_remove(df_wide_multigeo$name,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
