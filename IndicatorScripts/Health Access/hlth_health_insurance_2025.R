@@ -1,7 +1,7 @@
 ## Health Insurance for RC v7 ##
 
 #install packages if not already installed
-list.of.packages <- c("tidyr", "stringr", "tidycensus", "dplyr", "DBI", "RPostgreSQL", "usethis")
+list.of.packages <- c("tidyr", "stringr", "tidycensus", "dplyr", "DBI", "RPostgres", "usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
@@ -10,7 +10,7 @@ library(stringr)
 library(tidycensus)
 library(dplyr)
 library(DBI)
-library(RPostgreSQL)
+library(RPostgres)
 library(usethis)
 
 # create connection for rda database
@@ -18,21 +18,23 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
 ############## UPDATE FOR SPECIFIC INDICATOR HERE ##############
-curr_yr = 2023 # you MUST UPDATE each year
-cv_threshold = 40         # YOU MUST UPDATE based on Indicator Methodology 2021
-pop_threshold = 130        # YOU MUST UPDATE based on Indicator Methodology 2021 or set to NA B19301
-asbest = 'min'            # YOU MUST UPDATE based on indicator, set to 'min' if S2701
-schema = 'health'
-table_code = 's2701'     # YOU MUST UPDATE based on Indicator Methodology 2021 or RC 2022 Workflow/Cnty-State Indicator Tracking
-rc_yr = '2025'
+curr_yr = 2023            # You MUST UPDATE each year with the last year from the 5-year ACS you're using
+rc_yr = '2025'            # You MUST UPDATE each year
+rc_schema <- "v7"         # You MUST UPDATE each year
+cv_threshold = 40         # You may need to update
+pop_threshold = 130       # You may need to update
+asbest = 'min'            # Do not update
+schema = 'health'         # Do not update
+table_code = 's2701'      # Do not update
 
-df_wide_multigeo <- dbGetQuery(con, query = paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state', 'sldu', 'sldl')")) # import rda_shared_data table
+df_wide_multigeo <- dbGetQuery(con, paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state', 'sldu', 'sldl')")) # import rda_shared_data table
 
 df_wide_multigeo$name <- str_remove(df_wide_multigeo$name,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
 df_wide_multigeo$name <- gsub("; California", "", df_wide_multigeo$name)
 
 ############## Pre-RC CALCS ##############
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
+#source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
+source(".\\Functions\\rdashared_functions.R")
 df <- prep_acs(df_wide_multigeo, table_code, cv_threshold, pop_threshold)
  
 df_screened <- dplyr::select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"), -ends_with("_cv"))
@@ -106,18 +108,19 @@ colnames(leg_table)[1:2] <- c("leg_id", "leg_name")
 ############### COUNTY, STATE, CITY METADATA  ##############
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_hlth_health_insurance_county_2025", rc_yr)      
-state_table_name <- paste0("arei_hlth_health_insurance_state_2025", rc_yr)       
-city_table_name <- paste0("arei_hlth_health_insurance_city_2025", rc_yr)        
+county_table_name <- paste0("arei_hlth_health_insurance_county_", rc_yr)      
+state_table_name <- paste0("arei_hlth_health_insurance_state_", rc_yr)       
+city_table_name <- paste0("arei_hlth_health_insurance_city_", rc_yr)        
 leg_table_name <- paste0("arei_econ_employment_leg_", rc_yr)
-indicator <- paste0("Created on ", Sys.Date(), ". Uninsured Population (%)")                         # See Indicator Methodology 2021 for indicator description
+
+indicator <- "Uninsured Population (%)"   
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Health Access\\QA_Health_Insurance.docx"
 start_yr <- curr_yr-4
-source <- "2019-2023 ACS 5-Year Estimates, Table S2701, https://data.census.gov/cedsci/"   # See Indicator Methodology 2021 for source info
-rc_schema <- "v7"
+source <- paste0(start_yr,"-",curr_yr," ACS 5-Year Estimates, Table S2701, https://data.census.gov/cedsci/. QA Doc: ", qa_filepath)   
 
 
 ####### SEND TO POSTGRES #######
-to_postgres(county_table,state_table)
+to_postgres(county_table, state_table)
 city_to_postgres(city_table)
 leg_to_postgres(leg_table)
 
