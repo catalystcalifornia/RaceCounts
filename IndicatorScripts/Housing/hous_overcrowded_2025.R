@@ -38,8 +38,7 @@ table_code = "b25014"     # YOU MUST UPDATE based on most recent Indicator Metho
 
 ############## GET DATA ##############
 df_wide_multigeo <- dbGetQuery(con, paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state', 'sldu', 'sldl')")) # import rda_shared_data table
-# df_wide_multigeo$name <- str_remove(df_wide_multigeo$name,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
-# df_wide_multigeo$name <- gsub("; California", "", df_wide_multigeo$name)
+
 View(df_wide_multigeo)
 ############## PRE-CALCULATION DATA PREP ##############
 
@@ -130,8 +129,9 @@ start_yr <- curr_yr -4
 indicator <- " Overcrowded Housing Units (%) (> 1 person per room)"                         # See most recent Indicator Methodology for indicator description
 source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, Tables B25014B-I, https://data.census.gov/cedsci/") # See most recent Indicator Methodology for indicator description
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Sheet_Overcrowded_Housing.docx"
+
 ####### SEND TO POSTGRES #######
-to_postgres(county_table,state_table)
-city_to_postgres(city_table)
-leg_to_postgres(leg_table)
-dbDisconnect(con)
+# to_postgres(county_table,state_table)
+# city_to_postgres(city_table)
+# leg_to_postgres(leg_table)
+# dbDisconnect(con)
