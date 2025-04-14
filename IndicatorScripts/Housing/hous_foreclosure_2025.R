@@ -1,7 +1,8 @@
-## Foreclosures per 10k Owner-Occupied Households (WA) for RC v5
+## Foreclosures per 10k Owner-Occupied Households (WA) for RC v7
+
 ######## Due to using a different population basis for WA (owner households), this is not a good script to use as a WA template. ##############
 ##install packages if not already installed ------------------------------
-packages <- c("dplyr","data.table","tidycensus","sf","DBI","RPostgres","RPostgres","stringr","tidyr","tigris","usethis","readr","RPostgreSQL", "rvest", "tidyverse", "stringr")  
+packages <- c("dplyr", "data.table", "readxl", "tidycensus", "sf", "DBI", "RPostgres", "stringr", "tidyr", "tigris", "usethis", "readr", "rvest", "tidyverse", "stringr")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -25,8 +26,7 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
 #set source for RC Functions script
-# source("https://raw.githubusercontent.com/catalystcalifornia/RDA-Functions/main/Cnty_St_Wt_Avg_Functions.R")
-source("W:/RDA Team/R/Github/RDA Functions/AB/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
+source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
 
 
 # update each year: variables used throughout script
@@ -34,6 +34,14 @@ acs_yr <- 2021         # last yr of acs 5y span
 curr_yr <- '2017-2021' # acs 5yr span
 rc_schema <- 'v7'
 rc_yr <- '2025'
+
+# Check each year and update if needed
+# Define different vars_list than what's in WA functions, bc basis here is owner households by race, not population by race.
+# vars must represent the following list in this same order:
+# owner housholds: total, black, aian, asian, pacisl, other, twoormor, nh_white, latinx (All except Two+ and Latinx are 1 race alone)
+# check vars_list_custom using URLs like and using correct year: https://api.census.gov/data/2021/acs/acs5/groups/B25003B.html
+# Or using code like: b25003 <- load_variables(acs_yr, "acs5", cache = TRUE) %>% filter(str_detect(name, "^B25003"))
+vars_list_custom <- c("B25003_002", "B25003B_002", "B25003C_002", "B25003D_002", "B25003E_002", "B25003F_002", "B25003G_002", "B25003H_002", "B25003I_002")
 
 # export foreclosure to rda shared table ------------------------------------------------------------
 ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
@@ -46,7 +54,7 @@ rc_yr <- '2025'
 # dbWriteTable(con, c(table_schema, table_name), foreclosure, overwrite = FALSE, row.names = FALSE)
 
 #load data and clean-----
-foreclosure <- dbGetQuery(con, "SELECT * FROM housing.dataquick_tract_2010_22_foreclosures") # comment out table creation above, and import data from pgadmin
+foreclosure <- dbGetQuery(con, "SELECT * FROM housing.dataquick_tract_2010_22_foreclosures") # comment out table creation above after it's done, and instead import data from pgadmin
 
 num_qtrs = 20   # update depending on how many data yrs you are working with
 foreclosure <- foreclosure %>% select(-matches('2010|2011|2012|2013|2014|2015|2016|2022')) %>%
@@ -60,28 +68,10 @@ foreclosure$County = str_to_title(foreclosure$County)
  foreclosure <- rename(foreclosure, "county"="County", "census_tract"="Census Tract")
 View(foreclosure)
 
-# get census county geoids to paste to the front of the tracts from the foreclosure data-----
-census_api_key(census_key1, overwrite=TRUE) # In practice, may need to include install=TRUE if switching between census api keys
-# Sys.getenv("CENSUS_API_KEY")
-ca <- get_acs(geography = "county", 
-              variables = c("B01001_001"), 
-              state = "CA", 
-              year = acs_yr)
-ca <- ca[,1:2]
-ca$NAME <- gsub(" County, California", "", ca$NAME)
-names(ca) <- c("geoid", "geoname")
-View(ca)
 
 ############# COUNTY CALCS ##################
-# merge dfs by geoname then paste the county id to the front of the tract IDs
-ind_df <- left_join(ca, foreclosure, by = c("geoname" = "county")) %>% 
-  mutate(sub_id = paste0(geoid, census_tract)) %>% 
-  rename(c("target_id" = "geoid")) %>%
-  select(target_id, sub_id, geoname, sum_foreclosure, avg_foreclosure) %>% 
-  as.data.frame()
-View(ind_df)
 
-###### DEFINE VALUES FOR FUNCTIONS ######
+###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
 year <- acs_yr                    # define your data vintage
@@ -90,19 +80,55 @@ targetgeolevel <- c('county')     # define your target geolevel: county (state i
 survey <- "acs5"                  # define which Census survey you want
 pop_threshold = 30                # define population threshold for screening
 
-##### CREATE COUNTY GEOID & NAMES TABLE ######  
-# EXTRA STEP: Must define different vars_list than what's in WA functions, bc basis here is owner households by race, not population by race.
-# select race/eth owner household variables: total, black, aian, asian, pacisl, other, twoormor, nh_white, latinx (All except Two+ and Latinx are 1 race alone)
-# check vars_list_custom using URLs like: https://api.census.gov/data/2022/acs/acs5/groups/B25003B.html
-vars_list_custom <- c("B25003_002", "B25003B_002", "B25003C_002", "B25003D_002", "B25003E_002", "B25003F_002", "B25003G_002", "B25003H_002", "B25003I_002")
 
+##### CREATE COUNTY GEOID & NAMES TABLE ######  
 targetgeo_names <- county_names(vars = vars_list_custom, yr = year, srvy = survey)  # NOTE: using custom 
+
+# merge dfs by geoname then paste the county id to the front of the tract IDs to make full CT FIPS codes
+ind_df <- left_join(targetgeo_names, foreclosure, by = c("target_name" = "county")) %>% 
+  mutate(sub_id = paste0(target_id, census_tract)) %>% 
+  #rename(c("target_id" = "geoid")) %>%
+  select(target_id, sub_id, target_name, sum_foreclosure, avg_foreclosure) %>% 
+  as.data.frame()
+# View(ind_df)
+
+# note: Foreclosure uses 2010 tract vintage, population estimates use 2020 tract vintage
+cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
+  select(GEOID_TRACT_10, NAMELSAD_TRACT_10, AREALAND_TRACT_10, GEOID_TRACT_20, NAMELSAD_TRACT_20, AREALAND_TRACT_20, AREALAND_PART) %>%
+  mutate_at(vars(contains("AREALAND")), function(x) as.numeric(x)) %>%
+  # calculate overlapping land area of 2010 and 2020 tracts (AREALAND_PART) as a percent of 2020 tract land area (AREALAND_TRACT_20)
+  mutate(prc_overlap=AREALAND_PART/AREALAND_TRACT_10) # pct of 2010 tract that is in 2020 tract to ensure 100% of 2010 foreclosures are assigned to 2020 tracts
+
+# Because Foreclosure uses 2010 vintage tracts - need to convert to 2020 vintage and allocate score accordingly
+ind_2010_2020 <- cb_tract_2010_2020 %>%
+  right_join(ind_df, by=c('GEOID_TRACT_10'='sub_id')) %>%
+  select(GEOID_TRACT_10, sum_foreclosure, AREALAND_TRACT_10, AREALAND_PART, GEOID_TRACT_20, AREALAND_TRACT_20, prc_overlap) %>%
+  # Allocate CES scores from 2010 tracts to 2020 using prc_overlap
+  mutate(foreclosure_20=sum_foreclosure*prc_overlap)
+
+## check that prc_overlap sums to 1 for 2010 tracts
+# check_prc_is_1 <- ind_2010_2020 %>%
+#   select(GEOID_TRACT_10, prc_overlap) %>%
+#   group_by(GEOID_TRACT_10) %>%
+#   summarize(total_prc = sum(prc_overlap))
+
+# create indicator df (2020 tracts) to be used in WA calcs
+ind_2020 <- ind_2010_2020 %>%
+  # sum weighted foreclosures by 2020 tract
+  group_by(GEOID_TRACT_20) %>%
+  summarize(sum_foreclosure = sum(foreclosure_20)) %>%
+  # clean up names
+  rename(sub_id = GEOID_TRACT_20) %>% 
+  # calc 5-yr avg foreclosure rate (2017-2021)
+  mutate(avg_foreclosure = sum_foreclosure / num_qtrs) 
+
+ind_df <- ind_2020 # rename to ind_df for WA fx
 
 ##### GET SUB GEOLEVEL POP DATA ######
 pop <- update_detailed_table(vars = vars_list_custom, yr = year, srvy = survey)  # subgeolevel pop. NOTE: This indicator uses a custom variable list (vars_list_custom)
 
 # transform pop data to wide format 
-pop_wide <- lapply(pop, to_wide)
+pop_wide <- to_wide(pop)
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
 pop_wide <- as.data.frame(pop_wide) %>% mutate(target_id = substr(GEOID, 1, 5))  # use left 5 characters as target_id
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID)                              # rename to generic column name for WA functions
@@ -166,40 +192,132 @@ ca_wa <- ca_wt_avg(ca_pct_df) %>% mutate(geolevel = 'state')   # add geolevel ty
 
 ############# CITY CALCS ##################
 # merge dfs by geoname then paste the county id to the front of the tract IDs
-ind_df <- left_join(ca, foreclosure, by = c("geoname" = "county")) %>% 
-  mutate(sub_id = paste0(geoid, census_tract)) %>% 
-  rename(c("target_id" = "geoid")) %>%
-  select(target_id, sub_id, geoname, sum_foreclosure, avg_foreclosure)%>% 
+ind_df_ <- left_join(targetgeo_names, foreclosure, by = c("target_name" = "county")) %>%
+  mutate(sub_id = paste0(target_id, census_tract)) %>%
+  select(target_id, sub_id, sum_foreclosure) %>%
+  rename(county_id = target_id) %>%
   as.data.frame()
-View(ind_df)
-# get census place geoids to paste to the front of the tracts from the foreclosure data
+# View(ind_df_)
 
 ###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
 year <- acs_yr                    # define your data vintage
 subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- c('place')      # define your target geolevel: county (state is handled separately)
+targetgeolevel <- c('place')      # define your target geolevel: place
 survey <- "acs5"                  # define which Census survey you want
 pop_threshold = 30                # define population threshold for screening #its 250 for county and state
-
-### City pop data ### 
-## pull in CBF Places ##
-places <- places(state = 'CA', year = acs_yr, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
 
 # pull in crosswalk
 xwalk_filter <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.ct_place_", acs_yr))
 
-# ###### GET SUB GEOLEVEL POP DATA ###
+# # note: Foreclosure uses 2010 tract vintage, population estimates use 2020 tract vintage
+# cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
+#   select(GEOID_TRACT_10, NAMELSAD_TRACT_10, AREALAND_TRACT_10, GEOID_TRACT_20, NAMELSAD_TRACT_20, AREALAND_TRACT_20, AREALAND_PART) %>%
+#   mutate_at(vars(contains("AREALAND")), function(x) as.numeric(x)) %>%
+#   # calculate overlapping land area of 2010 and 2020 tracts (AREALAND_PART) as a percent of 2020 tract land area (AREALAND_TRACT_20)
+#   mutate(prc_overlap=AREALAND_PART/AREALAND_TRACT_10) # pct of 2010 tract that is in 2020 tract to ensure 100% of 2010 foreclosures are assigned to 2020 tracts
+# 
+# # Because Foreclosure uses 2010 vintage tracts - need to convert to 2020 vintage and allocate score accordingly
+# ind_2010_2020 <- cb_tract_2010_2020 %>%
+#   right_join(ind_df_, by=c('GEOID_TRACT_10'='sub_id')) %>%
+#   select(GEOID_TRACT_10, sum_foreclosure, AREALAND_TRACT_10, AREALAND_PART, GEOID_TRACT_20, AREALAND_TRACT_20, prc_overlap) %>%
+#   # Allocate CES scores from 2010 tracts to 2020 using prc_overlap
+#   mutate(foreclosure_20=sum_foreclosure*prc_overlap)
+# 
+# # # check that prc_overlap sums to 1 for 2010 tracts
+# # check_prc_is_1 <- ind_2010_2020 %>%
+# #   select(GEOID_TRACT_10, prc_overlap) %>%
+# #   group_by(GEOID_TRACT_10) %>%
+# #   summarize(total_prc = sum(prc_overlap))
+# 
+# # create indicator df (2020 tracts) to be used in WA calcs
+# ind_2020 <- ind_2010_2020 %>%
+#   # sum weighted foreclosures by 2020 tract
+#   group_by(GEOID_TRACT_20) %>%
+#   summarize(sum_foreclosure = sum(foreclosure_20)) %>%
+#   # clean up names
+#   rename(sub_id = GEOID_TRACT_20) %>% 
+#   # calc 5-yr avg foreclosure rate (2017-2021)
+#   mutate(avg_foreclosure = sum_foreclosure / num_qtrs) 
+
+####### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table(vars = vars_list_custom, yr = year, srvy = survey)  # subgeolevel pop
 
 # transform pop data to wide format
-pop_wide <- lapply(pop, to_wide)
+pop_wide <- to_wide(pop)
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
-pop_wide <- as.data.frame(pop_wide) %>% right_join(select(xwalk_filter, c(ct_geoid, place_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
-pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = place_geoid) # rename to generic column names for WA functions
+pop_wide <- as.data.frame(pop_wide) %>% right_join(select(xwalk_filter, c(ct_geoid, place_geoid, place_name)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
+pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = place_geoid, target_name = place_name) # rename to generic column names for WA functions
 
 ############### CUSTOMIZED VERSION OF TARGETGEO_POP FUNCTION HERE THAT WORKS WITH OWNER HOUSEHOLDS AS POP BASIS ###
+# calc target geolevel pop and number of sub geolevels per target geolevel
+
+# select pop estimate columns
+b <- select(pop_wide, sub_id, target_id, ends_with("e"), -NAME)
+
+# aggregate sub geolevel pop to target geolevel and rename to RC names
+c <- b %>% group_by(target_id) %>% summarise_if(is.numeric, sum)
+colnames(c) <- c('target_id', 'total_target_pop', 'black_target_pop', 'aian_target_pop', 'asian_target_pop', 'pacisl_target_pop', 'other_target_pop', 'twoormor_target_pop', 'nh_white_target_pop', 'latino_target_pop')
+
+# count number of sub geolevels  per target geolevel and join to target geolevel pop
+d <- b %>% dplyr::count(target_id)
+c <- c %>% left_join(d, by = "target_id")
+
+# join target geolevel pop and sub geolevel counts to df, drop margin of error cols, rename tract pop cols
+e <- select(pop_wide, sub_id, target_id, geolevel, ends_with("e"), -NAME) 
+names(e) <- c('sub_id', 'target_id', 'geolevel', 'total_sub_pop', 'black_sub_pop', 'aian_sub_pop', 'asian_sub_pop', 'pacisl_sub_pop', 'other_sub_pop', 'twoormor_sub_pop', 'nh_white_sub_pop', 'latino_sub_pop', 'target_name')
+pop_df_city <- e %>% left_join(c, by = "target_id")
+
+##### EXTRA STEP: Calc avg quarterly foreclosures per 10k pop by tract bc WA avg should be calc'd using this, not avg # of foreclosures
+ind_df <- ind_2020 %>% left_join(pop_df %>% select(sub_id, total_sub_pop), by = "sub_id") %>% 
+  mutate(indicator = (avg_foreclosure / total_sub_pop) * 10000)
+
+##### CITY WEIGHTED AVG CALCS ###
+pct_df <- pop_pct_multi(pop_df_city)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
+city_wa <- wt_avg(pct_df)             # calc weighted average and apply reliability screens
+city_wa <- city_wa %>%                # add place names (target names)
+  left_join(xwalk_filter %>% select(c(place_name, place_geoid)), by = c("target_id" = "place_geoid"), relationship = "many-to-many") %>%
+  rename(target_name = place_name) %>%
+  relocate(target_name, .after=target_id) %>%
+  unique() # take unique rows bc xwalk can have >1 row per place
+city_wa <- city_wa %>% mutate(geolevel = 'city')  # add geolevel
+
+############# ASSEMBLY DISTRICTS ##################
+# merge dfs by geoname then paste the county id to the front of the tract IDs
+ind_df_assm <- left_join(ca, foreclosure, by = c("geoname" = "county")) %>%
+  mutate(sub_id = paste0(geoid, census_tract)) %>%
+  select(sub_id, geoname, sum_foreclosure, avg_foreclosure) %>%
+  as.data.frame()
+# View(ind_df)
+# get census place geoids to paste to the front of the tracts from the foreclosure data
+
+
+###### DEFINE VALUES FOR FUNCTIONS ######
+
+# set values for weighted average functions - You may need to update these
+subgeo <- c('tract')             # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
+targetgeolevel <- c('sldl')      # define your target geolevel: state assembly
+survey <- "acs5"                 # define which Census survey you want
+pop_threshold = 250              # define population threshold for screening
+assm_geoid <- 'sldl24'			     # NOTE: This may need to be updated. Define column with Assm geoid
+assm_xwalk <- 'tract_2020_state_assembly_2024'  # NOTE: This may need to be updated.
+
+### CT-Assm Crosswalk ### ---------------------------------------------------------------------
+# Import CT-Assm Crosswalk
+xwalk_filter <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, " AS assm_geoid FROM crosswalks.", assm_xwalk))
+assm <- xwalk_filter %>% select(assm_geoid) %>% unique()
+
+##### GET SUB GEOLEVEL POP DATA ######
+pop <- update_detailed_table(vars = vars_list_custom, yr = acs_yr, srvy = survey)  # subgeolevel pop
+
+# transform pop data to wide format
+pop_wide <- to_wide(pop)
+#### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
+pop_wide <- as.data.frame(pop_wide) %>% right_join(select(xwalk_filter, c(ct_geoid, assm_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
+pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = assm_geoid) # rename to generic column names for WA functions
+
+##### CUSTOMIZED VERSION OF TAR# calc target geolevel pop and number of sub geolevels per target geolevel
 # calc target geolevel pop and number of sub geolevels per target geolevel
 
 # select pop estimate columns and rename to RC names
@@ -219,86 +337,13 @@ names(e) <- c('sub_id', 'target_id', 'geolevel', 'total_sub_pop', 'black_sub_pop
 pop_df <- e %>% left_join(c, by = "target_id")
 
 ##### EXTRA STEP: Calc avg quarterly foreclosures per 10k pop by tract bc WA avg should be calc'd using this, not avg # of foreclosures
-ind_df <- ind_df %>% left_join(pop_df %>% select(sub_id, total_sub_pop), by = "sub_id") %>% 
-  mutate(indicator = (avg_foreclosure / total_sub_pop) * 10000)
-
-##### CITY WEIGHTED AVG CALCS ###
-pct_df <- pop_pct_multi(pop_df)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
-city_wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
-city_wa <- city_wa %>% left_join(select(places, c(GEOID, NAME)), by = c("target_id" = "GEOID"))  # add in target geolevel names
-city_wa <- city_wa %>% rename(target_name = NAME) %>% select(-c(geometry)) %>% mutate(geolevel = 'city')  # change NAME to target_name, drop geometry, add geolevel
-
-############# ASSEMBLY DISTRICTS ##################
-
-###### DEFINE VALUES FOR FUNCTIONS ######
-
-# set values for weighted average functions - You may need to update these
-subgeo <- c('tract')             # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- c('sldl')      # define your target geolevel: county (state is handled separately)
-survey <- "acs5"                 # define which Census survey you want
-pop_threshold = 250              # define population threshold for screening
-assm_geoid <- 'sldl24'			     # NOTE: This may need to be updated. Define column with Assm geoid
-assm_xwalk <- 'tract_2020_state_assembly_2025'  # NOTE: This may need to be updated.
-
-### CT-Assm Crosswalk ### ---------------------------------------------------------------------
-# Import CT-Assm Crosswalk
-xwalk_filter <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, " AS assm_geoid FROM crosswalks.", assm_xwalk))
-assm <- dbGetQuery(conn, paste0("SELECT ", assm_geoid, " AS assm_geoid FROM crosswalks.", assm_xwalk)) %>%
-  unique()
-
-##### GET SUB GEOLEVEL POP DATA ######
-pop <- update_detailed_table(vars = vars_list_custom, yr = acs_yr, srvy = survey)  # subgeolevel pop
-pop <- as.data.frame(pop)
-
-# get SWANA pop
-vars_list_acs_swana <- get_swana_var(acs_yr, survey)
-pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = acs_yr, srvy = survey) %>% 
-  as.data.frame() %>%
-  group_by(GEOID, NAME, geolevel) %>% 
-  summarise(estimate=sum(estimate),
-            moe=moe_sum(moe,estimate)) %>% mutate(variable = "swana") # subgeolevel pop
-
-# combine DP05 groups with SWANA tract level estimates 
-pop_ <- rbind(pop, pop_swana %>% filter(geolevel == 'tract')) %>% 
-  rename(e = estimate, m = moe)
-
-# transform pop data to wide format 
-pop_wide <- pop_ %>% 
-  pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = c(e, m), names_glue = "{variable}{.value}")
-
-#### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
-pop_wide <- as.data.frame(pop_wide) %>% 
-  right_join(select(xwalk_filter, c(ct_geoid, assm_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
-pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = assm_geoid) # rename to generic column names for WA functions
-
-# # calc target geolevel pop and number of sub geolevels per target geolevel
-# pop_df <- targetgeo_pop(pop_wide) 
-##### CUSTOMIZED VERSION OF TARGETGEO_POP FUNCTION HERE THAT WORKS WITH OWNER HOUSEHOLDS AS POP BASIS #####
-
-# select pop estimate columns and rename to RC names
-b <- select(pop_wide, sub_id, target_id, ends_with("e"), -NAME)
-
-# aggregate sub geolevel pop to target geolevel
-c <- b %>% group_by(target_id) %>% summarise_if(is.numeric, sum)
-colnames(c) <- c('target_id', 'total_target_pop', 'black_target_pop', 'aian_target_pop', 'asian_target_pop', 'pacisl_target_pop', 'other_target_pop', 'twoormor_target_pop', 'nh_white_target_pop', 'latino_target_pop')
-
-# count number of sub geolevels  per target geolevel and join to target geolevel pop
-d <- b %>% dplyr::count(target_id)
-c <- c %>% left_join(d, by = "target_id")
-
-# join target geolevel pop and sub geolevel counts to df, drop margin of error cols, rename tract pop cols
-e <- select(pop_wide, sub_id, target_id, geolevel, ends_with("e"), -NAME) 
-names(e) <- c('sub_id', 'target_id', 'geolevel', 'total_sub_pop', 'black_sub_pop', 'aian_sub_pop', 'asian_sub_pop', 'pacisl_sub_pop', 'other_sub_pop', 'twoormor_sub_pop', 'nh_white_sub_pop', 'latino_sub_pop')
-pop_df <- e %>% left_join(c, by = "target_id")
-
-##### EXTRA STEP: Calc avg quarterly foreclosures per 10k pop by tract bc WA avg should be calc'd using this, not avg # of foreclosures
-ind_df <- ind_df %>% left_join(pop_df %>% select(sub_id, total_sub_pop), by = "sub_id") %>% 
+ind_df_assm <- ind_df_assm %>% left_join(pop_df %>% select(sub_id, total_sub_pop), by = "sub_id") %>% 
   mutate(indicator = (avg_foreclosure / total_sub_pop) * 10000)
 
 ##### ASSM WEIGHTED AVG CALCS ######
 pct_df <- pop_pct_multi(pop_df)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
 assm_wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
-assm_wa <- assm_wa %>% mutate(geolevel = 'sldl')  # change drop geometry, add geolevel
+assm_wa <- assm_wa %>% mutate(geolevel = 'sldl')  # add geolevel
 
 ## Add census geonames
 census_api_key(census_key1, overwrite=TRUE)
