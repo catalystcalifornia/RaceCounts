@@ -59,7 +59,7 @@ View(b25003_curr)
 all.equal(b25003_curr, b25003_prev)  # if FALSE, you will likely need to revise vars_list_custom definition above 
 
 
-# export foreclosure to rda shared table ------------------------------------------------------------
+# Export foreclosure to rda shared table ------------------------------------------------------------
 ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 # foreclosure <- read_excel("W:/Data/Housing/Foreclosure/Foreclosure - Dataquick/Original Data/AdvanceProj 081122.xlsx", sheet = 2, skip = 5)
 
@@ -69,7 +69,7 @@ all.equal(b25003_curr, b25003_prev)  # if FALSE, you will likely need to revise 
 # table_source <- "The data is from DataQuick (2010-2022), purchased from DQNews."
 # dbWriteTable(con, c(table_schema, table_name), foreclosure, overwrite = FALSE, row.names = FALSE)
 
-# load data and clean-----
+# Load data and clean-----
 foreclosure <- dbGetQuery(con, "SELECT * FROM housing.dataquick_tract_2010_22_foreclosures") # comment out table creation above after it's done, and instead import data from pgadmin
 
 num_qtrs = 20   # update depending on how many data yrs you are working with
@@ -259,7 +259,7 @@ city_wa <- city_wa %>%                # add place names (target names)
   unique() # take unique rows bc xwalk can have >1 row per place
 city_wa <- city_wa %>% mutate(geolevel = 'city')  # add geolevel
 
-############# ASSEMBLY DISTRICTS ##################
+############# ASSEMBLY CALCS ##################
 # merge dfs by geoname then paste the county id to the front of the tract IDs
 # ind_df_assm <- left_join(ca, foreclosure, by = c("geoname" = "county")) %>%
 #   mutate(sub_id = paste0(geoid, census_tract)) %>%
@@ -331,7 +331,7 @@ names(assm_name) <- c("target_id", "target_name")
 assm_wa <- merge(x=assm_name,y=assm_wa,by="target_id", all=T)
 #View(assm_wa)
 
-############# SENATE DISTRICTS ##################
+############# SENATE CALCS ##################
 
 ###### DEFINE VALUES FOR FUNCTIONS ###
 
@@ -395,7 +395,7 @@ names(sen_name) <- c("target_id", "target_name")
 sen_wa <- merge(x=sen_name,y=sen_wa,by="target_id", all=T)
 #View(sen_wa)
 
-############ JOIN CITY, COUNTY & STATE WA TABLES  ##################
+############ JOIN CITY, ASSM, SEN, COUNTY, & STATE WA TABLES  ##################
 wa_all <- union(wa, ca_wa) %>% union(city_wa) %>% union(assm_wa) %>% union(sen_wa) 
 wa_all <- rename(wa_all, geoid = target_id, geoname = target_name)   # rename columns for RC functions
 wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid)        # move geoname column
