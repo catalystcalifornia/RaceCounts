@@ -1,6 +1,6 @@
 ### Proximity to Hazards (Weighted Avg) RC v7 ###
 ##install packages if not already installed ------------------------------
-packages <- c("dplyr","data.table","tidycensus","sf","DBI","RPostgres","RPostgres","stringr","tidyr","tigris","usethis")  
+packages <- c("dplyr","data.table","tidycensus","sf","DBI","RPostgres","stringr","tidyr","tigris","usethis")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -23,7 +23,7 @@ options(scipen=999)
 source("W:\\RDA Team\\R\\credentials_source.R")
 conn <- connect_to_db("rda_shared_data")
 
-#set source for Weighted-Average Functions script
+#set source for Weighted Average Functions & SWANA Ancestry scripts
 source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
 source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/SWANA_Ancestry_List.R")
 
@@ -49,7 +49,7 @@ ind_df <- filter(ind_df, indicator >= 0) # screen out NA values of -999
 
 # set values for weighted average functions - You may need to update these
 subgeo <- c('tract')             # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- c('sldl')      # define your target geolevel: county (state is handled separately)
+targetgeolevel <- c('sldl')      # define your target geolevel: state assembly
 survey <- "acs5"                 # define which Census survey you want
 pop_threshold = 250              # define population threshold for screening
 assm_geoid <- 'sldl24'			     # NOTE: This may need to be updated. Define column with Assm geoid
@@ -120,7 +120,7 @@ assm_wa <- merge(x=assm_name,y=assm_wa,by="target_id", all=T)
 
 # set values for weighted average functions - You may need to update these
 subgeo <- c('tract')             # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- c('sldu')      # define your target geolevel: county (state is handled separately)
+targetgeolevel <- c('sldu')      # define your target geolevel: state senate
 survey <- "acs5"                 # define which Census survey you want
 pop_threshold = 250              # define population threshold for screening
 sen_geoid <- 'sldu24'			       # NOTE: This may need to be updated. define column with senate geoid
