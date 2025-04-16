@@ -23,45 +23,68 @@ options(scipen=999)
 source("W:\\RDA Team\\R\\credentials_source.R")
 conn <- connect_to_db("rda_shared_data")
 
-#set source for Weighted Average Functions & SWANA Ancestry scripts
+# update QA doc filepath
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Environment\\QA_Sheet_Lack_of_Greenspace.docx"
+
+# set source for Weighted Average Functions & SWANA Ancestry scripts
 source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
 source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/SWANA_Ancestry_List.R")
 
 # update variables used throughout each year
-curr_yr <- 2023
+curr_yr <- 2023  # NLCD and ACS year
 rc_yr <- '2025'
 rc_schema <- 'v7'
 
+# Check that variables in vars_list_acs used in WA fx haven't changed --------
+# select acs race/eth pop variables: All AIAN/PacIsl, NH Alone White/Black/Asian/Other, NH Two+, Latinx of any race
+## the variables MUST BE in this order:
+rc_races <-      c('total',     'aian',      'pacisl',    'latino',    'nh_white',  'nh_black',  'nh_asian',  'nh_other',  'nh_twoormor')
+vars_list_acs <- c("DP05_0001", "DP05_0071", "DP05_0073", "DP05_0076", "DP05_0082", "DP05_0083", "DP05_0085", "DP05_0087", "DP05_0088")
+
+dp05_curr <- load_variables(curr_yr, "acs5/profile", cache = TRUE) %>% 
+  select(-c(concept)) %>% 
+  filter(name %in% vars_list_acs) %>%
+  mutate(name = tolower(name)) # get all DP05 vars
+dp05_curr$label <- gsub("Estimate!!|HISPANIC OR LATINO AND RACE!!", "", dp05_curr$label)
+dp05_curr <- dp05_curr %>% cbind(rc_races)
+
+# CHECK THIS TABLE TO MAKE SURE THE LABEL AND RC_RACES COLUMNS MATCH UP
+print(dp05_curr) 
+
+
+# update variables used throughout each year
+curr_yr <- 2023  # NLCD and ACS year
+rc_yr <- '2025'
+rc_schema <- 'v7'
+
+# may need to update each year: variables for state assm and senate calcs
+assm_geoid <- 'sldl24'			                    # This may need to be updated. Define column with Assm geoid
+assm_xwalk <- 'tract_2020_state_assembly_2024'  # This may need to be updated.
+sen_geoid <- 'sldu24'			                      # This may need to be updated. Define column with Senate geoid
+sen_xwalk <- 'tract_2020_state_senate_2024'     # This may need to be updated.
+
 
 ##### 1. GET INDICATOR DATA ######
-# You MUST load indicator data using these table/column names (ind_df with cols subid / indicator) in order for functions to work
-ind_df <- read.csv(paste0("W:/Data/Built Environment/NationalLandCoverDatabase/", curr_yr, "/nlcd_census_tract_pct_impervious_", curr_yr, ".txt"),
-                   colClasses=c("GEOID"="character", MEDIAN = "numeric"))
-ind_df <- dplyr::rename(ind_df, sub_id = GEOID, indicator = MEDIAN) %>%      # rename columns for functions
-  dplyr::select(sub_id, indicator)
-
+# You MUST load indicator data using these table/column names (ind_df with cols subid / indicator) in order for WA functions to work
+ind_df <- dbGetQuery(conn, paste0("SELECT ct_geoid AS sub_id, median AS indicator FROM built_environment.nlcd_tract_impervious_land_", curr_yr))
 
 ############# ASSEMBLY DISTRICTS ##################
 
-###### DEFINE VALUES FOR FUNCTIONS ######
+###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
 subgeo <- c('tract')             # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
 targetgeolevel <- c('sldl')      # define your target geolevel: state assembly
 survey <- "acs5"                 # define which Census survey you want
 pop_threshold = 250              # define population threshold for screening
-assm_geoid <- 'sldl24'			     # NOTE: This may need to be updated. Define column with Assm geoid
-assm_xwalk <- 'tract_2020_state_assembly_2024'  # NOTE: This may need to be updated.
 
-### CT-Assm Crosswalk ### ---------------------------------------------------------------------
+### CT-Assm Crosswalk ### 
 # Import CT-Assm Crosswalk
 xwalk_filter <- dbGetQuery(conn, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, " AS assm_geoid FROM crosswalks.", assm_xwalk))
-assm <- dbGetQuery(conn, paste0("SELECT ", assm_geoid, " AS assm_geoid FROM crosswalks.", assm_xwalk)) %>%
-  unique()
 
-##### GET SUB GEOLEVEL POP DATA ######
+##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table(vars = vars_list_acs, yr = curr_yr, srvy = survey)  # subgeolevel pop
-pop <- as.data.frame(pop)
+#pop <- as.data.frame(pop)
 
 # get SWANA pop
 vars_list_acs_swana <- get_swana_var(curr_yr, survey)
@@ -90,7 +113,7 @@ pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = assm_geoid) # re
 # calc target geolevel pop and number of sub geolevels per target geolevel
 pop_df <- targetgeo_pop(pop_wide) 
 
-##### ASSM WEIGHTED AVG CALCS ######
+##### ASSM WEIGHTED AVG CALCS ###
 pct_df <- pop_pct_multi(pop_df)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
 assm_wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
 assm_wa <- assm_wa %>% mutate(geolevel = 'sldl')  # change drop geometry, add geolevel
@@ -104,7 +127,7 @@ assm_name <- get_acs(geography = "State Legislative District (Lower Chamber)",
 
 assm_name <- assm_name[,1:2]
 assm_name$NAME <- str_remove(assm_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
-assm_name$NAME <- gsub(", California", "", assm_name$NAME)
+assm_name$NAME <- gsub("; California", "", assm_name$NAME)
 names(assm_name) <- c("target_id", "target_name")
 # View(assm_name)
 
@@ -114,25 +137,20 @@ assm_wa <- merge(x=assm_name,y=assm_wa,by="target_id", all=T)
 
 ############# SENATE DISTRICTS ##################
 
-###### DEFINE VALUES FOR FUNCTIONS ######
+###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
 subgeo <- c('tract')             # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
 targetgeolevel <- c('sldu')      # define your target geolevel: state senate
 survey <- "acs5"                 # define which Census survey you want
 pop_threshold = 250              # define population threshold for screening
-sen_geoid <- 'sldu24'			       # NOTE: This may need to be updated. define column with senate geoid
-sen_xwalk <- 'tract_2020_state_senate_2024'  # NOTE: This may need to be updated.
 
-### CT-Sen Crosswalk ### ---------------------------------------------------------------------
+### CT-Sen Crosswalk ### 
 # Import CT-Sen Crosswalk
 xwalk_filter <- dbGetQuery(conn, paste0("SELECT geo_id AS ct_geoid, ", sen_geoid, " AS sen_geoid FROM crosswalks.", sen_xwalk))
-sen <- dbGetQuery(con, paste0("SELECT ", sen_geoid, " AS sen_geoid FROM crosswalks.", sen_xwalk)) %>%
-  unique()
 
-##### GET SUB GEOLEVEL POP DATA ######
+##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table(vars = vars_list_acs, yr = curr_yr, srvy = survey)  # subgeolevel pop
-pop <- as.data.frame(pop)
 
 # get SWANA pop
 vars_list_acs_swana <- get_swana_var(curr_yr, survey)
@@ -161,7 +179,7 @@ pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = sen_geoid) # ren
 # calc target geolevel pop and number of sub geolevels per target geolevel
 pop_df <- targetgeo_pop(pop_wide) 
 
-##### Sen WEIGHTED AVG CALCS ######
+##### Sen WEIGHTED AVG CALCS ###
 pct_df <- pop_pct_multi(pop_df)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
 sen_wa <- wt_avg(pct_df)         # calc weighted average and apply reliability screens
 sen_wa <- sen_wa %>% mutate(geolevel = 'sldu')  # change drop geometry, add geolevel
@@ -175,7 +193,7 @@ sen_name <- get_acs(geography = "State Legislative District (Upper Chamber)",
 
 sen_name <- sen_name[,1:2]
 sen_name$NAME <- str_remove(sen_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
-sen_name$NAME <- gsub(", California", "", sen_name$NAME)
+sen_name$NAME <- gsub("; California", "", sen_name$NAME)
 names(sen_name) <- c("target_id", "target_name")
 # View(sen_name)
 
@@ -185,7 +203,7 @@ sen_wa <- merge(x=sen_name,y=sen_wa,by="target_id", all=T)
 
 ############# CITY ##################
 
-###### DEFINE VALUES FOR FUNCTIONS ######
+###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
 subgeo <- c('tract')             # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
@@ -193,17 +211,17 @@ targetgeolevel <- c('place')     # define your target geolevel: place
 survey <- "acs5"                 # define which Census survey you want
 pop_threshold = 250              # define population threshold for screening
 
-### CT-Place Crosswalk ### ---------------------------------------------------------------------
-#set source for CT-Place Crosswalk fx
+### CT-Place Crosswalk ### 
+#THIS FX ISN'T WORKING WHEN RUN AS A FX, BUT DOES WORK WHEN RUN IN THE SCRIPT: set source for CT-Place Crosswalk fx
 source("./Functions/RC_CT_Place_Xwalk.R")
-xwalk_filter <- make_ct_place_xwalk(curr_yr) %>% 
-  select(ct_geoid, place_geoid, place_name)
+xwalk_filter <- make_ct_place_xwalk(curr_yr) %>%
+  select(c(ct_geoid, place_geoid, place_name))
+
 places <- xwalk_filter %>% 
   select(c(place_geoid, place_name)) %>% unique()
 
-##### GET SUB GEOLEVEL POP DATA ######
+##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table(vars = vars_list_acs, yr = curr_yr, srvy = survey)  # subgeolevel pop
-pop <- as.data.frame(pop)
 
 # get SWANA pop
 vars_list_acs_swana <- get_swana_var(curr_yr, survey)
@@ -229,7 +247,7 @@ pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = place_geoid) # r
 # calc target geolevel pop and number of sub geolevels per target geolevel
 pop_df <- targetgeo_pop(pop_wide) 
 
-##### CITY WEIGHTED AVG CALCS ######
+##### CITY WEIGHTED AVG CALCS ###
 pct_df <- pop_pct_multi(pop_df)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
 city_wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
 city_wa <- city_wa %>% 
@@ -241,7 +259,7 @@ city_wa <- city_wa %>%
 
 ############# COUNTY ##################
 
-###### DEFINE VALUES FOR FUNCTIONS ######
+###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
 subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
@@ -252,10 +270,8 @@ pop_threshold = 250               # define population threshold for screening
 ##### CREATE COUNTY GEOID & NAMES TABLE ######  You will NOT need this chunk if your indicator data table has target geolevel names already
 targetgeo_names <- county_names(vars = vars_list_acs, yr = curr_yr, srvy = survey)
 
-#####
 
-
-##### GET SUB GEOLEVEL POP DATA ######
+##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table(vars = vars_list_acs, yr = curr_yr, srvy = survey)  # subgeolevel pop
 
 pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = curr_yr, srvy = survey) %>% as.data.frame() %>%
@@ -263,26 +279,20 @@ pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = curr_yr, srv
   summarise(estimate=sum(estimate),
             moe=moe_sum(moe,estimate)) %>% mutate(variable = "swana") # subgeolevel pop
 
-# combine DP05 groups with swana estimates 
-pop <- rbind(pop, pop_swana)
+# combine DP05 groups with SWANA tract level estimates 
+pop_ <- rbind(pop, pop_swana %>% filter(geolevel == 'tract')) %>% rename(e = estimate, m = moe)
 
 # transform pop data to wide format 
-pop_wide <- lapply(pop, to_wide)
-
-# convert to df
-pop_wide <- pop_wide$GEOID %>% as.data.frame()
+pop_wide <- pop_ %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = c(e, m), names_glue = "{variable}{.value}")
 
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
-pop_wide <- as.data.frame(pop_wide) %>% 
-  mutate(target_id = substr(GEOID, 1, 5))  # use left 5 characters as target_id
-
+pop_wide <- as.data.frame(pop_wide) %>% mutate(target_id = substr(GEOID, 1, 5))  # use left 5 characters as target_id
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID)                              # rename to generic column name for WA functions
 
 # calc target geolevel pop and number of sub geolevels per target geolevel
 pop_df <- targetgeo_pop(pop_wide)
 
-
-##### COUNTY WEIGHTED AVG CALCS ######
+##### COUNTY WEIGHTED AVG CALCS ###
 pct_df <- pop_pct(pop_df)   # calc pct of target geolevel pop in each sub geolevel
 wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
 wa <- wa %>% left_join(targetgeo_names, by = "target_id") %>% 
@@ -332,7 +342,6 @@ state_table <- d[d$geoname == 'California', ] %>% select(-c(geolevel))
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
-state_table <- rename(state_table, state_id = geoid, state_name = geoname)
 View(state_table)
 
 
@@ -342,7 +351,6 @@ county_table <- d[d$geolevel == 'county', ] %>% select(-c(geolevel))
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
-county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
 
@@ -352,7 +360,6 @@ city_table <- d[d$geolevel == 'city', ] %>% select(-c(geolevel))
 #calculate CITY z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
-city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") 
 View(city_table)
 
 #split LEG DISTRICTS into separate tables and format id, name columns
@@ -390,8 +397,7 @@ city_table_name <- paste0("arei_hben_lack_of_greenspace_city_",rc_yr)
 leg_table_name <- paste0("arei_hben_lack_of_greenspace_leg_", rc_yr)
 
 start_yr <- curr_yr - 4
-indicator <- " Impervious Landcover (%) is the weighted average of percentage of impervious land cover out of all land cover by race. Impervious land cover includes roads, roof tops, and parking lots"
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Environment\\QA_Sheet_Lack_of_Greenspace.docx"
+indicator <- "Impervious Landcover (%) is the weighted average of percentage of impervious land cover out of all land cover by race. Impervious land cover includes roads, roof tops, and parking lots"
 source <- paste0("Multi-Resolution Land Characteristics Consortium, National Land Cover Database (", curr_yr, "), ACS DP05 (", start_yr, "-", curr_yr, "). QA doc: ", qa_filepath)
 
 

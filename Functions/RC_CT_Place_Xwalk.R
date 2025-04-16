@@ -13,6 +13,7 @@ library(RPostgres)
 library(stringr)
 library(tidyr)
 library(tigris)
+library(units) # drop units (m2) from pl_area and area fields
 options(scipen=999)
 
 make_ct_place_xwalk <- function(curr_yr) {
@@ -75,6 +76,7 @@ if (nrow(check_tables)==1) {
   places_tracts <- as.data.frame(places_tracts)
   
   xwalk <- full_join(places_tracts, select(tracts_places, c(ct_place_geoid, prc_area)), by = 'ct_place_geoid')
+  xwalk <- drop_units(xwalk)
   
   # filter xwalk where intersect between tracts and places is equal or greater than X% of tract area OR place area.
   print(paste0("Filtering crosswalk using minimum intersection area threshold of ",threshold,"..."))
@@ -117,7 +119,7 @@ if (nrow(check_tables)==1) {
   return("Table and columns comments added to table!")
   
   print("Pulling in the new crosswalk table from postgres...")
-  ct_place_xwalk <- paste0("SELECT * FROM ", table_schema, ".", table_name, ";")
+  ct_place_xwalk <- dbGetQuery(con2, paste0("SELECT * FROM ", table_schema, ".", table_name, ";"))
   
   dbDisconnect(con2)
   
