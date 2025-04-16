@@ -72,8 +72,8 @@ races_df_cols_meta <- races_df_cols %>%
   left_join(dp05_vars %>% 
   select(name, label), by = 'name')  # join pop_df colnames with corresponding metadata from API
 
-new_names <- c("geoid", "name", "geolevel", "total_pop", "aian_pop", "pacisl_pop", "latino_pop", "nh_white_pop", "nh_black_pop", "nh_asian_pop", "nh_other_pop", "nh_twoormor_pop", "pct_aian_pop", "pct_pacisl_pop", "pct_latino_pop", "pct_nh_white_pop", "pct_nh_black_pop", "pct_nh_asian_pop", "pct_nh_other_pop", "pct_nh_twoormor_pop")
-races_df_cols_meta$new_name <- new_names
+rc_races <- c("geoid", "name", "geolevel", "total_pop", "aian_pop", "pacisl_pop", "latino_pop", "nh_white_pop", "nh_black_pop", "nh_asian_pop", "nh_other_pop", "nh_twoormor_pop", "pct_aian_pop", "pct_pacisl_pop", "pct_latino_pop", "pct_nh_white_pop", "pct_nh_black_pop", "pct_nh_asian_pop", "pct_nh_other_pop", "pct_nh_twoormor_pop")
+races_df_cols_meta$new_name <- rc_races
 races_df_cols_meta  # check that label and new_name match
 
 colnames(races_df) <- races_df_cols_meta$new_name  # update to RC colnames
