@@ -5,6 +5,7 @@ if(length(new.packages)) install.packages(new.packages)
 
 library(readr)
 library(RPostgreSQL)
+library(RPostgres)
 library(DBI)
 library(tidyverse) # to scrape metadata table from cde website
 library(rvest) # to scrape metadata table from cde website
@@ -59,7 +60,7 @@ prep_acs <- function(x, table_code, cv_threshold, pop_threshold) {
     
     ### Extract total values to perform the various calculations needed
     totals <- x %>%
-      select(geoid, starts_with("total"))
+      select(geoid, geolevel, starts_with("total"))
     
     totals <- totals %>% pivot_longer(total005e:total013e, names_to="var_name", values_to = "estimate")
     totals <- totals %>% pivot_longer(total005m:total013m, names_to="var_name2", values_to = "moe")
@@ -70,49 +71,49 @@ prep_acs <- function(x, table_code, cv_threshold, pop_threshold) {
     
     ### sum the numerator columns 005e-013e (total_raw):
     total_raw_values <- totals %>%
-      select(geoid, estimate) %>%
-      group_by(geoid) %>%
+      select(geoid, geolevel, estimate) %>%
+      group_by(geoid, geolevel) %>%
       summarise(total_raw = sum(estimate))
     
     #### join these calculations back to x
-    x <- left_join(x, total_raw_values, by = "geoid")
+    x <- left_join(x, total_raw_values, by = c("geoid", "geolevel"))
     
     ### calculate the total_raw_moe using moe_sum (need to sort MOE values first to make sure highest MOE is used in case of multiple zero estimates)
     ### methodology source is text under table on slide 52 here: https://www.census.gov/content/dam/Census/programs-surveys/acs/guidance/training-presentations/20180418_MOE.pdf
     total_raw_moes <- totals %>%
-      select(geoid, estimate, moe) %>%
-      group_by(geoid) %>%
+      select(geoid, geolevel, estimate, moe) %>%
+      group_by(geoid, geolevel) %>%
       arrange(desc(moe), .by_group = TRUE) %>%
       summarise(total_raw_moe = moe_sum(moe, estimate, na.rm=TRUE))   # https://walker-data.com/tidycensus/reference/moe_sum.html
     
     #### join these calculations back to x
-    x <- left_join(x, total_raw_moes, by = "geoid")
+    x <- left_join(x, total_raw_moes, by = c("geoid", "geolevel"))
     
     ### calculate total_rate
-    total_rates <- left_join(total_raw_values, totals[, 1:2])
+    total_rates <- left_join(total_raw_values, totals[, 1:3])
     total_rates$total_rate <- total_rates$total_raw/total_rates$total_pop*100
     total_rates <- total_rates %>%
-      select(geoid, total_rate) %>%
+      select(geoid, geolevel, total_rate) %>%
       distinct()
     
     #### join these calculations back to x
-    x <- left_join(x, total_rates, by = "geoid")
+    x <- left_join(x, total_rates, by = c("geoid", "geolevel"))
     
     ### calculate the moe for total_rate
     total_pop_data <- totals %>%
-      select(geoid, total_pop, total_pop_moe) %>%
+      select(geoid, geolevel, total_pop, total_pop_moe) %>%
       distinct()
-    total_rate_moes <- left_join(total_raw_values, total_raw_moes, by='geoid') %>%
-      left_join(., total_pop_data, by='geoid')
+    total_rate_moes <- left_join(total_raw_values, total_raw_moes, by = c("geoid", "geolevel")) %>%
+      left_join(., total_pop_data, by = c("geoid", "geolevel"))
     total_rate_moes$total_rate_moe <- moe_prop(total_rate_moes$total_raw,    # https://walker-data.com/tidycensus/reference/moe_prop.html
                                                total_rate_moes$total_pop, 
                                                total_rate_moes$total_raw_moe, 
                                                total_rate_moes$total_pop_moe)*100
     total_rate_moes <- total_rate_moes %>%
-      select(geoid, total_rate_moe)
+      select(geoid, geolevel, total_rate_moe)
     
     #### join these calculations back to x
-    x <- left_join(x, total_rate_moes, by = "geoid")
+    x <- left_join(x, total_rate_moes, by = c("geoid", "geolevel"))
     
     ## raced data (raw values don't need aggregation like total values do)
     
@@ -342,6 +343,8 @@ prep_acs <- function(x, table_code, cv_threshold, pop_threshold) {
   x$name <- gsub(" city", "", x$name)
   x$name <- gsub(" town", "", x$name)
   x$name <- gsub(" CDP", "", x$name)
+  x$name <- str_remove(x$name,  "\\s*\\(.*\\)\\s*")
+  x$name <- gsub("; California", "", x$name)
   
   
   ### Coefficient of Variation (CV) CALCS ###
