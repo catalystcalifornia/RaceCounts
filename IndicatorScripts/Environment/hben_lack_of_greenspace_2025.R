@@ -27,8 +27,8 @@ conn <- connect_to_db("rda_shared_data")
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Environment\\QA_Sheet_Lack_of_Greenspace.docx"
 
 # set source for Weighted Average Functions & SWANA Ancestry scripts
-source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
-source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/SWANA_Ancestry_List.R")
+source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
+source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/SWANA_Ancestry_List.R")
 
 # update variables used throughout each year
 curr_yr <- 2023  # NLCD and ACS year
@@ -51,11 +51,6 @@ dp05_curr <- dp05_curr %>% cbind(rc_races)
 # CHECK THIS TABLE TO MAKE SURE THE LABEL AND RC_RACES COLUMNS MATCH UP
 print(dp05_curr) 
 
-
-# update variables used throughout each year
-curr_yr <- 2023  # NLCD and ACS year
-rc_yr <- '2025'
-rc_schema <- 'v7'
 
 # may need to update each year: variables for state assm and senate calcs
 assm_geoid <- 'sldl24'			                    # This may need to be updated. Define column with Assm geoid
@@ -153,7 +148,6 @@ xwalk_filter <- dbGetQuery(conn, paste0("SELECT geo_id AS ct_geoid, ", sen_geoid
 pop <- update_detailed_table(vars = vars_list_acs, yr = curr_yr, srvy = survey)  # subgeolevel pop
 
 # get SWANA pop
-vars_list_acs_swana <- get_swana_var(curr_yr, survey)
 pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = curr_yr, srvy = survey) %>%
   as.data.frame() %>%
   group_by(GEOID, NAME, geolevel) %>% 
@@ -224,7 +218,6 @@ places <- xwalk_filter %>%
 pop <- update_detailed_table(vars = vars_list_acs, yr = curr_yr, srvy = survey)  # subgeolevel pop
 
 # get SWANA pop
-vars_list_acs_swana <- get_swana_var(curr_yr, survey)
 pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = curr_yr, srvy = survey) %>% as.data.frame() %>%
   group_by(GEOID, NAME, geolevel) %>% 
   summarise(estimate=sum(estimate),
