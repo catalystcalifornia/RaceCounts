@@ -52,11 +52,6 @@ dp05_curr <- dp05_curr %>% cbind(rc_races)
 print(dp05_curr) 
 
 
-# update variables used throughout each year
-curr_yr <- 2023  # NLCD and ACS year
-rc_yr <- '2025'
-rc_schema <- 'v7'
-
 # may need to update each year: variables for state assm and senate calcs
 assm_geoid <- 'sldl24'			                    # This may need to be updated. Define column with Assm geoid
 assm_xwalk <- 'tract_2020_state_assembly_2024'  # This may need to be updated.
