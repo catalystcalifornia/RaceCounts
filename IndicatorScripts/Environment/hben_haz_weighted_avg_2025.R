@@ -112,7 +112,7 @@ pop_threshold = 250              # define population threshold for screening
 # Import CT-Assm Crosswalk
 xwalk_filter <- dbGetQuery(conn, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, " AS assm_geoid FROM crosswalks.", assm_xwalk))
 
-##### GET SUB GEOLEVEL POP DATA ######
+##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table(vars = vars_list_acs, yr = acs_yr, srvy = survey)  # subgeolevel pop
 
 # get SWANA pop
@@ -142,7 +142,7 @@ pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = assm_geoid) # re
 # calc target geolevel pop and number of sub geolevels per target geolevel
 pop_df <- targetgeo_pop(pop_wide) 
 
-##### ASSM WEIGHTED AVG CALCS ######
+##### ASSM WEIGHTED AVG CALCS ###
 pct_df <- pop_pct_multi(pop_df)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
 assm_wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
 assm_wa <- assm_wa %>% mutate(geolevel = 'sldl')  # change drop geometry, add geolevel
@@ -298,7 +298,7 @@ pop_threshold = 250               # define population threshold for screening
 ##### CREATE COUNTY GEOID & NAMES TABLE ######  You will NOT need this chunk if your indicator data table has target geolevel names already
 targetgeo_names <- county_names(vars = vars_list_acs, yr = acs_yr, srvy = survey)
 
-##### GET SUB GEOLEVEL POP DATA ######
+##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table(vars = vars_list_acs, yr = acs_yr, srvy = survey)  # subgeolevel pop
 
 # get SWANA pop
@@ -327,7 +327,7 @@ pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID)                             
 pop_df <- targetgeo_pop(pop_wide)
 
 
-##### COUNTY WEIGHTED AVG CALCS ######
+##### COUNTY WEIGHTED AVG CALCS ###
 pct_df <- pop_pct(pop_df)   # calc pct of target geolevel pop in each sub geolevel
 wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
 wa <- wa %>% 
@@ -359,7 +359,7 @@ View(d)
 
 ############## CALC RACE COUNTS STATS ##############
 ############ To use the following RC Functions, 'd' will need the following columns at minimum: 
-############ county_id and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
+############ geo_id and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
 #set source for RC Functions script
 source(".\\Functions\\RC_Functions.R")
@@ -439,10 +439,12 @@ start_yr <- acs_yr - 4
 indicator <- "Proximity to Hazards Score (sum of weighted EnviroStor cleanup sites within buffered distances to populated blocks of census tracts)"
 source <- paste0("CalEnviroScreen ", ces_v, " (", curr_yr, ") https://oehha.ca.gov/calenviroscreen/report/calenviroscreen-40, ACS DP05 (", start_yr, "-", acs_yr, "). QA doc: ", qa_filepath)
 
-#send tables to postgres
+## send tables to postgres -----------------------------------------------
 # to_postgres(county_table, state_table)
 # city_to_postgres(city_table)
 # leg_to_postgres(leg_table)
+
+
 
 dbDisconnect(conn)
 

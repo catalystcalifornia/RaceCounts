@@ -24,6 +24,9 @@ options(scipen=999)
 source("W:\\RDA Team\\R\\credentials_source.R")
 conn <- connect_to_db("rda_shared_data")
 
+# update QA doc filepath
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Environment\\QA_Sheet_Toxic_Releases.docx"
+
 #set source for Weighted Average Functions & SWANA Ancestry scripts
 source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
 source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/SWANA_Ancestry_List.R")
