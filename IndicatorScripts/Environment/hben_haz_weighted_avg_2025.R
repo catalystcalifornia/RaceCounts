@@ -1,4 +1,5 @@
 ### Proximity to Hazards (Weighted Avg) RC v7 ###
+
 ##install packages if not already installed ------------------------------
 packages <- c("dplyr","data.table","tidycensus","sf","DBI","RPostgres","stringr","tidyr","tigris","usethis")  
 
@@ -27,8 +28,8 @@ conn <- connect_to_db("rda_shared_data")
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Environment\\QA_Sheet_Hazard.docx"
 
 #set source for Weighted Average Functions & SWANA Ancestry scripts
-source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
-source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/SWANA_Ancestry_List.R")
+source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
+source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/SWANA_Ancestry_List.R")
 
 # update variables used throughout each year
 curr_yr <- 2021 # yr of CES data release
@@ -55,10 +56,10 @@ print(dp05_curr)
 
 
 # may need to update each year: variables for state assm and senate calcs
-assm_geoid <- 'sldl24'			     # NOTE: This may need to be updated. Define column with Assm geoid
-assm_xwalk <- 'tract_2020_state_assembly_2024'  # NOTE: This may need to be updated.
-sen_geoid <- 'sldu24'			       # NOTE: This may need to be updated. define column with senate geoid
-sen_xwalk <- 'tract_2020_state_senate_2024'  # NOTE: This may need to be updated.
+assm_geoid <- 'sldl24'			                  # Define column with Assm geoid
+assm_xwalk <- 'tract_2020_state_assembly_2024'
+sen_geoid <- 'sldu24'			                    # Define column with senate geoid
+sen_xwalk <- 'tract_2020_state_senate_2024' 
 
 
 ##### GET INDICATOR DATA ######
@@ -312,10 +313,7 @@ pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = acs_yr, srvy
 pop <- rbind(pop, pop_swana)
 
 # transform pop data to wide format 
-pop_wide <- lapply(pop, to_wide)
-
-# convert to df
-pop_wide <- pop_wide$GEOID %>% as.data.frame()
+pop_wide <- to_wide(pop)
 
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
 pop_wide <- as.data.frame(pop_wide) %>% 
@@ -444,8 +442,4 @@ source <- paste0("CalEnviroScreen ", ces_v, " (", curr_yr, ") https://oehha.ca.g
 # city_to_postgres(city_table)
 # leg_to_postgres(leg_table)
 
-
-
 dbDisconnect(conn)
-
-

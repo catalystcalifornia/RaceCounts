@@ -28,8 +28,8 @@ conn <- connect_to_db("rda_shared_data")
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Environment\\QA_Sheet_Toxic_Releases.docx"
 
 #set source for Weighted Average Functions & SWANA Ancestry scripts
-source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
-source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/SWANA_Ancestry_List.R")
+source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
+source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/SWANA_Ancestry_List.R")
 
 # update variables used throughout each year
 curr_yr <- 2021 # yr of CES data release
@@ -38,6 +38,29 @@ acs_yr <- 2020
 rc_yr <- '2025'
 rc_schema <- 'v7'
 
+# Check that variables in vars_list_acs used in WA fx haven't changed --------
+# select acs race/eth pop variables: All AIAN/PacIsl, NH Alone White/Black/Asian/Other, NH Two+, Latinx of any race
+## the variables MUST BE in this order:
+rc_races <-      c('total',     'aian',      'pacisl',    'latino',    'nh_white',  'nh_black',  'nh_asian',  'nh_other',  'nh_twoormor')
+vars_list_acs <- c("DP05_0001", "DP05_0077", "DP05_0078", "DP05_0066", "DP05_0080", "DP05_0068", "DP05_0082", "DP05_0083", "DP05_0071")
+
+dp05_curr <- load_variables(curr_yr, "acs5/profile", cache = TRUE) %>% 
+  select(-c(concept)) %>% 
+  filter(name %in% vars_list_acs) %>%
+  mutate(name = tolower(name)) # get all DP05 vars
+dp05_curr$label <- gsub("Estimate!!|HISPANIC OR LATINO AND RACE!!", "", dp05_curr$label)
+dp05_curr <- dp05_curr %>% cbind(rc_races)
+
+# CHECK THIS TABLE TO MAKE SURE THE LABEL AND RC_RACES COLUMNS MATCH UP
+print(dp05_curr) 
+
+
+# may need to update each year: variables for state assm and senate calcs
+assm_geoid <- 'sldl24'			                  # Define column with Assm geoid
+assm_xwalk <- 'tract_2020_state_assembly_2024'
+sen_geoid <- 'sldu24'			                    # Define column with senate geoid
+sen_xwalk <- 'tract_2020_state_senate_2024' 
+
 
 ##### GET INDICATOR DATA ######
 # You MUST load indicator data using these table/column names (ind_df / subid / indicator) in order for functions to work
@@ -45,28 +68,53 @@ ind_df <- dbGetQuery(conn, paste0("select ct_geoid AS geoid, tox_rel from built_
 ind_df <- dplyr::rename(ind_df, sub_id = geoid, indicator = tox_rel)       # rename columns for functions
 ind_df <- filter(ind_df, indicator >= 0) # screen out NA values of -999
 
+# note: CES uses 2010 tract vintage, population estimates use 2020 tract vintage
+cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
+  select(GEOID_TRACT_10, NAMELSAD_TRACT_10, AREALAND_TRACT_10, GEOID_TRACT_20, NAMELSAD_TRACT_20, AREALAND_TRACT_20, AREALAND_PART) %>%
+  mutate_at(vars(contains("AREALAND")), function(x) as.numeric(x)) %>%
+  # calculate overlapping land area of 2010 and 2020 tracts (AREALAND_PART) as a percent of 2020 tract land area (AREALAND_TRACT_20)
+  mutate(prc_overlap=AREALAND_PART/AREALAND_TRACT_20) 
+
+# # check prc_overlaps sums/ note: there will be prc_overlap values > 1 bc some 2010 tracts were split into 2+ 2020 tracts and each 2020 tract comes solely from the 2010 tract 
+# check_prc_is_1 <- cb_tract_2010_2020 %>%
+#   group_by(GEOID_TRACT_10) %>%
+#   summarise(total_prc=sum(prc_overlap))
+
+# Because CES uses 2010 vintage tracts - need to convert to 2020 vintage and allocate score accordingly
+ind_2010_2020 <- ind_df %>%
+  left_join(cb_tract_2010_2020, by=c("sub_id"="GEOID_TRACT_10")) %>%
+  select(sub_id, indicator, AREALAND_TRACT_10, AREALAND_PART, GEOID_TRACT_20, AREALAND_TRACT_20, prc_overlap) %>%
+  # Allocate CES scores from 2010 tracts to 2020 using prc_overlap
+  mutate(ind_2020=indicator*prc_overlap)
+
+# create indicator df (2020 tracts) to be used in WA calcs
+ind_2020 <- ind_2010_2020 %>%
+  select(GEOID_TRACT_20, ind_2020) %>%
+  # sum weighted CES scores by 2020 tract
+  group_by(GEOID_TRACT_20) %>%
+  summarize(indicator = sum(ind_2020)) %>%
+  # clean up names
+  rename(sub_id = GEOID_TRACT_20)
+
+ind_df <- ind_2020 # rename to ind_df for WA fx
 
 ############# ASSEMBLY DISTRICTS ##################
 
-###### DEFINE VALUES FOR FUNCTIONS ######
+###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
 subgeo <- c('tract')             # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
 targetgeolevel <- c('sldl')      # define your target geolevel: state assembly
 survey <- "acs5"                 # define which Census survey you want
 pop_threshold = 250              # define population threshold for screening
-assm_geoid <- 'sldl24'			     # NOTE: This may need to be updated. Define column with Assm geoid
-assm_xwalk <- 'tract_2020_state_assembly_2024'  # NOTE: This may need to be updated.
 
-### CT-Assm Crosswalk ### ---------------------------------------------------------------------
+
+### CT-Assm Crosswalk ### 
 # Import CT-Assm Crosswalk fx
 xwalk_filter <- dbGetQuery(conn, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, " AS assm_geoid FROM crosswalks.", assm_xwalk))
-assm <- dbGetQuery(conn, paste0("SELECT ", assm_geoid, " AS assm_geoid FROM crosswalks.", assm_xwalk)) %>%
-  unique()
 
 ##### GET SUB GEOLEVEL POP DATA ######
 pop <- update_detailed_table(vars = vars_list_acs, yr = acs_yr, srvy = survey)  # subgeolevel pop
-pop <- as.data.frame(pop)
 
 # get SWANA pop
 vars_list_acs_swana <- get_swana_var(acs_yr, survey)
@@ -119,28 +167,23 @@ assm_wa <- merge(x=assm_name,y=assm_wa,by="target_id", all=T)
 
 ############# SENATE DISTRICTS ##################
 
-###### DEFINE VALUES FOR FUNCTIONS ######
+###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
 subgeo <- c('tract')             # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
 targetgeolevel <- c('sldu')      # define your target geolevel: state senate
 survey <- "acs5"                 # define which Census survey you want
 pop_threshold = 250              # define population threshold for screening
-sen_geoid <- 'sldu24'			       # NOTE: This may need to be updated. define column with senate geoid
-sen_xwalk <- 'tract_2020_state_senate_2024'  # NOTE: This may need to be updated.
 
-### CT-Sen Crosswalk ### ---------------------------------------------------------------------
+
+### CT-Sen Crosswalk ### 
 # Import CT-Sen Crosswalk fx
 xwalk_filter <- dbGetQuery(conn, paste0("SELECT geo_id AS ct_geoid, ", sen_geoid, " AS sen_geoid FROM crosswalks.", sen_xwalk))
-sen <- dbGetQuery(con, paste0("SELECT ", sen_geoid, " AS sen_geoid FROM crosswalks.", sen_xwalk)) %>%
-  unique()
 
-##### GET SUB GEOLEVEL POP DATA ######
+##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table(vars = vars_list_acs, yr = acs_yr, srvy = survey)  # subgeolevel pop
-pop <- as.data.frame(pop)
 
 # get SWANA pop
-vars_list_acs_swana <- get_swana_var(acs_yr, survey)
 pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = acs_yr, srvy = survey) %>% 
   as.data.frame() %>%
   group_by(GEOID, NAME, geolevel) %>% 
@@ -166,7 +209,7 @@ pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = sen_geoid) # ren
 # calc target geolevel pop and number of sub geolevels per target geolevel
 pop_df <- targetgeo_pop(pop_wide) 
 
-##### sen WEIGHTED AVG CALCS ######
+##### sen WEIGHTED AVG CALCS ###
 pct_df <- pop_pct_multi(pop_df)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
 sen_wa <- wt_avg(pct_df)         # calc weighted average and apply reliability screens
 sen_wa <- sen_wa %>% mutate(geolevel = 'sldu')  # change drop geometry, add geolevel
@@ -191,7 +234,7 @@ sen_wa <- merge(x=sen_name,y=sen_wa,by="target_id", all=T)
 
 ############# CITY ##################
 
-###### DEFINE VALUES FOR FUNCTIONS ######
+###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
 subgeo <- c('tract')             # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
@@ -204,15 +247,14 @@ pop_threshold = 250              # define population threshold for screening
 source("./Functions/RC_CT_Place_Xwalk.R")
 xwalk_filter <- make_ct_place_xwalk(acs_yr) %>% 
   select(ct_geoid, place_geoid, place_name)
+
 places <- xwalk_filter %>% 
   select(c(place_geoid, place_name)) %>% unique()
 
 ##### GET SUB GEOLEVEL POP DATA ######
 pop <- update_detailed_table(vars = vars_list_acs, yr = acs_yr, srvy = survey)  # subgeolevel pop
-pop <- as.data.frame(pop)
 
 # get SWANA pop
-vars_list_acs_swana <- get_swana_var(acs_yr, survey)
 pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = acs_yr, srvy = survey) %>% as.data.frame() %>%
   group_by(GEOID, NAME, geolevel) %>% 
   summarise(estimate=sum(estimate),
@@ -247,7 +289,7 @@ city_wa <- city_wa %>%
 
 ############# COUNTY ##################
 
-###### DEFINE VALUES FOR FUNCTIONS ######
+###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
 subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
@@ -258,10 +300,8 @@ pop_threshold = 250               # define population threshold for screening
 ##### CREATE COUNTY GEOID & NAMES TABLE ######  You will NOT need this chunk if your indicator data table has target geolevel names already
 targetgeo_names <- county_names(vars = vars_list_acs, yr = acs_yr, srvy = survey)
 
-#####
 
-
-##### GET SUB GEOLEVEL POP DATA ######
+##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table(vars = vars_list_acs, yr = acs_yr, srvy = survey)  # subgeolevel pop
 
 pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = acs_yr, srvy = survey) %>% as.data.frame() %>%
@@ -273,10 +313,7 @@ pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = acs_yr, srvy
 pop <- rbind(pop, pop_swana)
 
 # transform pop data to wide format 
-pop_wide <- lapply(pop, to_wide)
-
-# convert to df
-pop_wide <- pop_wide$GEOID %>% as.data.frame()
+pop_wide <- to_wide(pop)
 
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
 pop_wide <- as.data.frame(pop_wide) %>% 
@@ -339,7 +376,6 @@ state_table <- d[d$geoname == 'California', ] %>% select(-c(geolevel))
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
-state_table <- rename(state_table, state_id = geoid, state_name = geoname)
 View(state_table)
 
 
@@ -349,7 +385,6 @@ county_table <- d[d$geolevel == 'county', ] %>% select(-c(geolevel))
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
-county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
 
@@ -359,7 +394,6 @@ city_table <- d[d$geolevel == 'city', ] %>% select(-c(geolevel))
 #calculate CITY z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
-city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") 
 View(city_table)
 
 #split LEG DISTRICTS into separate tables and format id, name columns
@@ -397,11 +431,11 @@ city_table_name <- paste0("arei_hben_toxic_release_city_", rc_yr)
 leg_table_name <- paste0("arei_hben_toxic_release_leg_", rc_yr)
 
 start_yr <- acs_yr - 4
+
 indicator <- "Exposure to Toxic Releases Score"
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Environment\\QA_Sheet_Toxic_Releases.docx"
 source <- paste0("CalEnviroScreen ", ces_v, " (", curr_yr, ") https://oehha.ca.gov/calenviroscreen/report/calenviroscreen-40, ACS DP05 (", start_yr, "-", acs_yr, "). QA doc: ", qa_filepath)
 
-#send tables to postgres
+## send tables to postgres -----------------------------------------------
 # to_postgres(county_table, state_table)
 # city_to_postgres(city_table)
 # leg_to_postgres(leg_table)
