@@ -36,12 +36,13 @@ asbest = 'max'
 schema = 'housing'
 table_code = 'b25003'
 
-df_wide_multigeo <- dbGetQuery(con, query = paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state', 'sldu', 'sldl')")) # import rda_shared_data table
+df_wide_multigeo <- dbGetQuery(con, paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state', 'sldu', 'sldl')")) # import rda_shared_data table
 df_wide_multigeo$name <- str_remove(df_wide_multigeo$name,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
 df_wide_multigeo$name <- gsub("; California", "", df_wide_multigeo$name)
 
 ############## Pre-RC CALCS ##############
-source(here("Functions", "rdashared_functions.R"))
+source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
+
 df <- prep_acs(df_wide_multigeo, table_code, cv_threshold, pop_threshold)
 
 df_screened <- dplyr::select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"), -ends_with("_cv"))
@@ -124,14 +125,13 @@ city_table_name <- paste0("arei_hous_homeownership_city_", rc_yr)          # See
 leg_table_name <- paste0("arei_hous_homeownership_leg_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
 start_yr <- curr_yr-4
 
-indicator <- paste0("Created on ", Sys.Date(), ". Owner-Occupied Housing Units (%)")                 # See most recent Indicator Methodology for indicator description
+indicator <- " Owner-Occupied Housing Units (%)"                # See most recent Indicator Methodology for indicator description
 source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, Tables B25003B-I, https://data.census.gov/cedsci/")   # See most recent Indicator Methodology for source info
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Sheet_Homeownership.docx"
 
 ####### SEND TO POSTGRES #######
-#to_postgres(county_table,state_table)
-#city_to_postgres(city_table)
+# to_postgres(county_table,state_table)
 # city_to_postgres(city_table)
 # leg_to_postgres(leg_table)
-
-#dbDisconnect(con)
+# 
+# dbDisconnect(con)
