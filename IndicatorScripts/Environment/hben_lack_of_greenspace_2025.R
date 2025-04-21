@@ -53,10 +53,10 @@ print(dp05_curr)
 
 
 # may need to update each year: variables for state assm and senate calcs
-assm_geoid <- 'sldl24'			                    # This may need to be updated. Define column with Assm geoid
-assm_xwalk <- 'tract_2020_state_assembly_2024'  # This may need to be updated.
-sen_geoid <- 'sldu24'			                      # This may need to be updated. Define column with Senate geoid
-sen_xwalk <- 'tract_2020_state_senate_2024'     # This may need to be updated.
+assm_geoid <- 'sldl24'			                    # Define column with Assm geoid
+assm_xwalk <- 'tract_2020_state_assembly_2024'  # Name of tract-Assm xwalk table
+sen_geoid <- 'sldu24'			                      # Define column with senate geoid
+sen_xwalk <- 'tract_2020_state_senate_2024'     # Name of tract-Sen xwalk table
 
 
 ##### 1. GET INDICATOR DATA ######
