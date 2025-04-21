@@ -28,6 +28,8 @@ con <- connect_to_db("rda_shared_data")
 #set source for RC Functions script
 source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
 
+#set QA filepath
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Sheet_Foreclosure.docx"
 
 # update each year: variables used throughout script
 acs_yr <- 2021         # last yr of acs 5y span
@@ -478,7 +480,6 @@ city_table_name <- paste0("arei_hous_foreclosure_city_", rc_yr)
 leg_table_name <- paste0("arei_hous_foreclosure_leg_", rc_yr)
 
 indicator <- paste0("Foreclosures per 10k owner households by race (WA). The data is")
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Sheet_Foreclosure.docx"
 source <- paste0("DataQuick (", curr_yr, "), purchased from DQNews and raced via weighted average using ACS ", curr_yr, " data. QA doc: ", qa_filepath)
 
 #send tables to postgres
