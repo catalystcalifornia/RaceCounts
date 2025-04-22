@@ -1,7 +1,7 @@
 ### Voting RC v7 ### 
 
 #install packages if not already installed
-packages <- c("tidyr", "dplyr", "sf", "tidycensus", "tidyverse", "usethis", "openxlsx", "RPostgreSQL", "data.table")  
+packages <- c("tidyr", "dplyr", "sf", "tidycensus", "tidyverse", "usethis", "openxlsx", "RPostgres", "data.table")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -20,19 +20,19 @@ for(pkg in packages){
 
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
-con <- connect_to_db("rda_shared_data")
+con <- connect_to_db("racecounts")
 
 # define variables used in several places that must be updated each year
 curr_yr <- "2019_23"  # must keep same format
 dwnld_url <- "https://ask.chis.ucla.edu/"
 rc_schema <- "v7"
 yr <- "2025"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Democracy\\QA_Voting.docx"
 
-setwd("W:/Project/RACE COUNTS/2025_v7/Democracy/Voting Data CHIS/")
-
+chis_dir <- paste0("W:/Data/Democracy/CHIS/Voter_Engagement/", curr_yr)
 
 #get data for Total population
-total_df = read.xlsx(paste0("AskCHIStotal.xlsx"), sheet=1, startRow=5, rows=c(5:8)) 
+total_df = read.xlsx(paste0(chis_dir,"/AskCHIStotal.xlsx"), sheet=1, startRow=5, rows=c(5:8)) 
 
 #format row headers
 total_df_rownames <- c("measure","total_yes", "total_no")
@@ -40,7 +40,7 @@ total_df[1:3,1] <- total_df_rownames[1:3]
 
   
 #get data for Hispanic/non-Hispanic races, excluding AIAN, NHPI, and SWANA
-races_df = read.xlsx(paste0("AskCHISomb.xlsx"), sheet=1, startRow=8, rows=c(8,10:12,14,16:19,21,23))
+races_df = read.xlsx(paste0(chis_dir,"/AskCHISomb.xlsx"), sheet=1, startRow=8, rows=c(8,10:12,14,16:19,21,23))
 
 #format row headers
 races_rownames <- c("latino_yes", "nh_white_yes", "nh_black_yes", "nh_asian_yes", "nh_twoormor_yes", 
@@ -49,7 +49,7 @@ races_df[1:10,1] <- races_rownames[1:10]
 
 
 #get data for ALL-AIAN
-aian_df = read.xlsx(paste0("AskCHISaian.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
+aian_df = read.xlsx(paste0(chis_dir,"/AskCHISaian.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
 
 #format row headers
 aian_rownames <- c("aian_yes", "aian_no")
@@ -57,7 +57,7 @@ aian_df[1:2,1] <- aian_rownames[1:2]
 
 
 #get data for ALL-NHPI
-pacisl_df = read.xlsx(paste0("AskCHISnhpi.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
+pacisl_df = read.xlsx(paste0(chis_dir,"/AskCHISnhpi.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
 
 #format row headers
 pacisl_rownames <- c("pacisl_yes", "pacisl_no")
@@ -65,7 +65,7 @@ pacisl_df[1:2,1] <- pacisl_rownames[1:2]
 
 
 #get data for ALL-SWANA
-swana_df = read.xlsx(paste0("AskCHISswana.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
+swana_df = read.xlsx(paste0(chis_dir,"/AskCHISswana.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
 
 #format row headers
 swana_rownames <- c("swana_yes", "swana_no")
@@ -76,17 +76,18 @@ swana_df[1:2,1] <- swana_rownames[1:2]
 df <- rbind(total_df, races_df, aian_df, pacisl_df, swana_df)
 
 #run the rest of CHIS prep including formatting column names, screen using flags, adding geonames, etc.
-source("W:/Project/RACE COUNTS/Functions/CHIS_Functions.R")
+source("./Functions/CHIS_Functions.R")
 
 df <- fix_colnames(df) 
 df_subset <- prep_chis(df)
+df_subset$geolevel <- ifelse(df_subset$geoname == 'California', 'state', 'county') 
 View(df_subset)
 
 d <- df_subset
 
 
 #set source for RC Functions script
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
+source("./Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
@@ -122,7 +123,7 @@ View(county_table)
 county_table_name <- paste0("arei_demo_voter_engagement_county_",yr)
 state_table_name <- paste0("arei_demo_voter_engagement_state_",yr)
 indicator <- paste0("Created on ", Sys.Date(), ". Voter engagement in national, state, and local elections - US Citizens (%)")
-source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url)
+source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates. ", dwnld_url, " QA doc: ", qa_filepath)
 
 #send tables to postgres
 #to_postgres(county_table,state_table)
