@@ -116,12 +116,13 @@ if (nrow(check_tables)==1) {
   
   # Commit the transaction if everything succeeded
   dbCommit(con2)
-
+  print("Table and columns comments added to table!") #changed it to a print because return makes the function exit and then it won't run the code after the return
+  
+  
   print("Pulling in the new crosswalk table from postgres...")
   ct_place_xwalk <- dbGetQuery(con2, paste0("SELECT * FROM ", table_schema, ".", table_name, ";"))
   
   dbDisconnect(con2)
-  print("Table and columns comments added to table!") #changed it to a print because return makes the function exit and then it won't run the code after the return
   return(ct_place_xwalk)
   
 } else {
