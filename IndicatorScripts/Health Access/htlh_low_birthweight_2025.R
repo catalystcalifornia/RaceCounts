@@ -82,10 +82,8 @@ read_state_data_aian_nhpi <- function(x, y) {
     Births = col_integer()))
   
   aian$Notes <- 'aian'
-  aian <- rename(aian, county_name = `State of Residence`,    #will rename after rbind
-                 county_id = `State of Residence Code`) #will rename after rbind
   
-  aian_ <- aian %>% select(Notes, county_name, county_id, Births) %>% filter(!is.na(county_id))
+  aian_ <- aian %>% select(Notes, `State of Residence`, `State of Residence Code`, Births) %>% filter(!is.na(`State of Residence Code`))
   
   pacisl <- read_delim(file = y, delim = "\t", col_types = cols(
     Notes = col_character(),
@@ -95,22 +93,13 @@ read_state_data_aian_nhpi <- function(x, y) {
   
   pacisl$Notes <- 'pacisl'
   
-  
-  pacisl <- rename(pacisl, county_name = `State of Residence`,    #will rename after rbind
-                   county_id = `State of Residence Code`) #will rename after rbind
-  
-  #pacisl$Notes <- pacisl$`Mother's Single/Multi Race 31`
-  #pacisl <- pacisl[,-c(4:5)]
-  
-  #pacisl <- pacisl %>% filter(!is.na(Notes))
-  
-  #pacisl$pacisl <- ifelse(grepl("NHOPI",pacisl$Notes), 1, 0)
-  
-  #pacisl_ <- pacisl %>% group_by(county_id, county_name, pacisl) %>% summarise(Births = sum(Births)) %>% mutate(Notes = 'pacisl') %>% filter(pacisl == 1)
-  pacisl_ <- pacisl %>% select(Notes, county_name, county_id, Births) %>% filter(!is.na(county_id))
+  pacisl_ <- pacisl %>% select(Notes, `State of Residence`, `State of Residence Code`, Births) %>%
+    filter(!is.na(`State of Residence Code`))
   
   
-  z <- rbind(aian_, pacisl_) 				# put all aian and pacisl data together
+  z <- rbind(aian_, pacisl_) %>%				# put all aian and pacisl data together
+    rename(county_name = `State of Residence`,    
+           county_id = `State of Residence Code`)
   
   return(z)
 }
@@ -147,7 +136,6 @@ read_county_data <- function(x, group) {
     
     return(y)
     
-    
   }
   
   else
@@ -155,7 +143,6 @@ read_county_data <- function(x, group) {
     ### for total and latino ###
     
   {
-    
     
     y$Notes <- group
     
@@ -177,11 +164,11 @@ read_county_data_aian_nhpi <- function(x, y) {
     Births = col_integer()))
   
   aian$Notes <- 'aian'
-  aian <- rename(aian, county_name = `County of Residence`,
-                 county_id = `County of Residence Code`)
   
-  aian <- aian %>% filter(county_name != "Unidentified Counties, CA")
-  aian_ <- aian %>% select(Notes, county_name, county_id, Births) %>% filter(!is.na(county_id))
+  aian <- aian %>% filter(`County of Residence` != "Unidentified Counties, CA")
+  
+  aian_ <- aian %>% select(Notes, `County of Residence`, `County of Residence Code`, Births) %>%
+    filter(!is.na(`County of Residence Code`))
   
   pacisl <- read_delim(file = y, delim = "\t", col_types = cols(
     Notes = col_character(),
@@ -190,13 +177,15 @@ read_county_data_aian_nhpi <- function(x, y) {
     Births = col_integer()))
   
   pacisl$Notes <- 'pacisl'
-  pacisl <- rename(pacisl, county_name = `County of Residence`,
-                   county_id = `County of Residence Code`)
   
-  pacisl <- pacisl %>% filter(county_name != "Unidentified Counties, CA")
-  pacisl_ <- pacisl %>% select(Notes, county_name, county_id, Births) %>% filter(!is.na(county_id))
+  pacisl <- pacisl %>% filter(`County of Residence` != "Unidentified Counties, CA")
   
-  z <- rbind(aian_,pacisl_)
+  pacisl_ <- pacisl %>% select(Notes, `County of Residence`, `County of Residence Code`, Births) %>%
+    filter(!is.na(`County of Residence Code`))
+  
+  z <- rbind(aian_,pacisl_) %>%
+    rename(county_name = `County of Residence`,    
+           county_id = `County of Residence Code`)
   
   return(z)
   
@@ -265,7 +254,8 @@ lbw <- rbind(county_lbw_total, county_lbw_latino, county_lbw_nh_races, county_lb
 lbw <- rename(lbw, lbw = "Births")
 
 ## bind birth and lbw together
-df <- left_join(lbw, births) %>% mutate(county_name = gsub(" County, CA", "", county_name)) %>% relocate(county_id, .before = county_name)
+df <- left_join(lbw, births) %>% mutate(county_name = gsub(" County, CA", "", county_name)) %>%
+  relocate(county_id, .before = county_name)
 
 #calculate Rate ---------------------------------------------------------
 df <- mutate(df, rate = lbw/births*100)
