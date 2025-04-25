@@ -1,19 +1,17 @@
 ## Per Capita Income for RC v7 ##
 #install packages if not already installed
-list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis", "sf", "tigris")
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
-
-library(tidyr)
-library(stringr)
-library(tidycensus)
-library(dplyr)
-library(DBI)
-library(RPostgreSQL)
-library(sf)
-library(tigris)
-library(dplyr)
-library(usethis)
+packages <- c("readr","tidyr","dplyr","DBI","RPostgres","tidycensus", "rvest", "tidyverse", "stringr", "usethis", "tigris")
+install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
+if(length(install_packages) > 0) { 
+  install.packages(install_packages) 
+  
+} else { 
+  
+  print("All required packages are already installed.") 
+} 
+for(pkg in packages){ 
+  library(pkg, character.only = TRUE) 
+} 
 
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
@@ -28,6 +26,7 @@ schema = 'economic'
 table_code = 'b19301'
 rc_yr = '2025'
 rc_schema <- "v7"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Per_Capita_Income.docx"
 
 df_wide_multigeo <- dbGetQuery(con, paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state', 'sldu', 'sldl')")) # import rda_shared_data table
 df_wide_multigeo$name <- str_remove(df_wide_multigeo$name,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
@@ -35,7 +34,7 @@ df_wide_multigeo$name <- gsub("; California", "", df_wide_multigeo$name)
 
 
 ############## Pre-RC CALCS ##############
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
+source("./Functions/rdashared_functions.R")
 
 df <- prep_acs(df_wide_multigeo, table_code, cv_threshold, pop_threshold)
 
@@ -118,11 +117,11 @@ colnames(leg_table)[1:2] <- c("leg_id", "leg_name")
 county_table_name <- paste0("arei_econ_per_capita_income_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
 state_table_name <- paste0("arei_econ_per_capita_income_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
 city_table_name <- paste0("arei_econ_per_capita_income_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
-leg_table_name <- paste0("arei_econ_per_capita_income_leg_", rc_yr)                   # See most recent RC Workflow SQL Views for table name (remember to update year)
+leg_table_name <- paste0("arei_econ_per_capita_income_leg_", rc_yr)            # See most recent RC Workflow SQL Views for table name (remember to update year)
 
 indicator <- "Per Capita Income ($)"                 # See most recent Indicator Methodology for indicator description
 start_yr <- curr_yr-4
-source <- paste0(start_yr,"-",curr_yr," ACS 5-Year Estimates, Tables B19301B-I, https://data.census.gov/cedsci/")   # See most recent Indicator Methodology for source info
+source <- paste0(start_yr,"-",curr_yr," ACS 5-Year Estimates, Tables B19301B-I, https://data.census.gov/cedsci/. QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 
 ####### SEND TO POSTGRES #######

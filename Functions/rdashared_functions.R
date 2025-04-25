@@ -1,10 +1,9 @@
 #install packages if not already installed
-list.of.packages <- c("readr", "DBI", "RPostgreSQL", "rvest", "tidyverse", "stringr", "dplyr", "rpostgis")
+list.of.packages <- c("readr", "DBI", "RPostgres", "rvest", "tidyverse", "stringr", "dplyr", "rpostgis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
 library(readr)
-library(RPostgreSQL)
 library(RPostgres)
 library(DBI)
 library(tidyverse) # to scrape metadata table from cde website
@@ -433,20 +432,21 @@ get_cde_schools <- function(school_url, school_dwnld_url, school_layout_url, tab
                 table_comment_source <- paste0("Downloaded from ", school_dwnld_url,". File layout: ", school_layout_url)				
                 
                 df <- read_delim(file = school_url, delim = "\t", na = c("*", ""))
+                View(head(df))
                 
                 #add latitude and longitude numeric type columns, used later to add geom field
                 df$latitude <- as.numeric(df$Latitude, na.rm = TRUE)
                 df$longitude <- as.numeric(df$Longitude, na.rm = TRUE)
                 df <- df %>% select(-c(Latitude, Longitude))                # drop varchar lat/long columns
-                df <- df %>% relocate(latitude, .after = last_col())              # ensure lat/long columns are last 2 columns in dataframe
+                df <- df %>% relocate(latitude, .after = last_col())        # ensure lat/long columns are last 2 columns in dataframe
                 df <- df %>% relocate(longitude, .after = last_col())
                 
                 #format column names
                 names(df) <- str_replace_all(names(df), "[^[:alnum:]]", "") # remove non-alphanumeric characters
-                names(df) <- gsub(" ", "", names(df)) # remove spaces
-                names(df) <- tolower(names(df))  # make col names lowercase
-                Encoding(df$school) <- "ISO 8859-1"  # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
-                Encoding(df$district) <- "ISO 8859-1"  # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+                names(df) <- gsub(" ", "", names(df))                       # remove spaces
+                names(df) <- tolower(names(df))                             # make col names lowercase
+                Encoding(df$school) <- "ISO 8859-1"                   # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+                Encoding(df$district) <- "ISO 8859-1"                 # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
                 print("Schools list downloaded, imported to R, and cleaned.")
                 
                 
@@ -460,7 +460,7 @@ get_cde_schools <- function(school_url, school_dwnld_url, school_layout_url, tab
                 lat_pos <- length(charvect) - 1   # define position of lat column, lat column already moved to 2nd to last position above
                 long_pos <- length(charvect)      # define position of long column, long column already moved to last position above
                 
-                charvect[(lat_pos:long_pos)] <- "numeric" # specify lat/long as numeric
+                charvect[(lat_pos:long_pos)] <- "numeric"             # specify lat/long as numeric
                 charvect
                 
                 dbWriteTable(con, c(table_schema, table_name), df, 
