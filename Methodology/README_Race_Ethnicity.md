@@ -56,7 +56,7 @@ We use one simplified set of terms for the RACE COUNTS website and publications,
 
 There are instances where we use different terms, or definitions, due to considerations like the preferences of our partners on a specific project or data considerations.
 
-*See [this document](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/SWANA_SoAsian_Ancestry.xlsx) for the list of ancestries included in Southwest Asian / North African and South Asian categories. We have also created this [SWANA Data Sources document](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/SWANA_Data_Sources.docx) for reference. 
+*See [this document](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/SWANA_SoAsian_Ancestry.xlsx) for the list of ancestries included in Southwest Asian / North African and South Asian categories. We have also created this [SWANA Data Sources](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/SWANA_Data_Sources.docx) document that details how data definitions change by data source. 
 
 The specific definition of each race / ethnicity for each indicator can be found in the [Indicator Methodology documents](https://github.com/catalystcalifornia/RaceCounts/tree/main/Methodology).
 
