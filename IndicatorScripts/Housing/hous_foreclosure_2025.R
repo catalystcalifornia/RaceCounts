@@ -44,21 +44,22 @@ sen_geoid <- 'sldu24'			                      # This may need to be updated. Def
 sen_xwalk <- 'tract_2020_state_senate_2024'     # This may need to be updated.
 
 
-# Check that B25003 variable names each year and update if needed
+# Check that B25003 variable names each year and update if needed ####
 ## We define different vars_list than what's in WA functions, bc basis here is owner households by race, not population by race.
 ## b25003_curr must represent the following data in this same order:
 ## Owner households: total, black, aian, asian, pacisl, other, twoormor, nh_white, latinx (All except Two+ and Latinx are 1 race alone, all except Latinx are non-Latinx.)
-vars_list_custom <- c("B25003_002", "B25003B_002", "B25003C_002", "B25003D_002", "B25003E_002", "B25003F_002", "B25003G_002", "B25003H_002", "B25003I_002")
+## the variables MUST BE in this order:
+rc_races <-        c('total',      'black',       'aian',        'asian',       'pacisl',      'other',       'twoormor',    'nh_white',    'latino')
+vars_list_b25003<- c("B25003_002", "B25003B_002", "B25003C_002", "B25003D_002", "B25003E_002", "B25003F_002", "B25003G_002", "B25003H_002", "B25003I_002")
 
 b25003_curr <- load_variables(acs_yr, "acs5", cache = TRUE) %>% 
-  filter(name %in% vars_list_custom) %>%
+  filter(name %in% vars_list_b25003) %>%
   select(-c(geography))
-prev_yr <- acs_yr -1
-b25003_prev <- load_variables(prev_yr, "acs5", cache = TRUE) %>% 
-  filter(name %in% vars_list_custom) %>%
-  select(-c(geography))
-View(b25003_curr)
-all.equal(b25003_curr, b25003_prev)  # if FALSE, you will likely need to revise vars_list_custom definition above 
+b25003_curr <- b25003_curr %>% cbind(rc_races) %>%
+  mutate(rc_races = paste0(rc_races, "_pop"))
+
+# CHECK THIS TABLE TO MAKE SURE THE CONCEPT AND RC_RACES COLUMNS MATCH UP
+print(b25003_curr) 
 
 
 # Export foreclosure to rda shared table ------------------------------------------------------------
@@ -84,31 +85,23 @@ foreclosure$County = str_to_title(foreclosure$County)
  foreclosure$County <- str_remove(foreclosure$County,  "\\s*\\(.*\\)\\s*")     # remove spaces from col names
  foreclosure$County <- gsub("; California", "", foreclosure$County)
  foreclosure <- rename(foreclosure, "county"="County", "census_tract"="Census Tract")
+
+# There are 3 tracts in the data that appear in 2020 tract list, but not in 2010 tract list.
+## We pull those foreclosures out here, and assign them to the 2020 tracts after the 2010-2020 tract conversion process.
+foreclosures_20 <- foreclosure %>% filter(census_tract %in% c('000902', '001003') & county == 'Siskiyou') %>%
+  mutate(GEOID_TRACT_20 = paste0('06093', census_tract)) %>%   # Siskiyou
+  rename(foreclosure_20 = sum_foreclosure) %>%
+  select(c(GEOID_TRACT_20, foreclosure_20))
+ 
 View(foreclosure)
 
-
-############# COUNTY CALCS ##################
-
-###### DEFINE VALUES FOR FUNCTIONS ###
-
-# set values for weighted average functions - You may need to update these
-year <- acs_yr                    # define your data vintage
-subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- c('county')     # define your target geolevel: county (state is handled separately)
-survey <- "acs5"                  # define which Census survey you want
-pop_threshold = 30                # define population threshold for screening
-
-
-##### CREATE COUNTY GEOID & NAMES TABLE ###  
-targetgeo_names <- county_names(vars = vars_list_custom, yr = year, srvy = survey)  # NOTE: using custom 
-
 # merge dfs by geoname then paste the county id to the front of the tract IDs to make full CT FIPS codes
-ind_df <- left_join(targetgeo_names, foreclosure, by = c("target_name" = "county")) %>% 
+ind_2010 <- left_join(targetgeo_names, foreclosure, by = c("target_name" = "county")) %>% 
   mutate(sub_id = paste0(target_id, census_tract)) %>% 
   #rename(c("target_id" = "geoid")) %>%
   select(target_id, sub_id, target_name, sum_foreclosure, avg_foreclosure) %>% 
   as.data.frame()
-# View(ind_df)
+# View(ind_2010)
 
 # note: Foreclosure uses 2010 tract vintage, population estimates use 2020 tract vintage
 cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
@@ -119,7 +112,7 @@ cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\cb_tract2020_
 
 # Because Foreclosure uses 2010 vintage tracts - need to convert to 2020 vintage and allocate score accordingly
 ind_2010_2020 <- cb_tract_2010_2020 %>%
-  right_join(ind_df, by=c('GEOID_TRACT_10'='sub_id')) %>%
+  right_join(ind_2010, by=c('GEOID_TRACT_10'='sub_id')) %>%
   select(GEOID_TRACT_10, sum_foreclosure, AREALAND_TRACT_10, AREALAND_PART, GEOID_TRACT_20, AREALAND_TRACT_20, prc_overlap) %>%
   # Allocate CES scores from 2010 tracts to 2020 using prc_overlap
   mutate(foreclosure_20=sum_foreclosure*prc_overlap)
@@ -129,6 +122,9 @@ ind_2010_2020 <- cb_tract_2010_2020 %>%
 #   select(GEOID_TRACT_10, prc_overlap) %>%
 #   group_by(GEOID_TRACT_10) %>%
 #   summarize(total_prc = sum(prc_overlap))
+
+# add back foreclosure data for 2020-only tracts
+ind_2010_2020 <- ind_2010_2020 %>% plyr::rbind.fill(foreclosures_20)
 
 # create indicator df (2020 tracts) to be used in WA calcs
 ind_2020 <- ind_2010_2020 %>%
@@ -142,11 +138,42 @@ ind_2020 <- ind_2010_2020 %>%
 
 ind_df <- ind_2020 # rename to ind_df for WA fx
 
+
+############# COUNTY CALCS ##################
+
+###### DEFINE VALUES FOR FUNCTIONS ###
+
+# set values for weighted average functions - You may need to update these
+subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
+targetgeolevel <- c('county')     # define your target geolevel: county (state is handled separately)
+survey <- "acs5"                  # define which Census survey you want
+pop_threshold = 30                # define population threshold for screening
+
+
+##### CREATE COUNTY GEOID & NAMES TABLE ###  
+census_api_key(census_key1, overwrite=TRUE)
+targetgeo_names <- get_acs(geography = "county", 
+                     variables = c("B01001_001"), 
+                     state = "CA", 
+                     year = acs_yr)
+
+targetgeo_names <- targetgeo_names[,1:2]
+targetgeo_names$NAME <- str_remove(targetgeo_names$NAME,  "\\s*\\(.*\\)\\s*")  # clean geonames
+targetgeo_names$NAME <- gsub(" County, California", "", targetgeo_names$NAME)
+names(targetgeo_names) <- c("target_id", "target_name")
+
+
 ##### GET SUB GEOLEVEL POP DATA ###
-pop <- update_detailed_table(vars = vars_list_custom, yr = year, srvy = survey)  # subgeolevel pop. NOTE: This indicator uses a custom variable list (vars_list_custom)
+pop <- update_detailed_table(vars = vars_list_b25003, yr = acs_yr, srvy = survey)  # subgeolevel pop. NOTE: This indicator uses a custom variable list (vars_list_b25003)
 
 # transform pop data to wide format 
 pop_wide <- to_wide(pop)
+
+# rename B25003 vars to rc_races
+rc_races_ <- paste0(rc_races, "_")
+names(rc_races_) <- vars_list_b25003
+names(pop_wide) <- str_replace_all(names(pop_wide), rc_races_)
+
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
 pop_wide <- as.data.frame(pop_wide) %>% mutate(target_id = substr(GEOID, 1, 5))  # use left 5 characters as target_id
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID)                              # rename to generic column name for WA functions
@@ -158,7 +185,7 @@ b <- select(pop_wide, sub_id, target_id, ends_with("e"), -NAME)
 
 # aggregate sub geolevel pop to target geolevel
 c <- b %>% group_by(target_id) %>% summarise_if(is.numeric, sum)
-colnames(c) <- c('target_id', 'total_target_pop', 'black_target_pop', 'aian_target_pop', 'asian_target_pop', 'pacisl_target_pop', 'other_target_pop', 'twoormor_target_pop', 'nh_white_target_pop', 'latino_target_pop')
+colnames(c) <- gsub("_e", "_target_pop", colnames(c))
 
 # count number of sub geolevels  per target geolevel and join to target geolevel pop
 d <- b %>% dplyr::count(target_id)
@@ -166,11 +193,11 @@ c <- c %>% left_join(d, by = "target_id")
 
 # join target geolevel pop and sub geolevel counts to df, drop margin of error cols, rename tract pop cols
 e <- select(pop_wide, sub_id, target_id, geolevel, ends_with("e"), -NAME) 
-names(e) <- c('sub_id', 'target_id', 'geolevel', 'total_sub_pop', 'black_sub_pop', 'aian_sub_pop', 'asian_sub_pop', 'pacisl_sub_pop', 'other_sub_pop', 'twoormor_sub_pop', 'nh_white_sub_pop', 'latino_sub_pop')
+names(e) <- gsub("_e", "_sub_pop", colnames(e))
 pop_df <- e %>% left_join(c, by = "target_id")
 
 ##### EXTRA STEP: Calc avg quarterly foreclosures per 10k pop by tract bc WA avg should be calc'd using this, not avg # of foreclosures
-ind_df <- ind_df %>% left_join(pop_df %>% select(sub_id, total_sub_pop), by = "sub_id") %>% 
+ind_df <- ind_2020 %>% left_join(pop_df %>% select(sub_id, total_sub_pop), by = "sub_id") %>% 
   mutate(indicator = (avg_foreclosure / total_sub_pop) * 10000)
 
 ##### COUNTY WEIGHTED AVG CALCS ###
@@ -182,27 +209,31 @@ wa <- wa %>% left_join(targetgeo_names, by = "target_id") %>% mutate(geolevel = 
 ############### CUSTOMIZED VERSION OF CA_POP_WIDE and CA_POP_PCT FUNCTION HERE THAT WORKS WITH OWNER HOUSEHOLD AS POP BASIS ###
 # custom ca_pop_wide calcs
 ca_pop <- do.call(rbind.data.frame, list(
-  get_acs(geography = "state", state = "CA", variables = vars_list_custom, year = year, survey = survey, cache_table = TRUE)))
+  get_acs(geography = "state", state = "CA", variables = vars_list_b25003, year = year, survey = survey, cache_table = TRUE)))
 ca_pop <- ca_pop %>%  
   mutate(geolevel = "state")
 ca_pop_wide <- select(ca_pop, GEOID, NAME, variable, estimate) %>% pivot_wider(names_from=variable, values_from=estimate)
-colnames(ca_pop_wide) <- c('target_id', 'target_name', 'total_target_pop', 'black_target_pop', 'aian_target_pop', 'asian_target_pop', 'pacisl_target_pop', 'other_target_pop', 'twoormor_target_pop', 'nh_white_target_pop', 'latino_target_pop')
+ca_pop_wide <- ca_pop_wide %>% rename("target_id" = "GEOID", "target_name" = "NAME")
+
+# rename B25003 vars to rc_races
+rc_races_ <- paste0(rc_races, "_target_pop")  # note: this is slightly different than code for counties
+names(rc_races_) <- vars_list_b25003
+names(ca_pop_wide) <- str_replace_all(names(ca_pop_wide), rc_races_)
 
 # custom ca_pop_pct calcs
 subpop <- select(pop_wide, sub_id, ends_with("e"), target_id, -NAME)
 subpop$target_id <- '06'                                        # replace county target_id values w/ state-level target_id value
-colnames(subpop) <- c('sub_id', 'total_sub_pop', 'black_sub_pop', 'aian_sub_pop', 'asian_sub_pop', 'pacisl_sub_pop', 'other_sub_pop', 'twoormor_sub_pop', 'nh_white_sub_pop', 'latino_sub_pop', 'target_id')
-subpop <- subpop %>% relocate(target_id, .after = sub_id)     # move sub_id column
-subpop_long <- pivot_longer(subpop, 3:ncol(subpop), names_to="raceeth", values_to="sub_pop")
+colnames(subpop) <- gsub("_e", "_sub_pop", colnames(subpop))
+subpop_long <- pivot_longer(subpop, ends_with("_sub_pop"), names_to="raceeth", values_to="sub_pop")
 subpop_long$raceeth <- gsub("_sub_pop","-",as.character(subpop_long$raceeth))              # update to generic raceeth names
 
-ca_pop_long <- pivot_longer(ca_pop_wide, 3:ncol(ca_pop_wide), names_to="raceeth", values_to="target_pop")
+ca_pop_long <- pivot_longer(ca_pop_wide, ends_with("_target_pop"), names_to="raceeth", values_to="target_pop")
 ca_pop_long$raceeth <- gsub("_target_pop","-",as.character(ca_pop_long$raceeth))           # update to generic raceeth names
 
 subpop_long <- subpop_long %>% left_join(ca_pop_long, by=c("target_id" = "target_id", "raceeth" = "raceeth"))  # join target and sub pops in long form
 ca_pcts_long <- subpop_long %>% mutate(pct = ifelse(target_pop < pop_threshold, NA, (sub_pop / target_pop)),   # calc pcts of each target geolevel pop per sub geolevel pop
-                                       measure_pct=sub("-", "_pct_target_pop", raceeth))           # create new column names
-ca_pct_df <- ca_pcts_long %>% select(sub_id, target_id, measure_pct, pct) %>%              # pivot long table back to wide keeping only new columns
+                                       measure_pct=sub("-", "_pct_target_pop", raceeth))                       # create new column names
+ca_pct_df <- ca_pcts_long %>% select(sub_id, target_id, measure_pct, pct) %>%                                  # pivot long table back to wide keeping only new columns
   pivot_wider(names_from=measure_pct, values_from=pct)
 
 # calc state WA
@@ -213,7 +244,6 @@ ca_wa <- ca_wt_avg(ca_pct_df) %>% mutate(geolevel = 'state')   # add geolevel ty
 ###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
-year <- acs_yr                    # define your data vintage
 subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
 targetgeolevel <- c('place')      # define your target geolevel: place
 survey <- "acs5"                  # define which Census survey you want
@@ -223,13 +253,18 @@ pop_threshold = 30                # define population threshold for screening #i
 xwalk_filter <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.ct_place_", acs_yr))
 
 ####### GET SUB GEOLEVEL POP DATA ###
-pop <- update_detailed_table(vars = vars_list_custom, yr = year, srvy = survey)  # subgeolevel pop
+pop <- update_detailed_table(vars = vars_list_b25003, yr = acs_yr, srvy = survey)  # subgeolevel pop
 
 # transform pop data to wide format
 pop_wide <- to_wide(pop)
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
-pop_wide <- as.data.frame(pop_wide) %>% right_join(select(xwalk_filter, c(ct_geoid, place_geoid, place_name)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
-pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = place_geoid, target_name = place_name) # rename to generic column names for WA functions
+pop_wide <- pop_wide %>% right_join(select(xwalk_filter, c(ct_geoid, place_geoid, place_name)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
+pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = place_geoid, target_name = place_name)                         # rename to generic column names for WA functions
+
+# rename B25003 vars to rc_races
+rc_races_ <- paste0(rc_races, "_")
+names(rc_races_) <- vars_list_b25003
+names(pop_wide) <- str_replace_all(names(pop_wide), rc_races_)
 
 ############### CUSTOMIZED VERSION OF TARGETGEO_POP FUNCTION HERE THAT WORKS WITH OWNER HOUSEHOLDS AS POP BASIS ###
 # calc target geolevel pop and number of sub geolevels per target geolevel
@@ -239,7 +274,7 @@ b <- select(pop_wide, sub_id, target_id, ends_with("e"), -NAME)
 
 # aggregate sub geolevel pop to target geolevel and rename to RC names
 c <- b %>% group_by(target_id) %>% summarise_if(is.numeric, sum)
-colnames(c) <- c('target_id', 'total_target_pop', 'black_target_pop', 'aian_target_pop', 'asian_target_pop', 'pacisl_target_pop', 'other_target_pop', 'twoormor_target_pop', 'nh_white_target_pop', 'latino_target_pop')
+colnames(c) <- gsub("_e", "_target_pop", colnames(c))
 
 # count number of sub geolevels  per target geolevel and join to target geolevel pop
 d <- b %>% dplyr::count(target_id)
@@ -247,7 +282,7 @@ c <- c %>% left_join(d, by = "target_id")
 
 # join target geolevel pop and sub geolevel counts to df, drop margin of error cols, rename tract pop cols
 e <- select(pop_wide, sub_id, target_id, geolevel, ends_with("e"), -NAME) 
-names(e) <- c('sub_id', 'target_id', 'geolevel', 'total_sub_pop', 'black_sub_pop', 'aian_sub_pop', 'asian_sub_pop', 'pacisl_sub_pop', 'other_sub_pop', 'twoormor_sub_pop', 'nh_white_sub_pop', 'latino_sub_pop', 'target_name')
+colnames(e) <- gsub("_e", "_sub_pop", colnames(e))
 pop_df_city <- e %>% left_join(c, by = "target_id")
 
 
@@ -262,14 +297,6 @@ city_wa <- city_wa %>%                # add place names (target names)
 city_wa <- city_wa %>% mutate(geolevel = 'city')  # add geolevel
 
 ############# ASSEMBLY CALCS ##################
-# merge dfs by geoname then paste the county id to the front of the tract IDs
-# ind_df_assm <- left_join(ca, foreclosure, by = c("geoname" = "county")) %>%
-#   mutate(sub_id = paste0(geoid, census_tract)) %>%
-#   select(sub_id, geoname, sum_foreclosure, avg_foreclosure) %>%
-#   as.data.frame()
-# View(ind_df)
-# get census place geoids to paste to the front of the tracts from the foreclosure data
-
 
 ###### DEFINE VALUES FOR FUNCTIONS ###
 
@@ -284,13 +311,18 @@ pop_threshold = 250              # define population threshold for screening
 xwalk_filter <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, " AS assm_geoid FROM crosswalks.", assm_xwalk))
 
 ##### GET SUB GEOLEVEL POP DATA ###
-pop <- update_detailed_table(vars = vars_list_custom, yr = acs_yr, srvy = survey)  # subgeolevel pop
+pop <- update_detailed_table(vars = vars_list_b25003, yr = acs_yr, srvy = survey)  # subgeolevel pop
 
 # transform pop data to wide format
 pop_wide <- to_wide(pop)
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
 pop_wide <- as.data.frame(pop_wide) %>% right_join(select(xwalk_filter, c(ct_geoid, assm_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = assm_geoid) # rename to generic column names for WA functions
+
+# rename B25003 vars to rc_races
+rc_races_ <- paste0(rc_races, "_")
+names(rc_races_) <- vars_list_b25003
+names(pop_wide) <- str_replace_all(names(pop_wide), rc_races_)
 
 ##### CUSTOMIZED VERSION OF TAR# calc target geolevel pop and number of sub geolevels per target geolevel
 # calc target geolevel pop and number of sub geolevels per target geolevel
@@ -300,7 +332,7 @@ b <- select(pop_wide, sub_id, target_id, ends_with("e"), -NAME)
 
 # aggregate sub geolevel pop to target geolevel
 c <- b %>% group_by(target_id) %>% summarise_if(is.numeric, sum)
-colnames(c) <- c('target_id', 'total_target_pop', 'black_target_pop', 'aian_target_pop', 'asian_target_pop', 'pacisl_target_pop', 'other_target_pop', 'twoormor_target_pop', 'nh_white_target_pop', 'latino_target_pop')
+colnames(c) <- gsub("_e", "_target_pop", colnames(c))
 
 # count number of sub geolevels  per target geolevel and join to target geolevel pop
 d <- b %>% dplyr::count(target_id)
@@ -308,7 +340,7 @@ c <- c %>% left_join(d, by = "target_id")
 
 # join target geolevel pop and sub geolevel counts to df, drop margin of error cols, rename tract pop cols
 e <- select(pop_wide, sub_id, target_id, geolevel, ends_with("e"), -NAME) 
-names(e) <- c('sub_id', 'target_id', 'geolevel', 'total_sub_pop', 'black_sub_pop', 'aian_sub_pop', 'asian_sub_pop', 'pacisl_sub_pop', 'other_sub_pop', 'twoormor_sub_pop', 'nh_white_sub_pop', 'latino_sub_pop')
+names(e) <- gsub("_e", "_sub_pop", colnames(e))
 pop_df <- e %>% left_join(c, by = "target_id")
 
 ##### ASSM WEIGHTED AVG CALCS ###
@@ -348,13 +380,18 @@ pop_threshold = 250              # define population threshold for screening
 xwalk_filter <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", sen_geoid, " AS sen_geoid FROM crosswalks.", sen_xwalk))
 
 ##### GET SUB GEOLEVEL POP DATA ###
-pop <- update_detailed_table(vars = vars_list_custom, yr = acs_yr, srvy = survey)  # subgeolevel pop
+pop <- update_detailed_table(vars = vars_list_b25003, yr = acs_yr, srvy = survey)  # subgeolevel pop
 
 # transform pop data to wide format
 pop_wide <- to_wide(pop)
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
 pop_wide <- as.data.frame(pop_wide) %>% right_join(select(xwalk_filter, c(ct_geoid, sen_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = sen_geoid) # rename to generic column names for WA functions
+
+# rename B25003 vars to rc_races
+rc_races_ <- paste0(rc_races, "_")
+names(rc_races_) <- vars_list_b25003
+names(pop_wide) <- str_replace_all(names(pop_wide), rc_races_)
 
 ##### CUSTOMIZED VERSION OF TAR# calc target geolevel pop and number of sub geolevels per target geolevel
 # calc target geolevel pop and number of sub geolevels per target geolevel
@@ -364,7 +401,7 @@ b <- select(pop_wide, sub_id, target_id, ends_with("e"), -NAME)
 
 # aggregate sub geolevel pop to target geolevel
 c <- b %>% group_by(target_id) %>% summarise_if(is.numeric, sum)
-colnames(c) <- c('target_id', 'total_target_pop', 'black_target_pop', 'aian_target_pop', 'asian_target_pop', 'pacisl_target_pop', 'other_target_pop', 'twoormor_target_pop', 'nh_white_target_pop', 'latino_target_pop')
+colnames(c) <- gsub("_e", "_target_pop", colnames(c))
 
 # count number of sub geolevels  per target geolevel and join to target geolevel pop
 d <- b %>% dplyr::count(target_id)
@@ -372,7 +409,7 @@ c <- c %>% left_join(d, by = "target_id")
 
 # join target geolevel pop and sub geolevel counts to df, drop margin of error cols, rename tract pop cols
 e <- select(pop_wide, sub_id, target_id, geolevel, ends_with("e"), -NAME) 
-names(e) <- c('sub_id', 'target_id', 'geolevel', 'total_sub_pop', 'black_sub_pop', 'aian_sub_pop', 'asian_sub_pop', 'pacisl_sub_pop', 'other_sub_pop', 'twoormor_sub_pop', 'nh_white_sub_pop', 'latino_sub_pop')
+names(e) <- gsub("_e", "_sub_pop", colnames(e))
 pop_df <- e %>% left_join(c, by = "target_id")
 
 ##### SEN WEIGHTED AVG CALCS ###
