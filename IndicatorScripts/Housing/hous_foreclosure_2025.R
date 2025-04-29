@@ -49,14 +49,28 @@ sen_xwalk <- 'tract_2020_state_senate_2024'     # This may need to be updated.
 ## b25003_curr must represent the following data in this same order:
 ## Owner households: total, black, aian, asian, pacisl, other, twoormor, nh_white, latinx (All except Two+ and Latinx are 1 race alone, all except Latinx are non-Latinx.)
 ## the variables MUST BE in this order:
-rc_races <-        c('total',      'black',       'aian',        'asian',       'pacisl',      'other',       'twoormor',    'nh_white',    'latino')
-vars_list_b25003<- c("B25003_002", "B25003B_002", "B25003C_002", "B25003D_002", "B25003E_002", "B25003F_002", "B25003G_002", "B25003H_002", "B25003I_002")
+vars_list_b25003<- list("total"="B25003_002", 
+                        "black"="B25003B_002", 
+                        "aian"="B25003C_002", 
+                        "asian"="B25003D_002", 
+                        "pacisl"="B25003E_002", 
+                        "other"="B25003F_002", 
+                        "twoormor"="B25003G_002", 
+                        "nh_white"="B25003H_002", 
+                        "latino"="B25003I_002")
+
+race_mapping <- data.frame(
+  name = unlist(vars_list_b25003),
+  race = names(vars_list_b25003),
+  stringsAsFactors = FALSE
+)
 
 b25003_curr <- load_variables(acs_yr, "acs5", cache = TRUE) %>% 
   filter(name %in% vars_list_b25003) %>%
-  select(-c(geography))
-b25003_curr <- b25003_curr %>% cbind(rc_races) %>%
-  mutate(rc_races = paste0(rc_races, "_pop"))
+  select(-c(geography)) %>% 
+  left_join(race_mapping, by="name") %>%
+  mutate(rc_races = paste0(race, "_pop")) %>%
+  select(-race)
 
 # CHECK THIS TABLE TO MAKE SURE THE CONCEPT AND RC_RACES COLUMNS MATCH UP
 print(b25003_curr) 
