@@ -48,15 +48,28 @@ sen_xwalk <- 'tract_2020_state_senate_2024'     # This may need to be updated.
 ## We define different vars_list than what's in WA functions, bc basis here is owner households by race, not population by race.
 ## b25003_curr must represent the following data in this same order:
 ## Owner households: total, black, aian, asian, pacisl, other, twoormor, nh_white, latinx (All except Two+ and Latinx are 1 race alone, all except Latinx are non-Latinx.)
-## the variables MUST BE in this order:
-rc_races <-        c('total',      'black',       'aian',        'asian',       'pacisl',      'other',       'twoormor',    'nh_white',    'latino')
-vars_list_b25003<- c("B25003_002", "B25003B_002", "B25003C_002", "B25003D_002", "B25003E_002", "B25003F_002", "B25003G_002", "B25003H_002", "B25003I_002")
+vars_list_b25003<- list("total_"="B25003_002", 
+                        "black_"="B25003B_002", 
+                        "aian_"="B25003C_002", 
+                        "asian_"="B25003D_002", 
+                        "pacisl_"="B25003E_002", 
+                        "other_"="B25003F_002", 
+                        "twoormor_"="B25003G_002", 
+                        "nh_white_"="B25003H_002", 
+                        "latino_"="B25003I_002")
+
+race_mapping <- data.frame(
+  name = unlist(vars_list_b25003),
+  race = names(vars_list_b25003),
+  stringsAsFactors = FALSE
+)
 
 b25003_curr <- load_variables(acs_yr, "acs5", cache = TRUE) %>% 
   filter(name %in% vars_list_b25003) %>%
-  select(-c(geography))
-b25003_curr <- b25003_curr %>% cbind(rc_races) %>%
-  mutate(rc_races = paste0(rc_races, "_pop"))
+  select(-c(geography)) %>% 
+  left_join(race_mapping, by="name") %>%
+  mutate(rc_races = paste0(race, "pop")) %>%
+  select(-race)
 
 # CHECK THIS TABLE TO MAKE SURE THE CONCEPT AND RC_RACES COLUMNS MATCH UP
 print(b25003_curr) 
@@ -95,6 +108,9 @@ foreclosures_20 <- foreclosure %>% filter(census_tract %in% c('000902', '001003'
  
 View(foreclosure)
 
+targetgeolevel <- c('county') # should be a county_names() argument but have to make it a global variable for the fn to work
+targetgeo_names <- county_names(var_list = vars_list_b25003, yr = acs_yr, srvy = "acs5" )
+
 # merge dfs by geoname then paste the county id to the front of the tract IDs to make full CT FIPS codes
 ind_2010 <- left_join(targetgeo_names, foreclosure, by = c("target_name" = "county")) %>% 
   mutate(sub_id = paste0(target_id, census_tract)) %>% 
@@ -102,6 +118,8 @@ ind_2010 <- left_join(targetgeo_names, foreclosure, by = c("target_name" = "coun
   select(target_id, sub_id, target_name, sum_foreclosure, avg_foreclosure) %>% 
   as.data.frame()
 # View(ind_2010)
+
+
 
 # note: Foreclosure uses 2010 tract vintage, population estimates use 2020 tract vintage
 cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
@@ -169,11 +187,6 @@ pop <- update_detailed_table(vars = vars_list_b25003, yr = acs_yr, srvy = survey
 # transform pop data to wide format 
 pop_wide <- to_wide(pop)
 
-# rename B25003 vars to rc_races
-rc_races_ <- paste0(rc_races, "_")
-names(rc_races_) <- vars_list_b25003
-names(pop_wide) <- str_replace_all(names(pop_wide), rc_races_)
-
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
 pop_wide <- as.data.frame(pop_wide) %>% mutate(target_id = substr(GEOID, 1, 5))  # use left 5 characters as target_id
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID)                              # rename to generic column name for WA functions
@@ -209,16 +222,11 @@ wa <- wa %>% left_join(targetgeo_names, by = "target_id") %>% mutate(geolevel = 
 ############### CUSTOMIZED VERSION OF CA_POP_WIDE and CA_POP_PCT FUNCTION HERE THAT WORKS WITH OWNER HOUSEHOLD AS POP BASIS ###
 # custom ca_pop_wide calcs
 ca_pop <- do.call(rbind.data.frame, list(
-  get_acs(geography = "state", state = "CA", variables = vars_list_b25003, year = year, survey = survey, cache_table = TRUE)))
+  get_acs(geography = "state", state = "CA", variables = vars_list_b25003, year = acs_yr, survey = survey, cache_table = TRUE)))
 ca_pop <- ca_pop %>%  
   mutate(geolevel = "state")
-ca_pop_wide <- select(ca_pop, GEOID, NAME, variable, estimate) %>% pivot_wider(names_from=variable, values_from=estimate)
+ca_pop_wide <- select(ca_pop, GEOID, NAME, variable, estimate) %>% pivot_wider(names_from=variable, values_from=estimate, names_glue = "{variable}target_pop")
 ca_pop_wide <- ca_pop_wide %>% rename("target_id" = "GEOID", "target_name" = "NAME")
-
-# rename B25003 vars to rc_races
-rc_races_ <- paste0(rc_races, "_target_pop")  # note: this is slightly different than code for counties
-names(rc_races_) <- vars_list_b25003
-names(ca_pop_wide) <- str_replace_all(names(ca_pop_wide), rc_races_)
 
 # custom ca_pop_pct calcs
 subpop <- select(pop_wide, sub_id, ends_with("e"), target_id, -NAME)
@@ -261,10 +269,6 @@ pop_wide <- to_wide(pop)
 pop_wide <- pop_wide %>% right_join(select(xwalk_filter, c(ct_geoid, place_geoid, place_name)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = place_geoid, target_name = place_name)                         # rename to generic column names for WA functions
 
-# rename B25003 vars to rc_races
-rc_races_ <- paste0(rc_races, "_")
-names(rc_races_) <- vars_list_b25003
-names(pop_wide) <- str_replace_all(names(pop_wide), rc_races_)
 
 ############### CUSTOMIZED VERSION OF TARGETGEO_POP FUNCTION HERE THAT WORKS WITH OWNER HOUSEHOLDS AS POP BASIS ###
 # calc target geolevel pop and number of sub geolevels per target geolevel
@@ -319,10 +323,6 @@ pop_wide <- to_wide(pop)
 pop_wide <- as.data.frame(pop_wide) %>% right_join(select(xwalk_filter, c(ct_geoid, assm_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = assm_geoid) # rename to generic column names for WA functions
 
-# rename B25003 vars to rc_races
-rc_races_ <- paste0(rc_races, "_")
-names(rc_races_) <- vars_list_b25003
-names(pop_wide) <- str_replace_all(names(pop_wide), rc_races_)
 
 ##### CUSTOMIZED VERSION OF TAR# calc target geolevel pop and number of sub geolevels per target geolevel
 # calc target geolevel pop and number of sub geolevels per target geolevel
@@ -388,10 +388,6 @@ pop_wide <- to_wide(pop)
 pop_wide <- as.data.frame(pop_wide) %>% right_join(select(xwalk_filter, c(ct_geoid, sen_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = sen_geoid) # rename to generic column names for WA functions
 
-# rename B25003 vars to rc_races
-rc_races_ <- paste0(rc_races, "_")
-names(rc_races_) <- vars_list_b25003
-names(pop_wide) <- str_replace_all(names(pop_wide), rc_races_)
 
 ##### CUSTOMIZED VERSION OF TAR# calc target geolevel pop and number of sub geolevels per target geolevel
 # calc target geolevel pop and number of sub geolevels per target geolevel
