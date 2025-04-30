@@ -44,19 +44,17 @@ sen_geoid <- 'sldu24'			                      # This may need to be updated. Def
 sen_xwalk <- 'tract_2020_state_senate_2024'     # This may need to be updated.
 
 
-# Check that B25003 variable names each year and update if needed ####
-## We define different vars_list than what's in WA functions, bc basis here is owner households by race, not population by race.
-## b25003_curr must represent the following data in this same order:
-## Owner households: total, black, aian, asian, pacisl, other, twoormor, nh_white, latinx (All except Two+ and Latinx are 1 race alone, all except Latinx are non-Latinx.)
-vars_list_b25003<- list("total_"="B25003_002", 
-                        "black_"="B25003B_002", 
-                        "aian_"="B25003C_002", 
-                        "asian_"="B25003D_002", 
-                        "pacisl_"="B25003E_002", 
-                        "other_"="B25003F_002", 
-                        "twoormor_"="B25003G_002", 
-                        "nh_white_"="B25003H_002", 
-                        "latino_"="B25003I_002")
+# Check that B25003 variables and RC race names still match each year and update if needed ####
+## Owner Households: total, black, aian, asian, pacisl, other, twoormor, nh_white, latinx (All except Two+ and Latinx are 1 race alone, all except Latinx are non-Latinx.)
+vars_list_b25003 <- list("total_" = "B25003_002", 
+                         "black_" = "B25003B_002", 
+                         "aian_" = "B25003C_002", 
+                         "asian_" = "B25003D_002", 
+                         "pacisl_" = "B25003E_002", 
+                         "other_" = "B25003F_002", 
+                         "twoormor_" = "B25003G_002", 
+                         "nh_white_" = "B25003H_002", 
+                         "latino_" = "B25003I_002")
 
 race_mapping <- data.frame(
   name = unlist(vars_list_b25003),
@@ -114,7 +112,6 @@ targetgeo_names <- county_names(var_list = vars_list_b25003, yr = acs_yr, srvy =
 # merge dfs by geoname then paste the county id to the front of the tract IDs to make full CT FIPS codes
 ind_2010 <- left_join(targetgeo_names, foreclosure, by = c("target_name" = "county")) %>% 
   mutate(sub_id = paste0(target_id, census_tract)) %>% 
-  #rename(c("target_id" = "geoid")) %>%
   select(target_id, sub_id, target_name, sum_foreclosure, avg_foreclosure) %>% 
   as.data.frame()
 # View(ind_2010)
