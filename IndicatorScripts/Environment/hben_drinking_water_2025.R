@@ -34,7 +34,7 @@ source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/SWANA_Ancestry_List.
 # update variables used throughout each year
 curr_yr <- 2021 # yr of CES data release
 ces_v <- '4.0'  # CES version
-acs_yr <- 2020
+acs_yr <- 2020 
 rc_yr <- '2025'
 rc_schema <- 'v7'
 
@@ -42,7 +42,7 @@ rc_schema <- 'v7'
 # select acs race/eth pop variables: All AIAN/PacIsl, NH Alone White/Black/Asian/Other, NH Two+, Latinx of any race
 ## the variables MUST BE in this order:
 rc_races <-      c('total',     'aian',      'pacisl',    'latino',    'nh_white',  'nh_black',  'nh_asian',  'nh_other',  'nh_twoormor')
-vars_list_acs <- c("DP05_0001", "DP05_0077", "DP05_0078", "DP05_0066", "DP05_0080", "DP05_0068", "DP05_0082", "DP05_0083", "DP05_0071")
+vars_list_acs <- c("DP05_0001", "DP05_0066", "DP05_0068", "DP05_0071", "DP05_0077", "DP05_0078", "DP05_0080", "DP05_0082", "DP05_0083") #https://api.census.gov/data/2021/acs/acs5/profile/groups/DP05.html
 
 dp05_curr <- load_variables(curr_yr, "acs5/profile", cache = TRUE) %>% 
   select(-c(concept)) %>% 
@@ -68,6 +68,36 @@ ind_df <- dbGetQuery(conn, paste0("select ct_geoid AS geoid, drinkwat from built
 ind_df <- dplyr::rename(ind_df, sub_id = geoid, indicator = drinkwat)       # rename columns for functions
 ind_df <- filter(ind_df, indicator >= 0) # screen out NA values of -999
 
+
+# note: CES uses 2010 tract vintage, population estimates use 2020 tract vintage
+cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
+  select(GEOID_TRACT_10, NAMELSAD_TRACT_10, AREALAND_TRACT_10, GEOID_TRACT_20, NAMELSAD_TRACT_20, AREALAND_TRACT_20, AREALAND_PART) %>%
+  mutate_at(vars(contains("AREALAND")), function(x) as.numeric(x)) %>%
+  # calculate overlapping land area of 2010 and 2020 tracts (AREALAND_PART) as a percent of 2020 tract land area (AREALAND_TRACT_20)
+  mutate(prc_overlap=AREALAND_PART/AREALAND_TRACT_20) 
+
+# # check prc_overlaps sums/ note: there will be prc_overlap values > 1 bc some 2010 tracts were split into 2+ 2020 tracts and each 2020 tract comes solely from the 2010 tract 
+# check_prc_is_1 <- cb_tract_2010_2020 %>%
+#   group_by(GEOID_TRACT_10) %>%
+#   summarise(total_prc=sum(prc_overlap))
+
+# Because CES uses 2010 vintage tracts - need to convert to 2020 vintage and allocate score accordingly
+ind_2010_2020 <- ind_df %>%
+  left_join(cb_tract_2010_2020, by=c("sub_id"="GEOID_TRACT_10")) %>%
+  select(sub_id, indicator, AREALAND_TRACT_10, AREALAND_PART, GEOID_TRACT_20, AREALAND_TRACT_20, prc_overlap) %>%
+  # Allocate CES scores from 2010 tracts to 2020 using prc_overlap
+  mutate(ind_2020=indicator*prc_overlap)
+
+# create indicator df (2020 tracts) to be used in WA calcs
+ind_2020 <- ind_2010_2020 %>%
+  select(GEOID_TRACT_20, ind_2020) %>%
+  # sum weighted CES scores by 2020 tract
+  group_by(GEOID_TRACT_20) %>%
+  summarize(indicator = sum(ind_2020)) %>%
+  # clean up names
+  rename(sub_id = GEOID_TRACT_20)
+
+ind_df <- ind_2020 # rename to ind_df for WA fx
 
 ############# ASSEMBLY DISTRICTS ##################
 
@@ -268,7 +298,7 @@ survey <- "acs5"                  # define which Census survey you want
 pop_threshold = 250               # define population threshold for screening
 
 ##### CREATE COUNTY GEOID & NAMES TABLE ######  You will NOT need this chunk if your indicator data table has target geolevel names already
-targetgeo_names <- county_names(vars = vars_list_acs, yr = acs_yr, srvy = survey)
+targetgeo_names <- county_names(var_list = vars_list_acs, yr = acs_yr, srvy = survey)
 
 
 ##### GET SUB GEOLEVEL POP DATA ###
