@@ -30,6 +30,7 @@ qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Environment\\QA_Sheet_Lack_of
 source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
 source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/SWANA_Ancestry_List.R")
 
+
 # update variables used throughout each year
 curr_yr <- 2023  # NLCD and ACS year
 rc_yr <- '2025'

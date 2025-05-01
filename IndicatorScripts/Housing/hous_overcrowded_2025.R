@@ -1,4 +1,4 @@
-## Homeownership for RC v7 ##
+# B25014: Overcrowded Housing for RC v7
 #install packages if not already installed
 packages <- c("dplyr","data.table","tidycensus","sf","DBI","RPostgres","RPostgreSQL","stringr","tidyr","tigris","usethis")  
 
@@ -28,35 +28,36 @@ curr_yr = 2023 # you MUST UPDATE each year
 rc_yr <- '2025'
 rc_schema <- 'v7'
 
-
 ### Variables that do not need updates ###
-cv_threshold = 40         
-pop_threshold = 100       
-asbest = 'max'            
+cv_threshold = 40         # YOU MUST UPDATE based on most recent Indicator Methodology
+pop_threshold = 100       # YOU MUST UPDATE based on most recent Indicator Methodology or set to NA B19301
+asbest = 'min'  
 schema = 'housing'
-table_code = 'b25003'
+table_code = "b25014"     # YOU MUST UPDATE based on most recent Indicator Methodology or most recent RC Workflow/Cnty-State Indicator Tracking
 
+
+############## GET DATA ##############
 df_wide_multigeo <- dbGetQuery(con, paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state', 'sldu', 'sldl')")) # import rda_shared_data table
-df_wide_multigeo$name <- str_remove(df_wide_multigeo$name,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
-df_wide_multigeo$name <- gsub("; California", "", df_wide_multigeo$name)
 
-############## Pre-RC CALCS ##############
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
+View(df_wide_multigeo)
+############## PRE-CALCULATION DATA PREP ##############
+
+source(".\\Functions\\rdashared_functions.R")
 
 df <- prep_acs(df_wide_multigeo, table_code, cv_threshold, pop_threshold)
 
 df_screened <- dplyr::select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"), -ends_with("_cv"))
 
 d <- df_screened
+View(d)
 
 ############## CALC RACE COUNTS STATS ##############
-############ To use the following RC Functions, 'd' will need the following columns at minimum: 
-############ county_id and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
 #set source for RC Functions script
 source(".\\Functions\\RC_Functions.R")
 
-d$asbest = asbest    # Adds asbest value for RC Functions
+# Adds asbest value for RC Functions
+d$asbest = asbest    # Adds asbest value for RC Functions   # min bc minimum rate is 'best' rate
 
 d <- count_values(d) #calculate number of "_rate" values
 d <- calc_best(d) #calculate best rates -- be sure to define 'asbest' accordingly before running this function.
@@ -74,21 +75,21 @@ upper_table <- d[d$geolevel == 'sldu', ]
 lower_table <- d[d$geolevel == 'sldl', ]
 
 #calculate STATE z-scores
-state_table <- calc_state_z(state_table) %>% dplyr::select(-c(geolevel))
+state_table <- calc_state_z(state_table) %>% select(-c(geolevel))
 View(state_table)
 
 #calculate COUNTY z-scores
-county_table <- calc_z(county_table) 
+county_table <- calc_z(county_table)
 
 ## Calc county ranks##
-county_table <- calc_ranks(county_table) %>% dplyr::select(-c(geolevel))
+county_table <- calc_ranks(county_table) %>% select(-c(geolevel))
 View(county_table)
 
 #calculate CITY z-scores
 city_table <- calc_z(city_table)
 
 ## Calc city ranks##
-city_table <- calc_ranks(city_table) %>% dplyr::select(-c(geolevel))
+city_table <- calc_ranks(city_table) %>% select(-c(geolevel))
 View(city_table)
 
 #calculate SLDU z-scores
@@ -109,29 +110,28 @@ View(lower_table)
 leg_table <- rbind(upper_table, lower_table)
 View(leg_table)
 
-#rename geoid to state_id, county_id, city_id
+#rename geoid to state_id, county_id, city_id, leg_id
 colnames(state_table)[1:2] <- c("state_id", "state_name")
 colnames(county_table)[1:2] <- c("county_id", "county_name")
 colnames(city_table)[1:2] <- c("city_id", "city_name")
 colnames(leg_table)[1:2] <- c("leg_id", "leg_name")
 
 
-############### COUNTY, STATE, CITY METADATA  ##############
+# ############## SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
 
-###update info for postgres tables###
-county_table_name <- paste0("arei_hous_homeownership_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
-state_table_name <- paste0("arei_hous_homeownership_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
-city_table_name <- paste0("arei_hous_homeownership_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
-leg_table_name <- paste0("arei_hous_homeownership_leg_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
-start_yr <- curr_yr-4
+### info for postgres tables will auto update ###
+county_table_name <- paste0("arei_hous_overcrowded_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
+state_table_name <- paste0("arei_hous_overcrowded_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
+city_table_name <- paste0("arei_hous_overcrowded_city_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
+leg_table_name <- paste0("arei_hous_overcrowded_leg_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
+start_yr <- curr_yr -4
 
-indicator <- " Owner-Occupied Housing Units (%)"                # See most recent Indicator Methodology for indicator description
-source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, Tables B25003B-I, https://data.census.gov/cedsci/")   # See most recent Indicator Methodology for source info
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Sheet_Homeownership.docx"
+indicator <- " Overcrowded Housing Units (%) (> 1 person per room)"                         # See most recent Indicator Methodology for indicator description
+source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, Tables B25014B-I, https://data.census.gov/cedsci/") # See most recent Indicator Methodology for indicator description
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Sheet_Overcrowded_Housing.docx"
 
 ####### SEND TO POSTGRES #######
 # to_postgres(county_table,state_table)
 # city_to_postgres(city_table)
 # leg_to_postgres(leg_table)
-# 
 # dbDisconnect(con)
