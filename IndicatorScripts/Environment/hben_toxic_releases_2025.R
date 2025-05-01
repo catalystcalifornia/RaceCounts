@@ -34,7 +34,7 @@ source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/SWANA_Ancestry_List.
 # update variables used throughout each year
 curr_yr <- 2021 # yr of CES data release
 ces_v <- '4.0'  # CES version
-acs_yr <- 2020
+acs_yr <- 2020 
 rc_yr <- '2025'
 rc_schema <- 'v7'
 
@@ -42,7 +42,7 @@ rc_schema <- 'v7'
 # select acs race/eth pop variables: All AIAN/PacIsl, NH Alone White/Black/Asian/Other, NH Two+, Latinx of any race
 ## the variables MUST BE in this order:
 rc_races <-      c('total',     'aian',      'pacisl',    'latino',    'nh_white',  'nh_black',  'nh_asian',  'nh_other',  'nh_twoormor')
-vars_list_acs <- c("DP05_0001", "DP05_0077", "DP05_0078", "DP05_0066", "DP05_0080", "DP05_0068", "DP05_0082", "DP05_0083", "DP05_0071")
+vars_list_acs <- c("DP05_0001", "DP05_0066", "DP05_0068", "DP05_0071", "DP05_0077", "DP05_0078", "DP05_0080", "DP05_0082", "DP05_0083") #https://api.census.gov/data/2021/acs/acs5/profile/groups/DP05.html
 
 dp05_curr <- load_variables(curr_yr, "acs5/profile", cache = TRUE) %>% 
   select(-c(concept)) %>% 
@@ -97,7 +97,7 @@ ind_2020 <- ind_2010_2020 %>%
   rename(sub_id = GEOID_TRACT_20)
 
 ind_df <- ind_2020 # rename to ind_df for WA fx
-
+# even when converting it over the sum of the dfata should be the same number
 ############# ASSEMBLY DISTRICTS ##################
 
 ###### DEFINE VALUES FOR FUNCTIONS ###
@@ -298,7 +298,7 @@ survey <- "acs5"                  # define which Census survey you want
 pop_threshold = 250               # define population threshold for screening
 
 ##### CREATE COUNTY GEOID & NAMES TABLE ######  You will NOT need this chunk if your indicator data table has target geolevel names already
-targetgeo_names <- county_names(vars = vars_list_acs, yr = acs_yr, srvy = survey)
+targetgeo_names <- county_names(var_list = vars_list_acs, yr = acs_yr, srvy = survey)
 
 
 ##### GET SUB GEOLEVEL POP DATA ###
