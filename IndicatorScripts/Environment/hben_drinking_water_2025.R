@@ -38,28 +38,41 @@ acs_yr <- 2020
 rc_yr <- '2025'
 rc_schema <- 'v7'
 
-# Check that variables in vars_list_acs used in WA fx haven't changed --------
-# select acs race/eth pop variables: All AIAN/PacIsl, NH Alone White/Black/Asian/Other, NH Two+, Latinx of any race
-## the variables MUST BE in this order:
-rc_races <-      c('total',     'aian',      'pacisl',    'latino',    'nh_white',  'nh_black',  'nh_asian',  'nh_other',  'nh_twoormor')
-vars_list_acs <- c("DP05_0001", "DP05_0066", "DP05_0068", "DP05_0071", "DP05_0077", "DP05_0078", "DP05_0080", "DP05_0082", "DP05_0083") #https://api.census.gov/data/2021/acs/acs5/profile/groups/DP05.html
-
-dp05_curr <- load_variables(curr_yr, "acs5/profile", cache = TRUE) %>% 
-  select(-c(concept)) %>% 
-  filter(name %in% vars_list_acs) %>%
-  mutate(name = tolower(name)) # get all DP05 vars
-dp05_curr$label <- gsub("Estimate!!|HISPANIC OR LATINO AND RACE!!", "", dp05_curr$label)
-dp05_curr <- dp05_curr %>% cbind(rc_races)
-
-# CHECK THIS TABLE TO MAKE SURE THE LABEL AND RC_RACES COLUMNS MATCH UP
-print(dp05_curr) 
-
-
 # may need to update each year: variables for state assm and senate calcs
 assm_geoid <- 'sldl24'			                    # Define column with Assm geoid
 assm_xwalk <- 'tract_2020_state_assembly_2024'  # Name of tract-Assm xwalk table
 sen_geoid <- 'sldu24'			                      # Define column with senate geoid
 sen_xwalk <- 'tract_2020_state_senate_2024'     # Name of tract-Sen xwalk table
+
+
+# Check that DP05 variables and RC race names still match each year and update if needed --------
+## Population: All AIAN/PacIsl Latinx incl, NH Alone White/Black/Asian/Other, NH Two+, Latinx of any race
+vars_list_dp05 <- c("total_" = "DP05_0001",
+                    "aian_" = "DP05_0066", 
+                    "pacisl_" = "DP05_0068", 
+                    "latino_" = "DP05_0071", 
+                    "nh_white_" = "DP05_0077", 
+                    "nh_black_" = "DP05_0078", 
+                    "nh_asian_" = "DP05_0080", 
+                    "nh_other_" = "DP05_0082", 
+                    "nh_twoormor_" = "DP05_0083") #https://api.census.gov/data/2020/acs/acs5/profile/groups/DP05.html
+
+race_mapping <- data.frame(
+  name = unlist(vars_list_dp05),
+  race = names(vars_list_dp05),
+  stringsAsFactors = FALSE
+)
+
+dp05_curr <- load_variables(curr_yr, "acs5/profile", cache = TRUE) %>% 
+  select(-c(concept)) %>% 
+  filter(name %in% vars_list_dp05) %>%
+  left_join(race_mapping, by="name") %>%
+  mutate(rc_races = paste0(race, "pop"),
+         label = gsub("Estimate!!|HISPANIC OR LATINO AND RACE!!", "", dp05_curr$label)) %>%
+  select(-race)
+
+# CHECK THIS TABLE TO MAKE SURE THE LABEL AND RC_RACES COLUMNS MATCH UP
+print(dp05_curr) 
 
 
 ##### GET INDICATOR DATA ######
@@ -115,7 +128,7 @@ pop_threshold = 250              # define population threshold for screening
 xwalk_filter <- dbGetQuery(conn, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, " AS assm_geoid FROM crosswalks.", assm_xwalk))
 
 ##### GET SUB GEOLEVEL POP DATA ###
-pop <- update_detailed_table(vars = vars_list_acs, yr = acs_yr, srvy = survey)  # subgeolevel pop
+pop <- update_detailed_table(vars = vars_list_dp05, yr = acs_yr, srvy = survey)  # subgeolevel pop
 
 # get SWANA pop
 vars_list_acs_swana <- get_swana_var(acs_yr, survey)
@@ -182,7 +195,7 @@ pop_threshold = 250              # define population threshold for screening
 xwalk_filter <- dbGetQuery(conn, paste0("SELECT geo_id AS ct_geoid, ", sen_geoid, " AS sen_geoid FROM crosswalks.", sen_xwalk))
 
 ##### GET SUB GEOLEVEL POP DATA ###
-pop <- update_detailed_table(vars = vars_list_acs, yr = acs_yr, srvy = survey)  # subgeolevel pop
+pop <- update_detailed_table(vars = vars_list_dp05, yr = acs_yr, srvy = survey)  # subgeolevel pop
 
 # get SWANA pop
 pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = acs_yr, srvy = survey) %>% 
@@ -252,7 +265,7 @@ places <- xwalk_filter %>%
   select(c(place_geoid, place_name)) %>% unique()
 
 ##### GET SUB GEOLEVEL POP DATA ###
-pop <- update_detailed_table(vars = vars_list_acs, yr = acs_yr, srvy = survey)  # subgeolevel pop
+pop <- update_detailed_table(vars = vars_list_dp05, yr = acs_yr, srvy = survey)  # subgeolevel pop
 
 # get SWANA pop
 pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = acs_yr, srvy = survey) %>% as.data.frame() %>%
@@ -298,11 +311,11 @@ survey <- "acs5"                  # define which Census survey you want
 pop_threshold = 250               # define population threshold for screening
 
 ##### CREATE COUNTY GEOID & NAMES TABLE ######  You will NOT need this chunk if your indicator data table has target geolevel names already
-targetgeo_names <- county_names(var_list = vars_list_acs, yr = acs_yr, srvy = survey)
+targetgeo_names <- county_names(var_list = vars_list_dp05, yr = acs_yr, srvy = survey)
 
 
 ##### GET SUB GEOLEVEL POP DATA ###
-pop <- update_detailed_table(vars = vars_list_acs, yr = acs_yr, srvy = survey)  # subgeolevel pop
+pop <- update_detailed_table(vars = vars_list_dp05, yr = acs_yr, srvy = survey)  # subgeolevel pop
 
 pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = acs_yr, srvy = survey) %>% 
   as.data.frame() %>%
@@ -335,7 +348,7 @@ wa <- wa %>% left_join(targetgeo_names, by = "target_id") %>%
 
 ############# STATE CALCS ##################
 # get and prep state pop
-ca_pop_wide <- state_pop(vars = vars_list_acs, vars2 = vars_list_acs_swana, yr = acs_yr, srvy = survey)
+ca_pop_wide <- state_pop(vars = vars_list_dp05, vars2 = vars_list_acs_swana, yr = acs_yr, srvy = survey)
 
 # calc state wa
 ca_pct_df <- ca_pop_pct(ca_pop_wide)
