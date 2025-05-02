@@ -259,7 +259,7 @@ ca_pct_df <- ca_pop_pct(ca_pop_wide)
 ca_wa <- ca_wt_avg(ca_pct_df) %>% mutate(geolevel = 'state')   # add geolevel type
 
 
-############ JOIN CITY, COUNTY & STATE WA TABLES  ##################
+############ JOIN CITY, LEG DISTRICT, COUNTY & STATE WA TABLES  ##################
 wa_all <- union(wa, ca_wa) %>% union(city_wa) %>% union(assm_wa) %>% union(sen_wa)
 wa_all <- rename(wa_all, geoid = target_id, geoname = target_name)   # rename columns for RC functions
 wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid)# move geoname column
