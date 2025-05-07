@@ -247,13 +247,18 @@ county_table <- calc_ranks(county_table)
 county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
+# remove columns not going on API
+county_table<- county_table %>% select(-ends_with("_reg")) %>% select(-ends_with("_va_pop"))
+state_table<- state_table %>% select(-ends_with("_reg")) %>% select(-ends_with("_va_pop"))
+
 ###update info for postgres tables###
 county_table_name <- paste0("arei_demo_registered_voters_county_", rc_yr)
 state_table_name <- paste0("arei_demo_registered_voters_state_", rc_yr)
 
-indicator <- paste0("Created on ", Sys.Date(), ". "Annual average percent of registered voters among the citizen voting age population.")
+indicator <- paste0("Created on ", Sys.Date(), ". Annual average percent of registered voters among the citizen voting age population.")
 
 source <- paste0("CPS (", paste(cps_yr, collapse = ", "), ") average https://www.census.gov/topics/public-sector/voting/data.html")
+
 
 #send tables to postgres
 #to_postgres(county_table, state_table)
