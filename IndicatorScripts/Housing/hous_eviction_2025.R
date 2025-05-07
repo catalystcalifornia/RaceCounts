@@ -114,8 +114,8 @@ pop_threshold <- 200              # define minimum pop threshold for pop screen
 vars_list_custom <- c("B25003_003", "B25003B_003", "B25003C_003", "B25003D_003", "B25003E_003", "B25003F_003", "B25003G_003", "B25003H_003", "B25003I_003")
 
 targetgeo_names <- county_names(var_list = vars_list_custom, yr = year, srvy = survey)
-targetgeo_names <- select(as.data.frame(targetgeo_names), target_id = GEOID, target_name = NAME) %>%   # get targetgeolevel names
-  mutate(target_name = sub(" County, California", "", target_name))           # rename columns
+# targetgeo_names <- select(as.data.frame(targetgeo_names), target_id = GEOID, target_name = NAME) %>%   # get targetgeolevel names
+#   mutate(target_name = sub(" County, California", "", target_name))           # rename columns #comment out for now while I try to debug
 targetgeo_names <- distinct(targetgeo_names, .keep_all = FALSE)                                        # keep only unique rows, 1 per target geo
 #####
 
@@ -154,7 +154,6 @@ pop_df <- e %>% left_join(c, by = "target_id")
 ind_df <- ind_df %>% left_join(pop_df %>% select(sub_id, total_sub_pop), by = "sub_id") %>% 
   mutate(indicator = (avg_eviction / total_sub_pop) * 100)
 ind_df <- ind_df %>% ungroup() %>% select(sub_id, indicator) 
-
 
 ##### COUNTY WEIGHTED AVG CALCS ######
 pct_df <- pop_pct(pop_df)   # calc pct of target geolevel pop in each sub geolevel
@@ -206,11 +205,11 @@ survey <- "acs5"                  # define which Census survey you want
 pop_threshold = 200               # define population threshold for screening
 
 
-### CT-Place Crosswalk ### ---------------------------------------------------------------------
-## pull in TIGER Places ## -- Commenting out the xwalk calcs after xwalk was exported to postgres
+# ### CT-Place Crosswalk ### ---------------------------------------------------------------------
+# ## pull in TIGER Places ## -- Commenting out the xwalk calcs after xwalk was exported to postgres
 # places <- places(state = 'CA', year = 2017) %>% select(-c(STATEFP, PLACEFP, PLACENS, LSAD, CLASSFP, PCICBSA, PCINECTA, MTFCC, FUNCSTAT, ALAND, AWATER))
 # tracts <- tracts(state = 'CA', year = 2017) %>% mutate(county_geoid = paste0(STATEFP, COUNTYFP)) %>%
-#   select(-c(STATEFP, COUNTYFP, TRACTCE, NAME, NAMELSAD, MTFCC, FUNCSTAT, ALAND, AWATER)) 
+#   select(-c(STATEFP, COUNTYFP, TRACTCE, NAME, NAMELSAD, MTFCC, FUNCSTAT, ALAND, AWATER))
 # 
 # ## spatial join ##
 # places_3310 <- st_transform(places, 3310) # change projection to 3310
@@ -219,12 +218,12 @@ pop_threshold = 200               # define population threshold for screening
 # tracts_3310$area <- st_area(tracts_3310)
 # places_3310$pl_area <- st_area(places_3310)
 # # rename geoid fields
-# tracts_3310 <- tracts_3310%>% 
+# tracts_3310 <- tracts_3310%>%
 #   rename("ct_geoid" = "GEOID")
-# places_3310 <- places_3310%>% 
+# places_3310 <- places_3310%>%
 #   rename("place_geoid" = "GEOID", "place_name" = "NAME")
 # # run intersect
-# tracts_places <- st_intersection(tracts_3310, places_3310) 
+# tracts_places <- st_intersection(tracts_3310, places_3310)
 # # create ct_place combo geoid field
 # tracts_places$ct_place_geoid <- paste(tracts_places$place_geoid, tracts_places$ct_geoid, sep = "_")
 # # calculate area of intersect
@@ -243,33 +242,33 @@ pop_threshold = 200               # define population threshold for screening
 # xwalk_filter <- xwalk %>% filter(prc_area >= threshold | prc_pl_area >= threshold)
 # names(xwalk_filter) <- tolower(names(xwalk_filter)) # make col names lowercase
 # xwalk_filter <- select(xwalk_filter, ct_place_geoid, ct_geoid, place_geoid, county_geoid, place_name, namelsad, area, pl_area, intersect_area, prc_area, prc_pl_area)
-
-# export xwalk table
+# 
+# # export xwalk table
 # table_name <- "ct_place_2017"
 # table_schema <- "crosswalks"
-# table_comment_source <- "Created with W:\\Project\\RACE COUNTS\\2023_v5\\RC_Github\\RaceCounts\\IndicatorScripts\\Housing\\hous_eviction_2023.R and based on 2017 ACS TIGER non-CBF shapefiles.
+# table_comment_source <- "Created with W:\\Project\\RACE COUNTS\\2023_v7\\RC_Github\\RaceCounts\\IndicatorScripts\\Housing\\hous_eviction_2023.R and based on 2017 ACS TIGER non-CBF shapefiles.
 #     CTs with 25% or more of their area within a city or that cover 25% or more of a city''s area are assigned to those cities.
 #     As a result, a CT can be assigned to more than one city"
-
-# make character vector for field types in postgresql db
+# 
+# # make character vector for field types in postgresql db
 # charvect = rep('numeric', dim(xwalk_filter)[2])
-
-# change data type for first three columns
+# 
+# # change data type for first three columns
 # charvect[1:6] <- "varchar" # first 6 are character for the geoid and names etc
-
-# add names to the character vector
+# 
+# # add names to the character vector
 # names(charvect) <- colnames(xwalk_filter)
-
+# 
 # dbWriteTable(con, c(table_schema, table_name), xwalk_filter,
 #             overwrite = FALSE, row.names = FALSE,
 #             field.types = charvect)
-
-# write comment to table, and the first three fields that won't change.
+# 
+# # write comment to table, and the first three fields that won't change.
 # table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ".", "';")
-
-# send table comment to database
-#dbSendQuery(conn = con, table_comment)      			
-
+# 
+# # send table comment to database
+# dbSendQuery(conn = con, table_comment)
+# 
 # crosswalk <- xwalk_filter
 
 crosswalk <- st_read(con, query = "SELECT * FROM crosswalks.ct_place_2017") # comment out code above after xwalk is created and pull in postgres table instead.
@@ -336,7 +335,6 @@ pop_wide <- to_wide(pop)
 pop_wide <- as.data.frame(pop_wide) %>% right_join(select(xwalk_filter, c(ct_geoid, assm_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = assm_geoid) # rename to generic column names for WA functions
 
-
 ##### CUSTOMIZED VERSION OF TAR# calc target geolevel pop and number of sub geolevels per target geolevel
 # calc target geolevel pop and number of sub geolevels per target geolevel
 
@@ -400,7 +398,6 @@ pop_wide <- to_wide(pop)
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
 pop_wide <- as.data.frame(pop_wide) %>% right_join(select(xwalk_filter, c(ct_geoid, sen_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = sen_geoid) # rename to generic column names for WA functions
-
 
 ##### CUSTOMIZED VERSION OF TAR# calc target geolevel pop and number of sub geolevels per target geolevel
 # calc target geolevel pop and number of sub geolevels per target geolevel
@@ -502,15 +499,46 @@ city_table <- calc_ranks(city_table)
 city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") 
 View(city_table)
 
+#split LEG DISTRICTS into separate tables and format id, name columns
+upper_table <- d[d$geolevel == 'sldu', ]
+lower_table <- d[d$geolevel == 'sldl', ]
+
+#calculate SLDU z-scores
+upper_table <- calc_z(upper_table)
+
+## Calc SLDU ranks##
+upper_table <- calc_ranks(upper_table)
+View(upper_table)
+
+#calculate SLDL z-scores
+lower_table <- calc_z(lower_table)
+
+## Calc SLDL ranks##
+lower_table <- calc_ranks(lower_table)
+View(lower_table)
+
+## Bind sldu and sldl tables into one leg_table##
+leg_table <- rbind(upper_table, lower_table)
+View(leg_table)
+
+#rename geoid to state_id, county_id, city_id
+colnames(state_table)[1:2] <- c("state_id", "state_name")
+colnames(county_table)[1:2] <- c("county_id", "county_name")
+colnames(city_table)[1:2] <- c("city_id", "city_name")
+colnames(leg_table)[1:2] <- c("leg_id", "leg_name")
+
 ###update info for postgres tables###
-county_table_name <- "arei_hous_eviction_filing_rate_county_2023"
-state_table_name <- "arei_hous_eviction_filing_rate_state_2023"
-city_table_name <- "arei_hous_eviction_filing_rate_city_2023"
+county_table_name <- paste0("arei_hous_eviction_filing_rate_county_", rc_yr)
+state_table_name <- paste0("arei_hous_eviction_filing_rate_state_", rc_yr)
+city_table_name <- paste0("arei_hous_eviction_filing_rate_city_", rc_yr)
+leg_table_name <- paste0("arei_hous_eviction_filing_rate_leg_", rc_yr)
+
 indicator <- "Rate of eviction filings per 100 renter households (weighted average) - annual average from 2014-2017. The data is"
 source <- "the (2000-2017) valid proprietary tract-level data downloaded from the Eviction Lab with ACS 2013-2017. https://data-downloads.evictionlab.org/#data-for-analysis/"
-rc_schema <- 'v5'
+rc_schema <- 'v7'
 
 #send tables to postgres
-#to_postgres(county_table, state_table)
-#city_to_postgres(city_table)
-
+# to_postgres(county_table, state_table)
+# city_to_postgres(city_table)
+# leg_to_postgres(leg_table)
+# dbDisconnect(con)

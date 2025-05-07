@@ -1,6 +1,6 @@
 # B25014: Overcrowded Housing for RC v7
 #install packages if not already installed
-packages <- c("dplyr","data.table","tidycensus","sf","DBI","RPostgres","RPostgreSQL","stringr","tidyr","tigris","usethis")  
+packages <- c("dplyr","data.table","tidycensus","sf","DBI","RPostgres","RPostgreSQL","stringr","tidyr","tigris","usethis", "here")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
