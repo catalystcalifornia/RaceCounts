@@ -1,6 +1,6 @@
 ## Homeownership for RC v7 ##
 #install packages if not already installed
-packages <- c("dplyr","data.table","tidycensus","sf","DBI","RPostgres","RPostgreSQL","stringr","tidyr","tigris","usethis")  
+packages <- c("dplyr","data.table","tidycensus","sf","DBI","RPostgres","RPostgreSQL","stringr","tidyr","tigris","usethis", "here")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -41,11 +41,11 @@ df_wide_multigeo$name <- str_remove(df_wide_multigeo$name,  "\\s*\\(.*\\)\\s*") 
 df_wide_multigeo$name <- gsub("; California", "", df_wide_multigeo$name)
 
 ############## Pre-RC CALCS ##############
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
+source(".\\Functions\\rdashared_functions.R")
 
 df <- prep_acs(df_wide_multigeo, table_code, cv_threshold, pop_threshold)
 
-df_screened <- dplyr::select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"), -ends_with("_cv"))
+df_screened <- dplyr::select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("003m"), -ends_with("003e"), -ends_with("_cv"))
 
 d <- df_screened
 
