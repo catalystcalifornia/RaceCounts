@@ -1,5 +1,5 @@
 #install packages if not already installed
-list.of.packages <- c("RPostgreSQL","DBI","tidyverse","tidycensus","usethis","httr","janitor","hablar")
+list.of.packages <- c("RPostgres","DBI","tidyverse","tidycensus","usethis","httr","janitor","hablar")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 
 ### load packages
