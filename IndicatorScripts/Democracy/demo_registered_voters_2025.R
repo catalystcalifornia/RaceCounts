@@ -25,37 +25,38 @@ rc_yr <- 2025
 rc_schema <- 'v7'
 
 # Get Latest Data: Comment out after data has been exported to postgres ####
- metadata <-"https://www2.census.gov/programs-surveys/cps/techdocs/cpsnov24.pdf"           # update each year
- filepath = "https://www2.census.gov/programs-surveys/cps/datasets/2024/supp/nov24pub.csv" # update each year
- fieldtype = 1  # confirm using metadata link
- ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
- table_schema <- "democracy"
- table_name <- paste0("cps_voting_supplement_", tail(cps_yr, n=1))
-
- table_comment_source <- "NOTE: Geoid fields (gestfips, gtcbsa, gtcco, tco, gtcsa) are missing leading zeroes"
- table_source <- paste0("CPS Voting Supplement data downloaded ", Sys.Date(), " from https://www.census.gov/data/datasets/time-series/demo/cps/cps-supp_cps-repwgt.html. Metadata here: ", metadata)
-
- df <- read_csv(file = filepath, na = c("*", "")) %>% filter(GESTFIPS == 6)
- names(df) <- tolower(names(df)) # make col names lowercase
-
- ##  WRITE TABLE TO POSTGRES DB ##
- # make character vector for field types in postgres table
- charvect = rep('numeric', dim(df)[2])
- charvect[fieldtype] <- "varchar" # specify which cols are varchar, the rest will be numeric
-
- # add names to the character vector
- names(charvect) <- colnames(df)
-
- dbWriteTable(con2, c(table_schema, table_name), df,
-              overwrite = FALSE, row.names = FALSE,
-              field.types = charvect)
-
-# # write comment to table, and the first three fields that won't change.
-# table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
-#
-# # send table comment to database
-# dbSendQuery(conn = con2, table_comment)
-
+ # metadata <-"https://www2.census.gov/programs-surveys/cps/techdocs/cpsnov24.pdf"           # update each year
+ # filepath = "https://www2.census.gov/programs-surveys/cps/datasets/2024/supp/nov24pub.csv" # update each year
+ # fieldtype = 1  # confirm using metadata link
+ # ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+ # table_schema <- "democracy"
+ # table_name <- paste0("cps_voting_supplement_", tail(cps_yr, n=1))
+ # 
+ # table_comment_source <- "NOTE: Geoid fields (gestfips, gtcbsa, gtcco, tco, gtcsa) are missing leading zeroes"
+ # table_source <- paste0("CPS Voting Supplement data downloaded ", Sys.Date(), " from https://www.census.gov/data/datasets/time-series/demo/cps/cps-supp_cps-repwgt.html. Metadata here: ", metadata)
+ # 
+ # df <- read_csv(file = filepath, na = c("*", "")) %>% filter(GESTFIPS == 6)
+ # names(df) <- tolower(names(df)) # make col names lowercase
+ # 
+ # ##  WRITE TABLE TO POSTGRES DB ##
+ # # make character vector for field types in postgres table
+ # charvect = rep('numeric', dim(df)[2])
+ # charvect[fieldtype] <- "varchar" # specify which cols are varchar, the rest will be numeric
+ # 
+ # # add names to the character vector
+ # names(charvect) <- colnames(df)
+ # 
+ # # write table
+ # dbWriteTable(con2, Id(table_schema, table_name), df, overwrite = FALSE, row.names = FALSE)
+ # 
+ # # write comment to table, and the first three fields that won't change.
+ # table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
+ # 
+ # # send table comment to database
+ # dbBegin(con2)
+ # dbExecute(con2, table_comment)
+ # dbCommit(con2)
+ 
 # Pull in all data years from postgres --------------------------------------------------------------
 ## Pre-2020 data
 table_list <- dbGetQuery(con, "SELECT table_name FROM information_schema.tables WHERE table_schema='data'")
