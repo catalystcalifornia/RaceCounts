@@ -313,7 +313,7 @@ county_table_name <- paste0("arei_hlth_low_birthweight_county_",rc_yr)
 state_table_name <- paste0("arei_hlth_low_birthweight_state_",rc_yr)
 
 indicator <- paste0("Percentage of infants born at low birthweight (less than 2,500 grams or about 5lbs. 5oz) of all live births, by race/ethnicity of mother. This data is")
-source <- paste0("US Department of Health and Human Services, Centers for Disease Control and Prevention (CDC), National Center for Health Statistics, Division of Vital Statistics, CDC WONDER Online Database (",curr_yr,"): https://wonder.cdc.gov/natality-expanded-current.html. Races include: Total, All AIAN, All NHPI, All SWANA, Latinx of any race, NH Black Alone, NH White Alone, NH Asian Alone, NH Two or More Races. QA doc: ", qa_filepath)
+source <- paste0("US Department of Health and Human Services, Centers for Disease Control and Prevention (CDC), National Center for Health Statistics, Division of Vital Statistics, CDC WONDER Online Database (",curr_yr,"): https://wonder.cdc.gov/natality-expanded-current.html. Races include: Total, All AIAN, All NHPI, All SWANA, Latinx of any race, NH Black Alone, NH White Alone, NH Asian Alone, NH Two or More Races. SWANA includes only foreign-born birthing parents. SWANA mothers birth country selected based on W:\\RDA Team\\R\\Github\\RDA Functions\\main\\RDA-Functions\\SWANA_Ancestry_List.R. QA doc: ", qa_filepath)
 
 #send tables to postgres
 # to_postgres(county_table, state_table)
