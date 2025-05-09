@@ -192,7 +192,7 @@ loans_1 <- lapply(loans_1, function(x)
 
 # check for loans that do not match to 2020 tracts
 loans_nomatch <- lapply(loans_1, function(x) x %>% filter(is.na(county_id)) %>% group_by(census_tract) %>% summarise(count = n()))
-## There is 1 tract that does not match (06037137000 a 2020 tract) with about 140 rows across 2019-21. There are also rows where census_tract is NA.
+## There is 1 tract that does not match (06037137000 which is a 2020 tract) with about 140 rows across 2019-21. There are also rows where census_tract is NA.
 ## Added manual fix above to assign GEOID_TRACT_20 06037137000 for rows with census_tract 06037137000.
 
 loans_1 <- lapply(loans_1, function(x) x %>% 
