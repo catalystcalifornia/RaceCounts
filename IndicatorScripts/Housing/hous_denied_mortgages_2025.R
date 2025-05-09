@@ -213,7 +213,7 @@ denied_1 <- lapply(denied_1, function(x)
 
 # check for denied mtg that do not match to 2020 tracts
 denied_nomatch <- lapply(denied_1, function(x) x %>% filter(is.na(county_id)) %>% group_by(census_tract) %>% summarise(count = n()))
-## There is 1 tract that does not match (06037137000 a 2020 tract) with about 140 rows across 2019-21. There are also rows where census_tract is NA.
+## There is 1 tract that does not match (06037137000 which is a 2020 tract) with about 140 rows across 2019-21. There are also rows where census_tract is NA.
 ## Added manual fix above to assign GEOID_TRACT_20 06037137000 for rows with census_tract 06037137000.
 
 ## manual fix due to the 2019-21 rows that are assigned to 2020 tracts
@@ -278,8 +278,7 @@ get_raced_hmda <- function(z, geoid, geolevel, suffix) { # get raced and total l
   
   # add specified suffix to colnames except place_geoid
   joined <- joined %>% rename_at(vars(-c({{geoid}})), ~paste0(., suffix)) %>% mutate(geolevel = {{geolevel}})
-  #joined <- joined %>% mutate(geolevel = {{geolevel}})
-  
+
   return(joined)
 }
 
@@ -475,7 +474,9 @@ df_pct <- df_combined %>%
 
 #View(df_pct)
 
-d <- select(df_pct, geoid, geoname, geolevel, ends_with("_originated"), ends_with("_rate"), ends_with("_raw")) %>% as.data.frame()  
+d <- select(df_pct, geoid, geoname, geolevel, ends_with("_originated"), ends_with("_rate"), ends_with("_raw")) %>%
+  select(-c(starts_with("nh_twoormor_"))) %>%      # drop two+ bc HMDA is two+ "minority" races and does not match with ACS denominator
+  as.data.frame()  
 
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
