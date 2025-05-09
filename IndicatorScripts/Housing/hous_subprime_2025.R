@@ -1,9 +1,9 @@
-## Subprime Mortgage Loans for RC v5 ##
+## Subprime Mortgage Loans for RC v7 ##
 
 ## Set up ----------------------------------------------------------------
 ## install packages if not already installed ------------------------------
 packages <- c("openxlsx","tidyr","dplyr","stringr", "DBI", "RPostgres","data.table", "openxlsx", "tidycensus", "tidyverse", 
-              "janitor","httr", "readxl","RPostgreSQL","sf","DBI","usethis","rvest","tigris","jsonlite","rlist","curl")
+              "janitor","httr", "readxl","sf","DBI","usethis","rvest","tigris","jsonlite","rlist","curl")
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
 if(length(install_packages) > 0) { 
@@ -25,9 +25,11 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
 con2 <- connect_to_db("rda_shared_data")
 
-# update each year: variables used throughout script
-acs_yr <- 2017         # last yr of acs 5y span that matches hmda yrs
-hmda_yr <- '2014-2017' # hmda data yrs
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Sheet_Subprime.docx"
+
+# update each year: variables used throughou
+xwalk_yr <- 2020       # vintage of final shapes for analysis, eg: places, leg districts NOT vintage of the data
+hmda_yr <- '2013-2017' # hmda data yrs
 rc_schema <- 'v7'
 rc_yr <- '2025'
 
@@ -84,7 +86,7 @@ df_applications$ct_geoid = gsub("\\.", "", df_applications$ct_geoid)
 ###### SUBPRIME DATA ##### -------------------------------------------------------------------------
 # # Import subprime data
 # subprime_mortgages <- dbGetQuery(con, "SELECT * FROM data.hmda_2017_5yr_subprime_mortgages")
-#
+
 # # Add Census Tract GEOID Column -------------------------------------------
 # ### first explored subprime tract numbers ### For ex: check if ct numbers are all same length or if some need leading/trailing zeros, some cts have decimals etc.
 # ### figured out trailing zeroes were missing bc when i ran the code below adding leading zeroes instead, there were no matches with the ct-place xwalk.
@@ -145,6 +147,26 @@ df_subprime <- dbGetQuery(con2, "SELECT * FROM housing.hmda_tract_subprime_mortg
 # Filter for home purchases, first lien, one-to-four family home, owner-occupied, Loan originated --------
 df_subprime <- df_subprime %>% filter(lien_status == "1" & property_type == "1" & loan_purpose == "1" & owner_occupancy == "1" & action_taken %in% c("1"))
 
+
+# Convert data from 2010 CT's to 2020 CT's ------------------------------
+cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
+  select(GEOID_TRACT_10, NAMELSAD_TRACT_10, AREALAND_TRACT_10, GEOID_TRACT_20, NAMELSAD_TRACT_20, AREALAND_TRACT_20, AREALAND_PART) %>%
+  mutate_at(vars(contains("AREALAND")), function(x) as.numeric(x)) %>%
+  # calculate overlapping land area of 2010 and 2020 tracts (AREALAND_PART) as a percent of 2020 tract land area (AREALAND_TRACT_20)
+  mutate(prc_overlap=AREALAND_PART/AREALAND_TRACT_10, # pct of 2010 tract that is in 2020 tract to ensure 100% of 2010 loans are assigned to 2020 tracts  
+         county_id = substr(GEOID_TRACT_20,1,5))
+
+df_applications20 <- df_applications %>%
+  left_join(cb_tract_2010_2020, by = c("ct_geoid"="GEOID_TRACT_10"), relationship = "many-to-many") %>%
+  # Allocate data from 2010 tracts to 2020 using prc_overlap
+  rename("wt_val"="prc_overlap")		# 2020 data value set to pct_overlap bc data was converted from 2010 tracts
+
+df_subprime20 <- df_subprime %>%
+  left_join(cb_tract_2010_2020, by = c("ct_geoid"="GEOID_TRACT_10"), relationship = "many-to-many") %>%
+  # Allocate data from 2010 tracts to 2020 using prc_overlap
+  rename("wt_val"="prc_overlap")		# 2020 data value set to pct_overlap bc data was converted from 2010 tracts
+
+
 # Function to aggregate data for total and by race  -----------------------
 #### data dictionary: https://files.consumerfinance.gov/hmda-historic-data-dictionaries/lar_record_codes.pdf
 calculations <- function(df,geoid,column) {
@@ -183,11 +205,13 @@ calculations <- function(df,geoid,column) {
 # City Calculations -------------------------------------------------------
 # merge applications and subprime with crosswalk
 ## This is a many-to-many join because a census tract can belong in multiple places.
-crosswalk_2017 <- dbGetQuery(con2, "SELECT place_geoid, place_name, ct_geoid FROM crosswalks.ct_place_2017") # there are 1,522 unique cities
-df_applications_crosswalk <- df_applications %>% right_join(crosswalk_2017) # join keeping only ct's that are in xwalk
-subprime_mortgages_crosswalk <- df_subprime %>% right_join(crosswalk_2017) # join keeping only ct's that are in xwalk
+# set source for Crosswalk Function script
+source("./Functions/RC_CT_Place_Xwalk.R")
+xwalk_city <- make_ct_place_xwalk(xwalk_yr) # must specify which data year
+applications_crosswalk <- df_applications20 %>% right_join(xwalk_city) # join keeping only ct's that are in xwalk
+subprime_mortgages_crosswalk <- df_subprime20 %>% right_join(xwalk_city)  # join keeping only ct's that are in xwalk
 
-applications_city <- calculations(df = df_applications_crosswalk, geoid =  place_geoid, column = 'applications')
+applications_city <- calculations(df = applications_crosswalk, geoid = place_geoid, column = 'applications')
 subprime_city <- calculations(df = subprime_mortgages_crosswalk, geoid = place_geoid,  column = 'subprime')
 
 ## Combine applications with subprime
@@ -218,7 +242,7 @@ threshold <- 75
             geolevel = 'place') %>% rename(geoid = place_geoid)
 
 # merge with city and name
-city_list <- places(state = 'CA', year = 2017, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, LSAD, ALAND, AWATER)) %>% st_drop_geometry()
+city_list <- places(state = 'CA', year = xwalk_yr, cb = TRUE) %>% select(c(GEOID, NAME)) %>% st_drop_geometry()
 df_city <- df_city %>% left_join(city_list, by=c("geoid" = "GEOID")) %>% rename(geoname = NAME) %>% select(geoid, geoname, geolevel, everything())
 
 
@@ -345,7 +369,7 @@ census_api_key(census_key1, overwrite=TRUE)
 assm_name <- get_acs(geography = "State Legislative District (Lower Chamber)", 
                      variables = c("B01001_001"), 
                      state = "CA", 
-                     year = acs_yr)
+                     year = xwalk_yr)
 
 assm_name <- assm_name[,1:2]
 assm_name$NAME <- str_remove(assm_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
@@ -422,7 +446,7 @@ census_api_key(census_key1, overwrite=TRUE)
 sen_name <- get_acs(geography = "State Legislative District (Upper Chamber)", 
                      variables = c("B01001_001"), 
                      state = "CA", 
-                     year = acs_yr)
+                     year = xwalk_yr)
 
 sen_name <- sen_name[,1:2]
 sen_name$NAME <- str_remove(sen_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
@@ -515,11 +539,9 @@ county_table_name <- paste0("arei_hous_subprime_county_", rc_yr)
 state_table_name <- paste0("arei_hous_subprime_state_", rc_yr)
 city_table_name <- paste0("arei_hous_subprime_city_", rc_yr)
 leg_table_name <- paste0("arei_hous_subprime_leg_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
-start_yr <- acs_yr-4
 
 indicator <- paste0(" Number of higher priced Loans Per 100 Loans Originated. Subgroups with fewer than ", threshold, " loans originated are excluded")                # See most recent Indicator Methodology for indicator description
-source <- paste0("HMDA historic Data: https://www.consumerfinance.gov/data-research/hmda/historic-data/, however Subprime data is not available here.")   # See most recent Indicator Methodology for source info
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Sheet_Subprime.docx"
+source <- paste0("HMDA historic Data (", hmda_yr, "): https://www.consumerfinance.gov/data-research/hmda/historic-data/, however Subprime data is not available here.")   # See most recent Indicator Methodology for source info
 
 #send to postgres
 #to_postgres(county_table, state_table)
