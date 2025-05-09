@@ -1,26 +1,38 @@
-#install packages if not already installed
-list.of.packages <- c("RPostgres","DBI","tidyverse","tidycensus","usethis","httr","janitor","hablar")
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+### Registered Voters RC v7 ###
 
-### load packages
-library(RPostgres)
-library(DBI)
-library(tidyverse)
-library(tidycensus)
-library(usethis)
-library(httr) # connect to CPS API
-library(janitor) # set row 1 to colnames
-library(hablar) # sum_() returns NA when all NA, ignores NA when at least 1 non-NA value
+##install packages if not already installed ------------------------------
+packages <- c("RPostgres","DBI","tidyverse","tidycensus","usethis","httr","janitor","hablar")
+install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
-# Set Sources --------------------------------------------------------------
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/democracy_functions.R")
+if(length(install_packages) > 0) { 
+  install.packages(install_packages) 
+  
+} else { 
+  
+  print("All required packages are already installed.") 
+} 
+
+for(pkg in packages){ 
+  library(pkg, character.only = TRUE) 
+} 
+
+#httr # connect to CPS API
+#janitor # set row 1 to colnames
+#hablar # sum_() returns NA when all NA, ignores NA when at least 1 non-NA value
+
+options(scipen=999)
+
+
+###### SET UP WORKSPACE #######
+source("./Functions/democracy_functions.R")
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
 con2 <- connect_to_db("rda_shared_data")
 census_api_key(census_key1)
 
 # Update variables used throughout each year --------------------------------------------------------------
-cps_yr <- c('2012', '2014', '2016', '2018', '2020', '2022', '2024')
+cps_yr <- c('2012', '2014', '2016', '2018', '2020', '2022', '2024')  # CPS data years
+acs_yr <- 2020                                                       # data yr for final geographies
 rc_yr <- 2025
 rc_schema <- 'v7'
 
@@ -190,14 +202,17 @@ final_df_screened <- final_df %>%
 
 
 # Convert any NaN values to NA
-final_df_screened <- final_df_screened %>% mutate(across(everything(), gsub, pattern = NaN, replacement = NA))
+final_df_screened <- final_df_screened %>% 
+  mutate(across(everything(), gsub, pattern = NaN, replacement = NA))
+
+names(final_df_screened) <- gsub("num_", "", names(final_df_screened))
 
 # #get census geoids ------------------------------------------------------
 
 ca <- get_acs(geography = "county", 
               variables = c("B01001_001"), 
               state = "CA", 
-              year = 2020)
+              year = acs_yr)
 
 ca <- ca[,1:2]
 ca$NAME <- gsub(" County, California", "", ca$NAME)
@@ -208,15 +223,18 @@ df <- merge(x=ca,y=final_df_screened,by="geoid", all=T)
 #add state geoname
 df$geoname[is.na(df$geoname)] <- "California"
 
+# add geolevel
+df$geolevel <- ifelse(df$geoname == 'California', 'state', 'county')
+
 # make d 
-d <- df %>% mutate(across(-c(geoid, geoname), as.numeric))
+d <- df %>% mutate(across(-c(geoid, geoname, geolevel), as.numeric))
 
 ############## CALC RACE COUNTS STATS ##############
 ############ To use the following RC Functions, 'd' will need the following columns at minimum: 
 ############ geoid and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
 #set source for RC Functions script
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
+source("./Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
@@ -248,15 +266,14 @@ county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
 # remove columns not going on API
-county_table<- county_table %>% select(-ends_with("_reg")) %>% select(-ends_with("_va_pop"))
-state_table<- state_table %>% select(-ends_with("_reg")) %>% select(-ends_with("_va_pop"))
+county_table <- county_table %>% select(-ends_with("_reg")) 
+state_table <- state_table %>% select(-ends_with("_reg")) 
 
 ###update info for postgres tables###
 county_table_name <- paste0("arei_demo_registered_voters_county_", rc_yr)
 state_table_name <- paste0("arei_demo_registered_voters_state_", rc_yr)
 
-indicator <- paste0("Created on ", Sys.Date(), ". Annual average percent of registered voters among the citizen voting age population.")
-
+indicator <- paste0("Annual average percent of registered voters among the citizen voting age population.")
 source <- paste0("CPS (", paste(cps_yr, collapse = ", "), ") average https://www.census.gov/topics/public-sector/voting/data.html")
 
 
