@@ -192,6 +192,7 @@ loans_1 <- lapply(loans_1, function(x)
 
 # check for loans that do not match to 2020 tracts
 loans_nomatch <- lapply(loans_1, function(x) x %>% filter(is.na(county_id)) %>% group_by(census_tract) %>% summarise(count = n()))
+
 ## There is 1 tract that does not match (06037137000 which is a 2020 tract) with about 140 rows across 2019-21. There are also rows where census_tract is NA.
 ## Added manual fix above to assign GEOID_TRACT_20 06037137000 for rows with census_tract 06037137000.
 
@@ -371,6 +372,7 @@ denied_all_assm <- lapply(denied_all, function(x) x %>% right_join(select(xwalk_
 # get raced data and add column suffixes
 loans_assm <- get_raced_hmda(loans_all_assm, assm_geoid, "sldl", "_originated")
 denied_assm <- get_raced_hmda(denied_all_assm, assm_geoid, "sldl", "_denied")
+
 
 # merge loan and denied dfs
 assm_join <- left_join(loans_assm, denied_assm, by = c("assm_geoid", "geolevel")) %>%
