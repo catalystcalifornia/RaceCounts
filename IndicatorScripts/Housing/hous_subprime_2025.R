@@ -29,11 +29,12 @@ con2 <- connect_to_db("rda_shared_data")
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Sheet_Subprime.docx"
 
 # update each year: variables used throughou
-xwalk_yr <- 2020       # vintage of final shapes for analysis, eg: places, leg districts NOT vintage of the data
-hmda_yr <- '2013-2017' # hmda data yrs
+xwalk_yr <- 2020            # vintage of final shapes for analysis, eg: places, leg districts NOT vintage of the data
+hmda_yr <- '2013-2017'      # hmda data yrs
 rc_schema <- 'v7'
 rc_yr <- '2025'
-threshold <- 75        # data for geos+race combos with < threshold are suppressed
+threshold <- 75             # data for geos+race combos with < threshold # of applications are suppressed
+sen_assm_threshold <- .25   # tracts with >= threshold % of tract pop w/i district OR district pop w/i tract are assigned to district 
 
 
 # may need to update each year: variables for state assm and senate calcs
@@ -326,13 +327,13 @@ xwalk_assm <- dbGetQuery(con2, paste0("SELECT * FROM crosswalks.", assm_xwalk)) 
   rename("assm_geoid" = {assm_geoid}, "geoid" = "geo_id")
 
 # keep ct-dist matches where % of tract pop in district OR % of dist pop in tract >= 25% (same as % area threshold used for tract-city xwalk)
-xwalk_assm <- filter(xwalk_assm, (afact >= .25 | afact2 >= .25))       
+xwalk_assm <- filter(xwalk_assm, (afact >= sen_assm_threshold | afact2 >= sen_assm_threshold))       
 
 applications_crosswalk <- df_applications20 %>%
-  right_join(xwalk_assm, by = c("ct_geoid" = "geoid"), relationship = "many-to-many")   # join keeping only ct's that are in xwalk
+  right_join(xwalk_assm, by = c("GEOID_TRACT_20" = "geoid"), relationship = "many-to-many")   # join keeping only ct's that are in xwalk
 
 subprime_crosswalk <- df_subprime20 %>%
-  right_join(xwalk_assm, by = c("ct_geoid" = "geoid"), relationship = "many-to-many")   # join keeping only ct's that are in xwalk
+  right_join(xwalk_assm, by = c("GEOID_TRACT_20" = "geoid"), relationship = "many-to-many")   # join keeping only ct's that are in xwalk
 
 applications_assm <- calculations(df = applications_crosswalk, geoid = assm_geoid, column = 'applications')
 
@@ -369,13 +370,13 @@ xwalk_sen <- dbGetQuery(con2, paste0("SELECT * FROM crosswalks.", sen_xwalk)) %>
   rename("sen_geoid" = {sen_geoid}, "geoid" = "geo_id")
 
 # keep ct-dist matches where % of tract pop in district OR % of dist pop in tract >= 25% (same as % area threshold used for tract-city xwalk)
-xwalk_sen <- filter(xwalk_sen, (afact >= .25 | afact2 >= .25))       
+xwalk_sen <- filter(xwalk_sen, (afact >= sen_assm_threshold | afact2 >= sen_assm_threshold))       
 
 applications_crosswalk <- df_applications20 %>%
-  right_join(xwalk_sen, by = c("ct_geoid" = "geoid"), relationship = "many-to-many")    # join keeping only ct's that are in xwalk
+  right_join(xwalk_sen, by = c("GEOID_TRACT_20" = "geoid"), relationship = "many-to-many")    # join keeping only ct's that are in xwalk
 
 subprime_crosswalk <- df_subprime20 %>%
-  right_join(xwalk_sen, by = c("ct_geoid" = "geoid"), relationship = "many-to-many")    # join keeping only ct's that are in xwalk
+  right_join(xwalk_sen, by = c("GEOID_TRACT_20" = "geoid"), relationship = "many-to-many")    # join keeping only ct's that are in xwalk
 
 applications_sen <- calculations(df = applications_crosswalk, geoid = sen_geoid, column = 'applications')
 
@@ -409,7 +410,7 @@ df_sen <- df_sen_merged %>%
 ### JOIN & SCREEN LEGISLATIVE, CITY, COUNTY & STATE TABLES ####
 df_final <- rbind(df_city, df_county_state, df_assm, df_sen)
 
-## screen out cities with < threshold loans originated then calculate rates
+## screen out geo+race combos with < threshold applications then calculate rates
 df_final <- df_final %>% mutate(
   total_raw = ifelse(total_applications < threshold, NA, total_subprime),
   nh_white_raw = ifelse(nh_white_applications < threshold, NA, nh_white_subprime),
