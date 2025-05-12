@@ -1,35 +1,35 @@
-### Connected Youth RC v6 ###
+### Connected Youth RC v7 ###
 
 #install packages if not already installed
-list.of.packages <- c("data.table","stringr","dplyr","RPostgreSQL","dbplyr","srvyr",
+packages <- c("data.table","stringr","dplyr","RPostgres","dbplyr","srvyr",
                       "tidycensus","tidyr","rpostgis", "here", "sf", "usethis")
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
 
-#Load libraries
-library(data.table)
-library(stringr)
-library(dplyr)
-library(RPostgreSQL)
-library(dbplyr)
-library(srvyr)
-library(tidycensus)
-library(tidyr)
-library(rpostgis)
-library(here)
-library(sf)
-library(usethis)
+install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
+
+if(length(install_packages) > 0) { 
+  install.packages(install_packages) 
+  
+} else { 
+  
+  print("All required packages are already installed.") 
+} 
+
+for(pkg in packages){ 
+  library(pkg, character.only = TRUE) 
+} 
 
 options(scipen = 100) # disable scientific notation
 
+
+###### SET UP WORKSPACE #######
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
 # define variables used throughout - update each year
-curr_yr <- 2022 
-rc_yr <- '2024'
-rc_schema <- 'v6'
+curr_yr <- 2023 
+rc_yr <- '2025'
+rc_schema <- 'v7'
 
 ##### GET PUMA-COUNTYCROSSWALKS ######
 # and rename fields to distinguish vintages
