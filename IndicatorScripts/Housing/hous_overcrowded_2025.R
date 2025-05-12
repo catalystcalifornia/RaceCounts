@@ -1,6 +1,8 @@
 # B25014: Overcrowded Housing for RC v7
 #install packages if not already installed
+
 packages <- c("dplyr","data.table","tidycensus","sf","DBI","RPostgres","RPostgreSQL","stringr","tidyr","tigris","usethis", "here")  
+
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -22,6 +24,7 @@ options(scipen=999)
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Sheet_Overcrowded_Housing.docx"
 
 ### Update these variables each year ###
 curr_yr = 2023 # you MUST UPDATE each year
@@ -128,7 +131,6 @@ start_yr <- curr_yr -4
 
 indicator <- " Overcrowded Housing Units (%) (> 1 person per room)"                         # See most recent Indicator Methodology for indicator description
 source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, Tables B25014B-I, https://data.census.gov/cedsci/") # See most recent Indicator Methodology for indicator description
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Sheet_Overcrowded_Housing.docx"
 
 ####### SEND TO POSTGRES #######
 # to_postgres(county_table,state_table)
