@@ -1,7 +1,7 @@
 ######### Eviction Filings for RC v7 #########
 
 ##install packages if not already installed ------------------------------
-packages <- c("dplyr", "data.table", "readxl", "tidycensus", "sf", "DBI", "RPostgres", "stringr", "tidyr", "tigris", "usethis", "readr", "rvest", "tidyverse", "stringr")  
+packages <- c("dplyr", "data.table", "readxl", "tidycensus", "sf", "DBI", "RPostgres", "stringr", "tidyr", "tigris", "usethis", "readr", "rvest", "tidyverse", "stringr", "here")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -26,7 +26,7 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
 #set source for RC Functions script
-source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
+source("W:/RDA Team/R/Github/RDA Functions/AB/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
 
 #set QA filepath
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Sheet_Eviction.docx"
@@ -38,7 +38,7 @@ df_orig <- fread("W:/Data/Housing/Eviction Lab/2000-2018/tract_proprietary_valid
 df <- df_orig %>% dplyr::filter((state == "California") & grepl("2014|2015|2016|2017|2018", year)) %>% 
   mutate(county_id = paste0("0", cofips), county_name = gsub(" County", "", county), fips = paste0("0", fips)) %>% 
   select(fips, county_id, county_name, year, filings) 
-#View(df)
+# View(df)
 
 
 ######### Screening / Data Exploration ##########
@@ -78,7 +78,7 @@ data_yrs <- data_yrs %>% group_by(county_id, county_name) %>%
 df_join <- df %>% inner_join(data_yrs, by = c("county_id", "county_name"))
 
 screened <- filter(df_join, num_yrs > 2) # suppress data for counties with fewer than 3 years of data
-View(screened)
+# View(screened)
 # unique(screened$county_name)   # 39 counties pass num_yrs screening
 
 ###############################
@@ -93,7 +93,7 @@ df_wide <- filter(df_wide, sum_eviction != 0) # screen out tracts (n = 341) wher
 df_wide <- df_wide %>% dplyr::rename(c("sub_id"= "fips", "target_id" = "county_id", "geoname" = "county_name"))
 
 ind_df <- df_wide  # create ind_df for WA functions script
-View(ind_df)
+# View(ind_df)
 
 ############# COUNTY CALCS ##################
 
@@ -125,10 +125,10 @@ pop <- update_detailed_table(vars = vars_list_custom, yr = year, srvy = survey) 
 
 # transform pop data to wide format 
 pop_wide <- lapply(pop, to_wide)
+
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
 pop_wide <- as.data.frame(pop_wide) %>% mutate(target_id = substr(GEOID, 1, 5))  # use left 5 characters as target_id
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID)                              # rename to generic column name for WA functions
-
 
 ############### CUSTOMIZED VERSION OF TARGETGEO_POP FUNCTION HERE THAT WORKS WITH RENTER HOUSEHOLDS AS POP BASIS #######
 
@@ -314,6 +314,17 @@ city_wa<- city_wa %>% unique()
 
 ############# ASSEMBLY CALCS ##################
 
+# update each year: variables used throughout script
+acs_yr <- 2017         # last yr of acs 5y span
+curr_yr <- '2013-2017' # acs 5yr span
+rc_schema <- 'v7'
+rc_yr <- '2025'
+
+# may need to update each year: variables for state assm and senate calcs
+assm_geoid <- 'sldl24'			                    # Define column with Assm geoid
+assm_xwalk <- 'tract_2020_state_assembly_2024'  # Name of tract-Assm xwalk table
+sen_geoid <- 'sldu24'			                      # Define column with Senate geoid
+sen_xwalk <- 'tract_2020_state_senate_2024'     # Name of tract-Sen xwalk table
 ###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
@@ -327,7 +338,7 @@ pop_threshold = 200              # define population threshold for screening
 xwalk_filter <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, " AS assm_geoid FROM crosswalks.", assm_xwalk))
 
 ##### GET SUB GEOLEVEL POP DATA ###
-pop <- update_detailed_table(vars = vars_list_b25003, yr = acs_yr, srvy = survey)  # subgeolevel pop
+pop <- update_detailed_table(vars = vars_list_custom, yr = acs_yr, srvy = survey)  # subgeolevel pop
 
 # transform pop data to wide format
 pop_wide <- to_wide(pop)
@@ -339,19 +350,20 @@ pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = assm_geoid) # re
 # calc target geolevel pop and number of sub geolevels per target geolevel
 
 # select pop estimate columns and rename to RC names
-b <- select(pop_wide, sub_id, target_id, ends_with("e"), -NAME)
+b <- select(pop_wide, sub_id, target_id, ends_with("_003e"), -NAME)
 
 # aggregate sub geolevel pop to target geolevel
-c <- b %>% group_by(target_id) %>% summarise_if(is.numeric, sum)
-colnames(c) <- gsub("_e", "_target_pop", colnames(c))
+c <- b %>% group_by(target_id) %>% summarise(across(where(is.numeric), sum, na.rm = TRUE))
+colnames(c) <- c('target_id', 'total_target_pop', 'black_target_pop', 'aian_target_pop', 'asian_target_pop', 'pacisl_target_pop', 'other_target_pop', 'twoormor_target_pop', 'nh_white_target_pop', 'latino_target_pop')
 
 # count number of sub geolevels  per target geolevel and join to target geolevel pop
 d <- b %>% dplyr::count(target_id)
 c <- c %>% left_join(d, by = "target_id")
 
 # join target geolevel pop and sub geolevel counts to df, drop margin of error cols, rename tract pop cols
-e <- select(pop_wide, sub_id, target_id, geolevel, ends_with("e"), -NAME) 
-names(e) <- gsub("_e", "_sub_pop", colnames(e))
+e <- select(pop_wide, sub_id, target_id, geolevel, ends_with("_003e"), -NAME) 
+names(e) <- c('sub_id', 'target_id', 'geolevel', 'total_sub_pop', 'black_sub_pop', 'aian_sub_pop', 'asian_sub_pop', 'pacisl_sub_pop', 'other_sub_pop', 'twoormor_sub_pop', 'nh_white_sub_pop', 'latino_sub_pop')
+
 pop_df <- e %>% left_join(c, by = "target_id")
 
 ##### ASSM WEIGHTED AVG CALCS ###
@@ -370,11 +382,11 @@ assm_name <- assm_name[,1:2]
 assm_name$NAME <- str_remove(assm_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
 assm_name$NAME <- gsub(", California", "", assm_name$NAME)
 names(assm_name) <- c("target_id", "target_name")
-# View(assm_name)
+# # View(assm_name)
 
 #add geonames to WA
 assm_wa <- merge(x=assm_name,y=assm_wa,by="target_id", all=T)
-#View(assm_wa)
+## View(assm_wa)
 
 ############# SENATE CALCS ##################
 
@@ -391,7 +403,7 @@ pop_threshold = 200              # define population threshold for screening
 xwalk_filter <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", sen_geoid, " AS sen_geoid FROM crosswalks.", sen_xwalk))
 
 ##### GET SUB GEOLEVEL POP DATA ###
-pop <- update_detailed_table(vars = vars_list_b25003, yr = acs_yr, srvy = survey)  # subgeolevel pop
+pop <- update_detailed_table(vars = vars_list_custom, yr = acs_yr, srvy = survey)  # subgeolevel pop
 
 # transform pop data to wide format
 pop_wide <- to_wide(pop)
@@ -406,8 +418,8 @@ pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = sen_geoid) # ren
 b <- select(pop_wide, sub_id, target_id, ends_with("e"), -NAME)
 
 # aggregate sub geolevel pop to target geolevel
-c <- b %>% group_by(target_id) %>% summarise_if(is.numeric, sum)
-colnames(c) <- gsub("_e", "_target_pop", colnames(c))
+c <- b %>% group_by(target_id) %>% summarise(across(where(is.numeric), sum, na.rm = TRUE))
+colnames(c) <- c('target_id', 'total_target_pop', 'black_target_pop', 'aian_target_pop', 'asian_target_pop', 'pacisl_target_pop', 'other_target_pop', 'twoormor_target_pop', 'nh_white_target_pop', 'latino_target_pop')
 
 # count number of sub geolevels  per target geolevel and join to target geolevel pop
 d <- b %>% dplyr::count(target_id)
@@ -415,10 +427,11 @@ c <- c %>% left_join(d, by = "target_id")
 
 # join target geolevel pop and sub geolevel counts to df, drop margin of error cols, rename tract pop cols
 e <- select(pop_wide, sub_id, target_id, geolevel, ends_with("e"), -NAME) 
-names(e) <- gsub("_e", "_sub_pop", colnames(e))
+names(e) <- c('sub_id', 'target_id', 'geolevel', 'total_sub_pop', 'black_sub_pop', 'aian_sub_pop', 'asian_sub_pop', 'pacisl_sub_pop', 'other_sub_pop', 'twoormor_sub_pop', 'nh_white_sub_pop', 'latino_sub_pop')
 pop_df <- e %>% left_join(c, by = "target_id")
 
-##### SEN WEIGHTED AVG CALCS ###
+##### SEN WEIGHTED AVG CALCS ### 2017 tracts to the current legislative districts, the race rates in the old geographies but the 
+# race rates old but then crosswalk the old census tracts to the new legislative districts
 pct_df <- pop_pct_multi(pop_df)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
 sen_wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
 sen_wa <- sen_wa %>% mutate(geolevel = 'sldu')  # add geolevel
@@ -434,14 +447,14 @@ sen_name <- sen_name[,1:2]
 sen_name$NAME <- str_remove(sen_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
 sen_name$NAME <- gsub(", California", "", sen_name$NAME)
 names(sen_name) <- c("target_id", "target_name")
-# View(sen_name)
+# # View(sen_name)
 
 #add geonames to WA
 sen_wa <- merge(x=sen_name,y=sen_wa,by="target_id", all=T)
-#View(sen_wa)
+## View(sen_wa)
 
 ############ JOIN CITY, COUNTY & STATE WA TABLES  ##################
-wa_all <- union(wa, ca_wa) %>% union(city_wa)
+wa_all <- union(wa, ca_wa) %>% union(city_wa) %>% union(assm_wa) %>% union(sen_wa)
 wa_all <- rename(wa_all, geoid = target_id, geoname = target_name)   # rename columns for RC functions
 wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid) %>% 
   dplyr::relocate(total_rate, .after = twoormor_rate) %>% 
@@ -454,14 +467,14 @@ wa_all <- wa_all %>%
   replace_with_na_at(.vars = c("total_rate","black_rate", "asian_rate", "aian_rate", "pacisl_rate", "other_rate", "twoormor_rate", "nh_white_rate", "latino_rate"),
                      condition = ~.x == 0.00000000) %>% relocate(total_rate, .after = twoormor_rate) %>% relocate(total_pop, .after = twoormor_pop)
 d <- wa_all
-# View(d)
+# # View(d)
 
 ############## CALC RACE COUNTS STATS ##############
 ############ To use the following RC Functions, 'd' will need the following columns at minimum: 
 ############ county_id and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
 #set source for RC Functions script
-source("W:/Project/RACE COUNTS/Functions/RC_Functions.R")
+source(".\\Functions\\RC_Functions.R")
 
 d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
@@ -479,7 +492,7 @@ state_table <- d[d$geoname == 'California', ] %>% select(-c(geolevel))
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
 state_table <- rename(state_table, state_id = geoid, state_name = geoname)
-View(state_table)
+# View(state_table)
 
 #remove state from county table
 county_table <- d[d$geolevel == 'county', ] %>% select(-c(geolevel))
@@ -488,7 +501,7 @@ county_table <- d[d$geolevel == 'county', ] %>% select(-c(geolevel))
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
 county_table <- rename(county_table, county_id = geoid, county_name = geoname)
-View(county_table)
+# View(county_table)
 
 #split CITY into separate table and format id, name columns
 city_table <- d[d$geolevel == 'city', ] %>% select(-c(geolevel))
@@ -497,7 +510,7 @@ city_table <- d[d$geolevel == 'city', ] %>% select(-c(geolevel))
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
 city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") 
-View(city_table)
+# View(city_table)
 
 #split LEG DISTRICTS into separate tables and format id, name columns
 upper_table <- d[d$geolevel == 'sldu', ]
@@ -508,18 +521,18 @@ upper_table <- calc_z(upper_table)
 
 ## Calc SLDU ranks##
 upper_table <- calc_ranks(upper_table)
-View(upper_table)
+# View(upper_table)
 
 #calculate SLDL z-scores
 lower_table <- calc_z(lower_table)
 
 ## Calc SLDL ranks##
 lower_table <- calc_ranks(lower_table)
-View(lower_table)
+# View(lower_table)
 
 ## Bind sldu and sldl tables into one leg_table##
 leg_table <- rbind(upper_table, lower_table)
-View(leg_table)
+# View(leg_table)
 
 #rename geoid to state_id, county_id, city_id
 colnames(state_table)[1:2] <- c("state_id", "state_name")
