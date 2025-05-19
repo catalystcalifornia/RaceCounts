@@ -29,8 +29,8 @@ curr_yr <- 2023
 rc_yr <- '2025'
 rc_schema <- 'v7'
 
-##### GET PUMA-COUNTYCROSSWALKS ######
-crosswalk <- dbGetQuery(con, "select county_id AS geoid, county_name AS geoname, puma, num_county from crosswalks.puma_county_2022")
+##### GET PUMA CROSSWALKS ######
+crosswalk <- dbGetQuery(con, "select county_id AS geoid, county_name AS geoname, geo_id AS puma, num_county from crosswalks.puma_2022_county_2020")
 assm_crosswalk <- dbGetQuery(con, "select geo_id AS puma, sldl24 AS geoid, num_dist AS num_assm from crosswalks.puma_2020_state_assembly_2024") %>%
                   rename(assm_geoid = geoid)
 sen_crosswalk <- dbGetQuery(con, "select geo_id AS puma, sldu24 AS geoid, num_dist AS num_sen from crosswalks.puma_2020_state_senate_2024") %>%
@@ -83,7 +83,7 @@ ppl <- race_reclass(ppl, start_yr, curr_yr)
 
 
 # review data 
-View(ppl[c("HISP","latino","RAC1P","race","RAC2P","RAC3P","ANC1P","ANC2P", "aian", "pacisl", "swana")])
+#View(ppl[c("HISP","latino","RAC1P","race","RAC2P","RAC3P","ANC1P","ANC2P", "aian", "pacisl", "swana")])
 # table(ppl$race, useNA = "always")
 # table(ppl$race, ppl$latino, useNA = "always")
 # table(ppl$race, ppl$aian, useNA = "always")
