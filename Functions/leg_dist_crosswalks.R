@@ -4,11 +4,12 @@
 ## 2020 PUMAs to 2024 State Senate & Assembly Districts
 ## 2020 Counties to 2024 State Senate & Assembly Districts
 ## 2020 Unified, Secondary, and Elementary School Districts to 2024 State Senate & Assembly Districts
+## 2020 PUMAs to 2020 Counties
 
 ### Set Up ### ------------------------------------------------------------------
 
 #install packages if not already installed
-packages <- c("dplyr", "RPostgreSQL", "janitor", "stringr", "usethis")  
+packages <- c("dplyr", "RPostgres", "janitor", "stringr", "usethis", "DBI")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -46,165 +47,286 @@ geo_names <- as.data.frame(geo_names_short) %>% cbind(geo_names_long)
 geo_names  # check needed geonames are present, and that all are correct
 
 
-### Fx to prep xwalk postgres tables --------------------------------------
-prep_tables <- function(target_geo, target_geo_yr, source_geo, source_geo_yr) {
-
+### Fx's to prep xwalk postgres tables --------------------------------------
+prep_tables <- function(target_geo, target_geo_yr, source_geo, source_geo_yr) {  # For Assm/Sen-Based Xwalks
+  
   # check if the crosswalk already in pgadmin
   table_name <- paste0(source_geo, "_", source_geo_yr, "_state_", target_geo, "_", target_geo_yr)  # generate postgres table name
   check_tables_sql <- paste0("SELECT * FROM information_schema.tables WHERE table_schema = '",
                              rda_schema, "' AND table_name ='", table_name, "';")
-  conn <- connect_to_db("rda_shared_data") 
-  check_tables <- dbGetQuery(conn, check_tables_sql)
-  
-  con <- connect_to_db("rda_shared_data")
+  con <- connect_to_db("rda_shared_data") 
+  check_tables <- dbGetQuery(con, check_tables_sql)
   
   if (nrow(check_tables)==1) {          # the crosswalk already exists in db
     print("The crosswalk already exists in pgadmin. Aborting function...")
     dbDisconnect(con)
-
+    
   } else if (nrow(check_tables)==0) {   # the crosswalk does not exist in db
     print("The crosswalk is not already in pgadmin. Creating now...")
-  
+    
     # generate filepath to crosswalk csv
     geocorr_filepath <- paste0("W:\\Project\\RACE COUNTS\\", rc_yr, "_", rc_schema, "\\Geographies\\geocorr", geocorr_yr, "_", source_geo, "_", source_geo_yr, "_to_", target_geo, "_", target_geo_yr, ".csv")
     
     source_name_long <- filter(geo_names, geo_names_short == source_geo) %>% select(geo_names_long)  # assign source geo long name based on source_geo
     target_name_long <- filter(geo_names, geo_names_short == target_geo) %>% select(geo_names_long)  # assign target geo long name based on target_geo
     
-# NOTE: This section may need to be updated (target_geo_yr, 3,4) when leg district vintage changes
     district_id_col <- if (target_geo == 'assembly') {paste0("sldl", substr(target_geo_yr, 3,4))     # generate leg dist (target) geoid column name
     } else                     {paste0("sldu", substr(target_geo_yr, 3,4))}
-  
-  # read in tract-leg dist crosswalk, removing metadata row, and keeping character FIPS codes
-  all_content = readLines(geocorr_filepath)
-  skip_second = all_content[-2]
-  if (source_geo == "tract") {
-             crosswalk <- read.csv(textConnection(skip_second), 
-                         colClasses = c(rep("character", 4), rep("numeric", 5))) %>% clean_names()
-             print("Crosswalk csv imported to R.")
-  } else if (source_geo == "zcta" | 
-             source_geo == "county") {
-             crosswalk <- read.csv(textConnection(skip_second), 
-                          colClasses = c(rep("character", 3), rep("numeric", 5))) %>% clean_names()
-             print("Crosswalk csv imported to R.")
-  } else if (source_geo == "puma" | 
-             source_geo == "usd" |
-             source_geo == "esd" | 
-             source_geo == "ssd") {
-             crosswalk <- read.csv(textConnection(skip_second), 
-                          colClasses = c(rep("character", 5), rep("numeric", 5))) %>% clean_names()
-             print("Crosswalk csv imported to R.")
-  }
-  
-  
-  # read in metadata
-  metadata <- read.csv(geocorr_filepath, nrows = 1) %>% clean_names()
-  print("Metadata csv imported to R.")
-  if (source_geo == "puma" | 
-      source_geo == "unsd" |
-      source_geo == "elsd" | 
-      source_geo == "scsd") {
-        metadata <- metadata %>% select(-state, -stab)
-        print("Metadata cleaned.")
-  } else if 
-     (source_geo == "tract") {
-        metadata <- metadata %>% select(-county) %>% mutate(county_name = "Tract End")
-        print("Metadata cleaned.")
-  }
-  
-  
-  # clean crosswalks
-  if (source_geo == "tract") {
-  # create full tract id, removing periods
-  crosswalk <- crosswalk %>% 
-    mutate(geo_id = paste0(county, substr(tract, 1, 4), substr(tract, 6, 7)),
-           geo_name = tract)  
-  } else if (source_geo == "zcta") {
-    # rename geo_id, name, filter out parts of districts not in ZCTAs or out of state
-    crosswalk <- crosswalk %>% 
-      filter(zip_name != "[not in a ZCTA]") %>%   # drop parts of districts not in ZCTAs
-      filter(!str_starts(zcta, "8")) %>%          # drop ZCTAs not really in CA
-      rename(geo_id = zcta, geo_name = zip_name) 
-  } else if (source_geo == "puma") {
-    # rename geo_id, name, and select only columns we want
-    crosswalk <- crosswalk %>% 
-      rename_with(~'geo_name', ends_with('name')) %>%
-      rename_with(~'geo_id', starts_with('puma')) %>%
-      mutate(geo_id = paste0("06", geo_id))
-  } else if (source_geo == "county") {
-    # rename geo_id and select only columns we want
-    crosswalk <- crosswalk %>% 
-      rename(geo_id = county, 
-             geo_name = county_name) 
-  } else if (source_geo == "usd") {
-    # rename geo_id and select only columns we want
-    crosswalk <- crosswalk %>% 
-      rename_with(~'geo_name', starts_with('uschlnm')) %>%
-      rename_with(~'geo_id', starts_with('sduni')) %>%
-      mutate(geo_id = paste0("06", geo_id))
-  } else if (source_geo == "esd") {
-    # rename geo_id and select only columns we want
-    crosswalk <- crosswalk %>% 
-      rename_with(~'geo_name', starts_with('eschlnm')) %>%
-      rename_with(~'geo_id', starts_with('sdelem')) %>%
-      mutate(geo_id = paste0("06", geo_id))
-  } else if (source_geo == "ssd") {
-    # rename geo_id and select only columns we want
-    crosswalk <- crosswalk %>% 
-      rename_with(~'geo_name', starts_with('sschlnm')) %>%
-      rename_with(~'geo_id', starts_with('sdsec')) %>%
-      mutate(geo_id = paste0("06", geo_id))
-  }
-  
-# NOTE: This section needs to be updated (sldl24 and sldu24) when leg district vintage changes
-  if (target_geo == "assembly") {
-    crosswalk$sldl24 <- paste0("06",crosswalk$sldl24)
-    subgeo_count <- crosswalk %>% group_by(sldl24) %>% summarize(min(geo_name), num_dist = n())     # count pumas per dist
-    crosswalk <- crosswalk %>% left_join(subgeo_count %>% select(sldl24, num_dist), by = "sldl24")  # join puma_count per dist to xwalk
     
-  } else if (target_geo == "senate") {
-    crosswalk$sldu24 <- paste0("06",crosswalk$sldu24)
-    subgeo_count <- crosswalk %>% group_by(sldu24) %>% summarize(min(geo_name), num_dist = n())     # count pumas per dist
-    crosswalk <- crosswalk %>% left_join(subgeo_count %>% select(sldu24, num_dist), by = "sldu24")  # join puma_count per dist to xwalk
+    # read in tract-leg dist crosswalk, removing metadata row, and keeping character FIPS codes
+    all_content = readLines(geocorr_filepath)
+    skip_second = all_content[-2]
+    if (source_geo == "tract") {
+      crosswalk <- read.csv(textConnection(skip_second), 
+                            colClasses = c(rep("character", 4), rep("numeric", 5))) %>% clean_names()
+      print("Crosswalk csv imported to R.")
+    } else if (source_geo == "zcta" | 
+               source_geo == "county") {
+      crosswalk <- read.csv(textConnection(skip_second), 
+                            colClasses = c(rep("character", 3), rep("numeric", 5))) %>% clean_names()
+      print("Crosswalk csv imported to R.")
+    } else if (source_geo == "puma" | 
+               source_geo == "usd" |
+               source_geo == "esd" | 
+               source_geo == "ssd") {
+      crosswalk <- read.csv(textConnection(skip_second), 
+                            colClasses = c(rep("character", 5), rep("numeric", 5))) %>% clean_names()
+      print("Crosswalk csv imported to R.")
+    }
     
-  }
-  
-
-  print("Crosswalk cleaned.")
-  
-  # rearrange columns and drop unneeded columns
-  crosswalk <- crosswalk %>% select(geo_id, geo_name, district_id_col, paste0("pop", pop_yr), num_dist, int_pt_lat, int_pt_lon, afact2, afact)
-  
-  # export to Postgres
-  dbWriteTable(con, c(rda_schema, table_name), crosswalk,
-               overwrite=FALSE, row.names=FALSE)
-  print("Table exported to postgres.")
-
-  table_comment <- paste0("COMMENT ON TABLE ",rda_schema,".",table_name," IS 'Created on ", Sys.Date(), ". Geocorr ", source_geo_yr, " ", source_name_long, " to ", target_geo_yr, " ", target_name_long, " crosswalk weighted by population. Allocation Factor columns represent % of source geo in target geo and vice versa. See QA doc for details: W:\\Project\\RACE COUNTS\\", rc_yr, "_", rc_schema, "\\Geographies\\QA_Geographies.docx';")  # print(table_comment)
-  print(table_comment) 
-  # send table comment
-  dbSendQuery(conn = con, table_comment)
-  print("Table comment sent to postgres.")
-
-  column_comments <- paste0("COMMENT ON COLUMN ",rda_schema,".",table_name,".geo_id IS '", metadata[1,1] ,"';
-                              COMMENT ON COLUMN ",rda_schema,".",table_name,".geo_name IS 'Clean leg dist geoid';
-                              COMMENT ON COLUMN ",rda_schema,".",table_name,".",district_id_col," IS '", metadata[1,2] ,"';
-                              COMMENT ON COLUMN ",rda_schema,".",table_name,".",district_id_col," IS '", metadata[1,2] ,"';
-                              COMMENT ON COLUMN ",rda_schema,".",table_name,".pop", pop_yr," IS '", metadata[1,4] ,"';
-                              COMMENT ON COLUMN ",rda_schema,".",table_name,".int_pt_lat IS '", metadata[1,5] ,"';
-                              COMMENT ON COLUMN ",rda_schema,".",table_name,".int_pt_lon IS '", metadata[1,6] ,"';
-                              COMMENT ON COLUMN ",rda_schema,".",table_name,".afact2 IS '", metadata[1,7] ,"';
-                              COMMENT ON COLUMN ",rda_schema,".",table_name,".afact IS '", metadata[1,8] ,"';
-                              
-                         ")
-  print(column_comments) 
-  # send column comments
-  dbSendQuery(conn = con, column_comments)
-  print("Column comments sent to postgres.")
-
-  dbDisconnect(con)
-  return(crosswalk) }
+    
+    # read in metadata
+    metadata <- read.csv(geocorr_filepath, nrows = 1) %>% clean_names()
+    print("Metadata csv imported to R.")
+    if (source_geo == "puma" | 
+        source_geo == "unsd" |
+        source_geo == "elsd" | 
+        source_geo == "scsd") {
+      metadata <- metadata %>% select(-state, -stab)
+      print("Metadata cleaned.")
+    } else if 
+    (source_geo == "tract") {
+      metadata <- metadata %>% select(-county) %>% mutate(county_name = "Tract End")
+      print("Metadata cleaned.")
+    }
+    
+    
+    # clean crosswalks
+    if (source_geo == "tract") {
+      # create full tract id, removing periods
+      crosswalk <- crosswalk %>% 
+        mutate(geo_id = paste0(county, substr(tract, 1, 4), substr(tract, 6, 7)),
+               geo_name = tract)  
+    } else if (source_geo == "zcta") {
+      # rename geo_id, name, filter out parts of districts not in ZCTAs or out of state
+      crosswalk <- crosswalk %>% 
+        filter(zip_name != "[not in a ZCTA]") %>%   # drop parts of districts not in ZCTAs
+        filter(!str_starts(zcta, "8")) %>%          # drop ZCTAs not really in CA
+        rename(geo_id = zcta, geo_name = zip_name) 
+    } else if (source_geo == "puma") {
+      # rename geo_id, name, and select only columns we want
+      crosswalk <- crosswalk %>% 
+        rename_with(~'geo_name', ends_with('name')) %>%
+        rename_with(~'geo_id', starts_with('puma')) 
+    } else if (source_geo == "county") {
+      # rename geo_id and select only columns we want
+      crosswalk <- crosswalk %>% 
+        rename(geo_id = county, 
+               geo_name = county_name) 
+    } else if (source_geo == "usd") {
+      # rename geo_id and select only columns we want
+      crosswalk <- crosswalk %>% 
+        rename_with(~'geo_name', starts_with('uschlnm')) %>%
+        rename_with(~'geo_id', starts_with('sduni')) 
+    } else if (source_geo == "esd") {
+      # rename geo_id and select only columns we want
+      crosswalk <- crosswalk %>% 
+        rename_with(~'geo_name', starts_with('eschlnm')) %>%
+        rename_with(~'geo_id', starts_with('sdelem')) 
+    } else if (source_geo == "ssd") {
+      # rename geo_id and select only columns we want
+      crosswalk <- crosswalk %>% 
+        rename_with(~'geo_name', starts_with('sschlnm')) %>%
+        rename_with(~'geo_id', starts_with('sdsec')) 
+    }
+    
+    print("Crosswalk cleaned.")
+    
+    # rearrange columns and drop unneeded columns
+    crosswalk <- crosswalk %>% select(geo_id, geo_name, district_id_col, paste0("pop", pop_yr), int_pt_lat, int_pt_lon, afact2, afact)
+    
+    # export to Postgres
+    dbWriteTable(con, Id(rda_schema, table_name), crosswalk,
+                 overwrite=FALSE, row.names=FALSE)
+    print("Table exported to postgres.")
+    
+    # Start a transaction
+    dbBegin(con)
+    
+    # Add table / column comments
+    indicator <- paste0("COMMENT ON TABLE ",rda_schema,".",table_name," IS 'Created on ", Sys.Date(), ".")  
+    source <- paste0("Geocorr ", source_geo_yr, " ", source_name_long, " to ", target_geo_yr, " ", target_name_long, " crosswalk weighted by population. Allocation Factor columns represent % of source geo in target geo and vice versa.")
+    qa_filepath <- paste0("W:\\Project\\RACE COUNTS\\", rc_yr, "_", rc_schema, "\\Economic\\QA_Living_Wage.docx")
+    column_names <- colnames(crosswalk)
+    column_comments <- c(metadata[1,1],
+                         metadata[1,3],
+                         metadata[1,2],
+                         metadata[1,4],
+                         metadata[1,5],
+                         metadata[1,6],
+                         metadata[1,7],
+                         metadata[1,8] )
+    print(column_comments)     
+    
+    add_table_comments(con, schema, table_name, indicator, source, qa_filepath, column_names, column_comments)
+    
+    # Commit the transaction if everything succeeded
+    dbCommit(con)
+    
+    print("Table and column comments sent to postgres.")
+    
+    dbDisconnect(con)
+    return(crosswalk) }
 }
+
+
+prep_tables_county <- function(target_geo, target_geo_yr, source_geo, source_geo_yr) { # For County-Based Xwalks
+  
+  # check if the crosswalk already in pgadmin
+  table_name <- paste0(source_geo, "_", source_geo_yr, "_", target_geo, "_", target_geo_yr)  # generate postgres table name
+  check_tables_sql <- paste0("SELECT * FROM information_schema.tables WHERE table_schema = '",
+                             rda_schema, "' AND table_name ='", table_name, "';")
+  con <- connect_to_db("rda_shared_data") 
+  check_tables <- dbGetQuery(con, check_tables_sql)
+  
+  if (nrow(check_tables)==1) {          # the crosswalk already exists in db
+    print("The crosswalk already exists in pgadmin. Aborting function...")
+    dbDisconnect(con)
+    
+  } else if (nrow(check_tables)==0) {   # the crosswalk does not exist in db
+    print("The crosswalk is not already in pgadmin. Creating now...")
+    
+    # generate filepath to crosswalk csv
+    geocorr_filepath <- paste0("W:\\Project\\RACE COUNTS\\", rc_yr, "_", rc_schema, "\\Geographies\\geocorr", geocorr_yr, "_", source_geo, "_", source_geo_yr, "_to_", target_geo, "_", target_geo_yr, ".csv")
+    
+    source_name_long <- filter(geo_names, geo_names_short == source_geo) %>% select(geo_names_long)  # assign source geo long name based on source_geo
+    target_name_long <- filter(geo_names, geo_names_short == target_geo) %>% select(geo_names_long)  # assign target geo long name based on target_geo
+    
+    # read in tract-leg dist crosswalk, removing metadata row, and keeping character FIPS codes
+    all_content = readLines(geocorr_filepath)
+    skip_second = all_content[-2]
+    if (source_geo == "zcta") {
+      crosswalk <- read.csv(textConnection(skip_second), 
+                            colClasses = c(rep("character", 3), rep("numeric", 5))) %>% clean_names()
+      print("Crosswalk csv imported to R.")
+    } else if (source_geo == "puma") {
+      crosswalk <- read.csv(textConnection(skip_second), 
+                            colClasses = c(rep("character", 6), rep("numeric", 5))) %>% clean_names()
+      print("Crosswalk csv imported to R.")
+    }
+    
+    
+    # read in metadata
+    metadata <- read.csv(geocorr_filepath, nrows = 1) %>% clean_names()
+    print("Metadata csv imported to R.")
+    
+    metadata <- metadata %>% rename(county_id = county) %>% 
+      select(-state, -stab)
+    #metadata <- tolower(metadata)
+    print("Metadata cleaned.")
+    
+    
+    # clean crosswalks
+    if (source_geo == "zcta") {
+      # rename geo_id, name, filter out parts of districts not in ZCTAs or out of state
+      crosswalk <- crosswalk %>% 
+        filter(zip_name != "[not in a ZCTA]") %>%   # drop parts of districts not in ZCTAs
+        filter(!str_starts(zcta, "8")) %>%          # drop ZCTAs not really in CA
+        rename(geo_id = zcta, geo_name = zip_name) 
+    } else if (source_geo == "puma") {
+      # rename geo_id, name, and select only columns we want
+      crosswalk <- crosswalk %>% 
+        rename(geo_name = (paste0('puma',substr(source_geo_yr, 3,4),'name')), 
+               geo_id = paste0('puma', substr(source_geo_yr, 3,4))) %>%
+        mutate(county_name = gsub(" CA", "", county_name))
+    } else if (source_geo == "usd") {
+      # rename geo_id and select only columns we want
+      crosswalk <- crosswalk %>% 
+        rename_with(~'geo_name', starts_with('uschlnm')) %>%
+        rename_with(~'geo_id', starts_with('sduni')) 
+    } else if (source_geo == "esd") {
+      # rename geo_id and select only columns we want
+      crosswalk <- crosswalk %>% 
+        rename_with(~'geo_name', starts_with('eschlnm')) %>%
+        rename_with(~'geo_id', starts_with('sdelem')) 
+    } else if (source_geo == "ssd") {
+      # rename geo_id and select only columns we want
+      crosswalk <- crosswalk %>% 
+        rename_with(~'geo_name', starts_with('sschlnm')) %>%
+        rename_with(~'geo_id', starts_with('sdsec')) 
+    }
+    
+    crosswalk <- crosswalk %>% rename(county_id = county) %>%
+      select(-c(state, stab))
+    
+    print("Crosswalk cleaned.")
+    
+    # rearrange columns and drop unneeded columns
+    crosswalk <- crosswalk %>% select(geo_id, geo_name, county_id, county_name, paste0("pop", pop_yr), int_pt_lat, int_pt_lon, afact2, afact)
+    
+    if (source_geo == 'puma') {
+      count_pumas <- crosswalk %>% group_by(county_id, county_name) %>% summarise(num_county = n()) %>% select(-county_name)
+      crosswalk <- crosswalk %>% left_join(count_pumas, by = 'county_id', relationship = 'many-to-many')
+    } else {   }
+    
+    # export to Postgres
+    dbWriteTable(con, Id(rda_schema, table_name), crosswalk,
+                 overwrite=FALSE, row.names=FALSE)
+    print("Table exported to postgres.")
+    
+    # Add table / column comments
+    indicator <- paste0(source_geo_yr, " ", source_name_long, " to ", target_geo_yr, " ", target_name_long, " crosswalk weighted by population. Allocation Factor columns represent % of source geo in target geo and vice versa")  
+    source <- paste0("Geocorr ", geocorr_yr)
+    qa_filepath <- paste0("W:\\Project\\RACE COUNTS\\", rc_yr, "_", rc_schema, "\\Economic\\QA_Living_Wage.docx")
+    column_names <- colnames(crosswalk)
+    if (source_geo == 'puma') {
+      column_comments <- c(metadata[1,1],
+                           metadata[1,4],
+                           metadata[1,2],
+                           metadata[1,3],
+                           metadata[1,5],
+                           metadata[1,6],
+                           metadata[1,7],
+                           metadata[1,8],
+                           metadata[1,9],
+                           'Number of PUMAs that intersect the county') }
+    else {column_comments <- c(metadata[1,1],
+                               metadata[1,4],
+                               metadata[1,2],
+                               metadata[1,3],
+                               metadata[1,5],
+                               metadata[1,6],
+                               metadata[1,7],
+                               metadata[1,8],
+                               metadata[1,9])}
+    print(column_comments)     
+    
+    add_table_comments(con, rda_schema, table_name, indicator, source, qa_filepath, column_names, column_comments)
+    print("Table and column comments sent to postgres.")
+    
+    dbDisconnect(con)
+    return(crosswalk) }
+}
+
+
+### COUNTY - PUMA ### ----------------------------------------------------
+target_geo <- "county"
+target_geo_yr <- "2020" # update data vintage as needed
+
+source_geo <- "puma"
+source_geo_yr <- "2022" # update data vintage as needed
+
+puma_county <- prep_tables_county(target_geo, target_geo_yr, source_geo, source_geo_yr)
 
 
 ### STATE SENATE - TRACT ### ----------------------------------------------------
