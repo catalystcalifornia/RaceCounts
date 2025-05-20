@@ -94,7 +94,7 @@ df_wide <- df_wide %>% dplyr::rename(c("sub_id"= "fips", "target_id" = "county_i
 
 ind_df <- df_wide  # create ind_df for WA functions script
 # View(ind_df)
-
+ind_df_orig <- ind_df #same this part so it doesn't get overwritten by later code
 ############# COUNTY CALCS ##################
 
 ###### DEFINE VALUES FOR FUNCTIONS ######
@@ -312,6 +312,44 @@ city_wa <- city_wa %>% rename(target_name = place_name) %>% mutate(geolevel = 'c
 
 city_wa<- city_wa %>% unique()
 
+#Calculate legislative districts: Assembly districts & senate districts -------
+##### GET INDICATOR DATA ######
+# load indicator data
+ind_df <- screened %>% select(fips, year, filings, num_yrs) %>% unique() #pull that unaltered version from earlier in the script
+
+#convert 2010 tracts to 2020 tracks then use the 2020 tract to leg crosswalk
+# note: Evictions uses 2010 tract vintage, population estimates use 2020 tract vintage
+cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
+  select(GEOID_TRACT_10, NAMELSAD_TRACT_10, AREALAND_TRACT_10, GEOID_TRACT_20, NAMELSAD_TRACT_20, AREALAND_TRACT_20, AREALAND_PART) %>%
+  mutate_at(vars(contains("AREALAND")), function(x) as.numeric(x)) %>%
+  # calculate overlapping land area of 2010 and 2020 tracts (AREALAND_PART) as a percent of 2020 tract land area (AREALAND_TRACT_20)
+  mutate(prc_overlap=AREALAND_PART/AREALAND_TRACT_20) 
+
+# # check prc_overlaps sums/ note: there will be prc_overlap values > 1 bc some 2010 tracts were split into 2+ 2020 tracts and each 2020 tract comes solely from the 2010 tract 
+# check_prc_is_1 <- cb_tract_2010_2020 %>%
+#   group_by(GEOID_TRACT_10) %>%
+#   summarise(total_prc=sum(prc_overlap))
+
+# Because CES uses 2010 vintage tracts - need to convert to 2020 vintage and allocate score accordingly
+ind_2010_2020 <- ind_df %>%
+  left_join(cb_tract_2010_2020, by=c("fips"="GEOID_TRACT_10")) %>%
+  select(GEOID_TRACT_20, year, filings, num_yrs, prc_overlap) 
+
+ind_2010_2020 <- ind_2010_2020 %>% group_by(GEOID_TRACT_20) %>%   
+  mutate(sum_eviction = sum(filings, na.rm = TRUE)*prc_overlap) %>%  # total number of evictions over all data yrs available
+  mutate(avg_eviction = sum_eviction / num_yrs) %>%  # avg annual number of evictions times percent overlap
+  distinct(GEOID_TRACT_20, avg_eviction, .keep_all = FALSE)
+  # Allocate CES scores from 2010 tracts to 2020 using prc_overlap
+
+
+# create indicator df (2020 tracts) to be used in WA calcs
+ind_2020 <- ind_2010_2020 %>%
+  select(GEOID_TRACT_20, avg_eviction) %>%
+  # clean up names
+  rename(sub_id = GEOID_TRACT_20)
+
+ind_df <- ind_2020 # rename to ind_df for WA fx
+
 ############# ASSEMBLY CALCS ##################
 
 # update each year: variables used throughout script
@@ -342,6 +380,7 @@ pop <- update_detailed_table(vars = vars_list_custom, yr = acs_yr, srvy = survey
 
 # transform pop data to wide format
 pop_wide <- to_wide(pop)
+
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
 pop_wide <- as.data.frame(pop_wide) %>% right_join(select(xwalk_filter, c(ct_geoid, assm_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = assm_geoid) # rename to generic column names for WA functions
@@ -365,6 +404,12 @@ e <- select(pop_wide, sub_id, target_id, geolevel, ends_with("_003e"), -NAME)
 names(e) <- c('sub_id', 'target_id', 'geolevel', 'total_sub_pop', 'black_sub_pop', 'aian_sub_pop', 'asian_sub_pop', 'pacisl_sub_pop', 'other_sub_pop', 'twoormor_sub_pop', 'nh_white_sub_pop', 'latino_sub_pop')
 
 pop_df <- e %>% left_join(c, by = "target_id")
+
+# ##### EXTRA STEP: Calc avg annual evictions per 100 renter hh's (rate) by tract bc WA avg should be calc'd using this, not avg # of evictions (raw)
+ind_df <- ind_df %>% left_join(pop_df %>% select(sub_id, total_sub_pop), by = "sub_id") %>%
+  mutate(indicator = (avg_eviction / total_sub_pop) * 100)
+ind_df <- ind_df %>% ungroup() %>% select(sub_id, indicator)
+ind_df <- filter(ind_df, indicator >= 0) # screen out NA values of -999
 
 ##### ASSM WEIGHTED AVG CALCS ###
 pct_df <- pop_pct_multi(pop_df)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
