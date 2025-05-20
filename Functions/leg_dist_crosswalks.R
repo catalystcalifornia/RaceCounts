@@ -4,7 +4,7 @@
 ## 2020 PUMAs to 2024 State Senate & Assembly Districts
 ## 2020 Counties to 2024 State Senate & Assembly Districts
 ## 2020 Unified, Secondary, and Elementary School Districts to 2024 State Senate & Assembly Districts
-## 2020 PUMAs to 2020 Counties
+## 2022 PUMAs to 2020 Counties
 
 ### Set Up ### ------------------------------------------------------------------
 
