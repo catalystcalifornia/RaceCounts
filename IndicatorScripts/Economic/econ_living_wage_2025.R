@@ -2,18 +2,21 @@
 
 # Set up workspace --------------------------------------------------------
 # Install packages if not already installed
-packages <- c("data.table", "stringr", "dplyr", "RPostgreSQL", "dbplyr", "srvyr", "tidycensus", "rpostgis",  "tidyr", "here", "sf", "usethis") 
+packages <- c("data.table", "stringr", "dplyr", "RPostgres", "dbplyr", "srvyr", "tidycensus", "rpostgis",  "tidyr", "here", "sf", "DBI", "usethis") 
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
-if(length(install_packages) > 0) {
-  install.packages(install_packages)
-} else {
-  print("All required packages are already installed.")
-}
 
-for(pkg in packages){
-  library(pkg, character.only = TRUE)
-}
+if(length(install_packages) > 0) { 
+  install.packages(install_packages) 
+  
+} else { 
+  
+  print("All required packages are already installed.") 
+} 
+
+for(pkg in packages){ 
+  library(pkg, character.only = TRUE) 
+} 
 
 options(scipen = 100) # disable scientific notation
 
@@ -26,8 +29,8 @@ curr_yr <- 2023
 rc_yr <- '2025'
 rc_schema <- 'v7'
 
-##### GET PUMA-COUNTYCROSSWALKS ######
-crosswalk <- dbGetQuery(con, "select county_id AS geoid, county_name AS geoname, puma, num_county from crosswalks.puma_county_2022")
+##### GET PUMA CROSSWALKS ######
+crosswalk <- dbGetQuery(con, "select county_id AS geoid, county_name AS geoname, geo_id AS puma, num_county from crosswalks.puma_2022_county_2020")
 assm_crosswalk <- dbGetQuery(con, "select geo_id AS puma, sldl24 AS geoid, num_dist AS num_assm from crosswalks.puma_2020_state_assembly_2024") %>%
                   rename(assm_geoid = geoid)
 sen_crosswalk <- dbGetQuery(con, "select geo_id AS puma, sldu24 AS geoid, num_dist AS num_sen from crosswalks.puma_2020_state_senate_2024") %>%
@@ -40,10 +43,10 @@ start_yr <- curr_yr - 4  # autogenerate start yr of 5yr estimates
 root <- paste0("W:/Data/Demographics/PUMS/CA_", start_yr, "_", curr_yr, "/")
 
 # Load ONLY the PUMS columns needed for this indicator
-cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0)) # get all PUMS cols 
-cols_ <- grep("^PWGTP*", cols, value = TRUE)                   # filter for PUMS weight colnames
+cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0))    # get all PUMS cols 
+cols_wts <- grep("^PWGTP*", cols, value = TRUE)                   # filter for PUMS weight colnames
 
-ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE,  select = c(cols_, "AGEP", "ESR", "SCH", "PUMA",
+ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE,  select = c(cols_wts, "AGEP", "ESR", "SCH", "PUMA",
              "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P19", "RAC2P23", "RAC3P", "RACAIAN", "RACPI", "RACNH", "ADJINC",
              "WAGP", "PERNP", "COW", "WKHP", "WKL", "WRK", "WKWN"),
              colClasses = list(character = c("PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P19", "RAC2P23", "RAC3P", "RACAIAN", "RACPI", "RACNH", "ADJINC",
@@ -60,12 +63,12 @@ repwlist = rep(paste0("PWGTP", 1:80))
 orig_data <- ppl
 
 # join county crosswalk using left join function
-ppl <- left_join(orig_data, crosswalk, by=c("puma_id" = "puma"))   # specify the field join
+ppl <- left_join(orig_data, crosswalk, by=c("puma_id" = "puma"))   
 ppl <- left_join(ppl, assm_crosswalk, by=c("puma_id" = "puma"), relationship = "many-to-many")
 ppl <- left_join(ppl, sen_crosswalk, by=c("puma_id" = "puma"), relationship = "many-to-many")
 
 
-############## Data Dictionary: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2022.pdf ###############
+############## Data Dictionary: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf ###############
 
 ##### Reclassify Race/Ethnicity ########
 source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/PUMS_Functions_new.R")        # TEMPORARY re-direct to LF branch
@@ -76,11 +79,11 @@ source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/PUMS_Functions_new.R
 #View(subset(ppl, RAC1P == 7))
 
 # latino includes all races. AIAN is AIAN alone/combo latino/non-latino, NHPI is alone/combo latino/non-latino, SWANA includes all races and latino/non-latino
-ppl <- race_reclass(ppl)
+ppl <- race_reclass(ppl, start_yr, curr_yr)
 
 
 # review data 
-View(ppl[c("HISP","latino","RAC1P","race","RAC2P","RAC3P","ANC1P","ANC2P", "aian", "pacisl", "swana")])
+#View(ppl[c("HISP","latino","RAC1P","race","RAC2P","RAC3P","ANC1P","ANC2P", "aian", "pacisl", "swana")])
 # table(ppl$race, useNA = "always")
 # table(ppl$race, ppl$latino, useNA = "always")
 # table(ppl$race, ppl$aian, useNA = "always")
@@ -161,63 +164,6 @@ table(ppl$indicator, useNA = "always")
 #   summarize(living_wage=weighted.mean(living_wage_num,PWGTP, na.rm=TRUE))
 ## looks as expected
 
-######## Test using earnings -- no need to QA ########
-# ppl_test<-ppl_orig #save data under different name
-# # Subset Data for Living Wage 
-# # Adjust wage or salary income in past 12 months: WAGP (adjust with ADJINC)
-# # trying wages first then will try earnings 
-# ppl_test$earnings <- (as.numeric(ppl_test$PERNP)*(as.numeric(ppl_test$ADJINC)/1000000))
-# 
-# # Filter data for pop of interest  
-# # Keep records only for those ages 18-24
-# ppl_test <- ppl_test %>% filter(AGEP >= 18 & AGEP <= 64)
-# 
-# # Keep records for those with non-zero earnings in past year
-# ppl_test <- ppl_test %>% filter(earnings>0)
-# 
-# # Keep records for those who were at work last week or had a job but were not at work last week
-# ppl_test <- ppl_test %>% filter(WRK=='1' | ESR %in% c(1, 2, 3, 4, 5))
-# 
-# # Filter for those who were not self-employed or unpaid family workers
-# ppl_test <- ppl_test %>% filter(!COW %in% c('6','7','8'))
-# 
-# # Calculate Living Wage 
-# # Calculate average number of hours worked per week
-# # convert usual hours worked per week past 12 months: WKHP to integer
-# ppl_test$wkly_hrs <- as.integer(ppl_test$WKHP)
-# 
-# # average number of weeks worked in past 12 months for each value 1-6: WKW pre-2019 data
-# ppl_test$wks_worked_avg<-as.numeric(ifelse(ppl_test$WKW == 1, 51,
-#                                       ifelse(ppl_test$WKW == 2, 48.5,
-#                                              ifelse(ppl_test$WKW == 3, 43.5,
-#                                                     ifelse(ppl_test$WKW == 4, 33,
-#                                                            ifelse(ppl_test$WKW == 5, 20, 
-#                                                                   ifelse(ppl_test$WKW == 6, 7, 0)))))))
-# 
-# # created final weeks worked variable using WKWN variable for 2019 or later
-# ppl_test$wks_worked<-as.numeric(ifelse(ppl_test$WKWN>=1, ppl_test$WKWN, ppl_test$wks_worked_avg))
-# #View(ppl_test[c("RT","SERIALNO","earnings","WKW","WKWN","wks_worked","wks_worked_avg")])
-# 
-# # Calculate hourly wage 
-# # Use 15.50 since that is going into effect January 2023
-# ppl_test$hrly_wage <- as.numeric(ppl_test$earnings/(ppl_test$wks_worked * ppl_test$wkly_hrs))
-# # View(ppl_test[c("RT","SERIALNO","earnings","WKHP","WKW","WKWN","wks_worked","wkly_hrs","hrly_wage")])
-# 
-# # Code for Living Wage Indicator 
-# # When $15.50 or more, code as livable. When less than $15.50 code as not livable. All other values code as NULL.
-# ppl_test$living_wage <- case_when(ppl_test$hrly_wage >= 15.50 ~ "livable", ppl_test$hrly_wage < 15.50 ~ "not livable", TRUE ~ "NA")
-# # View(ppl_test[c("RT","SERIALNO","COW","ESR","earnings","WKHP","WKW","WKWN","wks_worked","wkly_hrs","hrly_wage","living_wage")])
-# 
-# # test disparities for state
-# median_race_earnings<-ppl_test%>%
-#   group_by(race)%>%
-#   summarize(median_hrly_wages=weighted.median(hrly_wage,PWGTP, na.rm=TRUE))
-# ppl_test$living_wage_num <- ifelse(ppl_test$hrly_wage >= 15.50, 1, 0)
-# living_wage_race_earnings<-ppl_test%>%
-#   group_by(race)%>%
-#   summarize(living_wage=weighted.mean(living_wage_num,PWGTP, na.rm=TRUE))
-## not a huge difference compared to wages, go with wages
-
 ############### CALC COUNTY AND STATE ESTIMATES/CVS ETC. ############### 
 # Define indicator and weight variables for function
 # You must use to WGTP (if you are using psam_h06.csv and want housing units, like for Low Quality Housing) or PWGTP (if you want person units, like for Connected Youth)
@@ -246,7 +192,7 @@ d <- screened
 
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
+source("./Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
 
