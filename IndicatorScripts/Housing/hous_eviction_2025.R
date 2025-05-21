@@ -81,20 +81,55 @@ screened <- filter(df_join, num_yrs > 2) # suppress data for counties with fewer
 # View(screened)
 # unique(screened$county_name)   # 39 counties pass num_yrs screening
 
+##### GET INDICATOR DATA ######
+
 ###############################
 
 df_wide <- screened %>% group_by(fips, county_name) %>%
   mutate(sum_eviction = sum(filings, na.rm = TRUE)) %>%  # total number of evictions over all data yrs available
   mutate(avg_eviction = sum_eviction / num_yrs) %>%  # avg annual number of evictions
-  distinct(fips, county_id, county_name, sum_eviction, avg_eviction, .keep_all = FALSE)
+  distinct(fips, county_id, county_name, sum_eviction, avg_eviction, num_yrs, .keep_all = FALSE)
 
 df_wide <- filter(df_wide, sum_eviction != 0) # screen out tracts (n = 341) where all filings for all data years = NA, since these should be NA not 0's. there are no 0's in orig. data.
 
-df_wide <- df_wide %>% dplyr::rename(c("sub_id"= "fips", "target_id" = "county_id", "geoname" = "county_name"))
+df_wide <- df_wide %>% dplyr::rename(c("target_id" = "county_id", "geoname" = "county_name"))
 
-ind_df <- df_wide  # create ind_df for WA functions script
-# View(ind_df)
-ind_df_orig <- ind_df #same this part so it doesn't get overwritten by later code
+
+ind_df_2010 <- df_wide  # create ind_df for WA functions script
+View(ind_df_2010)
+
+#convert 2010 tracts to 2020 tracks then use the 2020 tract to leg crosswalk
+# note: Evictions uses 2010 tract vintage, population estimates use 2020 tract vintage
+cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
+  select(GEOID_TRACT_10, NAMELSAD_TRACT_10, AREALAND_TRACT_10, GEOID_TRACT_20, NAMELSAD_TRACT_20, AREALAND_TRACT_20, AREALAND_PART) %>%
+  mutate_at(vars(contains("AREALAND")), function(x) as.numeric(x)) %>%
+  # calculate overlapping land area of 2010 and 2020 tracts (AREALAND_PART) as a percent of 2020 tract land area (AREALAND_TRACT_20)
+  mutate(prc_overlap=AREALAND_PART/AREALAND_TRACT_20) 
+
+# Because CES uses 2010 vintage tracts - need to convert to 2020 vintage and allocate score accordingly
+ind_2010_2020 <- ind_df_2010 %>%
+  left_join(cb_tract_2010_2020, by=c("fips"="GEOID_TRACT_10")) %>%
+  select(fips, sum_eviction, num_yrs, AREALAND_TRACT_10, GEOID_TRACT_20, AREALAND_TRACT_20, AREALAND_PART, prc_overlap)  %>%
+  # Allocate CES scores from 2010 tracts to 2020 using prc_overlap
+  mutate(eviction_20=sum_eviction*prc_overlap)
+
+# # check prc_overlaps sums/ note: there will be prc_overlap values > 1 bc some 2010 tracts were split into 2+ 2020 tracts and each 2020 tract comes solely from the 2010 tract 
+# check_prc_is_1 <- cb_tract_2010_2020 %>%
+#   group_by(GEOID_TRACT_10) %>%
+#   summarise(total_prc=sum(prc_overlap))
+
+# create indicator df (2020 tracts) to be used in WA calcs
+ind_2020 <- ind_2010_2020 %>%
+  # sum weighted evictions by 2020 tract
+  group_by(GEOID_TRACT_20) %>%
+  summarize(sum_eviction = sum(eviction_20), 
+            # calc 5-yr avg eviction rate (2013-2017)
+            avg_eviction = sum_eviction / num_yrs) %>%
+  # clean up names
+  rename(sub_id = GEOID_TRACT_20)  
+
+ind_df <- ind_2020 # rename to ind_df for WA fx
+
 ############# COUNTY CALCS ##################
 
 ###### DEFINE VALUES FOR FUNCTIONS ######
@@ -313,42 +348,7 @@ city_wa <- city_wa %>% rename(target_name = place_name) %>% mutate(geolevel = 'c
 city_wa<- city_wa %>% unique()
 
 #Calculate legislative districts: Assembly districts & senate districts -------
-##### GET INDICATOR DATA ######
-# load indicator data
-ind_df <- screened %>% select(fips, year, filings, num_yrs) %>% unique() #pull that unaltered version from earlier in the script
 
-#convert 2010 tracts to 2020 tracks then use the 2020 tract to leg crosswalk
-# note: Evictions uses 2010 tract vintage, population estimates use 2020 tract vintage
-cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
-  select(GEOID_TRACT_10, NAMELSAD_TRACT_10, AREALAND_TRACT_10, GEOID_TRACT_20, NAMELSAD_TRACT_20, AREALAND_TRACT_20, AREALAND_PART) %>%
-  mutate_at(vars(contains("AREALAND")), function(x) as.numeric(x)) %>%
-  # calculate overlapping land area of 2010 and 2020 tracts (AREALAND_PART) as a percent of 2020 tract land area (AREALAND_TRACT_20)
-  mutate(prc_overlap=AREALAND_PART/AREALAND_TRACT_20) 
-
-# # check prc_overlaps sums/ note: there will be prc_overlap values > 1 bc some 2010 tracts were split into 2+ 2020 tracts and each 2020 tract comes solely from the 2010 tract 
-# check_prc_is_1 <- cb_tract_2010_2020 %>%
-#   group_by(GEOID_TRACT_10) %>%
-#   summarise(total_prc=sum(prc_overlap))
-
-# Because CES uses 2010 vintage tracts - need to convert to 2020 vintage and allocate score accordingly
-ind_2010_2020 <- ind_df %>%
-  left_join(cb_tract_2010_2020, by=c("fips"="GEOID_TRACT_10")) %>%
-  select(GEOID_TRACT_20, year, filings, num_yrs, prc_overlap) 
-
-ind_2010_2020 <- ind_2010_2020 %>% group_by(GEOID_TRACT_20) %>%   
-  mutate(sum_eviction = sum(filings, na.rm = TRUE)*prc_overlap) %>%  # total number of evictions over all data yrs available
-  mutate(avg_eviction = sum_eviction / num_yrs) %>%  # avg annual number of evictions times percent overlap
-  distinct(GEOID_TRACT_20, avg_eviction, .keep_all = FALSE)
-  # Allocate CES scores from 2010 tracts to 2020 using prc_overlap
-
-
-# create indicator df (2020 tracts) to be used in WA calcs
-ind_2020 <- ind_2010_2020 %>%
-  select(GEOID_TRACT_20, avg_eviction) %>%
-  # clean up names
-  rename(sub_id = GEOID_TRACT_20)
-
-ind_df <- ind_2020 # rename to ind_df for WA fx
 
 ############# ASSEMBLY CALCS ##################
 
@@ -406,7 +406,7 @@ names(e) <- c('sub_id', 'target_id', 'geolevel', 'total_sub_pop', 'black_sub_pop
 pop_df <- e %>% left_join(c, by = "target_id")
 
 # ##### EXTRA STEP: Calc avg annual evictions per 100 renter hh's (rate) by tract bc WA avg should be calc'd using this, not avg # of evictions (raw)
-ind_df <- ind_df %>% left_join(pop_df %>% select(sub_id, total_sub_pop), by = "sub_id") %>%
+ind_df <- ind_2020 %>% left_join(pop_df %>% select(sub_id, total_sub_pop), by = "sub_id") %>%
   mutate(indicator = (avg_eviction / total_sub_pop) * 100)
 ind_df <- ind_df %>% ungroup() %>% select(sub_id, indicator)
 ind_df <- filter(ind_df, indicator >= 0) # screen out NA values of -999
