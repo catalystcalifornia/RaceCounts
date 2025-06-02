@@ -131,6 +131,7 @@ agency_names_ <- agency_names_ %>%
 agency_names_ <- agency_names_ %>% 
   mutate(agency_name_new = ifelse(agency_name_new == 'W. Sacramento', "West Sacramento", agency_name_new)) 
 
+ripa_orig_ <- ripa_orig_ %>% mutate(county = ifelse(agency_name %like% 'CHP-HQ', 'CA Highway Patrol', county)) # Reassign CHP rows assigned to Sacramento since they are actually statewide
 
 ripa_final <- ripa_orig_ %>% 
   left_join(agency_names_, by = "agency_name") # join cleaned agency names to ripa data
