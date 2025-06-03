@@ -52,6 +52,7 @@ county_crosswalk <- crosswalk %>%
 assm_crosswalk <- dbGetQuery(con, "select geo_id AS puma, sldl24 AS geoid, num_dist AS num_assm from crosswalks.puma_2020_state_assembly_2024")
 sen_crosswalk <- dbGetQuery(con, "select geo_id AS puma, sldu24 AS geoid, num_dist AS num_sen from crosswalks.puma_2020_state_senate_2024")
 
+
 # Get PUMS Data -----------------------------------------------------------
 # Data Dictionary: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
 # path where my data lives (not pulling pums data from the postgres db, takes too long to run calcs that way) 
@@ -62,9 +63,9 @@ root <- paste0("W:/Data/Demographics/PUMS/CA_", start_yr, "_", curr_yr, "/")
 cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0))    # get all PUMS cols 
 cols_wts <- grep("^PWGTP*", cols, value = TRUE)                   # filter for PUMS weight colnames
 
-ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE,  select = c(cols_wts, "RT", "SERIALNO", "AGEP", "ESR", "SCH", "PUMA",
-             "ANC1P", "ANC2P", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH", 
-             "ADJINC", "WAGP", "COW", "WKHP", "WRK", "WKWN"),
+ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE, select = c(cols_wts, "RT", "SERIALNO", "AGEP", "ESR", "SCH", "PUMA",
+                                                                                                   "ANC1P", "ANC2P", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH", 
+                                                                                                   "ADJINC", "WAGP", "COW", "WKHP", "WRK", "WKWN"),
              colClasses = list(character = c("PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH", 
                                              "ADJINC", "WAGP", "COW", "WKHP", "ESR", "WRK", "WKWN")))
 
@@ -78,10 +79,8 @@ repwlist = rep(paste0("PWGTP", 1:80))
 # save copy of original data
 orig_data <- ppl
 
-############## Data Dictionary: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf ###############
-
 ##### Reclassify Race/Ethnicity ########
-source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/PUMS_Functions_new.R")        # TEMPORARY re-direct to LF branch
+source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/PUMS_Functions_new.R")
 # check how many records there are for RACAIAN (AIAN alone/combo) versus RAC1P (AIAN alone) and same for NHPI
 #View(subset(ppl, RACAIAN =="1"))
 #View(subset(ppl, RAC1P >= 3 & ppl$RAC1P <=5))
@@ -226,7 +225,7 @@ rc_sen <- county_pums(ppl_sen)     # Calc senate
 rc_sen$geolevel <- 'sldu'
 View(rc_sen)
 
-rc_state <- state_pums(ppl_cs)       # Calc state
+rc_state <- state_pums(ppl_cs)     # Calc state
 rc_state$geolevel <- 'state'
 View(rc_state)
 
@@ -236,7 +235,7 @@ cv_threshold <- 30          # threshold and CV must be displayed as a percentage
 raw_rate_threshold <- 0
 pop_threshold <- 400
 
-screened <- pums_screen(rc_state, rc_county, rc_assm, rc_sen)
+screened <- pums_screen(rc_state, rc_county, rc_assm, rc_sen, cv_threshold, raw_rate_threshold, pop_threshold)
 View(screened)
 
 d <- screened
