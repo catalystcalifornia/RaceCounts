@@ -248,7 +248,8 @@ prep_tables_county <- function(target_geo, target_geo_yr, source_geo, source_geo
       crosswalk <- crosswalk %>% 
         rename(geo_name = (paste0('puma',substr(source_geo_yr, 3,4),'name')), 
                geo_id = paste0('puma', substr(source_geo_yr, 3,4))) %>%
-        mutate(county_name = gsub(" CA", "", county_name))
+        mutate(county_name = gsub(" CA", "", county_name),
+               geo_id = paste0("06", geo_id))       # add state fips to puma geoid
     } else if (source_geo == "usd") {
       # rename geo_id and select only columns we want
       crosswalk <- crosswalk %>% 
