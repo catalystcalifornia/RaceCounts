@@ -242,7 +242,7 @@ rc_all <- rbind(rc_state, rc_county, rc_assm, rc_sen) %>%        # combine all g
 
 colnames(rc_all) <- sub("count", "num", colnames(rc_all))  # rename some cols to RC colnames
 
-screened <- pums_screen(rc_all, cv_threshold, raw_rate_threshold, pop_threshold, 'livable')
+screened <- pums_screen(rc_all, cv_threshold, raw_rate_threshold, pop_threshold, indicator_val)
 View(screened)
 
 d <- screened
