@@ -33,6 +33,14 @@ rc_yr <- '2025'
 rc_schema <- 'v7'
 lw <- 15.50    # update living wage value as needed
 
+### define common inputs for calc_pums{} and pums_screen{}
+indicator = 'living_wage'         # name of column that contains indicator data, eg: 'living_wage' which contains values 'livable' and 'not livable'
+indicator_val = 'livable'         # desired indicator value, eg: 'livable' (not 'not livable')        
+weight = 'PWGTP'                  # PWGTP for person-level (psam_p06.csv) or WGTP for housing unit-level (psam_h06.csv) analysis
+cv_threshold <- 30                # threshold and CV must be displayed as a percentage not decimal, eg: 30 not .3
+raw_rate_threshold <- 0           # data values less than threshold are screened, for RC indicators threshold is 0.
+pop_threshold <- 400              # data for geos+race combos with pop smaller than threshold are screened.
+
 ##### GET PUMA CROSSWALKS ######
 crosswalk <- dbGetQuery(con, "select county_id AS geoid, county_name AS geoname, geo_id AS puma, num_county, afact, afact2 from crosswalks.puma_2022_county_2020")
 
@@ -80,7 +88,7 @@ repwlist = rep(paste0("PWGTP", 1:80))
 orig_data <- ppl
 
 ##### Reclassify Race/Ethnicity ########
-source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/PUMS_Functions_new.R")
+source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/PUMS_Functions_new.R")    # temporarily directed to LF folder #
 # check how many records there are for RACAIAN (AIAN alone/combo) versus RAC1P (AIAN alone) and same for NHPI
 #View(subset(ppl, RACAIAN =="1"))
 #View(subset(ppl, RAC1P >= 3 & ppl$RAC1P <=5))
@@ -139,16 +147,18 @@ table(ppl$wks_worked, ppl$WKWN, useNA = "always")
 ppl$hrly_wage <- as.numeric(ppl$wages_adj/(ppl$wks_worked * ppl$wkly_hrs))
 ## View(ppl[c("RT","SERIALNO","wages_adj","WKHP","WKWN","wks_worked","wkly_hrs","hrly_wage")])
 
-#* Code for Living Wage Indicator ----
+# Code for Living Wage Indicator ----
 # When lw or more, code as livable. When less than lw code as not livable. All other values code as NULL.
 ppl$living_wage <- case_when(ppl$hrly_wage >= lw ~ "livable", ppl$hrly_wage < lw ~ "not livable", TRUE ~ "NA")
 # View(ppl[c("RT","SERIALNO","COW","ESR","wages_adj","WKHP","WKWN","wks_worked","wkly_hrs","hrly_wage","living_wage")])
 
 # Convert to factor for indicator
 ppl$indicator <- as.factor(ppl$living_wage)
+ppl$living_wage <- as.factor(ppl$living_wage)
 
 #review
-table(ppl$indicator, useNA = "always")
+#table(ppl$indicator, useNA = "always")
+table(ppl$living_wage, useNA = "always")
 
 # Test disparities for state
 # install.packages("spatstat")
@@ -163,13 +173,6 @@ table(ppl$indicator, useNA = "always")
 ## looks as expected
 
 ############### CALC LEG DIST, COUNTY, STATE ESTIMATES/CVS ETC. ############### 
-# Define indicator and weight variables for function
-# You must use to WGTP (if you are using psam_h06.csv and want housing units, like for Low Quality Housing) or PWGTP (if you want person units, like for Connected Youth)
-key_indicator <- 'livable'  # update this to the indicator you are working with
-weight <- 'PWGTP' 
-# You must specify the population base you want to use for the rate calc. Ex. 100 for percents, or 1000 for rate per 1k.
-pop_base <- 100
-
 # join county crosswalk to data
 ppl_cs <- left_join(ppl, county_crosswalk, by=c("puma_id" = "puma"))   # join FILTERED county-puma crosswalk
 
@@ -190,7 +193,7 @@ names(assm_name) <- c("geoid", "geoname")
 # View(assm_name)
 
 # add geonames to data
-ppl_assm <- merge(x=assm_name,y=ppl_assm,by="geoid", all=T)
+ppl_assm <- merge(x=assm_name,y=ppl_assm, by="geoid", all=T)
 
 
 # join sen crosswalk to data
@@ -209,33 +212,37 @@ names(sen_name) <- c("geoid", "geoname")
 # View(sen_name)
 
 # add geonames to WA
-ppl_sen <- merge(x=sen_name,y=ppl_sen,by="geoid", all=T)
+ppl_sen <- merge(x=sen_name,y=ppl_sen, by="geoid", all=T)
 
 
-# run PUMS calcs
-rc_county <- county_pums(ppl_cs)   # Calc county
+# prep state df
+ppl_state <- ppl %>% rename(geoid = state_geoid) %>% mutate(geoname = 'California')
+
+
+#### Run PUMS Calcs ####
+rc_county <- calc_pums(d = ppl_cs, indicator, indicator_val, weight)   # Calc county
 rc_county$geolevel <- 'county'
 View(rc_county)
 
-rc_assm <- county_pums(ppl_assm)   # Calc assembly
+rc_assm <- calc_pums(d = ppl_assm, indicator, indicator_val, weight)    # Calc assembly
 rc_assm$geolevel <- 'sldl'
 View(rc_assm)
 
-rc_sen <- county_pums(ppl_sen)     # Calc senate
+rc_sen <- calc_pums(d = ppl_sen, indicator, indicator_val, weight)      # Calc senate
 rc_sen$geolevel <- 'sldu'
 View(rc_sen)
 
-rc_state <- state_pums(ppl_cs)     # Calc state
+rc_state <- calc_pums(d = ppl_state, indicator, indicator_val, weight)  # Calc state
 rc_state$geolevel <- 'state'
 View(rc_state)
 
 ############ COMBINE & SCREEN COUNTY/STATE DATA ############# 
-# Define threshold variables for function
-cv_threshold <- 30          # threshold and CV must be displayed as a percentage (not decimal)
-raw_rate_threshold <- 0
-pop_threshold <- 400
+rc_all <- rbind(rc_state, rc_county, rc_assm, rc_sen) %>%        # combine all geolevel df's before screening
+  select(-c(starts_with("count_moe"), starts_with("count_cv")))  # drop fields not needed for RC tables
 
-screened <- pums_screen(rc_state, rc_county, rc_assm, rc_sen, cv_threshold, raw_rate_threshold, pop_threshold)
+colnames(rc_all) <- sub("count", "num", colnames(rc_all))  # rename some cols to RC colnames
+
+screened <- pums_screen(rc_all, cv_threshold, raw_rate_threshold, pop_threshold, 'livable')
 View(screened)
 
 d <- screened
