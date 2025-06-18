@@ -21,8 +21,8 @@ calc_rates_100k <- function(x) {
                     raw_long$measure_rate <- sub("raw", "_", raw_long$measure_rate)
                     calc_long <- pop_long %>% left_join(raw_long, by=c("geoid", "measure_rate"))
                     calc_long <- calc_long %>%
-                                 mutate(rate=raw/pop * 100000) %>%                                             #calc rates
-                                 mutate(measure_rate=sub("__", "_rate", measure_rate))                         #create new column names for diffs from best
+                                 dplyr::mutate(rate=raw/pop * 100000) %>%                                             #calc rates
+                                 dplyr::mutate(measure_rate=sub("__", "_rate", measure_rate))                         #create new column names for diffs from best
                     calc_wide <- calc_long %>% dplyr::select(geoid, measure_rate, rate) %>%      #pivot long table back to wide
                                  pivot_wider(names_from=measure_rate, values_from=rate)
                     x <- x %>% left_join(calc_wide, by="geoid")                           #join new diff from best columns back to original table
@@ -35,7 +35,7 @@ return(x)
 count_values <- function(x) {
   rates <- x %>%
     dplyr::select(geoid, geolevel, ends_with("_rate"), -ends_with("_no_rate"), -total_rate) %>%
-    mutate(values_count = rowSums(!is.na(select(., ends_with("_rate"))))) %>%
+    dplyr::mutate(values_count = rowSums(!is.na(select(., ends_with("_rate"))))) %>%
     dplyr::select(geoid, geolevel, values_count)
   
   x <- x %>%
@@ -56,11 +56,11 @@ calc_best <- function(x) {
     
     # Prep: Replace 0 rates with NA 
     # Excludes superficially low rates where asbest is "min"
-    mutate(across(ends_with("_rate"), ~if_else(. == 0, NA, .))) %>%
+    dplyr::mutate(across(ends_with("_rate"), ~if_else(. == 0, NA, .))) %>%
     
     # Calculation
     rowwise() %>%
-    mutate(best = case_when(
+    dplyr::mutate(best = case_when(
       asbest == "max" ~ max(c_across(ends_with("_rate")), na.rm = TRUE),
       asbest == "min" ~ min(c_across(ends_with("_rate")), na.rm = TRUE),
       .default = NA
@@ -69,7 +69,7 @@ calc_best <- function(x) {
     
     # Clean: If all rates in a row are NA, max()/min() will return "Inf" values
     # Replace Inf with NA 
-    mutate(best = if_else(is.infinite(best), NA, best)) %>%
+    dplyr::mutate(best = if_else(is.infinite(best), NA, best)) %>%
     dplyr::select(geoid, geolevel, best)
   
   x <- x %>% 
@@ -92,8 +92,8 @@ calc_diff <- function(x) {
   # then pivot back to wide to join to original dataframe
   diff <- rates %>%
     pivot_longer(ends_with("_rate"), names_to="measure_rate", values_to="rate") %>%   
-    mutate(diff=abs(best-rate)) %>%
-    mutate(measure_diff=sub("_rate", "_diff", measure_rate)) %>%
+    dplyr::mutate(diff=abs(best-rate)) %>%
+    dplyr::mutate(measure_diff=sub("_rate", "_diff", measure_rate)) %>%
     dplyr::select(geoid, geolevel, measure_diff, diff) %>%     
     pivot_wider(names_from=measure_diff, values_from=diff)
   
@@ -113,7 +113,7 @@ calc_avg_diff <- function(x) {
     dplyr::select(geoid, geolevel, ends_with("_diff")) %>%
   
     # Calculation: average absolute difference from best 
-    mutate(avg = rowMeans(across(ends_with("_diff")), na.rm = TRUE)) %>%
+    dplyr::mutate(avg = rowMeans(across(ends_with("_diff")), na.rm = TRUE)) %>%
     dplyr::select(geoid, geolevel, avg)
   
   # join avg diff column back to original table
@@ -132,7 +132,7 @@ calc_s_var <- function(x) {
     dplyr::select(geoid, geolevel, ends_with("_diff")) %>%
 
     # Calculation 
-    mutate(variance = apply(dplyr::select(., ends_with("_diff")), 1, var, na.rm = TRUE)) %>%
+    dplyr::mutate(variance = apply(dplyr::select(., ends_with("_diff")), 1, var, na.rm = TRUE)) %>%
     dplyr::select(geoid, geolevel, variance)
    
     # Join variance column back to original table
@@ -151,11 +151,11 @@ calc_p_var <- function(x) {
     dplyr::select(geoid, geolevel, values_count, ends_with("_diff")) %>%
     
     # Calculation
-    mutate(svar = apply(dplyr::select(., ends_with("_diff")), 1, var, na.rm = TRUE)) %>%   
+    dplyr::mutate(svar = apply(dplyr::select(., ends_with("_diff")), 1, var, na.rm = TRUE)) %>%   
     
     # Convert sample variance to population variance. Checked that the svar and variance results match VARS.S/VARS.P Excel results.
     #See more: https://stackoverflow.com/questions/37733239/population-variance-in-r
-    mutate(variance = svar * (values_count - 1) / values_count) %>%
+    dplyr::mutate(variance = svar * (values_count - 1) / values_count) %>%
     dplyr::select(geoid, geolevel, variance)                               
   
   # Join variance column back to original table
@@ -173,12 +173,12 @@ calc_id <- function(x) {
     dplyr::select(geoid, geolevel, best, asbest, values_count, ends_with("_diff")) %>%
     
     # Calculation 1: sum of difference from best (needed for ID calc)
-    mutate(sumdiff = rowSums(select(., ends_with("_diff")), na.rm=TRUE)) %>%
+    dplyr::mutate(sumdiff = rowSums(select(., ends_with("_diff")), na.rm=TRUE)) %>%
     
     # Calculation 2: Index of Disparity (ID)
     # Returns NA when (there are <2 raced values) OR (there are 2 raced values AND MIN is best AND the sum of diffs = best)
     # Example: The second condition is where MIN is best, a geo has only 2 rates and one of them is 0.
-    mutate(index_of_disparity = ifelse((values_count < 2) | 
+    dplyr::mutate(index_of_disparity = ifelse((values_count < 2) | 
                                           (values_count == 2 & asbest == 'min' & sumdiff == best),
                                         NA, 
                                         (((sumdiff / best) / (values_count - 1)) * 100))) %>%
@@ -200,8 +200,8 @@ calc_state_z <- function(x) {
                 diff <- dplyr::select(x, geoid, avg, index_of_disparity, variance, ends_with("_diff"))          #get geoid, avg, variance, and raced diff columns
                 diff <- diff[!is.na(diff$index_of_disparity),]                                           #exclude rows with 2+ raced values, min is best, and lowest rate is 0
                 diff_long <- pivot_longer(diff, 5:ncol(diff), names_to="measure_rate", values_to="rate") %>%   #pivot wide table to long on geoid & variance cols
-                  mutate(diff=(rate - avg) / sqrt(variance)) %>%                                               #calc disparity z-scores
-                  mutate(measure_diff=sub("_diff", "_disparity_z", measure_rate))                              #create new column names for disparity z-scores
+                  dplyr::mutate(diff=(rate - avg) / sqrt(variance)) %>%                                               #calc disparity z-scores
+                  dplyr::mutate(measure_diff=sub("_diff", "_disparity_z", measure_rate))                              #create new column names for disparity z-scores
                 diff_wide <- diff_long %>% dplyr::select(geoid, measure_diff, diff) %>%      #pivot long table back to wide keeping only geoid and new columns
                   pivot_wider(names_from=measure_diff, values_from=diff)
                 x <- x %>% left_join(diff_wide, by="geoid")                           #join new columns back to original table
@@ -216,7 +216,7 @@ calc_z <- function(x) {
                 id_table <- dplyr::select(x, geoid, index_of_disparity)
                 avg_id = mean(id_table$index_of_disparity, na.rm = TRUE) #calc avg id and std dev of id
                 sd_id = sd((id_table$index_of_disparity), na.rm = TRUE)
-                #mutate(sd_id = sd(unlist(id_table$index_of_disparity)))                    #calc avg id and std dev of id with unlist()
+                #dplyr::mutate(sd_id = sd(unlist(id_table$index_of_disparity)))                    #calc avg id and std dev of id with unlist()
                 id_table$disparity_z <- (id_table$index_of_disparity - avg_id) / sd_id      #note the disp_z results are slightly different than pgadmin, must be due to slight methodology differences
                 x$disparity_z = id_table$disparity_z                                   #add disparity_z to original table
 
@@ -224,8 +224,8 @@ calc_z <- function(x) {
                 diff <- dplyr::select(x, geoid, avg, index_of_disparity, variance, ends_with("_diff"))          #get geoid, avg, variance, and raced diff columns
                 diff <- diff[!is.na(diff$index_of_disparity),]                                           #exclude rows with 2+ raced values, min is best, and lowest rate is 0
                 diff_long <- pivot_longer(diff, 5:ncol(diff), names_to="measure_diff", values_to="diff") %>%   #pivot wide table to long on geoid & variance cols
-                mutate(dispz=(diff - avg) / sqrt(variance), na.rm = TRUE) %>%                                   #calc disparity z-scores
-                mutate(measure_diff=sub("_diff", "_disparity_z", measure_diff))                                #create new column names for disparity z-scores
+                dplyr::mutate(dispz=(diff - avg) / sqrt(variance), na.rm = TRUE) %>%                                   #calc disparity z-scores
+                dplyr::mutate(measure_diff=sub("_diff", "_disparity_z", measure_diff))                                #create new column names for disparity z-scores
                 diff_wide <- diff_long %>% dplyr::select(geoid, measure_diff, dispz) %>%      #pivot long table back to wide keeping only geoid and new columns
                              pivot_wider(names_from=measure_diff, values_from=dispz)
                 x <- x %>% left_join(diff_wide, by="geoid")                           #join new columns back to original table
@@ -256,12 +256,12 @@ calc_z <- function(x) {
                 rates_long <- left_join(rates_long, s, by="measure_rate")                                             #join std dev for each raced rate
 
                 if (min(rates$asbest) == 'max') {
-                rates_long <- rates_long %>% mutate(perf=(rate - avg_rates) / sd_rates, na.rm = TRUE) %>%         #calc perf_z scores if MAX is best
-                              mutate(measure_perf=sub("_rate", "_performance_z", measure_rate))                   #create new column names for performance z-scores
+                rates_long <- rates_long %>% dplyr::mutate(perf=(rate - avg_rates) / sd_rates, na.rm = TRUE) %>%         #calc perf_z scores if MAX is best
+                              dplyr::mutate(measure_perf=sub("_rate", "_performance_z", measure_rate))                   #create new column names for performance z-scores
                 } else
                 if (min(rates$asbest) == 'min') {
-                rates_long <- rates_long %>% mutate(perf=((rate - avg_rates) / sd_rates) *-1, na.rm = TRUE) %>%   #calc perf_z scores if MIN is best
-                              mutate(measure_perf=sub("_rate", "_performance_z", measure_rate))                   #create new column names for performance z-scores
+                rates_long <- rates_long %>% dplyr::mutate(perf=((rate - avg_rates) / sd_rates) *-1, na.rm = TRUE) %>%   #calc perf_z scores if MIN is best
+                              dplyr::mutate(measure_perf=sub("_rate", "_performance_z", measure_rate))                   #create new column names for performance z-scores
                 }
 
                 rates_wide <- rates_long %>% dplyr::select(geoid, measure_perf, perf) %>%          #pivot long table back to wide keeping only geoid and new columns
