@@ -1,285 +1,78 @@
-## Officer Initiated Stops RC v6
-
+## Officer Initiated Stops RC v7
 ## Set up ----------------------------------------------------------------
-#install packages if not already installed
-list.of.packages <- c("DBI", "tidyverse", "RPostgreSQL", "tidycensus", "readxl", "sf", "janitor", "stringr", "data.table", "openxlsx", "here", "usethis")
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
 
-# packages
-library(tidyverse)
-library(readxl)
-library(RPostgreSQL)
-library(sf)
-library(tidycensus)
-library(DBI)
-library(janitor)
-library(stringr)
-library(data.table) # %like% operator
-library(openxlsx) # read xlsx from url
-library(usethis)
+##install packages if not already installed 
+packages <- c("tidyverse", "readr", "readxl", "DBI", "RPostgres", "sf", "data.table", "tidycensus", "stringr", "openxlsx", "usethis", "naniar", "tidygeocoder", "tigris", "plyr", "stringi")  
 
-options(scipen = 100)
+install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
+
+if(length(install_packages) > 0) { 
+  install.packages(install_packages) 
+  
+} else { 
+  
+  print("All required packages are already installed.") 
+} 
+
+for(pkg in packages){ 
+  library(pkg, character.only = TRUE) 
+} 
+
+options(scipen=999)
 
 # Update each year
-curr_yr <- '2022'
-rc_yr <- '2024'
-rc_schema <- 'v6'
+curr_yr <- '2022-2023'
+yrs_list <- c("2022","2023")
+acs_yr <- '2023'
+rc_yr <- '2025'
+rc_schema <- 'v7'
+sldl_crosswalk <- 'place_2020_sldl_2024'
+sldu_crosswalk <- 'place_2020_sldu_2024'
+
+pop_threshold = 100
+stop_threshold = 5  # update appropriately each year to ensure counties/cities with few stops and small pops do not result in outlier rates
+
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Crime and Justice\\QA_Sheet_Officer_Initiated_Stops.docx"
+
 
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
-con <- connect_to_db("rda_shared_data")
-con2 <- connect_to_db("racecounts")
+con <- connect_to_db("racecounts")
+con2 <- connect_to_db("rda_shared_data")
 
 
-# Before running rest of script, ensure that RIPA race/eth codes. See: W:\Data\Crime and Justice\CA DOJ\RIPA Stop Data\RIPA Dataset Read Me 2022 - 20241112.pdf # --------
+# Before running rest of script, check RIPA race/eth codes. See: W:\Data\Crime and Justice\CA DOJ\RIPA Stop Data\RIPA Dataset Read Me 2023 - 20241112.pdf # --------
 
 
-########## Prep rda_shared_data table: Comment out these sections once table has been created ###########
-
-# # Import list of agencies with counties: Check for updated file each year
-# agency_file <- read.xlsx("https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2023-06/NCIC%20Code%20Jurisdiction%20List_04242023.xlsx")
-# 
-# # Import & clean RIPA supplement data ---------------------------------------------
-# ripa_supplement <- read_excel("W:/Data/Crime and Justice/CA DOJ/RIPA Stop Data/2022/12312022 Supplement RIPA SD.xlsx")
-# ripa_supp_df <- ripa_supplement %>% mutate(Code=(str_sub(AGENCY_ORI,4,7)))
-# 
-# ripa_supp_df <- ripa_supp_df %>% left_join(agency_file %>% select(County, Code, Agency), by = "Code")
-# # ripa_supp_df %>% filter(is.na(County)) # View unmatched RIPA records. San Ramon PD agency code in RIPA is diff than in agency file. 2 SD records also do not match. Manually adding county names.
-# ripa_supp_df$County <- ifelse(ripa_supp_df$AGENCY_NAME == 'SAN RAMON PD', "Contra Costa County", ripa_supp_df$County) # Manual fix for San Ramon PD
-# ripa_supp_df$County <- ifelse(grepl('SAN DIEGO COMM', ripa_supp_df$AGENCY_NAME), "San Diego County", ripa_supp_df$County) # Manual fix for San Diego Comm
-# 
-# 
-# # Import & clean California Highway Patrol RIPA data ----------------------------------------
-# ### this step takes several minutes
-# ripa_CHP_q1 <- read_excel("W:/Data/Crime and Justice/CA DOJ/RIPA Stop Data/2022/RIPA Stop Data _ CHP 2022 Q1.xlsx")
-# ripa_CHP_q2 <- read_excel("W:/Data/Crime and Justice/CA DOJ/RIPA Stop Data/2022/RIPA Stop Data _ CHP 2022 Q2.xlsx")
-# ripa_CHP_q3 <- read_excel("W:/Data/Crime and Justice/CA DOJ/RIPA Stop Data/2022/RIPA Stop Data _ CHP 2022 Q3.xlsx")
-# ripa_CHP_q4 <- read_excel("W:/Data/Crime and Justice/CA DOJ/RIPA Stop Data/2022/RIPA Stop Data _ CHP 2022 Q4.xlsx")
-# 
-# ripa_CHP <- rbind(ripa_CHP_q1, ripa_CHP_q2, ripa_CHP_q3, ripa_CHP_q4)
-# ripa_CHP_df <- ripa_CHP %>% mutate(Code=(str_sub(AGENCY_ORI,4,7)))
-# 
-# # all CHP stops have the agency ID associated with CA Highway Patrol - Sacramento, which is incorrect
-# ## ripa_CHP_df_test <- ripa_CHP_df %>% left_join(agency_file %>% select(County, Code, Agency), by = "Code")
-# ## ripa_CHP_df_test %>% filter(is.na(County)) # View unmatched RIPA records.
-# ## table(ripa_CHP_df_test$County)
-# 
-# # add a county field to CHP stops that just retains the agency as CHP so it doesn't get matched to Sac County
-# ripa_CHP_df<-ripa_CHP_df%>%mutate(County='CA Highway Patrol')
-# 
-# # Import & clean county RIPA data -------------------------------------------------
-# setwd("W:\\Data\\Crime and Justice\\CA DOJ\\RIPA Stop Data\\2022\\county_data")
-# file_names <- dir(paste0("W:\\Data\\Crime and Justice\\CA DOJ\\RIPA Stop Data\\",curr_yr,"\\county_data")) # county data file location
-# 
-# # import all county data files, pull county names from filenames
-# ### this step takes several minutes
-# ripa_county <- file_names %>%
-#                             set_names() %>%
-#                                             map_dfr(read_excel, .id = "County")
-# 
-# # add county_name field based on filenames
-# ripa_county_df <- ripa_county %>%
-#   mutate(County = str_remove(County, "\\ 2022.xlsx$")) %>%
-#   mutate(County = str_remove(County, "RIPA Stop Data _ ")) %>%
-#   mutate(County = paste0(County, " County"))
-# 
-# 
-# # Create RIPA data postgres table -------------------------------------------------
-# 
-# # bind county df with CHP and supplement
-# ripa_df <- rbind(ripa_CHP_df%>%select(-Code), ripa_supp_df%>%select(-c(Agency, Code)))
-# ripa_df <- rbind(ripa_df, ripa_county_df)
-# unique(ripa_df$County)   # check if county names need cleaning
-# ripa_df <- ripa_df %>% mutate(County = ifelse(grepl("Los Angeles", County), "Los Angeles County", County)) # clean up LAC rows bc LAC data was separated into 4 files
-# ripa_df <- ripa_df %>% clean_names()
-# ripa_df$date_of_stop <- as.character(as.POSIXct(ripa_df$date_of_stop,tz="UTC",format="%Y-%m-%d"))
-
-# # push to postgres
-# con <- connect_to_db("rda_shared_data")
-# schema <- "crime_and_justice"
-# table_name <- "cadoj_ripa_2022"
-# table_comment <- paste0(curr_yr, " RIPA statewide data. Downloaded from https://openjustice.doj.ca.gov/data. Script: W:\\Project\\RACE COUNTS\\2024_v6\\RC_Github\\RaceCounts\\IndicatorScripts\\CrimeJustice\\crim_officer_initiated_stops_2024.R")
-# 
-# dbWriteTable(con, c(schema, table_name), ripa_df,
-#              overwrite = FALSE, row.names = FALSE)
+# Import Place-SLDL/SLDU Crosswalks ####
+sldl_xwalk <- dbGetQuery(con2, paste0("SELECT geoid_sldl2024_20 AS geoid, namelsad_sldl2024_20 AS geoname, geoid_place_20 FROM crosswalks.", sldl_crosswalk))
+sldu_xwalk <- dbGetQuery(con2, paste0("SELECT geoid_sldu2024_20 AS geoid, namelsad_sldu2024_20 AS geoname, geoid_place_20 FROM crosswalks.", sldu_crosswalk))
 
 
-# # function to add table comments
-# add_table_comments <- function(con, schema, table_name, indicator, source, column_names, column_comments) {
-#   comments <- character()
-#   comments <- c(comments, paste0("
-#     COMMENT ON TABLE ", schema, ".", table_name, " IS '", table_comment, "';"))
-#   for (i in seq_along(column_names)) {
-#     comment <- paste0("
-#       COMMENT ON COLUMN ", schema, ".", table_name, ".", column_names[i], " IS '", column_comments[i], "';
-#       ")
-#     comments <- c(comments, comment)
-#   }
-#   sql_commands <- paste(comments, collapse = "")
-#   dbSendQuery(con, sql_commands)
-# }
-# 
-# column_names <- colnames(ripa_df) # get column names
-# 
-# column_comments <- c(   # source: https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-01/RIPA%20Dataset%20Read%20Me%202022.pdf
-#   "A unique system-generated incident identification number. Alpha-numeric",
-#   "A system-generated number that is assigned to each individual who is involved in the stop or encounter. Numeric",
-#   "The number for the reporting Agency. Nine digit alpha-numeric",
-#   "Agency name. Alpha-numeric",
-#   "Time of stop",
-#   "Date of stop. ",
-#   "Duration of stop in minutes",
-#   "Location of stop closest city. Alpha",
-#   "School code. Fourteen digit alphanumeric Blank",
-#   "School name. Alpha Blank",
-#   "Stop of student. 0 No 1 Yes",
-#   "Stop on K12 school grounds. 0 No 1 Yes",
-#   "Perceived Race or Ethnicity of Person stopped. Individuals perceived as more than one race/ethnicity  are counted as Multiracial for this variable. 1 Asian 2 Black/African American 3 Hispanic/Latino 4 Middle Eastern/South Asian 5 Native American 6 Pacific Islander 7 White 8 Multiracial",
-#   "Perceived race or ethnicity of person stopped Asian. 0 No 1 Yes",
-#   "Perceived race or ethnicity of person stoppep Black or African American. 0 No 1 Yes",
-#   "Perceived race or ethnicity of person stopped Hispanic or Latino. 0 No 1 Yes",
-#   "Perceived race or ethnicity of person stopped Middle Eastern or South Asian. 0 No 1 Yes",
-#   "Perceived race or ethnicity of person stopped Native. 0 No 1 Yes",
-#   "Perceived race or ethnicity of person stopped Pacific Islander. 0 No 1 Yes",
-#   "Perceived race or ethnicity of person stopped White. 0 No 1 Yes",
-#   "Indicates that the officer selected multiple values for the perceived race/ethnicity of the person stopped. columns N thru T",
-#   "Perceived gender of person stopped.1 Male 2 Female 3 Transgender Man/Boy 4 Transgender Woman/Girl 5 Gender Nonconforming",
-#   "Perceived gender of person stopped male. 0 No 1 Yes",
-#   "Perceived gender of person stopped female. 0 No 1 Yes",
-#   "Perceived gender of person stopped transgender man/boy. 0 No 1 Yes",
-#   "Perceived gender of person stopped transgender woman/girl. 0 No 1 Yes",
-#   "Perceived gender of person stopped gender non-conforming. 0 No 1 Yes",
-#   "Perceived gender of person stopped gender non-conforming and one other gender group. 0 No 1 Yes",
-#   "Person stopped perceived to be LGBT. 0 No 1 Yes",
-#   "Perceived age of person stopped. Numeric",
-#   "Perceived age of person stopped categorized into groups. 1 1 to 9 2 10 to 14 3 15 to 17 4 18 to24 5 25 to 34 6 35 to 44 7 45 to 54 8 55 to 64 9 65 and older",
-#   "Person stopped has limited or no English fluency. 0 No 1 Yes",
-#   "Perceived or known disability of person stopped. Individuals perceived as having one or more disabilities columns. 0 No Disability 1 Deafness 2 Speech Impairment 3 Blind 4 Mental Health Condition 5 Development 6 Hyperactivity 7 Other 8 Multiple Disability",
-#   "Perceived or known disability of person stopped deafness or difficulty hearing. 0 No 1 Yes",
-#   "Perceived or known disability of person stopped speech impairment or limited use of language. 0 No 1 Yes",
-#   "Perceived or known disability of person stopped blind or limited vision. 0 No 1 Yes",
-#   "Perceived or known disability of person stopped mental health condition. 0 No 1 Yes",
-#   "Perceived or known disability of person stopped intellectual or developmental. 0 No",
-#   "Perceived or known disability of person stopped disability related to hyperactivity or impulsive behavior. 0 No 1 Yes",
-#   "Perceived or known disability of person stopped other disability. 0 No 1 Yes",
-#   "Perceived or known disability of person stopped no disability. 0 No 1 Yes",
-#   "Perceived or known disability of person stopped no disability, one disability, or more than one disability. 0 No Disability 1 One Disability 2 Multiple Disabilities",
-#   "Reason for stop traffic violation, reasonable suspicion, parole/probation arrest warrant, investigation for truancy, consensual encounter. 1 Traffic Violation 2 Reasonable suspicion 3 Parole/probation/PRCS/ mandatory supervision 4 Knowledge of outstanding arrest/wanted person 5 Investigation to determine whether person was truant 6 Consensual encounter resulting in search 7 Possible conduct under Education Code 8 Determine whether student violated school policy",
-#   "Type of traffic violation. 1 Moving 2 Equipment 3 Nonmoving Blank",
-#   "Code section related to traffic violation. CJIS offense table code Blank",
-#   "If known, code for suspected reason for stop violation. CJIS offense table code Blank",
-#   "Reasonable suspicion officer witnessed commission of a crime. 0 No 1 Yes Blank",
-#   "Reasonable suspicion matched suspect description. 0 No 1 Yes Blank",
-#   "Reasonable suspicion witness or victim identification of suspect at the scene. 0 No 1 Yes Blank",
-#   "Reasonable suspicion carrying suspicious object. 0 No 1 Yes Blank",
-#   "Reasonable suspicion actions indicative of casing a victim or location. 0 No 1 Yes Blank",
-#   "Reasonable suspicion suspected of acting as a lookout. 0 No 1 Yes Blank",
-#   "Reasonable suspicion actions indicative of a drug transaction. 0 No 1 Yes Blank",
-#   "Reasonable suspicion actions indicative of engaging a violent crime. 0 No 1 Yes Blank",
-#   "Reasonable suspicion other reasonable suspicion of a crime. 0 No 1 Yes Blank",
-#   "Section Code. 1 48900 2 48900.2 3 48900.3 4 48900.4 5 48900.7 Blank",
-#   "When EC 48900 is selected, specify the subdivision. 1 48900a1 2 48900a2 3 48900b 4 48900 c 5 48900 d 6 48900 e 7 48900 f 8 48900 g",
-#   "Stop made in response to a call for service. 0 No 1 Yes",
-#   "Action taken by officer during stop person removed from vehicle by order. 0 No 1 Yes",
-#   "Action taken by officer during stop person removed from vehicle by physical contact. 0 No 1 Yes",
-#   "Action taken by officer during stop field sobriety test. 0 No 1 Yes",
-#   "Action taken by officer during stop curbside detention. 0 No 1 Yes",
-#   "Action taken by officer during stop handcuffed or flex cuffed. 0 No 1 Yes",
-#   "Action taken by officer during stop patrol car detention. 0 No 1 Yes",
-#   "Action taken by officer during stop canine removed search. 0 No 1 Yes",
-#   "Action taken by officer during stop firearm pointed at person. 0 No 1 Yes",
-#   "Action taken by officer during stop firearm discharged or used. 0 No 1 Yes",
-#   "Action taken by officer during stop electronic device used. 0 No 1 Yes",
-#   "Action taken by officer during stop impact projectile discharged or used e.g. blunt impact projectile, rubber bullets, bean bags. 0 No 1 Yes",
-#   "Action taken by officer during stop canine bit or held person. 0 No 1 Yes",
-#   "Action taken by officer during stop baton or other impact weapon used. 0 No 1 Yes",
-#   "Action taken by officer during stop chemical spray use pepper spray, mace, tear gas, or other chemical irritants. 0 No 1 Yes",
-#   "Action taken by officer during stop other physical or vehicle contact. 0 No 1 Yes",
-#   "Action taken by officer during stop person photographed. 0 No 1 Yes",
-#   "Action taken by officer during stop asked for consent to search person. 0 No 1 Yes",
-#   "Action taken by officer during stop search of person was conducted. 0 No 1 Yes",
-#   "Action taken by officer during stop asked for consent to search. 0 No",
-#   "Action taken by officer during stop search of property was conducted. 0 No 1 Yes",
-#   "Action taken by officer during stop property was seized. 0 No 1 Yes",
-#   "Action taken by officer during stop vehicle impound. 0 No 1 Yes",
-#   "Action taken by officer during stop admission or written statement obtained from student. 0 No 1 Yes",
-#   "Action taken by officer during stop none. 0 No 1 Yes",
-#   "Action taken by officer during stop specify if consent was given for search of person. 0 No 1 Yes Blank",
-#   "Action taken by officer during stop specify if consent was given for search of property. 0 No 1 Yes Blank",
-#   "Basis for search consent given. 0 No 1 Yes Blank",
-#   "Basis for search officer safety/safety of others. 0 No 1 Yes Blank",
-#   "Basis for search search warrant. 0 No 1 Yes Blank",
-#   "Basis for search condition of parole/probation/PRCS/mandatory supervision. 0 No 1 Yes Blank",
-#   "Basis for search suspected weapons. 0 No 1 Yes Blank",
-#   "Basis for search visible contraband. 0 No 1 Yes Blank",
-#   "Basis for search odor of contraband. 0 No 1 Yes Blank",
-#   "Basis for search canine detection. 0 No 1 Yes Blank",
-#   "Basis for search evidence of crime. 0 No 1 Yes Blank",
-#   "Basis for search incident to arrest. 0 No 1 Yes Blank",
-#   "Basis for search exigent circumstances. 0 No 1 Yes Blank",
-#   "Basis for search vehicle inventory for search property only. 0 No 1 Yes Blank",
-#   "Basis for search suspected violation of school policy. 0 No 1 Yes",
-#   "Contraband or evidence discovered none. 0 No 1 Yes",
-#   "Contraband or evidence discovered firearm. 0 No",
-#   "Contraband or evidence discovered ammunition. 0 No 1 Yes",
-#   "Contraband or evidence discovered weapon. 0 No 1 Yes",
-#   "Contraband or evidence discovered drugs/narcotics. 0 No 1 Yes",
-#   "Contraband or evidence discovered alcohol. 0 No 1 Yes",
-#   "Contraband or evidence discovered money. 0 No 1 Yes",
-#   "Contraband or evidence discovered drug paraphernalia. 0 No 1 Yes",
-#   "Contraband or evidence discovered stolen property. 0 No 1 Yes",
-#   "Contraband or evidence discovered cell phone or electronic device. 0 No 1 Yes",
-#   "Contraband or evidence discovered other contraband or evidence. 0 No 1 Yes",
-#   "Basis for property seizure safekeeping as allowed by law/statute. 0 No 1 Yes Blank",
-#   "Basis for property seizure contraband. 1 No 1 Yes Blank",
-#   "Basis for property seizure evidence. 2 No 1 Yes Blank",
-#   "Basis for property seizure impound of vehicle. 3 No 1 Yes Blank",
-#   "Basis for property seizure abandoned property. 4 No 1 Yes Blank",
-#   "Basis for property seizure suspected violation of school policy. 0 No 1 Yes Blank",
-#   "Type of property seized firearm. 0 No 1 Yes Blank",
-#   "Type of property seized ammunition. 0 No 1 Yes Blank",
-#   "Type of property seized weapon other than firearm. 0 No 1 Yes Blank",
-#   "Type of property seized drugs/narcotics. 0 No 1 Yes Blank",
-#   "Type of property seized alcohol. 0 No 1 Yes Blank",
-#   "Type of property seized money. 0 No 1 Yes Blank",
-#   "Type of property seized drug paraphernalia. 0 No 1 Yes Blank",
-#   "Type of property seized stolen property. 0 No 1 Yes Blank",
-#   "Type of property seized cellphone. 0 No 1 Yes Blank",
-#   "Type of property seized vehicle. 0 No 1 Yes Blank",
-#   "Type of property seized other contraband. 0 No 1 Yes Blank",
-#   "Result of stop no action. 0 No 1 Yes",
-#   "Result of stop warning verbal or written. 0 No",
-#   "Result of stop citation for infraction. 0 No 1 Yes",
-#   "Result of stop in field cite and release. 0 No 1 Yes",
-#   "Result of stop custodial pursuant to outstanding warrant. 0 No 1 Yes",
-#   "Result of stop custodial arrest without warrant. 0 No 1 Yes",
-#   "Result of stop field interview card completed. 0 No 1 Yes",
-#   "Result of stop noncriminal transport or caretaking transport including transport by officer, transport by ambulance, or transport by another agency. 0 No 1 Yes",
-#   "Result of stop contacted parent/legal guardian or other person responsible for minor. 0 No 1 Yes",
-#   "Result of stop psychiatric hold. 0 No 1 Yes",
-#   "Result of stop referred to US Department of Homeland Security ICE. 0 No 1 Yes",
-#   "Result of stop referral to school administrator. 0 No 1 Yes",
-#   "Result of stop referral to school counselor or other support staff. 0 No 1 Yes",
-#   "Result of stop warning code. Five digit numeric code Blank",
-#   "Result of stop citation for infraction codes. Five digit numeric code Blank",
-#   "Result of stop in field cite and release codes. Five digit numeric code Blank",
-#   "Result of stop custodial arrest without warrant codes. Five digit numeric code Blank",
-#   "County Name"
-# )
-# 
-# 
-# add_table_comments(con, schema, table_name, indicator, source, column_names, column_comments)
+# Get RIPA data --------------------------------------------------------
+# create list of statewide RIPA tables based on yrs_list defined above
+table_names <- data.frame()
 
+for (i in yrs_list){
+  output = paste0("cadoj_ripa_", i)
+  table_names = rbind(table_names, output)
+  table_names <- table_names %>% dplyr::rename(name = 1)
+}
 
+table_list <- table_names[order(table_names$name), ]  # alphabetize list of table_names tables, needed to format list correctly for next step
 
-##### Begin RACE COUNTS prep #
-# Import RIPA postgres table --------------------------------------------------------
-ripa_orig <- dbGetQuery(con, "SELECT county, agency_name, call_for_service, rae_hispanic_latino, rae_full, rae_native_american, 
-                                  rae_pacific_islander, rae_middle_eastern_south_asian FROM crime_and_justice.cadoj_ripa_2022 WHERE call_for_service = 0;") 
+# import RIPA data
+ripa_orig <- lapply(setNames(paste0("select county, agency_name, call_for_service, rae_hispanic_latino, rae_full, rae_native_american, 
+                                    rae_pacific_islander, rae_middle_eastern_south_asian from crime_and_justice.", table_list, " WHERE call_for_service = 0;"), table_list), DBI::dbGetQuery, conn = con2)
 
+ripa_orig <- Map(cbind, ripa_orig, year = names(ripa_orig))                      # add year column, populated by table names
+ripa_orig <- lapply(ripa_orig, transform, year=str_sub(year,-4,-1))              # update year column values to year only
+ripa_orig <- lapply(ripa_orig, function(i) {i[] <- lapply(i, as.character); i})  # convert all cols to char
+ripa_orig_ <- rbindlist(ripa_orig)   # convert list into df
+
+# Clean RIPA data --------------------------------------------------------
 # manual cleaning so that unique agency names to match to cities later
-agency_names <- as.data.frame(unique(ripa_orig$agency_name))
+agency_names <- as.data.frame(unique(ripa_orig_$agency_name))
 colnames(agency_names)[1] = "agency_name"
 agency_names_ <- agency_names %>% mutate(agency_name_new = gsub(" PD", "", agency_name))  # clean police dept names
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" CO SO", " COUNTY", agency_name_new))  # clean Sheriff's names
@@ -294,98 +87,210 @@ agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPART
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPAR", "", agency_name_new)) 
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DEPT", "", agency_name_new))  
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" POLICE DE", "", agency_name_new))
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" - DOC", "", agency_name_new))
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub("-COMM", "", agency_name_new))  
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" - COMM", "", agency_name_new))  
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" CO DA", " COUNTY", agency_name_new))  # clean County Dist Atty's names
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" CA DA", " COUNTY", agency_name_new))  # clean County Dist Atty's names
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" - HOJ", "", agency_name_new))         # clean County Dist Atty's names
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" CO. DA INV.", " COUNTY", agency_name_new))  # clean County DA's names
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" COUNTY DA", " COUNTY", agency_name_new))  # clean County DA's names
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" CO MARSHAL", " COUNTY", agency_name_new))  # clean County Marshall's names
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" CO WELFARE", " COUNTY", agency_name_new))  # clean County Welfare's names
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" CO DEPT OF HUMAN ASST", " COUNTY", agency_name_new))  # clean County DHA's names
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" CO DA", " COUNTY", agency_name_new))  # clean County DA's names
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" CO FIRE - ARSON", " COUNTY", agency_name_new))  # clean County FD's names
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" COUNTY DISTRICT PARKS", " COUNTY", agency_name_new))  # clean County Park's names
+agency_names_ <- agency_names_ %>% mutate(agency_name_new = gsub(" CO DEPT PARKS", " COUNTY", agency_name_new))  # clean County Park's names
+
 
 agency_names_ <- agency_names_ %>% mutate(agency_name_new = str_to_title(agency_names_$agency_name_new))
-agency_names_ <- agency_names_  %>% mutate(agency_name_new = 
-                                                ifelse(agency_name_new == 'Lapd', "Los Angeles", agency_name_new))
-agency_names_ <- agency_names_  %>% mutate(agency_name_new = 
-                                                ifelse(agency_name_new == 'Atherton #1', "Atherton", agency_name_new)) 
 
-ripa_final <- ripa_orig %>% left_join(agency_names_, by = "agency_name") # join cleaned agency names to ripa data
+agency_names_ <- agency_names_ %>% 
+  mutate(agency_name_new = ifelse(agency_name_new == 'Lapd', "Los Angeles", agency_name_new))
+agency_names_ <- agency_names_ %>% 
+  mutate(agency_name_new = ifelse(agency_name_new == 'Atherton #1', "Atherton", agency_name_new)) 
+agency_names_ <- agency_names_ %>% 
+  mutate(agency_name_new = ifelse(agency_name_new == 'S. San Francisco', "South San Francisco", agency_name_new)) 
+agency_names_ <- agency_names_ %>% 
+  mutate(agency_name_new = ifelse(agency_name_new == 'Angels Camp', "Angels", agency_name_new)) 
+agency_names_ <- agency_names_ %>% 
+  mutate(agency_name_new = ifelse(agency_name_new == 'Blytheunication', "Blythe", agency_name_new)) 
+agency_names_ <- agency_names_ %>% 
+  mutate(agency_name_new = ifelse(agency_name_new == 'Carmel', "Carmel-by-the-Sea", agency_name_new)) 
+agency_names_ <- agency_names_ %>% 
+  mutate(agency_name_new = ifelse(agency_name_new == 'Lindsay Department Of Public S', "Lindsay", agency_name_new)) 
+agency_names_ <- agency_names_ %>% 
+  mutate(agency_name_new = ifelse(agency_name_new == 'Mcfarland', "McFarland", agency_name_new)) 
+agency_names_ <- agency_names_ %>% 
+  mutate(agency_name_new = ifelse(agency_name_new == 'Mt. Shasta', "Mount Shasta", agency_name_new)) 
+agency_names_ <- agency_names_ %>% 
+  mutate(agency_name_new = ifelse(agency_name_new == 'Sunnyvale Dps', "Sunnyvale", agency_name_new)) 
+agency_names_ <- agency_names_ %>% 
+  mutate(agency_name_new = ifelse(agency_name_new == 'Sunnyvale Dps', "Sunnyvale", agency_name_new)) 
+agency_names_ <- agency_names_ %>% 
+  mutate(agency_name_new = ifelse(agency_name_new == 'W. Sacramento', "West Sacramento", agency_name_new)) 
+
+ripa_orig_ <- ripa_orig_ %>% mutate(county = ifelse(agency_name %like% 'CHP-HQ', 'CA Highway Patrol', county)) # Reassign CHP rows assigned to Sacramento since they are actually statewide
+
+ripa_final <- ripa_orig_ %>% 
+  left_join(agency_names_, by = "agency_name") # join cleaned agency names to ripa data
+
+ripa_cfs <- ripa_final %>% mutate(state_id = '06')   # add state fips col
+
+# Count number of data years each agency has data for
+count_data_yrs <- ripa_cfs %>% group_by(agency_name_new) %>% dplyr::summarise(data_yrs = length(unique(year)))
+
+# Join data years count to RIPA data
+ripa_cfs <- ripa_cfs %>% left_join(count_data_yrs)
+
+#### Calc State, County, Agency counts by race, weighted by ripa_cfs$data_yrs ####
+source(".\\Functions\\crime_justice_functions.R")
+state_calcs <- stops_by_race(ripa_cfs, state_id)
+county_calcs <- stops_by_race(ripa_cfs, county) %>%  # CA Hwy Patrol is in this df, but is filtered out during pop join later (county_df)
+  mutate(county = gsub(" County", "", county))
+agency_calcs <- stops_by_race(ripa_cfs, agency_name_new)   # this df includes agencies at all levels: state, county, city, school district, etc.
 
 
-# filter data for officer-initiated stops by race/eth --------------------------------------------------------
-ripa_cfs <- ripa_final %>% mutate(state_id = '06')  
+#### Get pop data by race ####
+pop <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_race_multigeo")) %>%
+  mutate(name = gsub(", California", "",
+                gsub(" County", "",
+                gsub(" CDP", "",
+                gsub(" city", "",
+                gsub(" town", "", name)))))) %>%
+  mutate(name = case_when(name == 'El Paso de Roblescity' ~ 'Paso Robles',
+                          name == 'San Buenaventuracity' ~ 'Ventura',
+                          TRUE ~ name)) %>%
+  select(-c(contains(c("swana_", "nh_other_", "pacisl_", "aian_", "pct_"))))     # drop unneeded cols
+
+nh_aian_pacisl <- dbGetQuery(con2, paste0("SELECT geoid, nh_aian_count AS nh_aian_pop, nh_nhpi_count as nh_pacisl_pop FROM demographics.acs_5yr_multigeo_", acs_yr, "_race_wide WHERE geolevel IN ('state', 'county', 'place')"))
+pop <- pop %>% full_join(nh_aian_pacisl)     # join nh_pacisl + nh_aian pop to main pop df
 
 
-#### Calc counts by race ####
-source(here("Functions", "crime_justice_functions.R"))
-state_calcs <- stops_by_state(ripa_cfs)
-county_calcs <- stops_by_county(ripa_cfs) %>% mutate(county = gsub(" County", "", county))
-agency_calcs <- stops_by_agency(ripa_cfs) # this df includes agencies at all levels: state, county, city, school district, etc.
+#### Create separate state, county, city df's with RIPA and pop data ####
+state_df <- pop %>% filter(geolevel == 'state') %>% left_join(state_calcs, by = c("geoid" = "state_id")) %>% dplyr::rename(geoname = name)
+county_df <- pop %>% filter(geolevel == 'county') %>% left_join(county_calcs, by = c("name" = "county")) %>% dplyr::rename(geoname = name)
+city_df <- pop %>% filter(geolevel == 'place') %>% left_join(agency_calcs, by = c("name" = "agency_name_new")) %>% dplyr::rename(geoname = name)
+
+# copy SF County (Sheriff) data to SF City record since SF Sheriff serves SF City/County
+sf_stops <- county_df %>% 
+  filter(geoname == 'San Francisco') %>% 
+  select(geoname, ends_with("_stops"))
+city_df <- city_df %>% rows_update(sf_stops, by = c("geoname"))
+
+# na_cities <- city_df %>% filter(is.na(total_stops)) # n = 1274, the cities on this list are covered by County Sheriff's that serve many cities/areas.
 
 
-# get pop data by race
-pop <- dbGetQuery(con2, "SELECT * FROM v6.arei_race_multigeo") %>% mutate(name = gsub(" County, California", "", name),
-                                                                          name =  gsub(" CDP, California", "", name),
-                                                                          name =  gsub(" city, California", "", name),
-                                                                          name =  gsub(" town, California", "", name),
-                                                                          name =  gsub(", California", "", name)) %>% 
-                                                                   select(-c(contains(c("swana_", "nh_other_", "pct_"))))
+#### Calc Leg Dist stops by race ####
+## Aggregate city stops to leg dist using city-leg xwalks. Note: a city can match to more than 1 district
+sldu_df <- left_join(sldu_xwalk, city_df %>% filter(!is.na(total_stops)) %>% select(-c(geoname)), by=c("geoid_place_20"="geoid")) %>% 
+  group_by(geoid, geoname) %>% 
+  dplyr::summarise(across(where(is.numeric), sum, na.rm = TRUE)) %>% 
+  mutate(geolevel="sldu") %>% 
+  select(-c(ends_with("_pop"), geolevel, geoname))
 
-nh_aian_pacisl <- dbGetQuery(con, "SELECT geoid, dp05_0081e AS nh_aian_pop, dp05_0083e as nh_pacisl_pop FROM demographics.acs_5yr_dp05_multigeo_2022 WHERE geolevel IN ('state', 'county', 'place')")
-pop <- pop %>% full_join(nh_aian_pacisl)
+sldl_df <- left_join(sldl_xwalk, city_df %>% filter(!is.na(total_stops)) %>% select(-c(geoname)), by=c("geoid_place_20"="geoid")) %>% 
+  group_by(geoid, geoname) %>% 
+  dplyr::summarise(across(where(is.numeric), sum, na.rm = TRUE)) %>% 
+  mutate(geolevel="sldl") %>% 
+  select(-c(ends_with("_pop"), geolevel, geoname))
 
+### Manually assign some agency stop data (that doesn't match to cities) to leg districts ####
+# identify additional agencies that can be assigned to leg districts
+# city_pop <- pop %>% filter(geolevel == 'place')
+# no_city_stops <- anti_join(agency_calcs, city_pop %>% filter(geolevel == 'place'), by = c("agency_name_new" = "name")) 
+# no_city_stops <-  no_city_stops %>% filter(!endsWith(!!no_city_data$agency_name_new, !!"County"))  # n = 103
+# write.xlsx(no_city_stops, 'W:\\Data\\Crime and Justice\\CA DOJ\\RIPA Stop Data\\2023\\agency_addresses.xlsx')
 
-state_df <- pop %>% filter(geolevel == 'state') %>% left_join(state_calcs, by = c("geoid" = "state_id"))
-county_df <- pop %>% filter(geolevel == 'county') %>% left_join(county_calcs, by = c("name" = "county"))
-city_df <- pop %>% filter(geolevel == 'place') %>% left_join(agency_calcs, by = c("name" = "agency_name_new"))
-# na_cities <- city_df %>% filter(is.na(total_stops)) # n = 1281, the cities on this list are covered by County Sheriff's that serve many cities/areas, with exception of SF.
+# import manually-looked up addresses for colleges/univ and a few other agencies that can be assigned to counties/leg dist.
+agency_addresses <- read_excel('W:\\Data\\Crime and Justice\\CA DOJ\\RIPA Stop Data\\2023\\agency_addresses.xlsx') %>%
+  filter(!is.na(Address))
 
-# combine city, county, state data
-all_df <- rbind(state_df, county_df, city_df) %>% rename(geoname = name)
+agency_addresses <- agency_addresses %>% geocode(address = Address, method = "osm")
+# convert to sf object
+agency <- st_as_sf(agency_addresses, coords = c("long", "lat"), crs = 4326)
+st_crs(agency)   # WGS84: 4326
+agency_proj <- st_transform(agency, 3310)
+#plot(agency)
 
-# copy SF County (Sheriff) data to SF City record since SF Sheriff primarily serves SF City
-sf_stops <- all_df %>% filter(geoname == 'San Francisco' & geolevel == 'county') %>% select(geoname, ends_with("_stops"))
-all_df <- all_df %>% rows_update(sf_stops, by = "geoname")
+# pull in sldl, sldu geos
+sldl <- st_read(con2, query = "SELECT * FROM geographies_ca.cb_2023_06_sldl_500k")
+#state_legislative_districts(state = 'CA', year = 2023, cb = TRUE, house = "lower")
+st_crs(sldl)    # ESPG: 3310 NAD83
+#plot(sldl)
 
-# copy 	S. San Francisco PD data to South San Francisco record
-so_sf_stops <- agency_calcs %>% filter(agency_name_new=='S. San Francisco') %>% mutate(geoname="South San Francisco")%>%select(geoname, ends_with("_stops"))
-all_df <- all_df %>% rows_update(so_sf_stops, by = "geoname")
+sldu <- st_read(con2, query = "SELECT * FROM geographies_ca.cb_2023_06_sldu_500k")
+#state_legislative_districts(state = 'CA', year = 2023, cb = TRUE, house = "upper")
+st_crs(sldu)    # ESPG: 3310 NAD83
+#plot(sldl)
 
+# Intersect unassigned agencies with leg dists, then drop geometry
+sldl_agency <- st_intersection(agency_proj, sldl) %>% st_drop_geometry()
+sldu_agency <- st_intersection(agency_proj, sldu) %>% st_drop_geometry()
+
+# Join RIPA data to unassigned agencies-leg dist xwalks
+ripa_sldl_agency <- sldl_agency %>% 
+  left_join(ripa_cfs, by = c("agency_name_new", "agency_name"))
+  
+ripa_sldu_agency <- sldu_agency %>% 
+  left_join(ripa_cfs, by = c("agency_name_new", "agency_name"))
+
+# Calc stops by race for agencies manually assigned to leg dist
+sldl_manual <- stops_by_race(ripa_sldl_agency, geoid)
+
+sldu_manual <- stops_by_race(ripa_sldu_agency, geoid)
+
+## Join Leg Dist stops aggregated from city stops with manually assigned Leg Dist stops
+sldl_df_ <- sldl_df %>% rbind.fill(sldl_manual) %>%
+  group_by(geoid) %>%
+  dplyr::summarise(across(everything(), sum, na.rm=TRUE)) %>%
+  left_join(pop %>% filter(geolevel == 'sldl')) %>%
+  dplyr::rename('geoname' = 'name')
+
+sldu_df_ <- sldu_df %>% rbind.fill(sldu_manual) %>%
+  group_by(geoid) %>%
+  dplyr::summarise(across(everything(), sum, na.rm=TRUE)) %>%
+  left_join(pop %>% filter(geolevel == 'sldu')) %>%
+  dplyr::rename('geoname' = 'name')
 
 # Data screening  --------------------------------------------------------
-pop_threshold = 100
-stop_threshold = 5  # update appropriately each year to ensure counties/cities with few stops and small pops do not result in outlier rates
+
+# combine sldu, sldl, city, county, state data
+all_df <- rbind(state_df, county_df, city_df, sldu_df_, sldl_df_)
 
 df_screened <- all_df %>% mutate(
-                # screen raw counts
-                total_raw = ifelse(total_pop < pop_threshold | total_stops< stop_threshold, NA, total_stops),
-                latino_raw = ifelse(latino_pop < pop_threshold | latino_stops< stop_threshold, NA, latino_stops),
-                nh_white_raw = ifelse(nh_white_pop < pop_threshold | nh_white_stops < stop_threshold, NA, nh_white_stops),
-                nh_black_raw = ifelse(nh_black_pop < pop_threshold | nh_black_stops < stop_threshold, NA, nh_black_stops),
-                nh_asian_raw = ifelse(nh_asian_pop < pop_threshold | nh_asian_stops < stop_threshold, NA, nh_asian_stops),
-                nh_twoormor_raw = ifelse(nh_twoormor_pop < pop_threshold | nh_twoormor_stops < stop_threshold, NA, nh_twoormor_stops),
-                nh_aian_raw = ifelse( nh_aian_pop < pop_threshold |  nh_aian_stops < stop_threshold, NA,  nh_aian_stops),
-                nh_pacisl_raw = ifelse(nh_pacisl_pop < pop_threshold | nh_pacisl_stops < stop_threshold, NA, nh_pacisl_stops),
-                aian_raw = ifelse(aian_pop < pop_threshold |  aian_stops < stop_threshold, NA,  aian_stops),
-                pacisl_raw = ifelse(pacisl_pop < pop_threshold | pacisl_stops < stop_threshold, NA, pacisl_stops),
-                swanasa_raw = ifelse(swanasa_pop < pop_threshold | swanasa_stops < stop_threshold, NA, swanasa_stops),
-                
-                # calc rates
-                total_rate = (total_raw/total_pop) * 1000,
-                latino_rate = (latino_raw/latino_pop) * 1000,
-                nh_white_rate = (nh_white_raw/nh_white_pop) * 1000,
-                nh_black_rate = (nh_black_raw/nh_black_pop) * 1000,
-                nh_asian_rate = (nh_asian_raw/nh_asian_pop) * 1000,
-                nh_twoormor_rate = (nh_twoormor_raw/nh_twoormor_pop) * 1000,
-                nh_aian_rate = (nh_aian_raw/nh_aian_pop) * 1000,
-                nh_pacisl_rate = (nh_pacisl_raw/nh_pacisl_pop) * 1000,
-                aian_rate = (aian_raw/aian_pop) * 1000,
-                pacisl_rate = (pacisl_raw/pacisl_pop) * 1000,
-                swanasa_rate = (swanasa_raw/swanasa_pop) * 1000
+  # screen raw counts
+  total_raw = ifelse(total_pop < pop_threshold | total_stops< stop_threshold, NA, total_stops),
+  latino_raw = ifelse(latino_pop < pop_threshold | latino_stops< stop_threshold, NA, latino_stops),
+  nh_white_raw = ifelse(nh_white_pop < pop_threshold | nh_white_stops < stop_threshold, NA, nh_white_stops),
+  nh_black_raw = ifelse(nh_black_pop < pop_threshold | nh_black_stops < stop_threshold, NA, nh_black_stops),
+  nh_asian_raw = ifelse(nh_asian_pop < pop_threshold | nh_asian_stops < stop_threshold, NA, nh_asian_stops),
+  nh_twoormor_raw = ifelse(nh_twoormor_pop < pop_threshold | nh_twoormor_stops < stop_threshold, NA, nh_twoormor_stops),
+  nh_aian_raw = ifelse( nh_aian_pop < pop_threshold |  nh_aian_stops < stop_threshold, NA,  nh_aian_stops),
+  nh_pacisl_raw = ifelse(nh_pacisl_pop < pop_threshold | nh_pacisl_stops < stop_threshold, NA, nh_pacisl_stops),
+  swanasa_raw = ifelse(swanasa_pop < pop_threshold | swanasa_stops < stop_threshold, NA, swanasa_stops),
+  
+  # calc rates using annual avg (weighted) stops
+  total_rate = ifelse(total_pop < pop_threshold | total_stops< stop_threshold, NA, total_stops_wt/total_pop) * 1000,
+  latino_rate = ifelse(latino_pop < pop_threshold | latino_stops< stop_threshold, NA, latino_stops_wt/latino_pop) * 1000,
+  nh_white_rate = ifelse(nh_white_pop < pop_threshold | nh_white_stops < stop_threshold, NA, nh_white_stops_wt/nh_white_pop) * 1000,
+  nh_black_rate = ifelse(nh_black_pop < pop_threshold | nh_black_stops < stop_threshold, NA, nh_black_stops_wt/nh_black_pop) * 1000,
+  nh_asian_rate = ifelse(nh_asian_pop < pop_threshold | nh_asian_stops < stop_threshold, NA, nh_asian_stops_wt/nh_asian_pop) * 1000,
+  nh_twoormor_rate = ifelse(nh_twoormor_pop < pop_threshold | nh_twoormor_stops < stop_threshold, NA, nh_twoormor_stops_wt/nh_twoormor_pop) * 1000,
+  nh_aian_rate = ifelse( nh_aian_pop < pop_threshold |  nh_aian_stops < stop_threshold, NA,  nh_aian_stops_wt/nh_aian_pop) * 1000,
+  nh_pacisl_rate = ifelse(nh_pacisl_pop < pop_threshold | nh_pacisl_stops < stop_threshold, NA, nh_pacisl_stops_wt/nh_pacisl_pop) * 1000,
+  swanasa_rate = ifelse(swanasa_pop < pop_threshold | swanasa_stops < stop_threshold, NA, swanasa_stops_wt/swanasa_pop) * 1000
 )
 
-d <- df_screened %>% select(-c(contains(c("_stops")), starts_with(c("nh_twoormor","aian_","pacisl")))) # drop multiracial bc of mismatch with pop denominator and drop aian and nhpi alone or in combo
+d <- df_screened %>% select(-c(contains(c("_stops")), starts_with("nh_twoormor"))) # drop multiracial bc of mismatch with pop denominator
 
 ############## CALC RACE COUNTS STATS ##############
 ############ To use the following RC Functions, 'd' will need the following columns at minimum: 
-############ geoid and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
+############ geoid and total and raced _rate (following RC naming con2ventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
 #set source for RC Functions script
-source(here("Functions", "RC_Functions.R"))
+source(".\\Functions\\RC_Functions.R")
 
 d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'. 
 
@@ -402,7 +307,6 @@ state_table <- d[d$geoname == 'California', ] %>% select(-c(geolevel))
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
-state_table <- rename(state_table, state_id = geoid, state_name = geoname)
 View(state_table)
 
 #split COUNTY into separate table and format id, name columns. Drop unneeded cols.
@@ -411,7 +315,6 @@ county_table <- d[d$geolevel == 'county', ] %>% select(-c(geolevel))
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
-county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
 #split CITY into separate table and format id, name columns
@@ -420,25 +323,52 @@ city_table <- d[d$geolevel == 'place', ] %>% select(-c(geolevel))
 #calculate city z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
-city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") 
 View(city_table)
 
+#split LEG DISTRICTS into separate tables and format id, name columns
+upper_table <- d[d$geolevel == 'sldu', ]
+lower_table <- d[d$geolevel == 'sldl', ]
+
+#calculate SLDU z-scores
+upper_table <- calc_z(upper_table)
+
+## Calc SLDU ranks##
+upper_table <- calc_ranks(upper_table)
+#View(upper_table)
+
+#calculate SLDL z-scores
+lower_table <- calc_z(lower_table)
+
+## Calc SLDL ranks##
+lower_table <- calc_ranks(lower_table)
+#View(lower_table)
+
+## Bind sldu and sldl tables into one leg_table##
+leg_table <- rbind(upper_table, lower_table)
+View(leg_table)
+
+#rename geoid / geoname
+colnames(state_table)[1:2] <- c("state_id", "state_name")
+colnames(county_table)[1:2] <- c("county_id", "county_name")
+colnames(city_table)[1:2] <- c("city_id", "city_name")
+colnames(leg_table)[1:2] <- c("leg_id", "leg_name")
 
 ###update info for postgres tables will automatically update###
 county_table_name <- paste0("arei_crim_officer_initiated_stops_county_", rc_yr)
 state_table_name <- paste0("arei_crim_officer_initiated_stops_state_", rc_yr)
 city_table_name <- paste0("arei_crim_officer_initiated_stops_city_", rc_yr)
+leg_table_name <- paste0("arei_crim_officer_initiated_stops_leg_", rc_yr)
 
-indicator <- paste0("Created on ", Sys.Date(), ". Officer initiated stops per 1,000 people. Raw is total number of officer initiated stops. Note: City data is based only on the largest agency in that city. In addition, stops are assigned to the geography where the law enforcement agency is located, not where the stop occurred. This data is")
+indicator <- "Officer initiated stops per 1,000 people. Raw is multi-year total number of officer initiated stops. Rate is annual average rate. Note: City data is based only on the largest agency in that city. Leg data is aggregated from city data. In addition, stops are assigned to the geography where the law enforcement agency is located, not where the stop occurred. Population is NOT pop for entire Leg District, it is sum of pop for cities assigned to the district that have stop data. This data is"
 source <- paste0("CADOJ RIPA ",curr_yr, " https://openjustice.doj.ca.gov/data")
 
 # #send tables to postgres
 # to_postgres(county_table, state_table)
 # city_to_postgres(city_table)
+# leg_to_postgres(leg_table)
 # 
 # dbDisconnect(con)
 # dbDisconnect(con2)
-
 
 
 
