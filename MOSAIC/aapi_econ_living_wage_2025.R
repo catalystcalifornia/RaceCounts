@@ -1,4 +1,4 @@
-### Living Wage RC v7###
+### AAPI Living Wage RC v7###
 
 # Set up workspace --------------------------------------------------------
 # Install packages if not already installed
@@ -258,7 +258,7 @@ d <- count_values(d) #calculate number of "_rate" values
 d <- calc_best(d) #calculate best rates -- be sure to update previous line of code accordingly before running this function.
 d <- calc_diff(d) #calculate difference from best
 d <- calc_avg_diff(d) #calculate (row wise) mean difference from best
-d <- calc_s_var(d) #calculate (row wise) population or sample variance. be sure to use calc_s_var for sample data or calc_p_var for population data.
+d <- calc_p_var(d) #calculate (row wise) population or sample variance. be sure to use calc_s_var for sample data or calc_p_var for population data.
 d <- calc_id(d) #calculate index of disparity
 View(d)
 
