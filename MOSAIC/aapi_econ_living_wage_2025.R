@@ -1,4 +1,4 @@
-### Living Wage RC v7###
+### AAPI Living Wage RC v7###
 
 # Set up workspace --------------------------------------------------------
 # Install packages if not already installed
@@ -72,8 +72,8 @@ cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0))    # get all PUMS
 cols_wts <- grep("^PWGTP*", cols, value = TRUE)                   # filter for PUMS weight colnames
 
 ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE, select = c(cols_wts, "RT", "SERIALNO", "AGEP", "ESR", "SCH", "PUMA",
-                                                                                         "ANC1P", "ANC2P", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH", 
-                                                                                         "ADJINC", "WAGP", "COW", "WKHP", "WRK", "WKWN"),
+                                                                                                   "ANC1P", "ANC2P", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH", 
+                                                                                                   "ADJINC", "WAGP", "COW", "WKHP", "WRK", "WKWN"),
              colClasses = list(character = c("PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH", 
                                              "ADJINC", "WAGP", "COW", "WKHP", "ESR", "WRK", "WKWN")))
 
@@ -258,7 +258,7 @@ d <- count_values(d) #calculate number of "_rate" values
 d <- calc_best(d) #calculate best rates -- be sure to update previous line of code accordingly before running this function.
 d <- calc_diff(d) #calculate difference from best
 d <- calc_avg_diff(d) #calculate (row wise) mean difference from best
-d <- calc_s_var(d) #calculate (row wise) population or sample variance. be sure to use calc_s_var for sample data or calc_p_var for population data.
+d <- calc_p_var(d) #calculate (row wise) population or sample variance. be sure to use calc_s_var for sample data or calc_p_var for population data.
 d <- calc_id(d) #calculate index of disparity
 View(d)
 
