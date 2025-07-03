@@ -152,7 +152,7 @@ names(assm_name) <- c("geoid", "geoname")
 # View(assm_name)
 
 # add geonames to data
-ppl_assm <- merge(x=assm_name,y=ppl_assm, by="geoid", all=T)
+ppl_assm <- merge(x=assm_name,y=ppl_assm, by="geoid", all=T) %>% filter(if_all(starts_with("PWGTP"), ~ !is.na(.))) 
 
 
 # join sen crosswalk to data
@@ -171,7 +171,7 @@ names(sen_name) <- c("geoid", "geoname")
 # View(sen_name)
 
 # add geonames to WA
-ppl_sen <- merge(x=sen_name,y=ppl_sen, by="geoid", all=T)
+ppl_sen <- merge(x=sen_name,y=ppl_sen, by="geoid", all=T) %>% filter(if_all(starts_with("PWGTP"), ~ !is.na(.))) 
 
 
 # prep state df
