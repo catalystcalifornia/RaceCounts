@@ -1,45 +1,116 @@
-### ECE Access RC v7 ### 
-
 ##install packages if not already installed ------------------------------
-list.of.packages <- c("dplyr","tidyr","tidycensus","tigris","readxl","sf","tidyverse","usethis","RPostgeSQL")
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+packages <- c("dplyr","tidyr","tidycensus","tigris","readxl","sf","tidyverse","usethis","RPostgres")
+install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
-if(length(new.packages)) install.packages(new.packages)
-library(dplyr)
-library(tidyr)
-library(tidycensus)
-library(tigris)
-library(readxl)
-library(sf)
-library(tidyverse)
-library(usethis)
-library(RPostgreSQL)
+if(length(install_packages) > 0) { 
+  install.packages(install_packages) 
+  
+} else { 
+  
+  print("All required packages are already installed.") 
+} 
+
+for(pkg in packages){ 
+  
+  library(pkg, character.only = TRUE) 
+} 
+
+options(scipen=999)
+
 
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
-con <- connect_to_db("racecounts")
-con2 <- connect_to_db("rda_shared_data")
+conn <- connect_to_db("rda_shared_data")
+
+# update QA doc filepath
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Education\\QA_Sheet_ECE.docx"
+
+#set source for Weighted Average Functions & SWANA Ancestry scripts
+source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
 
 #### 1. SET UP: DEFINE VARIABLES, FX SOURCE, GET COUNTY NAMES ####
 
 # define variables used in several places that must be updated each year
 curr_yr <- "2020-2021"  # must keep same format
+pop_yr <- 2020
 rc_schema <- "v7"
-yr <- "2025"
+rc_yr <- "2025"
+sen_assm_threshold <- .25   # tracts with >= threshold % of tract pop w/i district OR district pop w/i tract are assigned to district 
+
+# may need to update each year: variables for state assm and senate calcs
+assm_geoid <- 'sldl24'			                    # Define column with Assm geoid
+assm_xwalk <- 'zcta_2020_state_assembly_2024'  # Name of tract-Assm xwalk table
+sen_geoid <- 'sldu24'			                      # Define column with senate geoid
+sen_xwalk <- 'zcta_2020_state_senate_2024'     # Name of tract-Sen xwalk table
+
+
+#### Check that P12 variables and RC race names still match each year and update if needed --------
+## Population: All AIAN/PacIsl Latinx incl, NH Alone White/Black/Asian/Other, NH Two+, Latinx of any race
+sum_file <- "dhc"   # select specific Census file
+vars_list_ <- c("male_total_" = "P12_003N",     # male
+                   "male_aian_" = "P12AE_003N", 
+                   "male_pacisl_" = "P12AG_003N", 
+                   "male_latino_" = "P12H_003N", 
+                   "male_nh_white_" = "P12I_003N", 
+                   "male_nh_black_" = "P12J_003N", 
+                   "male_nh_asian_" = "P12L_003N", 
+                   "male_nh_other_" = "P12N_003N", 
+                   "male_nh_twoormor_" = "P12O_003N",
+                   "female_total_" = "P12_027N",     # female
+                   "female_aian_" = "P12AE_027N", 
+                   "female_pacisl_" = "P12AG_027N", 
+                   "female_latino_" = "P12H_027N", 
+                   "female_nh_white_" = "P12AC_027N", 
+                   "female_nh_black_" = "P12AD_027N", 
+                   "female_nh_asian_" = "P12AF_027N", 
+                   "female_nh_other_" = "P12AB_027N", 
+                   "female_nh_twoormor_" = "P12O_027N") 
+
+race_mapping <- data.frame(
+  name = unlist(vars_list_),
+  race = names(vars_list_),
+  stringsAsFactors = FALSE
+)
+
+p12_curr <- load_variables(pop_yr, sum_file, cache = TRUE) %>% 
+  filter(name %in% vars_list_) %>%
+  left_join(race_mapping, by="name") %>%
+  mutate(rc_races = paste0(race, "pop")) %>%
+  select(-race)
+
+vars_list_p12 <- vars_list_  # vars used in update_detailed_table_census{}
+
+
+# CHECK THIS TABLE TO MAKE SURE THE LABEL AND RC_RACES COLUMNS MATCH UP
+print(p12_curr) 
+
 
 # set values for weighted average functions - You may need to update these
-source("W:/RDA Team/R/Github/RDA Functions/AB/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")     #set source for WA Functions script
-year <- c(2020)                   # define your data vintage
-subgeo <- c('zcta')              # define your sub geolevel: can be tract or zcta (zcta may require some additions to the fx since they are mostly for tract)
-targetgeolevel <- c('county')     # define your target geolevel
-survey <- "census"                # define which Census survey you want
-pop_threshold = 50                # define population threshold for screening
-vars_list <- "vars_list_p12"      # pop under 5 by race/eth, the list of variables is in the WA fx script
-county_yr <- 2021
-targetgeo_names <- county_names(var_list = vars_list_acs, yr = county_yr, srvy = "acs5")              # use fx to get county names
+#year <- c(2020)                   # define your data vintage
+#subgeo <- c('zcta')               # define your sub geolevel: can be tract or zcta (zcta may require some additions to the fx since they are mostly for tract)
+#targetgeolevel <- c('county')     # define your target geolevel
+#survey <- "census"                # define which Census survey you want
+#pop_threshold = 50                # define population threshold for screening
+#vars_list <- "vars_list_p12"      # pop under 5 by race/eth, the list of variables is in the WA fx script
+#county_yr <- 2021
+#targetgeo_names <- county_names(var_list = vars_list_acs, yr = county_yr, srvy = "acs5")              # use fx to get county names
 
 
 #### 2. AIR TK ENR DATA ####
+## Add census geonames
+census_api_key(census_key1, overwrite=TRUE)
+county_name <- get_acs(geography = "county", 
+                     variables = c("B01001_001"), 
+                     state = "CA", 
+                     year = pop_yr)
+
+county_name <- county_name[,1:2]
+#county_name$NAME <- str_remove(county_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geonames
+county_name$NAME <- gsub(" County, California", "", county_name$NAME)
+names(county_name) <- c("target_id", "target_name")
+# View(county_name)
+
+
 
 #get tk data
 air_tk <- read_xlsx("W:/Data/Education/American Institute for Research/2020/tk.xlsx", range = "A4:F2566", na = "*") #keep this one don't push to postgres
@@ -50,7 +121,7 @@ air_tk <- read_xlsx("W:/Data/Education/American Institute for Research/2020/tk.x
 names(air_tk) <- c("geoname", "pct_zip", "three", "four", "five", "tk") 
 
 #join county ids
-air_tk <- left_join(air_tk, targetgeo_names, by = c("geoname" = "target_name")) %>% 
+air_tk <- left_join(air_tk, county_name, by = c("geoname" = "target_name")) %>% 
   
   #fill in the blanks for county ids, 
   fill(target_id) %>% 
@@ -84,31 +155,92 @@ df <- filter(df, enrollment >= 0)
 
 # import ZCTA-County Relationship File from Census. https://www.census.gov/geographies/reference-files/time-series/geo/relationship-files.2020.html#zcta
 ## Read more: https://www2.census.gov/geo/pdfs/maps-data/data/rel2020/zcta520/explanation_tab20_zcta520_county20_natl.pdf and
-         ##   https://www.census.gov/programs-surveys/geography/technical-documentation/records-layout/2020-zcta-record-layout.html#county
+##   https://www.census.gov/programs-surveys/geography/technical-documentation/records-layout/2020-zcta-record-layout.html#county
 filepath <- "https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/tab20_zcta520_county20_natl.txt"
 rel_file <- read_delim(file = filepath, delim = "|", na = c("*", ""))
-xwalk <- filter(rel_file, (substr(GEOID_COUNTY_20,1,2) == '06' & !is.na(GEOID_ZCTA5_20))) %>%
-                rename(zcta_id = GEOID_ZCTA5_20, county_id = GEOID_COUNTY_20, county_name = NAMELSAD_COUNTY_20) %>%
-                mutate(pct_zcta = AREALAND_PART / AREALAND_ZCTA5_20) %>%      # calc pct of zcta within each county it overlaps with
-                select(c(zcta_id, county_id, county_name, pct_zcta))
+county_xwalk <- filter(rel_file, (substr(GEOID_COUNTY_20,1,2) == '06' & !is.na(GEOID_ZCTA5_20))) %>%
+  rename(zcta_id = GEOID_ZCTA5_20, county_id = GEOID_COUNTY_20, county_name = NAMELSAD_COUNTY_20) %>%
+  mutate(pct_zcta = AREALAND_PART / AREALAND_ZCTA5_20) %>%      # calc pct of zcta within each county it overlaps with
+  select(c(zcta_id, county_id, county_name, pct_zcta))
 
-#### 5. Get ZCTA under 5 pop by race ####
-pop <- update_detailed_table_census(vars = vars_list, yr = year, srvy = survey)  # subgeolevel pop
-pop <- lapply(pop, function(x) cbind(x, table = str_extract(x$variable, "[^_]+"))) # create table field used in next step
-pop_ <- as.data.frame(pop) %>% select(c(GEOID, table, geolevel, value)) %>% group_by(GEOID, table, geolevel) %>% summarise(value_sum=sum(value))
-pop_ <- pop_ %>% left_join(p12_meta, by = c("table" = "p12_table")) # add race field
-pop_wide <- pop_ %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, geolevel), names_from = p12_race, values_from = value_sum)
-pop_wide <- pop_wide %>% right_join(select(xwalk, c(zcta_id, county_id, county_name)), by = c("GEOID" = "zcta_id"))  # join target geoids/names
-pop_wide <- pop_wide %>% relocate(county_id, .after = "GEOID") %>% relocate(county_name, .after = "county_id")
-colnames(pop_wide)[5:ncol(pop_wide)] <- paste(colnames(pop_wide)[5:ncol(pop_wide)], "unw_sub_pop", sep = "_") # rename sub_pop columns
-pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = county_id, target_name = county_name) # rename to generic column names for WA functions
 
-# Weight ZCTA pop by % of ZCTA within each county it overlaps with
-pop_wide <- pop_wide %>% left_join(xwalk %>% select(zcta_id, county_id, pct_zcta), by = c("sub_id" = "zcta_id", "target_id" = "county_id")) #join pop data to xwalk to get pct_zcta
-pop_wt <- pop_wide %>% select(c(sub_id, target_id, pct_zcta, ends_with("sub_pop"))) %>% mutate(across(where(~is.numeric(.)), ~.x*pct_zcta)) #calc wt zcta pop
-colnames(pop_wt) <- gsub('unw_', '', colnames(pop_wt)) # drop unw (unweighted) part of colnames
+############# ASSEMBLY DISTRICTS ##################
+
+###### DEFINE VALUES FOR FUNCTIONS ###
+
+# set values for weighted average functions - You may need to update these
+subgeo <- c('zcta')              # define your sub geolevel: zcta (unless the WA functions are adapted for a different subgeo)
+targetgeolevel <- c('sldl')      # define your target geolevel: state assembly
+survey <- "census"               # define which Census survey you want
+pop_threshold = 50               # define population threshold for screening
+
+### Load CT-Assm Crosswalk ### 
+xwalk_assm <- dbGetQuery(conn, paste0("SELECT geo_id, ", assm_geoid, ", afact FROM crosswalks.", assm_xwalk))
+
+#### Get ZCTA under 5 pop by race ##
+pop <- update_detailed_table_census(vars = vars_list_p12, yr = pop_yr, srvy = survey, subgeo = subgeo, sumfile = sum_file)  # subgeolevel pop
+pop_ <- as.data.frame(pop) %>% select(-NAME)
+pop_ <- pop_ %>% mutate(variable = gsub("female_|male_", "", variable))
+pop_ <- pop_ %>% group_by(GEOID, variable, geolevel) %>% summarise(value_sum=sum(value, na.rm=TRUE))
+pop_wide <- pop_ %>% pivot_wider(id_cols = c(GEOID, geolevel), names_from = variable, values_from = value_sum)
+
+pop_wide_assm <- pop_wide %>% right_join(select(xwalk_assm, c(geo_id, assm_geoid, afact)), by = c("GEOID" = "geo_id"))  # join target geoids/names
+pop_wide_assm <- dplyr::rename(pop_wide_assm, sub_id = GEOID, target_id = assm_geoid)                            # rename to generic column names for WA functions
+pop_wide_assm <- pop_wide_assm %>% rename_with(~ paste0(.x, "_sub_pop"), ends_with("_"))
+
+# Calc ZCTA pop in each targetgeo using afact (pct of zcta pop in targetgeo)
+pop_wt <- pop_wide_assm %>% 
+  select(c(sub_id, target_id, afact, ends_with("sub_pop"))) %>% 
+  mutate(across(where(is.numeric), ~.x * afact)) %>% #calc wt zcta pop
+  select(-afact) 
+
+
+# Get Targetgeo Pop
+pop_df <- update_detailed_table_census(vars = vars_list_p12, yr = pop_yr, srvy = survey, subgeo = "State Legislative District (Lower Chamber)", sumfile = sum_file)
+pop_df_ <- as.data.frame(pop_df) %>% select(-NAME)
+pop_df_ <- pop_df_ %>% mutate(variable = gsub("female_|male_", "", variable))
+pop_df_ <- pop_df_ %>% group_by(GEOID, variable, geolevel) %>% summarise(value_sum=sum(value, na.rm=TRUE))
+pop_wide_ <- pop_df_ %>% pivot_wider(id_cols = c(GEOID, geolevel), names_from = variable, values_from = value_sum)
+pop_wide_ <- pop_wide_ %>% rename(target_id = GEOID)
+pop_wide_ <- pop_wide_ %>% rename_with(~ paste0(.x, "_target_pop"), ends_with("_"))
+
+
+# Calc % of each targetgeo pop that each ZCTA pop
+pop_wt <- pop_wt %>% left_join(pop_wide_, by = "target_id")       #join subpop data to targetpop data to get pct_zcta
 n_df <- pop_wt %>% select(target_id, sub_id) %>% group_by(target_id) %>% summarise(n = n()) # count of sub_geos in each target_geo
 pop_wt <- pop_wt %>% left_join(n_df, by = "target_id")
+
+pct_df <- pop_pct_multi(pop_wt)        # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
+
+
+#colnames(pop_wt) <- gsub('unw_', '', colnames(pop_wt)) # drop unw (unweighted) part of colnames
+#n_df <- pop_wt %>% select(target_id, sub_id) %>% group_by(target_id) %>% summarise(n = n()) # count of sub_geos in each target_geo
+#pop_wt <- pop_wt %>% left_join(n_df, by = "target_id")
+
+
+
+##### ASSEMBLY WEIGHTED AVG CALCS ###
+pop_df <- targetgeo_pop(pop_wide_assm) # calc target geolevel pop and number of sub geolevels per target geolevel
+pct_df <- pop_pct_multi(pop_df)        # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
+assm_wa <- wt_avg(pct_df)              # calc weighted average and apply reliability screens
+assm_wa <- assm_wa %>% mutate(geolevel = 'sldl')                  # add geolevel
+
+
+# pop_wide <- pop_ %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, geolevel), names_from = p12_race, values_from = value_sum)
+# pop_wide <- pop_wide %>% right_join(select(xwalk, c(zcta_id, county_id, county_name)), by = c("GEOID" = "zcta_id"))  # join target geoids/names
+# pop_wide <- pop_wide %>% relocate(county_id, .after = "GEOID") %>% relocate(county_name, .after = "county_id")
+# colnames(pop_wide)[5:ncol(pop_wide)] <- paste(colnames(pop_wide)[5:ncol(pop_wide)], "unw_sub_pop", sep = "_") # rename sub_pop columns
+# pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = county_id, target_name = county_name) # rename to generic column names for WA functions
+
+
+
+
+# Weight ZCTA pop by % of ZCTA within each county it overlaps with
+# pop_wide <- pop_wide %>% left_join(xwalk %>% select(zcta_id, county_id, pct_zcta), by = c("sub_id" = "zcta_id", "target_id" = "county_id")) #join pop data to xwalk to get pct_zcta
+# pop_wt <- pop_wide %>% select(c(sub_id, target_id, pct_zcta, ends_with("sub_pop"))) %>% mutate(across(where(~is.numeric(.)), ~.x*pct_zcta)) #calc wt zcta pop
+# colnames(pop_wt) <- gsub('unw_', '', colnames(pop_wt)) # drop unw (unweighted) part of colnames
+# n_df <- pop_wt %>% select(target_id, sub_id) %>% group_by(target_id) %>% summarise(n = n()) # count of sub_geos in each target_geo
+# pop_wt <- pop_wt %>% left_join(n_df, by = "target_id")
 
 
 #### 6. Get county and state under 5 pop by race ####
