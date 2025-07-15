@@ -97,7 +97,12 @@ p12_race <- c("total", "aian", "pacisl", "latino", "nh_white", "nh_black", "nh_a
 p12_table <- c("P12", "P12AE", "P12AG", "P12H", "P12I", "P12J", "P12L", "P12N", "P12O")
 vars_list_p12 <- c("P12_003N", "P12AE_003N", "P12AG_003N", "P12H_003N", "P12I_003N", "P12J_003N", "P12L_003N", "P12N_003N", "P12O_003N",
                    "P12_027N", "P12AE_027N", "P12AG_027N", "P12H_027N", "P12I_027N", "P12J_027N", "P12L_027N", "P12N_027N", "P12O_027N")
-
+vars_list_p12_debug <- c("P12AA_003N", #!!Total:!!Male:!!Under 5 years sex by age for selected age categories (Native Hawaiian and other Pacific Islander ALong or In combnination with one or more races, not Hispanic or Latino)
+                         "P12AA_027N", #!!Total:!!Female:!!Under 5 years sex by age for selected age categories (Native Hawaiian and other Pacific Islander ALong or In combnination with one or more races, not Hispanic or Latino)
+                         
+                         )
+variables_2020_dhc <- load_variables(2020, "dhc", cache = TRUE)
+View(variables_2020_dhc)
 
 ### Get CA County FIPS and Names ####
 # county_names <- function(vars, yr, srvy){
