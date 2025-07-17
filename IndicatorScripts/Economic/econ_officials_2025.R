@@ -35,7 +35,6 @@ weight = 'PWGTP'                # PWGTP for person-level (psam_p06.csv) or WGTP 
 cv_threshold <- 20              # threshold and CV must be displayed as a percentage (not decimal)
 raw_rate_threshold <- 0
 pop_threshold <- 400
-pop_base <- 1000                # You must specify the population base you want to use for the rate calc. Ex. 100 for percents, or 1000 for rate per 1k.
 
 ##### GET PUMA-COUNTY CROSSWALKS ######
 crosswalk <- dbGetQuery(con, "select county_id AS geoid, county_name AS geoname, geo_id AS puma, num_county, afact, afact2 from crosswalks.puma_2022_county_2020")
@@ -64,7 +63,7 @@ root <- paste0("W:/Data/Demographics/PUMS/CA_", start_yr, "_", curr_yr, "/")
 
 # Load ONLY the PUMS columns needed for this indicator
 cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0)) # get all PUMS cols 
-cols_wts <- grep("^PWGTP*", cols, value = TRUE)                   # filter for PUMS weight colnames
+cols_wts <- grep("^PWGTP*", cols, value = TRUE)                # filter for PUMS weight colnames
 
 ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE, select = c(cols_wts, "AGEP", "ESR", "SCH", "SOCP", "PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P",
                                                                                          "RACAIAN", "RACPI", "RACNH"),
@@ -196,6 +195,12 @@ View(rc_sen)
 rc_state <- calc_pums(d = ppl_state, indicator, indicator_val, weight)  # Calc state
 rc_state$geolevel <- 'state'
 View(rc_state)
+
+# saveRDS(rc_state,file="rc_state.Rda")
+# saveRDS(rc_county,file="rc_county.Rda")
+# saveRDS(rc_assm,file="rc_assm.Rda")
+# save(rc_sen,file="rc_sen.Rda")
+
 
 ############ COMBINE & SCREEN COUNTY/STATE DATA ############# 
 rc_all <- rbind(rc_state, rc_county, rc_assm, rc_sen) %>%        # combine all geolevel df's before screening
