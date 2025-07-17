@@ -31,8 +31,8 @@ source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/Cnty_St_Wt_Avg_Fun
 #### SET UP: DEFINE VARIABLES, FX SOURCE, GET COUNTY NAMES ####
 
 # define variables used in several places that must be updated each year
-curr_yr <- "2020-2021"  # must keep same format
-pop_yr <- 2020
+curr_yr <- 2021  # must keep same format
+acs_yr <- 2020
 rc_schema <- "v7"
 rc_yr <- "2025"
 
@@ -72,7 +72,7 @@ race_mapping <- data.frame(
   stringsAsFactors = FALSE
 )
 
-p12_curr <- load_variables(pop_yr, sum_file, cache = TRUE) %>% 
+p12_curr <- load_variables(acs_yr, sum_file, cache = TRUE) %>% 
   filter(name %in% vars_list_) %>%
   left_join(race_mapping, by="name") %>%
   mutate(rc_races = paste0(race, "pop")) %>%
@@ -102,7 +102,7 @@ census_api_key(census_key1, overwrite=TRUE)
 county_name <- get_acs(geography = "county", 
                      variables = c("B01001_001"), 
                      state = "CA", 
-                     year = pop_yr)
+                     year = acs_yr)
 
 county_name <- county_name[,1:2]
 #county_name$NAME <- str_remove(county_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geonames
@@ -178,7 +178,7 @@ pop_threshold = 50               # define population threshold for screening
 xwalk_assm <- dbGetQuery(conn, paste0("SELECT geo_id, ", assm_geoid, ", afact FROM crosswalks.", assm_xwalk))
 
 #### Get ZCTA under 5 pop by race ##
-pop <- update_detailed_table_census(vars = vars_list_p12, yr = pop_yr, srvy = survey, subgeo = subgeo, sumfile = sum_file)  # subgeolevel pop
+pop <- update_detailed_table_census(vars = vars_list_p12, yr = acs_yr, srvy = survey, subgeo = subgeo, sumfile = sum_file)  # subgeolevel pop
 pop_ <- as.data.frame(pop) #%>% select(-NAME)
 pop_ <- pop_ %>% mutate(variable = gsub("female_|male_", "", variable))
 pop_ <- pop_ %>% group_by(GEOID, variable, geolevel) %>% summarise(value_sum=sum(value, na.rm=TRUE))
@@ -196,7 +196,7 @@ pop_wt <- pop_wide_assm %>%
 
 
 # Get Targetgeo Pop
-pop_df <- update_detailed_table_census(vars = vars_list_p12, yr = pop_yr, srvy = survey, subgeo = "State Legislative District (Lower Chamber)", sumfile = sum_file)
+pop_df <- update_detailed_table_census(vars = vars_list_p12, yr = acs_yr, srvy = survey, subgeo = "State Legislative District (Lower Chamber)", sumfile = sum_file)
 pop_df_ <- as.data.frame(pop_df) %>% select(-NAME)
 pop_df_ <- pop_df_ %>% mutate(variable = gsub("female_|male_", "", variable))
 pop_df_ <- pop_df_ %>% group_by(GEOID, variable, geolevel) %>% summarise(value_sum=sum(value, na.rm=TRUE))
@@ -232,7 +232,7 @@ census_api_key(census_key1, overwrite=TRUE)
 assm_name <- get_acs(geography = "State Legislative District (Lower Chamber)", 
                      variables = c("B01001_001"), 
                      state = "CA", 
-                     year = pop_yr)
+                     year = acs_yr)
 
 assm_name <- assm_name[,1:2]
 assm_name$NAME <- str_remove(assm_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
@@ -258,7 +258,7 @@ pop_threshold = 50               # define population threshold for screening
 xwalk_sen <- dbGetQuery(conn, paste0("SELECT geo_id, ", sen_geoid, ", afact FROM crosswalks.", sen_xwalk))
 
 #### Get ZCTA under 5 pop by race ##
-pop <- update_detailed_table_census(vars = vars_list_p12, yr = pop_yr, srvy = survey, subgeo = subgeo, sumfile = sum_file)  # subgeolevel pop
+pop <- update_detailed_table_census(vars = vars_list_p12, yr = acs_yr, srvy = survey, subgeo = subgeo, sumfile = sum_file)  # subgeolevel pop
 pop_ <- as.data.frame(pop) #%>% select(-NAME)
 pop_ <- pop_ %>% mutate(variable = gsub("female_|male_", "", variable))
 pop_ <- pop_ %>% group_by(GEOID, variable, geolevel) %>% summarise(value_sum=sum(value, na.rm=TRUE))
@@ -276,7 +276,7 @@ pop_wt <- pop_wide_sen %>%
 
 
 # Get Targetgeo Pop
-pop_df <- update_detailed_table_census(vars = vars_list_p12, yr = pop_yr, srvy = survey, subgeo = "State Legislative District (Upper Chamber)", sumfile = sum_file)
+pop_df <- update_detailed_table_census(vars = vars_list_p12, yr = acs_yr, srvy = survey, subgeo = "State Legislative District (Upper Chamber)", sumfile = sum_file)
 pop_df_ <- as.data.frame(pop_df) %>% select(-NAME)
 pop_df_ <- pop_df_ %>% mutate(variable = gsub("female_|male_", "", variable))
 pop_df_ <- pop_df_ %>% group_by(GEOID, variable, geolevel) %>% summarise(value_sum=sum(value, na.rm=TRUE))
@@ -311,7 +311,7 @@ sen_wa <- sen_wa %>% mutate(geolevel = 'sldu')                  # add geolevel
 sen_name <- get_acs(geography = "State Legislative District (Upper Chamber)", 
                     variables = c("B01001_001"), 
                     state = "CA", 
-                    year = pop_yr)
+                    year = acs_yr)
 
 sen_name <- sen_name[,1:2]
 sen_name$NAME <- str_remove(sen_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
@@ -328,7 +328,7 @@ sen_wa <- merge(x=sen_name,y=sen_wa,by="target_id", all=T)
 # ###### County Pop ##
 # # Get target pop directly from API, rather than use targetgeo_pop{}, bc ZCTAs don't cover all of counties and don't fully nest into counties as CTs do.
 # ### This is total county pop, not the total of county pop that resides within a zcta.
-# pop_target <- list(get_decennial(geography = "county", state = "CA", variables = vars_list_p12, year = pop_yr, sumfile = sum_file) %>% 
+# pop_target <- list(get_decennial(geography = "county", state = "CA", variables = vars_list_p12, year = acs_yr, sumfile = sum_file) %>% 
 #                     mutate(geolevel = "county"))
 # p12_meta <- data.frame(p12_race, p12_table)
 # pop_target <- lapply(pop_target, function(x) cbind(x, table = str_extract(x$variable, "[^_]+"))) # create table field used in next step
@@ -344,7 +344,7 @@ sen_wa <- merge(x=sen_name,y=sen_wa,by="target_id", all=T)
 # 
 # ###### State Pop ##
 # ### This is total state pop, not the total of state pop that resides within a zcta.
-# pop_state <- list(get_decennial(geography = "state", state = "CA", variables = vars_list_p12, year = pop_yr, sumfile = sum_file) %>% 
+# pop_state <- list(get_decennial(geography = "state", state = "CA", variables = vars_list_p12, year = acs_yr, sumfile = sum_file) %>% 
 #                      mutate(geolevel = "state"))
 # ca_pop <- lapply(pop_state, function(x) cbind(x, table = str_extract(x$variable, "[^_]+"))) # create table field used in next step
 # ca_pop <- as.data.frame(ca_pop) %>% select(c(GEOID, table, value)) %>% group_by(GEOID, table) %>% summarise(value_sum=sum(value))
@@ -474,8 +474,8 @@ source <- paste0("CCCRRN https://rrnetwork.org/ and AIR ELNAT https://elneedsass
 #leg_to_postgres(leg_table)
 
 #disconnect
-dbDisconnect(con)
-dbDisconnect(con2)
+dbDisconnect(conn)
+
 
 
 
