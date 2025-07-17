@@ -466,8 +466,9 @@ leg_table <- rename(leg_table, leg_id = geoid, leg_name = geoname)
 county_table_name <- paste0("arei_educ_ece_access_county_", rc_yr)
 state_table_name <- paste0("arei_educ_ece_access_state_", rc_yr)
 leg_table_name <- paste0("arei_educ_ece_access_leg_", rc_yr)
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Education\\QA_Sheet_ECE.docx"
 indicator <- paste0("ECE Access")
-source <- paste0("CCCRRN https://rrnetwork.org/ and AIR ELNAT https://elneedsassessment.org/ (", curr_yr, ")")
+source <- paste0("CCCRRN https://rrnetwork.org/ and AIR ELNAT https://elneedsassessment.org/ (", curr_yr, "). QA doc: ", qa_filepath)
 
 #send tables to postgres
 #to_postgres(county_table, state_table)
