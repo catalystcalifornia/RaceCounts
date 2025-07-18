@@ -272,7 +272,7 @@ county_table_name <- paste0("arei_econ_officials_county_", rc_yr)
 state_table_name <- paste0("arei_econ_officials_state_", rc_yr)
 # city_table_name <- paste0("arei_econ_officials_city_", rc_yr)
 start_yr <- curr_yr - 4
-indicator <- paste0("Number of Officials & Managers per 1k People by Race. Only people ages 18-64 who are in the labor force are included. We also screened by pop and CV. City: White, Black, Asian, AIAN, NHPI, Another are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. County/State: White, Black, Asian, Another are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN, NHPI, SWANA are Latinx-inclusive so they are also included in Latinx counts. AIAN, SWANA, and NHPI include AIAN, SWANA, and NHPI Alone and in Combo, so non-Latinx AIAN, SWANA, and NHPI in combo are also included in Two or More. This data is")
+indicator <- paste0("Number of Officials & Managers per 1k People by Race. Only people ages 18-64 who are in the labor force are included. We also screened by pop and CV. City: White, Black, Asian, AIAN, NHPI, Another are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. Leg/County/State: White, Black, Asian, Another are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN, NHPI, SWANA are Latinx-inclusive so they are also included in Latinx counts. AIAN, SWANA, and NHPI include AIAN, SWANA, and NHPI Alone and in Combo, so non-Latinx AIAN, SWANA, and NHPI in combo are also included in Two or More. This data is")
 source <- paste0("County, Leg, State: ACS PUMS (", start_yr, "-", curr_yr, "). City: ACS EEO (2014-2018) (https://www.census.gov/acs/www/data/eeo-data/)")
 
 #send tables to postgres
