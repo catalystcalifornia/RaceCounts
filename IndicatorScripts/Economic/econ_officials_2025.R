@@ -1,7 +1,7 @@
 ### Officials & Managers RC v7 ###
 
 # Install packages if not already installed
-packages <- c("data.table", "readxl", "stringr", "dplyr", "RPostgreSQL", "dbplyr", "srvyr", "tidycensus", "rpostgis",  "tidyr", "here", "sf", "usethis") 
+packages <- c("data.table", "readxl", "stringr", "dplyr", "RPostgres", "dbplyr", "srvyr", "tidycensus", "rpostgis",  "tidyr", "here", "sf", "usethis") 
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
 if(length(install_packages) > 0) {
@@ -30,14 +30,13 @@ rc_schema <- 'v7'
 
 ### define common inputs for calc_pums{} and pums_screen{}
 indicator = 'officials'         # name of column that contains indicator data, eg: 'living_wage' which contains values 'livable' and 'not livable'
-indicator_val = 'officials'         # desired indicator value, eg: 'livable' (not 'not livable')        
-weight = 'PWGTP'                  # PWGTP for person-level (psam_p06.csv) or WGTP for housing unit-level (psam_h06.csv) analysis
-cv_threshold <- 20          # threshold and CV must be displayed as a percentage (not decimal)
+indicator_val = 'officials'     # desired indicator value, eg: 'livable' (not 'not livable')        
+weight = 'PWGTP'                # PWGTP for person-level (psam_p06.csv) or WGTP for housing unit-level (psam_h06.csv) analysis
+cv_threshold <- 20              # threshold and CV must be displayed as a percentage (not decimal)
 raw_rate_threshold <- 0
 pop_threshold <- 400
-pop_base <- 1000# You must specify the population base you want to use for the rate calc. Ex. 100 for percents, or 1000 for rate per 1k.
 
-##### GET PUMA-COUNTYCROSSWALKS ######
+##### GET PUMA-COUNTY CROSSWALKS ######
 crosswalk <- dbGetQuery(con, "select county_id AS geoid, county_name AS geoname, geo_id AS puma, num_county, afact, afact2 from crosswalks.puma_2022_county_2020")
 
 ## Drop counties that have only 1 PUMA that is shared with another county that also has only 1 PUMA.
@@ -64,9 +63,11 @@ root <- paste0("W:/Data/Demographics/PUMS/CA_", start_yr, "_", curr_yr, "/")
 
 # Load ONLY the PUMS columns needed for this indicator
 cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0)) # get all PUMS cols 
-cols_ <- grep("^PWGTP*", cols, value = TRUE)                   # filter for PUMS weight colnames
-ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE, select = c(cols_, "AGEP", "ESR", "SCH", "SOCP", "PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P", "RAC3P", "RACAIAN", "RACPI", "RACNH"),
-             colClasses = list(character = c("ESR", "SCH", "SOCP", "PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P", "RAC3P", "RACAIAN", "RACPI", "RACNH")))
+cols_wts <- grep("^PWGTP*", cols, value = TRUE)                # filter for PUMS weight colnames
+
+ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE, select = c(cols_wts, "AGEP", "ESR", "SCH", "SOCP", "PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P",
+                                                                                         "RACAIAN", "RACPI", "RACNH"),
+             colClasses = list(character = c("ESR", "SCH", "SOCP", "PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH")))
 
 # Add state_geoid to ppl, add state_geoid to PUMA id, so it aligns with crosswalks.puma_county_2020
 ppl$state_geoid <- "06"
@@ -79,7 +80,7 @@ repwlist = rep(paste0("PWGTP", 1:80))
 orig_data <- ppl
 
 ##### Reclassify Race/Ethnicity ########
-source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/PUMS_Functions_new.R")    # temporarily directed to LF folder #
+source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/PUMS_Functions_new.R")    
 # check how many records there are for RACAIAN (AIAN alone/combo) versus RAC1P (AIAN alone) and same for NHPI
 #View(subset(ppl, RACAIAN =="1"))
 #View(subset(ppl, RAC1P >= 3 & ppl$RAC1P <=5))
@@ -90,7 +91,7 @@ source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/PUMS_Functions_new.R
 ppl <- race_reclass(orig_data, start_yr, curr_yr)
 
 # review data 
-#View(ppl[c("HISP","latino","RAC1P","race","RAC2P","RAC3P","ANC1P","ANC2P", "aian", "pacisl", "swana")])
+#View(ppl[c("HISP","latino","RAC1P","race","ANC1P","ANC2P", "aian", "pacisl", "swana")])
 # table(ppl$race, useNA = "always")
 # table(ppl$race, ppl$latino, useNA = "always")
 # table(ppl$race, ppl$aian, useNA = "always")
@@ -106,7 +107,7 @@ ppl <- race_reclass(orig_data, start_yr, curr_yr)
 ppl <- ppl[ppl$AGEP >= 18 & ppl$AGEP <= 64 , ]
 
 ## Tag people who are officials or managers: SOCP value starts with "11" 
-###### See p107 in W:\Data\Demographics\PUMS\CA_2016_2020\PUMS_Data_Dictionary_2016-2020.pdf
+###### See p110 in W:\Data\Demographics\PUMS\CA_2019_2023\PUMS_Data_Dictionary_2023.pdf
 ppl$offmgr <- 
   case_when(
     grepl('^11', ppl$SOCP) ~ as.integer(1),
@@ -115,7 +116,7 @@ ppl$offmgr <-
 # review
 summary(ppl$offmgr)
 
-## Code for labor force status: ESR on p53 of PUMS_Data_Dictionary_2016-2020.pdf
+## Code for labor force status: ESR on p56 of PUMS_Data_Dictionary_2023.pdf
 table(ppl$ESR, useNA = "always")
 
 # NOTE: 'This includes 4-Armed forces, at work' and '5-Armed forces, with a job but not at work'. It excludes '6-Not in labor force'.
@@ -152,7 +153,7 @@ names(assm_name) <- c("geoid", "geoname")
 # View(assm_name)
 
 # add geonames to data
-ppl_assm <- merge(x=assm_name,y=ppl_assm, by="geoid", all=T) %>% filter(if_all(starts_with("PWGTP"), ~ !is.na(.))) 
+ppl_assm <- merge(x=assm_name,y=ppl_assm, by="geoid", all=T)# %>% filter(if_all(starts_with("PWGTP"), ~ !is.na(.))) 
 
 
 # join sen crosswalk to data
@@ -171,7 +172,7 @@ names(sen_name) <- c("geoid", "geoname")
 # View(sen_name)
 
 # add geonames to WA
-ppl_sen <- merge(x=sen_name,y=ppl_sen, by="geoid", all=T) %>% filter(if_all(starts_with("PWGTP"), ~ !is.na(.))) 
+ppl_sen <- merge(x=sen_name,y=ppl_sen, by="geoid", all=T)# %>% filter(if_all(starts_with("PWGTP"), ~ !is.na(.))) 
 
 
 # prep state df
@@ -195,6 +196,7 @@ rc_state <- calc_pums(d = ppl_state, indicator, indicator_val, weight)  # Calc s
 rc_state$geolevel <- 'state'
 View(rc_state)
 
+
 ############ COMBINE & SCREEN COUNTY/STATE DATA ############# 
 rc_all <- rbind(rc_state, rc_county, rc_assm, rc_sen) %>%        # combine all geolevel df's before screening
   select(-c(starts_with("count_moe"), starts_with("count_cv")))  # drop fields not needed for RC tables
@@ -204,7 +206,11 @@ colnames(rc_all) <- sub("count", "num", colnames(rc_all))  # rename some cols to
 screened <- pums_screen(rc_all, cv_threshold, raw_rate_threshold, pop_threshold, indicator_val)
 View(screened)
 
-d <- screened
+############ CONVERT FROM PERCENT TO RATE PER 1K ############# 
+# Extra step bc we use rate per 1k not percent (rate per 100) for this indicator
+screened_ <- screened %>% mutate_at(vars(contains('_rate')), ~(. * 10))
+
+d <- screened_
 
 
 ############## CALC RACE COUNTS STATS ##############
@@ -219,6 +225,7 @@ d <- calc_avg_diff(d) #calculate (row wise) mean difference from best
 d <- calc_s_var(d) #calculate (row wise) population or sample variance. be sure to use calc_s_var for sample data or calc_p_var for population data.
 d <- calc_id(d) #calculate index of disparity
 View(d)
+
 #split STATE into separate table
 state_table <- d[d$geolevel == 'state', ]
 
@@ -265,13 +272,13 @@ county_table_name <- paste0("arei_econ_officials_county_", rc_yr)
 state_table_name <- paste0("arei_econ_officials_state_", rc_yr)
 # city_table_name <- paste0("arei_econ_officials_city_", rc_yr)
 start_yr <- curr_yr - 4
-indicator <- paste0("Created on ", Sys.Date(), ". Number of Officials & Managers per 1k People by Race. Only people ages 18-64 who are in the labor force are included. We also screened by pop and CV. City: White, Black, Asian, AIAN, NHPI, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. County/State: White, Black, Asian, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN, NHPI, SWANA are Latinx-inclusive so they are also included in Latinx counts. AIAN, SWANA, and NHPI include AIAN, SWANA, and NHPI Alone and in Combo, so non-Latinx AIAN, SWANA, and NHPI in combo are also included in Two or More. This data is")
-source <- paste0("ACS PUMS (", start_yr, "-", curr_yr, ") for county and state and ACS EEO (2014-2018), https://www.census.gov/acs/www/data/eeo-data/ for city data") #not sure if it will work
+indicator <- paste0("Number of Officials & Managers per 1k People by Race. Only people ages 18-64 who are in the labor force are included. We also screened by pop and CV. City: White, Black, Asian, AIAN, NHPI, Another are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. County/State: White, Black, Asian, Another are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN, NHPI, SWANA are Latinx-inclusive so they are also included in Latinx counts. AIAN, SWANA, and NHPI include AIAN, SWANA, and NHPI Alone and in Combo, so non-Latinx AIAN, SWANA, and NHPI in combo are also included in Two or More. This data is")
+source <- paste0("County, Leg, State: ACS PUMS (", start_yr, "-", curr_yr, "). City: ACS EEO (2014-2018) (https://www.census.gov/acs/www/data/eeo-data/)")
 
 #send tables to postgres
 to_postgres()
-# city_to_postgres()
 leg_to_postgres()
+# city_to_postgres()
 
 #close connection
 dbDisconnect(con)
