@@ -196,11 +196,6 @@ rc_state <- calc_pums(d = ppl_state, indicator, indicator_val, weight)  # Calc s
 rc_state$geolevel <- 'state'
 View(rc_state)
 
-# saveRDS(rc_state,file="rc_state.Rda")
-# saveRDS(rc_county,file="rc_county.Rda")
-# saveRDS(rc_assm,file="rc_assm.Rda")
-# save(rc_sen,file="rc_sen.Rda")
-
 
 ############ COMBINE & SCREEN COUNTY/STATE DATA ############# 
 rc_all <- rbind(rc_state, rc_county, rc_assm, rc_sen) %>%        # combine all geolevel df's before screening
@@ -211,7 +206,7 @@ colnames(rc_all) <- sub("count", "num", colnames(rc_all))  # rename some cols to
 screened <- pums_screen(rc_all, cv_threshold, raw_rate_threshold, pop_threshold, indicator_val)
 View(screened)
 
-############ CHANGE FROM PERCENT TO RATE PER 1K ############# 
+############ CONVERT FROM PERCENT TO RATE PER 1K ############# 
 # Extra step bc we use rate per 1k not percent (rate per 100) for this indicator
 screened_ <- screened %>% mutate_at(vars(contains('_rate')), ~(. * 10))
 
@@ -230,6 +225,7 @@ d <- calc_avg_diff(d) #calculate (row wise) mean difference from best
 d <- calc_s_var(d) #calculate (row wise) population or sample variance. be sure to use calc_s_var for sample data or calc_p_var for population data.
 d <- calc_id(d) #calculate index of disparity
 View(d)
+
 #split STATE into separate table
 state_table <- d[d$geolevel == 'state', ]
 
@@ -271,18 +267,18 @@ leg_table <- leg_table %>% dplyr::rename("leg_name" = "geoname", "leg_id" = "geo
 
 
 ###update info for postgres tables###
-leg_table_name <- paste0("arei_econ_officials_leg_", rc_yr, "_v2")
-county_table_name <- paste0("arei_econ_officials_county_", rc_yr, "_v2")
-state_table_name <- paste0("arei_econ_officials_state_", rc_yr, "_v2")
+leg_table_name <- paste0("arei_econ_officials_leg_", rc_yr)
+county_table_name <- paste0("arei_econ_officials_county_", rc_yr)
+state_table_name <- paste0("arei_econ_officials_state_", rc_yr)
 # city_table_name <- paste0("arei_econ_officials_city_", rc_yr)
 start_yr <- curr_yr - 4
-indicator <- paste0("Number of Officials & Managers per 1k People by Race. Only people ages 18-64 who are in the labor force are included. We also screened by pop and CV. City: White, Black, Asian, AIAN, NHPI, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. County/State: White, Black, Asian, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN, NHPI, SWANA are Latinx-inclusive so they are also included in Latinx counts. AIAN, SWANA, and NHPI include AIAN, SWANA, and NHPI Alone and in Combo, so non-Latinx AIAN, SWANA, and NHPI in combo are also included in Two or More. This data is")
-source <- paste0("ACS PUMS (", start_yr, "-", curr_yr, ") for county and state and ACS EEO (2014-2018), https://www.census.gov/acs/www/data/eeo-data/ for city data")
+indicator <- paste0("Number of Officials & Managers per 1k People by Race. Only people ages 18-64 who are in the labor force are included. We also screened by pop and CV. City: White, Black, Asian, AIAN, NHPI, Another are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. County/State: White, Black, Asian, Another are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN, NHPI, SWANA are Latinx-inclusive so they are also included in Latinx counts. AIAN, SWANA, and NHPI include AIAN, SWANA, and NHPI Alone and in Combo, so non-Latinx AIAN, SWANA, and NHPI in combo are also included in Two or More. This data is")
+source <- paste0("County, Leg, State: ACS PUMS (", start_yr, "-", curr_yr, "). City: ACS EEO (2014-2018) (https://www.census.gov/acs/www/data/eeo-data/)")
 
 #send tables to postgres
 to_postgres()
-# city_to_postgres()
 leg_to_postgres()
+# city_to_postgres()
 
 #close connection
 dbDisconnect(con)
