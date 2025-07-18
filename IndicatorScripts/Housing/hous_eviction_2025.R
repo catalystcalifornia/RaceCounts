@@ -66,7 +66,7 @@ b25003_curr <- load_variables(acs_yr, "acs5", cache = TRUE) %>%
   filter(name %in% vars_list_b25003) %>%
   dplyr::select(-c(geography)) %>% 
   left_join(race_mapping, by="name") %>%
- dplyr::mutate(rc_races = paste0(race, "pop"))
+  dplyr::mutate(rc_races = paste0(race, "pop"))
 
 
 # CHECK THIS TABLE TO MAKE SURE THE CONCEPT AND RC_RACES COLUMNS MATCH UP
@@ -78,7 +78,7 @@ print(b25003_curr)
 df_orig <- fread("W:/Data/Housing/Eviction Lab/2000-2018/tract_proprietary_valid_2000_2018.csv", header = TRUE, data.table = FALSE)  
 
 df <- df_orig %>% dplyr::filter((state == "California") & grepl(paste(data_yrs, collapse="|"), year)) %>% 
- dplyr::mutate(county_id = paste0("0", cofips), county_name = gsub(" County", "", county), fips = paste0("0", fips)) %>% 
+  dplyr::mutate(county_id = paste0("0", cofips), county_name = gsub(" County", "", county), fips = paste0("0", fips)) %>% 
   dplyr::select(fips, county_id, county_name, year, filings) 
 # View(df)
 
@@ -128,7 +128,7 @@ med <- med %>%dplyr::mutate_if(is.numeric, ~round(., 1)) %>% left_join(cts, by =
 # get count of data yrs with non-na filing_rate by county.    
 data_yrs <- filter(med, !year == 2018)  # remove 2018 data since they only report it for 1 county (SF)
 data_yrs <- data_yrs %>% dplyr::group_by(county_id, county_name) %>% 
- dplyr::mutate(num_yrs = n()) %>% 
+  dplyr::mutate(num_yrs = n()) %>% 
   distinct(county_id, county_name, .keep_all = TRUE) %>% 
   dplyr::select(county_id, county_name, num_yrs)
 # View(data_yrs)
@@ -146,7 +146,7 @@ screened <- filter(df_join, num_yrs > 2) # suppress data for counties with fewer
 df_wide <- screened %>% dplyr::group_by(fips, county_name) %>%
  dplyr::mutate(sum_eviction = sum(filings, na.rm = TRUE)) %>%  # total number of evictions over all data yrs available
  dplyr::mutate(avg_eviction = sum_eviction / num_yrs) %>%      # avg annual number of evictions
-  distinct(fips, county_id, county_name, sum_eviction, avg_eviction, num_yrs, .keep_all = FALSE)
+ distinct(fips, county_id, county_name, sum_eviction, avg_eviction, num_yrs, .keep_all = FALSE)
 
 df_wide <- filter(df_wide, sum_eviction != 0) # screen out tracts (n = 341) where all filings for all data years = NA, since these should be NA not 0's. there are no 0's in orig. data.
 
@@ -157,9 +157,9 @@ View(ind_df_2010)
 # note: Evictions uses 2010 tract vintage, population estimates use 2020 tract vintage
 cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\tract20_tract10\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
   dplyr::select(GEOID_TRACT_10, NAMELSAD_TRACT_10, AREALAND_TRACT_10, GEOID_TRACT_20, NAMELSAD_TRACT_20, AREALAND_TRACT_20, AREALAND_PART) %>%
- dplyr::mutate_at(vars(contains("AREALAND")), function(x) as.numeric(x)) %>%
+  dplyr::mutate_at(vars(contains("AREALAND")), function(x) as.numeric(x)) %>%
   # calculate overlapping land area of 2010 and 2020 tracts (AREALAND_PART) as a percent of 2010 tract land area (AREALAND_TRACT_10)
- dplyr::mutate(prc_overlap=AREALAND_PART/AREALAND_TRACT_10)
+  dplyr::mutate(prc_overlap=AREALAND_PART/AREALAND_TRACT_10)
 
 # Because Evictions uses 2010 vintage tracts - need to convert to 2020 vintage and allocate score accordingly
 ind_2010_2020 <- ind_df_2010 %>%
@@ -208,20 +208,25 @@ pop <- lapply(pop, function(x) x %>% dplyr::rename(e = estimate, m = moe))
 pop_wide <- to_wide(pop)
 
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
-pop_wide <- as.data.frame(pop_wide) %>%dplyr::mutate(target_id = substr(GEOID, 1, 5))  # use left 5 characters as target_id
+pop_wide <- as.data.frame(pop_wide) %>%
+  dplyr::mutate(target_id = substr(GEOID, 1, 5))  # use left 5 characters as target_id
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID)                              #dplyr::rename to generic column name for WA functions
 
 ##### GET TARGET GEOLEVEL POP DATA ###
 pop_df <- targetgeo_pop(pop_wide)
 
 ##### EXTRA STEP: Calc avg annual evictions per 100 renter hh's (rate) by tract bc WA avg should be calc'd using this, not avg # of evictions (raw)
-ind_df <- ind_df %>% left_join(pop_df %>% dplyr::select(sub_id, total_sub_pop), by = "sub_id") %>% 
- dplyr::mutate(indicator = (avg_eviction / total_sub_pop) * 100)
+ind_df <- ind_df %>% 
+  left_join(pop_df %>% 
+  dplyr::select(sub_id, total_sub_pop), by = "sub_id") %>% 
+  dplyr::mutate(indicator = (avg_eviction / total_sub_pop) * 100)
 
 ##### COUNTY WEIGHTED AVG CALCS ######
-pct_df <- pop_pct(pop_df)   # calc pct of target geolevel pop in each sub geolevel
-wa <- wt_avg(pct_df)               # calc weighted average and apply reliability screens
-wa <- wa %>% left_join(targetgeo_names, by = "target_id") %>%dplyr::mutate(geolevel = 'county')     # add in target geolevel names
+pct_df <- pop_pct(pop_df)             # calc pct of target geolevel pop in each sub geolevel
+wa <- wt_avg(pct_df, ind_df)          # calc weighted average and apply reliability screens
+wa <- wa %>% 
+  left_join(targetgeo_names, by = "target_id") %>% 
+  dplyr::mutate(geolevel = 'county')     # add in target geolevel names
 
 ############# STATE CALCS ##################
 
@@ -231,13 +236,16 @@ ca_pop <- do.call(rbind.data.frame, list(
   get_acs(geography = "state", state = "CA", variables = vars_list_b25003, year = acs_yr, survey = survey, cache_table = TRUE)))
 ca_pop <- ca_pop %>%  
  dplyr::mutate(geolevel = "state")
-ca_pop_wide <- dplyr::select(ca_pop, GEOID, NAME, variable, estimate) %>% pivot_wider(names_from=variable, values_from=estimate, names_glue = "{variable}target_pop")
-ca_pop_wide <- ca_pop_wide %>% dplyr::rename("target_id" = "GEOID", "target_name" = "NAME")
+ca_pop_wide <- dplyr::select(ca_pop, GEOID, NAME, variable, estimate) %>% 
+  pivot_wider(names_from=variable, values_from=estimate, names_glue = "{variable}target_pop")
+ca_pop_wide <- ca_pop_wide %>% 
+  dplyr::rename("target_id" = "GEOID", "target_name" = "NAME")
 
 ca_pct_df <- ca_pop_pct(ca_pop_wide)
 
 # calc state WA
-ca_wa <- ca_wt_avg(ca_pct_df) %>% dplyr::mutate(geolevel = 'state')   # add geolevel type
+ca_wa <- ca_wt_avg(ca_pct_df, ind_df) %>%
+  dplyr::mutate(geolevel = 'state')   # add geolevel type
 
 ############# CITY ##################
 
@@ -264,7 +272,8 @@ pop <- lapply(pop, function(x) x %>%dplyr::rename(e = estimate, m = moe))
 pop_wide_city <- to_wide(pop)
 
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
-pop_wide_city <- as.data.frame(pop_wide_city) %>% right_join(select(xwalk_city, c(ct_geoid, place_geoid, place_name)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names, length(unique(pop_wide_city$GEOID)) = 7,753 bc some cts aren't matched to cities in xwalk
+pop_wide_city <- as.data.frame(pop_wide_city) %>% 
+  right_join(select(xwalk_city, c(ct_geoid, place_geoid, place_name)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names, length(unique(pop_wide_city$GEOID)) = 7,753 bc some cts aren't matched to cities in xwalk
 pop_wide_city <- dplyr::rename(pop_wide_city, sub_id = GEOID, target_id = place_geoid, target_name = place_name) #dplyr::rename to generic column names for WA functions
 
 # calc target geolevel pop and number of sub geolevels per target geolevel
@@ -273,9 +282,10 @@ pop_df_city <- targetgeo_pop(pop_wide_city)
 
 ##### CITY WEIGHTED AVG CALCS ###
 pct_df <- pop_pct_multi(pop_df_city)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
-city_wa <- wt_avg(pct_df)             # calc weighted average and apply reliability screens
-city_wa <- city_wa %>% left_join(select(xwalk_city, c(place_geoid, place_name)), by = c("target_id" = "place_geoid"))  # add in target geolevel names
-city_wa <- city_wa %>%dplyr::rename(target_name = place_name) %>%dplyr::mutate(geolevel = 'city')                                  # change place_name to target_name, add geolevel
+city_wa <- wt_avg(pct_df, ind_df)     # calc weighted average and apply reliability screens
+city_wa <- city_wa %>% left_join(distinct(xwalk_city, place_geoid, place_name), by = c("target_id" = "place_geoid"))  # add in target geolevel names
+city_wa <- city_wa %>% dplyr::rename(target_name = place_name) %>%
+  dplyr::mutate(geolevel = 'city')                                 # change place_name to target_name, add geolevel
 
 
 ############# ASSEMBLY CALCS ##################
@@ -294,13 +304,14 @@ xwalk_assm <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, 
 
 ##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table(vars = vars_list_b25003, yr = acs_yr, srvy = survey)  # subgeolevel pop
-pop <- lapply(pop, function(x) x %>%dplyr::rename(e = estimate, m = moe))
+pop <- lapply(pop, function(x) x %>% dplyr::rename(e = estimate, m = moe))
 
 # transform pop data to wide format
 pop_wide <- to_wide(pop)
 
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
-pop_wide_assm <- as.data.frame(pop_wide) %>% right_join(select(xwalk_assm, c(ct_geoid, assm_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
+pop_wide_assm <- as.data.frame(pop_wide) %>% 
+  right_join(select(xwalk_assm, c(ct_geoid, assm_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
 pop_wide_assm <- dplyr::rename(pop_wide_assm, sub_id = GEOID, target_id = assm_geoid) #dplyr::rename to generic column names for WA functions
 
 # calc target geolevel pop and number of sub geolevels per target geolevel
@@ -308,9 +319,10 @@ pop_df_assm <- targetgeo_pop(pop_wide_assm)
 
 
 ##### ASSM WEIGHTED AVG CALCS ###
-pct_df <- pop_pct_multi(pop_df_assm)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
-assm_wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
-assm_wa <- assm_wa %>%dplyr::mutate(geolevel = 'sldl')  # add geolevel
+pct_df <- pop_pct_multi(pop_df_assm)     # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
+assm_wa <- wt_avg(pct_df, ind_df)        # calc weighted average and apply reliability screens
+assm_wa <- assm_wa %>% 
+  dplyr::mutate(geolevel = 'sldl')  # add geolevel
 
 ## Add census geonames
 census_api_key(census_key1, overwrite=TRUE)
@@ -346,22 +358,24 @@ xwalk_sen <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", sen_geoid, " 
 
 ##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table(vars = vars_list_b25003, yr = acs_yr, srvy = survey)  # subgeolevel pop
-pop <- lapply(pop, function(x) x %>%dplyr::rename(e = estimate, m = moe))
+pop <- lapply(pop, function(x) x %>% dplyr::rename(e = estimate, m = moe))
 
 # transform pop data to wide format
 pop_wide <- to_wide(pop)
 
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
-pop_wide <- as.data.frame(pop_wide) %>% right_join(select(xwalk_sen, c(ct_geoid, sen_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
+pop_wide <- as.data.frame(pop_wide) %>% 
+  right_join(select(xwalk_sen, c(ct_geoid, sen_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = sen_geoid) #dplyr::rename to generic column names for WA functions
 
 # calc target geolevel pop and number of sub geolevels per target geolevel
 pop_df <- targetgeo_pop(pop_wide)
 
 ##### SEN WEIGHTED AVG CALCS ###
-pct_df <- pop_pct_multi(pop_df)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
-sen_wa <- wt_avg(pct_df)         # calc weighted average and apply reliability screens
-sen_wa <- sen_wa %>%dplyr::mutate(geolevel = 'sldu')  # add geolevel
+pct_df <- pop_pct_multi(pop_df)          # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
+sen_wa <- wt_avg(pct_df, ind_df)         # calc weighted average and apply reliability screens
+sen_wa <- sen_wa %>%
+  dplyr::mutate(geolevel = 'sldu')  # add geolevel
 
 ## Add census geonames
 census_api_key(census_key1, overwrite=TRUE)
@@ -383,7 +397,7 @@ sen_wa <- merge(x=sen_name,y=sen_wa,by="target_id", all=T)
 ############ JOIN CITY, COUNTY & STATE WA TABLES  ##################
 wa_all <- union(wa, ca_wa) %>% union(city_wa) %>% union(assm_wa) %>% union(sen_wa)
 wa_all <-dplyr::rename(wa_all, geoid = target_id, geoname = target_name)   #dplyr::rename columns for RC functions
-wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid) %>% # move geoname column 
+wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid) %>%          # move geoname column 
   dplyr::relocate(total_rate, .after = twoormor_rate) %>% 
   dplyr::relocate(total_pop, .after = twoormor_pop)
 
