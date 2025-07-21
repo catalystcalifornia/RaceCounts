@@ -60,9 +60,9 @@ vars_list_ <- c("male_total_" = "P12_003N",     # male
                    "female_aian_" = "P12AE_027N", 
                    "female_pacisl_" = "P12AG_027N", 
                    "female_latino_" = "P12H_027N", 
-                   "female_nh_white_" = "P12AC_027N", 
-                   "female_nh_black_" = "P12AD_027N", 
-                   "female_nh_asian_" = "P12AF_027N", 
+                   "female_nh_white_" = "P12I_027N",  
+                   "female_nh_black_" = "P12J_027N", 
+                   "female_nh_asian_" = "P12L_027N", 
                    "female_nh_other_" = "P12AB_027N", 
                    "female_nh_twoormor_" = "P12O_027N") 
 
@@ -82,18 +82,7 @@ vars_list_p12 <- vars_list_  # vars used in update_detailed_table_census{}
 
 
 # CHECK THIS TABLE TO MAKE SURE THE LABEL AND RC_RACES COLUMNS MATCH UP
-print(p12_curr) 
-
-
-# set values for weighted average functions - You may need to update these
-#year <- c(2020)                   # define your data vintage
-#subgeo <- c('zcta')               # define your sub geolevel: can be tract or zcta (zcta may require some additions to the fx since they are mostly for tract)
-#targetgeolevel <- c('county')     # define your target geolevel
-#survey <- "census"                # define which Census survey you want
-#pop_threshold = 50                # define population threshold for screening
-#vars_list <- "vars_list_p12"      # pop under 5 by race/eth, the list of variables is in the WA fx script
-#county_yr <- 2021
-#targetgeo_names <- county_names(var_list = vars_list_acs, yr = county_yr, srvy = "acs5")              # use fx to get county names
+View(p12_curr) 
 
 
 #### AIR TK ENR DATA ####
@@ -105,7 +94,6 @@ county_name <- get_acs(geography = "county",
                      year = pop_yr)
 
 county_name <- county_name[,1:2]
-#county_name$NAME <- str_remove(county_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geonames
 county_name$NAME <- gsub(" County, California", "", county_name$NAME)
 names(county_name) <- c("target_id", "target_name")
 # View(county_name)
@@ -150,7 +138,7 @@ cccrrn$geoname <- as.character(cccrrn$geoname)
 # calculated as we did for education.ece_zip_code_enrollment_rate_2018 used in RC v3
 ## which assumes ccrrn capacity = full enrollment. 
 df <- full_join(air_tk, cccrrn, by = "geoname") %>% rename("sub_id" = "geoname")  # join AIR TK and CCCRRN enr data
-df$enrollment <- rowSums(df[,c("INFCAP", "PRECAP", "FCCCAP", "tk")], na.rm=TRUE) # unweighted enrollment
+df$enrollment <- rowSums(df[,c("INFCAP", "PRECAP", "FCCCAP", "tk")], na.rm=TRUE)  # unweighted enrollment
 df <- filter(df, enrollment >= 0)
 
 # import ZCTA-County Relationship File from Census. https://www.census.gov/geographies/reference-files/time-series/geo/relationship-files.2020.html#zcta
@@ -191,7 +179,7 @@ pop_wide_assm <- pop_wide_assm %>% rename_with(~ paste0(.x, "_sub_pop"), ends_wi
 # Calc ZCTA pop in each targetgeo using afact (pct of zcta pop in targetgeo)
 pop_wt <- pop_wide_assm %>% 
   select(c(sub_id, target_id, afact, ends_with("sub_pop"))) %>% 
-  mutate(across(where(is.numeric), ~.x * afact)) %>% #calc wt zcta pop
+  mutate(across(where(is.numeric), ~.x * afact)) %>%             #calc wt zcta pop
   select(-afact) 
 
 
