@@ -63,7 +63,7 @@ vars_list_ <- c("male_total_" = "P12_003N",     # male
                    "female_nh_white_" = "P12I_027N",  
                    "female_nh_black_" = "P12J_027N", 
                    "female_nh_asian_" = "P12L_027N", 
-                   "female_nh_other_" = "P12AB_027N", 
+                   "female_nh_other_" = "P12N_027N", 
                    "female_nh_twoormor_" = "P12O_027N") 
 
 race_mapping <- data.frame(
@@ -212,8 +212,8 @@ ind_df$indicator[ind_df$indicator == "Inf"] <- 100              # assign rate of
 
 
 ##### ASSEMBLY WEIGHTED AVG CALCS ###
-assm_wa <- wt_avg(pct_df, ind_df)     # calc weighted average and apply reliability screens
-assm_wa <- assm_wa %>% mutate(geolevel = 'sldl')                  # add geolevel
+assm_wa <- wt_avg(pct_df, ind_df)                               # calc weighted average and apply reliability screens
+assm_wa <- assm_wa %>% mutate(geolevel = 'sldl')                # add geolevel
 
 ## Add census geonames
 census_api_key(census_key1, overwrite=TRUE)
