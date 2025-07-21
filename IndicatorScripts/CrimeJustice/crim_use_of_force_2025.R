@@ -45,52 +45,33 @@ table_comment_source <- "NOTE: race/eth column values have inconsistencies, for 
 table_source <- paste0("Use of force data downloaded ", Sys.Date(), " from https://openjustice.doj.ca.gov/data. Metadata here: ", metadata, 
                         " and saved here: W:/Data/Crime and Justice/Police Violence/Open Justice/", substr(curr_yr, 6,9))
 
-#function no longer works, unable to fix it
+# comment on table
+indicator <- "Use of Force Civilians and Officers 2023"
+column_names <- colnames(df)
+column_comments <- ""
+
+### Use this fx to get URSUS (Use of Force) data ####
+source("W:/Project/RACE COUNTS/2025_v7/RC_Github/CR/Functions/rdashared_functions.R") # getting locally for the moment while updating
 #source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
+    
+get_ursus_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source)
 
-df <- read_csv(file = filepath, na = c("*", ""))
-
-#format column names
-names(df) <- tolower(names(df)) # make col names lowercase
-df <- df %>% mutate_all(as.character) # make all data characters
-
-  ##  WRITE TABLE TO POSTGRES DB ##               NOTE: con2 must be rda_shared_data for function to work.
-  # make character vector for field types in postgres table
-  charvect = rep('numeric', dim(df)[2]) 
-  charvect[fieldtype] <- "varchar" # specify which cols are varchar, the rest will be numeric
-  
-  # add names to the character vector
-  names(charvect) <- colnames(df)
-  
-  dbWriteTable(con2, Id(table_schema, table_name), df,
-               overwrite = FALSE, row.names = FALSE,
-               field.types = charvect)
-
-  # comment on table
-  indicator <- "Use of Force Civilians and Officers 2023"
-  column_names <- colnames(df)
-  column_comments <- ""
-  
-  # add comment on table and columns using add_table_comments() (accessed via credentials script) 
-  add_table_comments(con2, table_schema, table_name, indicator, table_source, qa_filepath, column_names, column_comments) 
-  
-  
-  
 
 # ##### incident
-# filepath = "https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2023-06/UseofForce_Incident_2022.csv" # update each year
-# fieldtype = 1:14  # confirm using metadata link
-# 
+filepath = "https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-07/UseofForce_Incident_2023.csv" # update each year
+fieldtype = 1:14  # confirm using metadata link
+ 
 # ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
-# table_schema <- "crime_and_justice"
-# table_name <- paste0("ursus_incident_", substr(curr_yr, 6,9))
-# table_comment_source <- "NOTE: This table has 1 row per incident with total # of civilians involved in Use of Force incident. Tables like ursus_civilian_officer_2016, have 1 row per civilian involved in an incident. So if you join the tables, then sum the num_involved_civilians field, you will double-count people."
-# table_source <- paste0("Use of force data downloaded ", Sys.Date(), " from https://openjustice.doj.ca.gov/data. Metadata saved here: W:/Data/Crime and Justice/Police Violence/Open Justice/", substr(curr_yr, 6,9))
-# 
-# ## Run function to prep and export rda_shared_data table. 
-# ### NOTE: con2 must be rda_shared_data for function to work.
-# source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
-# df <- get_ursus_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
+table_name <- paste0("ursus_incident_", substr(curr_yr, 6,9))
+table_comment_source <- "NOTE: This table has 1 row per incident with total # of civilians involved in Use of Force incident. Tables like ursus_civilian_officer_2016, have 1 row per civilian involved in an incident. So if you join the tables, then sum the num_involved_civilians field, you will double-count people."
+
+# comment on table
+indicator <- "Use of Force Incidents 2023"
+column_names <- colnames(df)
+column_comments <- ""
+
+df <- get_ursus_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
+      
 
 
 ############### Gather all URSUS data years --------------------------------------------------------------

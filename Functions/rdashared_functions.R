@@ -777,34 +777,32 @@ get_caaspp_metadata <- function(url3, table_schema)  {
   
   return(colcomments)
 }
+
 ### Use this fx to get URSUS (Use of Force) data ####
 get_ursus_data <- function(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) {
-        # CA DOJ Use of Force data
-        df <- read_csv(file = filepath, na = c("*", ""))
-        
-        #format column names
-        names(df) <- tolower(names(df)) # make col names lowercase
-        df <- df %>% mutate_all(as.character) # make all data characters
-        
-        ##  WRITE TABLE TO POSTGRES DB ##               NOTE: con2 must be rda_shared_data for function to work.
-        # make character vector for field types in postgres table
-        charvect = rep('numeric', dim(df)[2]) 
-        charvect[fieldtype] <- "varchar" # specify which cols are varchar, the rest will be numeric
-        
-        # add names to the character vector
-        names(charvect) <- colnames(df)
-        
-        dbWriteTable(con2, c(table_schema, table_name), df,
-                     overwrite = FALSE, row.names = FALSE,
-                     field.types = charvect)
-        
-        # write comment to table, and the first three fields that won't change.
-        table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
-        
-        # send table comment to database
-        dbSendQuery(conn = con2, table_comment)    
-
-return(df)
+  # CA DOJ Use of Force data
+  df <- read_csv(file = filepath, na = c("*", ""))
+  
+  #format column names
+  names(df) <- tolower(names(df)) # make col names lowercase
+  df <- df %>% mutate_all(as.character) # make all data characters
+  
+  ##  WRITE TABLE TO POSTGRES DB ##               NOTE: con2 must be rda_shared_data for function to work.
+  # make character vector for field types in postgres table
+  charvect = rep('numeric', dim(df)[2]) 
+  charvect[fieldtype] <- "varchar" # specify which cols are varchar, the rest will be numeric
+  
+  # add names to the character vector
+  names(charvect) <- colnames(df)
+  
+  dbWriteTable(con2, Id(table_schema, table_name), df,
+               overwrite = FALSE, row.names = FALSE,
+               field.types = charvect)
+  
+  # add comment on table and columns using add_table_comments() (accessed via credentials script) 
+  add_table_comments(con2, table_schema, table_name, indicator, table_source, qa_filepath, column_names, column_comments)
+  
+  return(df)
 }
 
 
