@@ -1,0 +1,87 @@
+---
+title: ""
+output:
+  pdf_document:
+    latex_engine: xelatex
+    keep_tex: false
+geometry: 
+  - top=1.2in
+  - bottom=1in
+  - left=1in
+  - right=1in
+header-includes:
+  - \usepackage{fancyhdr}
+  - \usepackage{graphicx}
+  - \usepackage{multicol}
+  - \usepackage{xcolor}
+  - \usepackage{titling}
+  - \pagestyle{fancy}
+  - \fancyhf{}
+  - \fancyhead[L]{\includegraphics[height=0.4in]{assm_logo.png}}
+  - \fancyhead[C]{\textbf{\large Brief Series Name}}
+  - \fancyhead[R]{\textcolor{gray}{\today}}
+  - \fancyfoot[L]{\textcolor{gray}{Confidential}}
+  - \fancyfoot[C]{\textcolor{gray}{Organization Name}}
+  - \fancyfoot[R]{\textcolor{gray}{Page \thepage}}
+  - \renewcommand{\headrulewidth}{0.4pt}
+  - \renewcommand{\footrulewidth}{0.4pt}
+  - \setlength{\headheight}{50pt}
+  - \fancypagestyle{plain}{\pagestyle{fancy}}
+params:
+  brief_title: "Default Brief Title"
+  brief_subtitle: "Subtitle Here"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+\begin{center}
+\LARGE \textbf{`r params$brief_title`} \\
+\large `r params$brief_subtitle`
+\end{center}
+
+\vspace{0.5in}
+
+# Executive Summary
+
+This is your executive summary content. Single column, full width.
+
+# Key Findings
+
+\begin{multicols}{2}
+
+**Finding 1:** Your first key finding goes here with supporting details and analysis.
+
+**Finding 2:** Second finding with more detailed explanation that will wrap across the columns as needed.
+
+**Finding 3:** Additional findings continue here. The multicols environment automatically balances the content.
+
+\end{multicols}
+
+# Detailed Analysis
+
+Back to single column for detailed analysis section.
+
+```{r sample-chart, fig.height=3, fig.width=6, fig.align='center'}
+# Simple chart example (optional)
+library(ggplot2)
+data <- data.frame(
+  Category = c("A", "B", "C", "D"),
+  Value = c(25, 35, 20, 20)
+)
+
+ggplot(data, aes(x = Category, y = Value, fill = Category)) +
+  geom_col() +
+  theme_minimal() +
+  labs(title = "Sample Chart", y = "Percentage") +
+  theme(legend.position = "none")
+```
+
+\newpage
+
+# Page Two Content
+
+Second page with consistent formatting. Headers and footers automatically carry over.
+
+More content for the second page to demonstrate the template's capabilities.
