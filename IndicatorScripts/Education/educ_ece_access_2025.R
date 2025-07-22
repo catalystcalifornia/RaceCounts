@@ -193,7 +193,7 @@ pop_wide_ <- pop_wide_ %>% rename(target_id = GEOID)
 pop_wide_ <- pop_wide_ %>% rename_with(~ paste0(.x, "_target_pop"), ends_with("_"))
 
 
-# Calc % of each targetgeo pop that each ZCTA pop
+# Calc % of each targetgeo pop that each subgeo makes up
 pop_wt <- pop_wt %>% left_join(pop_wide_, by = "target_id")       #join subpop data to targetpop data to get pct_zcta
 n_df <- pop_wt %>% select(target_id, sub_id) %>% group_by(target_id) %>% summarise(n = n()) # count of sub_geos in each target_geo
 pop_wt <- pop_wt %>% left_join(n_df, by = "target_id")
@@ -201,7 +201,7 @@ pop_wt <- pop_wt %>% left_join(n_df, by = "target_id")
 pct_df <- pop_pct_multi(pop_wt)        # NOTE: use this function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
 
 
-#### ind_df: Calc wt total rate by targetgeo calc ################
+#### ind_df: Calc total rate by subgeo ################
 # start indicator calc for weighted total enr rate for zctas
 ind_df <- df %>% select(sub_id, enrollment) %>% 
   left_join(pop_wide %>% select(GEOID, total_), by = c("sub_id" = "GEOID")) %>%
@@ -311,7 +311,7 @@ names(sen_name) <- c("target_id", "target_name")
 sen_wa <- merge(x=sen_name,y=sen_wa,by="target_id", all=T)
 #View(sen_wa)
 
-# ############# COUNTY #### commenting out for now because we are not updating this part of the code this year
+# ############# COUNTY #### commenting out because we are not updating these geolevels this year
 # 
 # ###### County Pop ##
 # # Get target pop directly from API, rather than use targetgeo_pop{}, bc ZCTAs don't cover all of counties and don't fully nest into counties as CTs do.
