@@ -1,4 +1,4 @@
-## Use of Force 2016-2022 RC v7
+## Use of Force 2016-2023 RC v7
 
 ## Set up ----------------------------------------------------------------
 #install packages if not already installed
@@ -36,13 +36,13 @@ qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Crime and Justice\\QA_Sheet_U
 metadata <- "https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-07/use-of-force-readme-06202024f.pdf" # update each year
 ##### civilian-officer
 filepath = "https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-07/UseofForce_Civilian-Officer_2023.csv" # update each year
-fieldtype = 1:26  # confirm using metadata link
- 
+fieldtype = 1:27  # confirm using metadata link
+
 ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 table_schema <- "crime_and_justice"
 table_name <- paste0("ursus_civilian_officer_", substr(curr_yr, 6,9))
 table_comment_source <- "NOTE: race/eth column values have inconsistencies, for example ''''asian indian'''' and ''''asian_indian''''."
-table_source <- paste0("Use of force data downloaded ", Sys.Date(), " from https://openjustice.doj.ca.gov/data. Metadata here: ", metadata, 
+table_source <- paste0("Use of force data downloaded ", Sys.Date(), " from https://openjustice.doj.ca.gov/data. Metadata here: ", metadata,
                         " and saved here: W:/Data/Crime and Justice/Police Violence/Open Justice/", substr(curr_yr, 6,9))
 
 # comment on table
@@ -53,14 +53,14 @@ column_comments <- ""
 ### Use this fx to get URSUS (Use of Force) data ####
 source("W:/Project/RACE COUNTS/2025_v7/RC_Github/CR/Functions/rdashared_functions.R") # getting locally for the moment while updating
 #source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
-    
+
 get_ursus_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source)
 
 
 # ##### incident
 filepath = "https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-07/UseofForce_Incident_2023.csv" # update each year
-fieldtype = 1:14  # confirm using metadata link
- 
+fieldtype = 1:11  # confirm using metadata link
+
 # ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 table_name <- paste0("ursus_incident_", substr(curr_yr, 6,9))
 table_comment_source <- "NOTE: This table has 1 row per incident with total # of civilians involved in Use of Force incident. Tables like ursus_civilian_officer_2016, have 1 row per civilian involved in an incident. So if you join the tables, then sum the num_involved_civilians field, you will double-count people."
@@ -71,7 +71,7 @@ column_names <- colnames(df)
 column_comments <- ""
 
 df <- get_ursus_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
-      
+
 
 
 ############### Gather all URSUS data years --------------------------------------------------------------
@@ -218,7 +218,7 @@ df_all <- df_all %>% filter(geoname != "American Canyon") %>% bind_rows(
 ) %>% arrange(geoname)
 
 # Get ACS population data ----------------------------------------------------
-dp05 <- dbGetQuery(con, "SELECT * FROM v6.arei_race_multigeo") %>% mutate(name = gsub(" County, California", "", name),
+dp05 <- dbGetQuery(con, "SELECT * FROM v7.arei_race_multigeo") %>% mutate(name = gsub(" County, California", "", name),
                                                                           name =  gsub(" CDP, California", "", name),
                                                                           name =  gsub(" city, California", "", name),
                                                                           name =  gsub(" town, California", "", name),

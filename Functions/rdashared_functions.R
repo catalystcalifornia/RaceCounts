@@ -781,11 +781,23 @@ get_caaspp_metadata <- function(url3, table_schema)  {
 ### Use this fx to get URSUS (Use of Force) data ####
 get_ursus_data <- function(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) {
   # CA DOJ Use of Force data
-  df <- read_csv(file = filepath, na = c("*", ""))
+  df <- read_csv(file = filepath, na = c("*", "")) 
   
   #format column names
   names(df) <- tolower(names(df)) # make col names lowercase
   df <- df %>% mutate_all(as.character) # make all data characters
+  
+  # put 2023 data in same case as the rest of the years
+  if('race_ethnic_group' %in% names(df)) df <- df %>% mutate(race_ethnic_group = tolower(race_ethnic_group))
+  
+  # rename UseOfForceID to incident_id in 2023
+  if(!'incident_id' %in% names(df)) df <- df %>% rename(incident_id = useofforceincidentid)
+  
+  # add received force column in 2023
+  if('received_force_type' %in% names(df) & !'received_force' %in% names(df)) df <- df %>% 
+    mutate(received_force = ifelse(received_force_type == "NONE" |
+                                     received_force_type == "UNKNOWN", "FALSE", "TRUE"))
+                                                                                                    
   
   ##  WRITE TABLE TO POSTGRES DB ##               NOTE: con2 must be rda_shared_data for function to work.
   # make character vector for field types in postgres table
