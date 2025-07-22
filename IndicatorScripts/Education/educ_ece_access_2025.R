@@ -60,10 +60,10 @@ vars_list_ <- c("male_total_" = "P12_003N",     # male
                    "female_aian_" = "P12AE_027N", 
                    "female_pacisl_" = "P12AG_027N", 
                    "female_latino_" = "P12H_027N", 
-                   "female_nh_white_" = "P12AC_027N", 
-                   "female_nh_black_" = "P12AD_027N", 
-                   "female_nh_asian_" = "P12AF_027N", 
-                   "female_nh_other_" = "P12AB_027N", 
+                   "female_nh_white_" = "P12I_027N",  
+                   "female_nh_black_" = "P12J_027N", 
+                   "female_nh_asian_" = "P12L_027N", 
+                   "female_nh_other_" = "P12N_027N", 
                    "female_nh_twoormor_" = "P12O_027N") 
 
 race_mapping <- data.frame(
@@ -82,18 +82,7 @@ vars_list_p12 <- vars_list_  # vars used in update_detailed_table_census{}
 
 
 # CHECK THIS TABLE TO MAKE SURE THE LABEL AND RC_RACES COLUMNS MATCH UP
-print(p12_curr) 
-
-
-# set values for weighted average functions - You may need to update these
-#year <- c(2020)                   # define your data vintage
-#subgeo <- c('zcta')               # define your sub geolevel: can be tract or zcta (zcta may require some additions to the fx since they are mostly for tract)
-#targetgeolevel <- c('county')     # define your target geolevel
-#survey <- "census"                # define which Census survey you want
-#pop_threshold = 50                # define population threshold for screening
-#vars_list <- "vars_list_p12"      # pop under 5 by race/eth, the list of variables is in the WA fx script
-#county_yr <- 2021
-#targetgeo_names <- county_names(var_list = vars_list_acs, yr = county_yr, srvy = "acs5")              # use fx to get county names
+View(p12_curr) 
 
 
 #### AIR TK ENR DATA ####
@@ -105,7 +94,6 @@ county_name <- get_acs(geography = "county",
                      year = acs_yr)
 
 county_name <- county_name[,1:2]
-#county_name$NAME <- str_remove(county_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geonames
 county_name$NAME <- gsub(" County, California", "", county_name$NAME)
 names(county_name) <- c("target_id", "target_name")
 # View(county_name)
@@ -150,7 +138,7 @@ cccrrn$geoname <- as.character(cccrrn$geoname)
 # calculated as we did for education.ece_zip_code_enrollment_rate_2018 used in RC v3
 ## which assumes ccrrn capacity = full enrollment. 
 df <- full_join(air_tk, cccrrn, by = "geoname") %>% rename("sub_id" = "geoname")  # join AIR TK and CCCRRN enr data
-df$enrollment <- rowSums(df[,c("INFCAP", "PRECAP", "FCCCAP", "tk")], na.rm=TRUE) # unweighted enrollment
+df$enrollment <- rowSums(df[,c("INFCAP", "PRECAP", "FCCCAP", "tk")], na.rm=TRUE)  # unweighted enrollment
 df <- filter(df, enrollment >= 0)
 
 # import ZCTA-County Relationship File from Census. https://www.census.gov/geographies/reference-files/time-series/geo/relationship-files.2020.html#zcta
@@ -191,7 +179,7 @@ pop_wide_assm <- pop_wide_assm %>% rename_with(~ paste0(.x, "_sub_pop"), ends_wi
 # Calc ZCTA pop in each targetgeo using afact (pct of zcta pop in targetgeo)
 pop_wt <- pop_wide_assm %>% 
   select(c(sub_id, target_id, afact, ends_with("sub_pop"))) %>% 
-  mutate(across(where(is.numeric), ~.x * afact)) %>% #calc wt zcta pop
+  mutate(across(where(is.numeric), ~.x * afact)) %>%             #calc wt zcta pop
   select(-afact) 
 
 
@@ -205,7 +193,7 @@ pop_wide_ <- pop_wide_ %>% rename(target_id = GEOID)
 pop_wide_ <- pop_wide_ %>% rename_with(~ paste0(.x, "_target_pop"), ends_with("_"))
 
 
-# Calc % of each targetgeo pop that each ZCTA pop
+# Calc % of each targetgeo pop that each subgeo makes up
 pop_wt <- pop_wt %>% left_join(pop_wide_, by = "target_id")       #join subpop data to targetpop data to get pct_zcta
 n_df <- pop_wt %>% select(target_id, sub_id) %>% group_by(target_id) %>% summarise(n = n()) # count of sub_geos in each target_geo
 pop_wt <- pop_wt %>% left_join(n_df, by = "target_id")
@@ -213,7 +201,7 @@ pop_wt <- pop_wt %>% left_join(n_df, by = "target_id")
 pct_df <- pop_pct_multi(pop_wt)        # NOTE: use this function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
 
 
-#### ind_df: Calc wt total rate by targetgeo calc ################
+#### ind_df: Calc total rate by subgeo ################
 # start indicator calc for weighted total enr rate for zctas
 ind_df <- df %>% select(sub_id, enrollment) %>% 
   left_join(pop_wide %>% select(GEOID, total_), by = c("sub_id" = "GEOID")) %>%
@@ -224,8 +212,8 @@ ind_df$indicator[ind_df$indicator == "Inf"] <- 100              # assign rate of
 
 
 ##### ASSEMBLY WEIGHTED AVG CALCS ###
-assm_wa <- wt_avg(pct_df, ind_df)     # calc weighted average and apply reliability screens
-assm_wa <- assm_wa %>% mutate(geolevel = 'sldl')                  # add geolevel
+assm_wa <- wt_avg(pct_df, ind_df)                               # calc weighted average and apply reliability screens
+assm_wa <- assm_wa %>% mutate(geolevel = 'sldl')                # add geolevel
 
 ## Add census geonames
 census_api_key(census_key1, overwrite=TRUE)
@@ -323,7 +311,7 @@ names(sen_name) <- c("target_id", "target_name")
 sen_wa <- merge(x=sen_name,y=sen_wa,by="target_id", all=T)
 #View(sen_wa)
 
-# ############# COUNTY #### commenting out for now because we are not updating this part of the code this year
+# ############# COUNTY #### commenting out because we are not updating these geolevels this year
 # 
 # ###### County Pop ##
 # # Get target pop directly from API, rather than use targetgeo_pop{}, bc ZCTAs don't cover all of counties and don't fully nest into counties as CTs do.
