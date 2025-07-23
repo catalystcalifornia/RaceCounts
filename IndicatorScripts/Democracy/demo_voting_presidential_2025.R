@@ -36,43 +36,35 @@ threshold = 10   # geo+race combos with < threshold voters who voted are suppres
 # set source fx
 source("./Functions/democracy_functions.R")
 
-################################################################################
-############ 2024 is a copy/paste of 2020 with year updated to 2024 ############
-################################################################################
+# Get 2024 Data --------------------------------------------------
 
-# get data: download and read file or just read file if already downloaded----------------------------------------------------------------
-# metadata = "W:\\Data\\Democracy\\Current Population Survey Voting and Registration\\2024\\cpsnov24.pdf"
-# url <- "https://www2.census.gov/programs-surveys/cps/datasets/2024/supp/nov24pub.csv"
-# file <- "W:/Data/Democracy/Current Population Survey Voting and Registration/2024/nov24pub.csv"
-# varchar_cols <- c("hrhhid", "pes1", "hrintsta", "prpertyp")       # Use metadata to update as needed
+# fx will download file and/or export postgres table and/or import postgres table as needed
+metadata = "W:\\Data\\Democracy\\Current Population Survey Voting and Registration\\2024\\cpsnov24.pdf"
+url <- "https://www2.census.gov/programs-surveys/cps/datasets/2024/supp/nov24pub.csv"
+file <- "W:/Data/Democracy/Current Population Survey Voting and Registration/2024/nov24pub.csv"
+varchar_cols <- c("hrhhid", "pes1", "hrintsta", "prpertyp")       # Use metadata to update as needed
 
-# get_cps_supp(metadata, url, '2020', varchar_cols)
+df_2024 <- get_cps_supp(metadata, url, '2024', varchar_cols)
 
-df_2024 <- dbGetQuery(con2, "SELECT * FROM democracy.cps_voting_supplement_2024")
+# Get 2020 Data --------------------------------------------------
 
+# fx will download file and/or export postgres table and/or import postgres table as needed
+metadata = "W:\\Data\\Democracy\\Current Population Survey Voting and Registration\\2020\\cpsnov20.pdf"
+url = "https://www2.census.gov/programs-surveys/cps/datasets/2020/supp/nov20pub.csv"
+file <- "W:/Data/Democracy/Current Population Survey Voting and Registration/2020/nov20pub.csv"
+varchar_cols <- c("hrhhid", "pes1", "hrintsta", "prpertyp")         # Use metadata to update as needed
 
-################################################################################
-################# 2020 #########################################################
-################################################################################
+df_2020 <- get_cps_supp(metadata, url, '2020', varchar_cols)
 
-# get data: download and read file or just read file if already downloaded----------------------------------------------------------------
-# metadata = "W:\\Data\\Democracy\\Current Population Survey Voting and Registration\\2020\\cpsnov20.pdf"
-# url = "https://www2.census.gov/programs-surveys/cps/datasets/2020/supp/nov20pub.csv"
-# file <- "W:/Data/Democracy/Current Population Survey Voting and Registration/2020/nov20pub.csv"
-# varchar_cols <- c("hrhhid", "pes1", "hrintsta", "prpertyp")         # Use metadata to update as needed
-# 
-# get_cps_supp(metadata, url, '2020', varchar_cols)
-
-df_2020 <- dbGetQuery(con2, "SELECT * FROM democracy.cps_voting_supplement_2020")
-
-# Import 2012, 2016 Data --------------------------------------------------
+# Get 2012, 2016 Data --------------------------------------------------
 #2016 metadata: https://www2.census.gov/programs-surveys/cps/techdocs/cpsnov16.pdf
 #2012 metadata: https://www2.census.gov/programs-surveys/cps/techdocs/cpsnov12.pdf
 
-# load data 
+# load data (in RC db, not rda_shared_data)
 df_2016 <- dbGetQuery(con, "SELECT * FROM data.cps_2016_voting_supplement")
 df_2012 <- dbGetQuery(con, "SELECT * FROM data.cps_2012_voting_supplement")
-#close the connection
+
+# close the connection to rda_shared_data
 dbDisconnect(con2)
 
 
@@ -106,9 +98,9 @@ county_data_list <- lapply(1:length(county_voter),
                                              by = "gtco",
                                              all = TRUE))
 
-county_data_df_ <- Reduce(full_join,county_data_list)  # combine data years into 1 list 
+county_data_df_ <- Reduce(full_join, county_data_list)             # combine county data into 1 df 
 
-county_data_num <- county_data_df_ %>% group_by(gtco) %>% select(c(starts_with("num_"))) %>% summarise_all(., mean, na.rm=TRUE)      # summarize (average) all number data years
+county_data_num <- county_data_df_ %>% group_by(gtco) %>% select(c(starts_with("num_"))) %>% summarise_all(., mean, na.rm=TRUE)     # summarize (average) all number data years
 county_data_count <- county_data_df_ %>% group_by(gtco) %>% select(c(starts_with("count_"))) %>% summarise_all(., sum, na.rm=TRUE)  # summarize (sum_) all count data years
 
 county_data_df <- county_data_num %>% full_join(county_data_count, by = "gtco") %>% rename(geoid = gtco)   # join avg numbers and counts
@@ -119,7 +111,7 @@ state_data_list <- lapply(1:length(state_voter),
                                             by = "gestfips",
                                             all = TRUE))
 
-state_data_df_ <- Reduce(full_join,state_data_list)  # combine data years into 1 list 
+state_data_df_ <- Reduce(full_join,state_data_list)  # combine state data into 1 df
 
 state_data_num <- state_data_df_ %>% group_by(gestfips) %>% select(c(starts_with("num_"))) %>% summarise_all(., mean, na.rm=TRUE)       # summarize (average) all number data years
 state_data_count <- state_data_df_ %>% group_by(gestfips) %>% select(c(starts_with("count_"))) %>% summarise_all(., sum, na.rm=TRUE)    # summarize (sum) all count data years
