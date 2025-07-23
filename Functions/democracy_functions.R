@@ -1,6 +1,6 @@
 ## Functions used for RC Democracy indicators ##
 
-# metadata: https://www2.census.gov/programs-surveys/cps/techdocs/cpsnov22.pdf
+# metadata example: https://www2.census.gov/programs-surveys/cps/techdocs/cpsnov22.pdf
 
 
 # race/ethnicity codes
@@ -31,15 +31,34 @@ get_cps_supp <- function(metadata, url, cps_yr, varchar_cols) {
     print("Raw data saved to W:\\Data\\Democracy\\Current Population Survey Voting and Registration\\")
   } else { 
     print("Data already downloaded to W drive.") }
+
+  
+  ## Define postgres schema, table name, table comment, data source for rda_shared_data table
+  table_schema <- "democracy"
+  table_name <- paste0("cps_voting_supplement_", cps_yr)
+  
+  table_comment_source <- "NOTE: Geoid fields (gestfips, gtcbsa, gtcco, tco, gtcsa) are missing leading zeroes"
+  table_source <- paste0("CPS Voting Supplement data downloaded from https://www.census.gov/data/datasets/time-series/demo/cps/cps-supp_cps-repwgt.html. Metadata here: ", metadata)
+  
+  
+  ##### CHECK IF TABLE ALREADY EXISTS IN RDA_SHARED_DATA #####
+  check_table_query <- paste0("SELECT table_catalog, table_schema, table_name FROM information_schema.tables WHERE table_schema = '", table_schema,
+                              "' and table_name= '",table_name,
+                              "' and table_type= 'BASE TABLE';")
+  conn <- connect_to_db("rda_shared_data")
+  check_table <- dbGetQuery(conn, check_table_query)
+  
+  if (nrow(check_table)==1) {       # if table exists, print statement and import from postgres
+    print(paste0(table_name, " already exists. Importing into R from postgres now."))
     
-    ## Define postgres schema, table name, table comment, data source for rda_shared_data table
-    table_schema <- "democracy"
-    table_name <- paste0("cps_voting_supplement_", tail(cps_yr, n=1))
+    data <- dbGetQuery(conn, paste0("SELECT * FROM ", table_schema, ".", table_name))
+    print("Table imported to R.")
     
-    table_comment_source <- "NOTE: Geoid fields (gestfips, gtcbsa, gtcco, tco, gtcsa) are missing leading zeroes"
-    table_source <- paste0("CPS Voting Supplement data downloaded from https://www.census.gov/data/datasets/time-series/demo/cps/cps-supp_cps-repwgt.html. Metadata here: ", metadata)
+    dbDisconnect(conn)
     
-    print("Prepping data for postgres table now.")
+  } else if (nrow(check_table)==0){                     # if table DOES NOT exist, print statement and then create/export table for indicator, and import into R
+    print(paste0(table_name, " does not exist. Prepping data for postgres table now."))
+  
     df <- read_csv(file = url, na = c("*", ""), show_col_types = FALSE)
     names(df) <- tolower(names(df)) # make col names lowercase
     df <- df %>% filter(gestfips == 6)
@@ -54,19 +73,27 @@ get_cps_supp <- function(metadata, url, cps_yr, varchar_cols) {
    
     
     # send table to postgres
-    dbWriteTable(con2, Id(schema = table_schema, table = table_name), df,
+    dbWriteTable(conn, Id(schema = table_schema, table = table_name), df,
                  overwrite = FALSE, row.names = FALSE,
                  field.types = charvect)
     
     # add index
     idx_query <- paste0("CREATE index cps_voting_supplement_", tail(cps_yr, n=1), "_hrhhid_idx on democracy.cps_voting_supplement_", tail(cps_yr, n=1), "(hrhhid);")
-    dbSendQuery(con2, idx_query)
+    dbSendQuery(conn, idx_query)
     
     # write comment to table, and the first three fields that won't change.
-    table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS 'Created on ", Sys.Date(), ".", table_comment_source, ". ", table_source, ".';")
-    dbSendQuery(con2, table_comment)
+    table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS 'Created on ", Sys.Date(), ". ", table_comment_source, ". ", table_source, ".';")
+    dbSendQuery(conn, table_comment)
     print(paste0("Data exported to postgres as ", table_schema, ".", table_name, "."))
   
+    # import table into R
+    data <- dbGetQuery(conn, paste0("SELECT * FROM ", table_schema, ".", table_name))
+    print("Table imported to R.")
+    
+    dbDisconnect(conn)
+  }
+
+return(data)
 }
 
 
