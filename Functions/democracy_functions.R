@@ -15,20 +15,92 @@ all_nhpi <- c("5", "9", "12", "14", "15", "18", "20", "21", "24")
 nh_twoormor <-c("6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26")
 
 
+
+# Download CPS Voting Supplement and Sent to Postgres ---------------------
+get_cps_supp <- function(metadata, url, cps_yr, varchar_cols) {
+  if(!file.exists(file)) {
+    print("Downloading data to W drive now.")
+    download.file(url=url, destfile=file) 
+    df <- read_csv(file, 
+                   col_types = cols(
+                     gestfips = "character",
+                     gtcbsa = "character",
+                     gtco = "character",
+                     gtcsa = "character"))
+    
+    print("Raw data saved to W:\\Data\\Democracy\\Current Population Survey Voting and Registration\\")
+  } else { 
+    print("Data already downloaded to W drive.") }
+    
+    ## Define postgres schema, table name, table comment, data source for rda_shared_data table
+    table_schema <- "democracy"
+    table_name <- paste0("cps_voting_supplement_", tail(cps_yr, n=1))
+    
+    table_comment_source <- "NOTE: Geoid fields (gestfips, gtcbsa, gtcco, tco, gtcsa) are missing leading zeroes"
+    table_source <- paste0("CPS Voting Supplement data downloaded from https://www.census.gov/data/datasets/time-series/demo/cps/cps-supp_cps-repwgt.html. Metadata here: ", metadata)
+    
+    print("Prepping data for postgres table now.")
+    df <- read_csv(file = url, na = c("*", ""), show_col_types = FALSE)
+    names(df) <- tolower(names(df)) # make col names lowercase
+    df <- df %>% filter(gestfips == 6)
+    
+    ##  WRITE TABLE TO POSTGRES DB ##
+    # make character vector for field types in postgres table
+    charvect = rep('numeric', dim(df)[2])
+
+    # add names to the character vector - confirm using metadata
+    names(charvect) <- colnames(df)
+    charvect[varchar_cols] <- "varchar"  # set user-selected cols as varchar, not numeric
+   
+    
+    # send table to postgres
+    dbWriteTable(con2, Id(schema = table_schema, table = table_name), df,
+                 overwrite = FALSE, row.names = FALSE,
+                 field.types = charvect)
+    
+    # add index
+    idx_query <- paste0("CREATE index cps_voting_supplement_", tail(cps_yr, n=1), "_hrhhid_idx on democracy.cps_voting_supplement_", tail(cps_yr, n=1), "(hrhhid);")
+    dbSendQuery(con2, idx_query)
+    
+    # write comment to table, and the first three fields that won't change.
+    table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS 'Created on ", Sys.Date(), ".", table_comment_source, ". ", table_source, ".';")
+    dbSendQuery(con2, table_comment)
+    print(paste0("Data exported to postgres as ", table_schema, ".", table_name, "."))
+  
+}
+
+
 ##DATA CLEANING FUNCTION: Clean geoids and create numeric wgt column -------------------------------------------------------------------------
 ##### see p31-33 of metadata for more: https://www2.census.gov/programs-surveys/cps/techdocs/cpsnov20.pdf
 clean_cps <- function(x) {
-  ## use code like unique(cps_list[[3]][[1]]) or unique(cps_list2[[1]][[1]]) to ensure all $gtco fixes etc. are covered in this fx
-  x$gestfips <- ifelse(x$gestfips == '6', paste0("0",x$gestfips), x$gestfips)
-  x$gtcbsa <- ifelse(nchar(x$gtcbsa) == 1, paste0("0000",x$gtcbsa), x$gtcbsa)
-  x$gtco <- ifelse((x$gtco == "0" | x$gtco == "000"), NA, str_pad(x$gtco, 3, pad = "0"))  # make all county codes 3 digits by padding with leading zeroes
-  x$gtco <- ifelse(!is.na(x$gtco), paste0("06",x$gtco), x$gtco)
-  x$gtcsa <- ifelse(nchar(x$gtcsa) == 1, paste0("00",x$gtcsa), x$gtcsa)
   
-  ## divide PWSSWGT by 1,000 because the data dictionary specifies this is 4 implied decimal places
-  x$pwsswgtnum <- as.numeric(x$pwsswgt)/10000
+  #make column names lowercase
+  colnames(x) <- tolower(colnames(x))
+
+  #filter for just CA data
+  x <- filter(x, gestfips %in% c('6', '06'))
   
-  return(x)  
+  x$gestfips <- ifelse (x$gestfips == '6', paste("0",x$gestfips, sep = ""), x$gestfips)
+  x$gtcbsa <- ifelse (nchar(x$gtcbsa) == 1, paste("0000",x$gtcbsa, sep = ""), x$gtcbsa)
+  x$gtcco <- ifelse (x$gtco == "0", NA, x$gtco) 
+  x$gtco <- ifelse (nchar(x$gtco) == 1, paste("00",x$gtco, sep = ""), x$gtco)
+  x$gtco <- ifelse (nchar(x$gtco) == 2, paste("0",x$gtco, sep = ""), x$gtco)
+  x$gtco <- ifelse(x$gtco != '06', paste0("06",x$gtco), x$gtco)
+  x$gtcsa <- ifelse (nchar(x$gtcsa) == 1, paste("00",x$gtcsa, sep = ""), x$gtcsa)
+  
+  ## divide PWSSWGT by 1,000 because the data dictionary specifies this is 4 implied decimal places. Chris already did this for 2012 and 2016 data
+  if(!"pwsswgtnum" %in% colnames(x))
+  {
+    x$pwsswgtnum <- x$pwsswgt/10000 
+  }
+  
+    #correct/make column types consistent across data years
+  x$pes1 <- as.character(x$pes1)
+  x$hrintsta <- as.character(x$hrintsta)
+  x$prpertyp <- as.character(x$prpertyp)
+  x$prtage <- as.double(x$prtage)
+  
+return(x)  
 }
 
 

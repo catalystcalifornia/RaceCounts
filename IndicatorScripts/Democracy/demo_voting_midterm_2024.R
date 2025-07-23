@@ -24,6 +24,7 @@ census_api_key(census_key1)
 cps_yr <- c('2010', '2014', '2018', '2022')
 rc_yr <- 2024
 rc_schema <- 'v6'
+threshold = 10   # geo+race combos with < threshold voters who voted are suppressed 
 
 # Get Latest Data: Comment out after data has been exported to postgres ####
 # metadata <-"https://www2.census.gov/programs-surveys/cps/techdocs/cpsnov22.pdf"           # update each year
@@ -157,8 +158,6 @@ final_df <- final_data_df %>% full_join(num_data_yrs, by = c('geoid' = 'gtco')) 
 
 
 # Screening and calculate raw/rate ---------------------------------------------------------------
-threshold = 10
-
 final_df_screened <- final_df %>%
   mutate(total_raw = ifelse(count_total_voted < threshold, NA, round(num_total_voted, 0)),
          
@@ -168,7 +167,7 @@ final_df_screened <- final_df %>%
          
          nh_black_raw = ifelse(count_nh_black_voted < threshold, NA, round(num_nh_black_voted, 0)),
          
-         aian_raw = ifelse(count_aian_voted < 10, NA, round(num_aian_voted, 0)),
+         aian_raw = ifelse(count_aian_voted < threshold, NA, round(num_aian_voted, 0)),
          
          nh_asian_raw = ifelse(count_nh_asian_voted < threshold, NA, round(num_nh_asian_voted, 0)),
          
@@ -184,9 +183,9 @@ final_df_screened <- final_df %>%
          
          nh_black_rate = ifelse(count_nh_black_voted < threshold, NA, (num_nh_black_voted) / num_nh_black_va_pop * 100),
          
-         aian_rate = ifelse(count_aian_voted < 10, NA, (num_aian_voted) / num_aian_va_pop * 100),
+         aian_rate = ifelse(count_aian_voted < threshold, NA, (num_aian_voted) / num_aian_va_pop * 100),
          
-         nh_asian_rate = ifelse(count_nh_asian_voted < 10, NA,(num_nh_asian_voted) / num_nh_asian_va_pop * 100),
+         nh_asian_rate = ifelse(count_nh_asian_voted < threshold, NA,(num_nh_asian_voted) / num_nh_asian_va_pop * 100),
          
          pacisl_rate = ifelse(count_pacisl_voted < threshold, NA, (num_pacisl_voted) / num_pacisl_va_pop * 100),
          
