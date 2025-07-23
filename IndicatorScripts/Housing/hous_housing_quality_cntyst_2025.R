@@ -1,6 +1,7 @@
-## Percentage of Low Quality Housing Units RC v6 ##
+## Percentage of Low Quality Housing Units RC v7 ##
+
 # Install packages if not already installed
-packages <- c("data.table", "stringr", "dplyr", "RPostgreSQL", "dbplyr", "srvyr", "tidycensus", "rpostgis",  "tidyr", "here", "sf", "usethis") 
+packages <- c("data.table", "stringr", "RPostgres", "dbplyr", "srvyr", "tidycensus", "rpostgis",  "tidyr", "here", "sf", "usethis") 
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
 if(length(install_packages) > 0) {
@@ -28,13 +29,12 @@ rc_yr <- '2025'
 rc_schema <- 'v7'
 
 ### define common inputs for calc_pums{} and pums_screen{}
-indicator = 'housing_quality'         # name of column that contains indicator data, eg: 'living_wage' which contains values 'livable' and 'not livable'
-indicator_val = 'low_quality'         # desired indicator value, eg: 'livable' (not 'not livable')        
-weight = 'WGTP'                  # PWGTP for person-level (psam_p06.csv) or WGTP for housing unit-level (psam_h06.csv) analysis
+indicator = 'housing_quality'     # name of column that contains indicator data, eg: 'living_wage' which contains values 'livable' and 'not livable'
+indicator_val = 'low_quality'     # desired indicator value, eg: 'livable' (not 'not livable')        
+weight = 'WGTP'                   # PWGTP for person-level (psam_p06.csv) or WGTP for housing unit-level (psam_h06.csv) analysis
 cv_threshold <- 35                # threshold and CV must be displayed as a percentage not decimal, eg: 30 not .3
 raw_rate_threshold <- 0           # data values less than threshold are screened, for RC indicators threshold is 0.
 pop_threshold <- 100              # data for geos+race combos with pop smaller than threshold are screened.
-pop_base <- 100                  # You must specify the population base you want to use for the rate calc. Ex. 100 for percents, or 1000 for rate per 1k.
 
 ##### GET PUMA-COUNTYCROSSWALKS ######
 crosswalk <- dbGetQuery(con, "select county_id AS geoid, county_name AS geoname, geo_id AS puma, num_county, afact, afact2 from crosswalks.puma_2022_county_2020")
@@ -64,12 +64,12 @@ root <- paste0("W:/Data/Demographics/PUMS/CA_", start_yr, "_", curr_yr, "/")
 # Load ONLY the PUMS columns needed for this indicator
 # Load the people PUMS data, excluding wts bc this indicator is based on housing units
 ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE, 
-             select = c("SPORDER", "SERIALNO", "PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P", "RAC3P", "RACAIAN", "RACPI", "RACNH"),
-             colClasses = list(character = c("SERIALNO", "PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RAC2P", "RAC3P", "RACAIAN", "RACPI", "RACNH")))
+             select = c("SPORDER", "SERIALNO", "PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH"),
+             colClasses = list(character = c("SERIALNO", "PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH")))
 
 # Load the housing PUMS data, including wts bc this indicator is based on housing units
 cols <- colnames(fread(paste0(root, "psam_h06.csv"), nrows=0)) # get all PUMS cols 
-cols_ <- grep("^WGTP*", cols, value = TRUE)                                 # filter for PUMS weight colnames
+cols_ <- grep(paste0("^", weight, "*"), cols, value = TRUE)                                 # filter for PUMS weight colnames
 housing <- fread(paste0(root, "psam_h06.csv"), header = TRUE, data.table = FALSE, 
                  select = c(cols_, "KIT", "HFL", "PLM", "TYPEHUGQ", "SERIALNO", "PUMA"),
                  colClasses = list(character = c("KIT", "HFL", "PLM", "TYPEHUGQ", "SERIALNO", "PUMA")))
@@ -84,7 +84,7 @@ ppl$state_geoid <- "06"
 ppl$puma_id <- paste0(ppl$state_geoid, ppl$PUMA)
 
 # create list of replicate weights: WGTP for housing file, PWGTP for person file
-repwlist = rep(paste0("WGTP",1:80))
+repwlist = rep(paste0(weight,1:80))
 
 # save copy of original data
 orig_data <- ppl
@@ -92,10 +92,11 @@ orig_data <- ppl
 
 
 #################################### PUMS Functions ###########################################################
-source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/PUMS_Functions_new.R")    # temporarily directed to LF folder #
+source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/PUMS_Functions_new.R")    
 ppl <- race_reclass(ppl, start_yr, curr_yr)
-# View(head(ppl))
+
 # review data
+View(ppl[c("HISP","latino","RAC1P","race","ANC1P","ANC2P", "aian", "pacisl", "swana")])
 # table(ppl$race, useNA = "always")
 # table(ppl$race, ppl$latino, useNA = "always")
 # table(ppl$race, ppl$aian, useNA = "always")
@@ -112,20 +113,13 @@ ppl <- ppl[ppl$TYPEHUGQ == "1" & ppl$SPORDER == "1", ]
 ppl$housing_quality <- ifelse((ppl$PLM == "2" | ppl$KIT == "2" | ppl$HFL == "9"), "low_quality", "not_low_quality")
 #review
 summary(ppl$housing_quality)
-table(ppl$housing_quality, useNA = "always")
 
-ppl$indicator <- as.factor(ppl$housing_quality)
 ppl$housing_quality <- as.factor(ppl$housing_quality)
 #review
-#table(ppl$indicator, useNA = "always")
 table(ppl$housing_quality, useNA = "always")
 
 ############### CALC LEG DIST, COUNTY, STATE ESTIMATES/CVS ETC. ############### 
 # join county crosswalk to data
-# # join county crosswalk using left join function
-# ppl <- left_join(orig_data, crosswalk, by=c("puma_id"="puma"))    # specify the field join
-# 
-# # create one field using both crosswalks
 ppl_cs <- left_join(ppl, county_crosswalk, by=c("puma_id" = "puma"))   # join FILTERED county-puma crosswalk
 
 # join assm crosswalk to data
@@ -144,7 +138,7 @@ assm_name$NAME <- gsub("; California", "", assm_name$NAME)
 names(assm_name) <- c("geoid", "geoname")
 # View(assm_name)
 # add geonames to data
-ppl_assm <- merge(x=assm_name,y=ppl_assm, by="geoid", all=T) %>% filter(if_all(starts_with("PWGTP"), ~ !is.na(.)))
+ppl_assm <- merge(x=assm_name,y=ppl_assm, by="geoid", all=T) #%>% filter(if_all(starts_with("PWGTP"), ~ !is.na(.)))
 
 # join sen crosswalk to data
 ppl_sen <- left_join(ppl, sen_crosswalk, by=c("puma_id" = "puma")) 
@@ -162,11 +156,12 @@ names(sen_name) <- c("geoid", "geoname")
 # View(sen_name)
 
 # add geonames to WA
-ppl_sen <- merge(x=sen_name,y=ppl_sen, by="geoid", all=T) %>% filter(if_all(starts_with("PWGTP"), ~ !is.na(.)))
+ppl_sen <- merge(x=sen_name,y=ppl_sen, by="geoid", all=T) #%>% filter(if_all(starts_with("PWGTP"), ~ !is.na(.)))
 
 
 # prep state df
-ppl_state <- ppl %>% dplyr::mutate(geoname = 'California', geoid = state_geoid) %>% select(-state_geoid) #I kept getting an error w/ the rename code so I switched it to a mutate and then select to remove
+ppl_state <- ppl %>% rename(geoid = state_geoid) %>% mutate(geoname = 'California')
+
 
 
 #### Run PUMS Calcs ####
@@ -196,7 +191,8 @@ screened <- pums_screen(rc_all, cv_threshold, raw_rate_threshold, pop_threshold,
 View(screened)
 
 d <- screened
-# #View(d)
+# View(d)
+
 
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
@@ -255,7 +251,7 @@ leg_table <- leg_table %>% dplyr::rename("leg_name" = "geoname", "leg_id" = "geo
 leg_table_name <- paste0("arei_hous_housing_quality_leg_", rc_yr)
 county_table_name <- paste0("arei_hous_housing_quality_county_", rc_yr)
 state_table_name <- paste0("arei_hous_housing_quality_state_", rc_yr)
-indicator <- paste0("Created on ", Sys.Date(), ". The percentage of low-quality housing units out of all housing units (lack of available kitchen, heating, or plumbing) by race of head of household. PUMAs contained by 1 county and PUMAs with 60%+ of their area contained by 1 county are included in the calcs. We also screened by pop (100) and CV (35%). White, Black, Asian, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN and NHPI are Latinx-inclusive so they are also included in Latinx counts. AIAN, SWANA, and NHPI include AIAN, SWANA, and NHPI Alone and in Combo, so non-Latinx AIAN and NHPI in combo are also included in Two or More. This data is")
+indicator <- paste0("The percentage of low-quality housing units out of all housing units (lack of available kitchen, heating, or plumbing) by race of head of household. PUMAs are assigned to counties and leg districts based on Geocorr 2022 crosswalks. We also screened by pop (400) and CV (30%). White, Black, Asian, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN, NHPI, SWANA are Latinx-inclusive so they are also included in Latinx counts. AIAN, NHPI, and SWANA include AIAN, NHPI, and SWANA Alone and in combo, so non-Latinx AIAN, NHPI, SWANA in combo are also included in Two or More. QA Doc: ", qa_filepath, ". This data is")
 source <- paste0("ACS PUMS (", start_yr, "-", curr_yr, ")")
 
 #send tables to postgres

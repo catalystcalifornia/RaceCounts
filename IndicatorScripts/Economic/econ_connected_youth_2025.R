@@ -69,7 +69,7 @@ root <- paste0("W:/Data/Demographics/PUMS/CA_", start_yr, "_", curr_yr, "/")
 
 # Load ONLY the PUMS columns needed for this indicator
 cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0)) # get all PUMS cols 
-cols_ <- grep("^PWGTP*", cols, value = TRUE)                                # filter for PUMS weight colnames
+cols_ <- grep(paste0("^", weight, "*"), cols, value = TRUE)                                # filter for PUMS weight colnames
 ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE, select = c(cols_, "AGEP", "ESR", "SCH", "PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH"),
              colClasses = list(character = c("ESR", "SCH", "PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH")))
 
@@ -78,7 +78,7 @@ ppl$state_geoid <- "06"
 ppl$puma_id <- paste0(ppl$state_geoid, ppl$PUMA)
 
 # create list of replicate weights
-repwlist = rep(paste0("PWGTP", 1:80))
+repwlist = rep(paste0(weight, 1:80))
 
 # save copy of original data
 orig_data <- ppl
@@ -124,8 +124,7 @@ table(ppl$employment, ppl$schl_enroll, useNA = "always")
 
 # Combine both conditions to create connected/disconnected variable 
 ppl$connected <- ifelse(ppl$employment == "not employed" & ppl$schl_enroll =="not attending school", "not connected", "connected")
-ppl$connected <- as.factor(ppl$connected) #changed from disconnected to try to standardize w/ the function
-ppl$indicator <- as.factor(ppl$connected) #changed from disconnected to try to standardize w/ the function
+ppl$connected <- as.factor(ppl$connected)
 
 #review
 summary(ppl$indicator)
