@@ -6,61 +6,74 @@ output:
     keep_tex: false
 geometry: 
   - top=1.2in
-  - bottom=1in
-  - left=1in
-  - right=1in
+  - bottom=2.3in
+  - left=0.25in
+  - right=0.25in
 header-includes:
   - \usepackage{fancyhdr}
   - \usepackage{graphicx}
   - \usepackage{multicol}
   - \usepackage{xcolor}
   - \usepackage{titling}
+  - \usepackage{array}
+  - \usepackage{tabularx}
   - \pagestyle{fancy}
   - \fancyhf{}
-  - \fancyhead[L]{\includegraphics[height=0.4in]{assm_logo.png}}
-  - \fancyhead[C]{\textbf{\large Brief Series Name}}
-  - \fancyhead[R]{\textcolor{gray}{\today}}
-  - \fancyfoot[L]{\textcolor{gray}{Confidential}}
-  - \fancyfoot[C]{\textcolor{gray}{Organization Name}}
-  - \fancyfoot[R]{\textcolor{gray}{Page \thepage}}
+  - \fancyhead[C]{\begin{tabularx}{\textwidth}{@{}p{2in}@{}X@{}p{2in}@{}} \parbox[c][0.8in][c]{2in}{\centering \includegraphics[height=0.3in]{left_image.png} \\ \vspace{0.05in} \textbf{District Profile}} & \parbox[c][0.8in][c]{\linewidth}{\centering \includegraphics[height=0.6in]{logo.png}} & \parbox[c][0.8in][c]{2in}{\centering \textbf{\Large `r params$rep_name`} \\ \vspace{0.1in} `r params$district_name`} \end{tabularx}}
+  - \fancyfoot[C]{\makebox[0pt]{\includegraphics[width=\paperwidth]{footer.png}}}
   - \renewcommand{\headrulewidth}{0.4pt}
-  - \renewcommand{\footrulewidth}{0.4pt}
-  - \setlength{\headheight}{50pt}
+  - \renewcommand{\footrulewidth}{0pt}
+  - \setlength{\headheight}{80pt}
+  - \setlength{\footskip}{95pt}
+  - \setlength{\columnsep}{2em}
   - \fancypagestyle{plain}{\pagestyle{fancy}}
 params:
   brief_title: "Default Brief Title"
   brief_subtitle: "Subtitle Here"
+  rep_name: "John A. Smith"
+  district_name: "Senate District 1"
+  district_number: "XX"
+  disparity_rank: "XXrd"
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
-
-\begin{center}
-\LARGE \textbf{`r params$brief_title`} \\
-\large `r params$brief_subtitle`
-\end{center}
-
 \vspace{0.5in}
 
-# Executive Summary
-
-This is your executive summary content. Single column, full width.
-
-# Key Findings
-
 \begin{multicols}{2}
+\LARGE \textbf SUMMARY \\
+District {`r params$district_number`} is the {`r params$disparity_rank`} most racially disparate Senate district in California. It ranks 39th out of 40 Senate districts in outcomes such as employment, life expectancy, and homeownership. 
 
+\LARGE \textbf BACKGROUND \\
+RACE COUNTS analyzed 47 indicators such as employment, life expectancy, and homeownership, for every State Senate District and ranked districts by their outcomes and differences in those outcomes among racial groups.
+
+Data sources for indicators include the California Department of Education, the California Office of Justice, the California Office of Environmental Health Hazard Assessment, the U.S. Census Bureau's American Community Survey and others. All data are the most recent data published or within one year of publication. See RaceCounts.org/methodology for more information. 
+
+\LARGE \textbf WHY THIS IS IMPORTANT \\
+Lorem ipsum dolor sit amet. At adipisci omnis qui modi soluta et corrupti consequatur est quod asperiores. Aut dolorem reprehenderit et dolorum quibusdam. Lorem ipsum dolor sit amet. At adipisci omnis qui modi soluta et corrupti consequatur est quod asperiores. Aut dolorem reprehenderit et dolorum quibusdam. At adipisci omnis qui modi soluta et corrupti consequatur.
+
+\LARGE \textbf WHAT CAN YOU DO ABOUT IT \\
+Lorem ipsum dolor sit amet. At adipisci omnis qui modi soluta et corrupti consequatur est quod asperiores. Aut dolorem reprehenderit et dolorum quibusdam ab obcaecati esse est sequi officia qui asperiores ipsa. Ea quod dolorem et enim incidunt id assumenda voluptas aut facere nemo ut inventore accusamus.
+
+\end{multicols}
+
+See how District {`r params$district_number`} compares to all Districts at RaceCounts.org/Senate-Rankings or via QR Code
+
+\newpage
+
+# Page Two Content
+
+Second page with consistent formatting. Headers and footers automatically carry over.
+
+More content for the second page to demonstrate the template's capabilities.
+
+# Detailed Analysis
 **Finding 1:** Your first key finding goes here with supporting details and analysis.
 
 **Finding 2:** Second finding with more detailed explanation that will wrap across the columns as needed.
 
 **Finding 3:** Additional findings continue here. The multicols environment automatically balances the content.
-
-\end{multicols}
-
-# Detailed Analysis
-
 Back to single column for detailed analysis section.
 
 ```{r sample-chart, fig.height=3, fig.width=6, fig.align='center'}
@@ -78,10 +91,5 @@ ggplot(data, aes(x = Category, y = Value, fill = Category)) +
   theme(legend.position = "none")
 ```
 
-\newpage
 
-# Page Two Content
 
-Second page with consistent formatting. Headers and footers automatically carry over.
-
-More content for the second page to demonstrate the template's capabilities.
