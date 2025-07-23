@@ -2,7 +2,7 @@
 
 #### Set up ####
 #install packages if not already installed
-packages <- c("DBI", "dplyr", "RPostgres", "tidyverse", "tidycensus", "usethis")  
+packages <- c("DBI", "RPostgres", "tidyverse", "tidycensus", "usethis")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -146,7 +146,7 @@ final_df_screened <- final_df %>%
          
          nh_black_raw = ifelse(count_nh_black_voted < threshold, NA, round(num_nh_black_voted, 0)),
          
-         aian_raw = ifelse(count_aian_voted < 10, NA, round(num_aian_voted, 0)),
+         aian_raw = ifelse(count_aian_voted < threshold, NA, round(num_aian_voted, 0)),
          
          nh_asian_raw = ifelse(count_nh_asian_voted < threshold, NA, round(num_nh_asian_voted, 0)),
          
@@ -254,6 +254,7 @@ source <- paste0("CPS (", paste(cps_yrs, collapse=', '), ") average. ", dwnld_ur
 
 #send tables to postgres
 #to_postgres(county_table, state_table)
-dbDisconnect()
+
+dbDisconnect(con)
 
 
