@@ -68,8 +68,8 @@ dp05_curr <- load_variables(curr_yr, "acs5/profile", cache = TRUE) %>%
   filter(name %in% vars_list_dp05) %>%
   left_join(race_mapping, by="name") %>%
   mutate(rc_races = paste0(race, "pop"),
-         label = gsub("Estimate!!|HISPANIC OR LATINO AND RACE!!", "", dp05_curr$label)) %>%
-  select(-race)
+         label = gsub("Estimate!!HISPANIC OR LATINO AND RACE!!", "", label))
+
 
 # CHECK THIS TABLE TO MAKE SURE THE LABEL AND RC_RACES COLUMNS MATCH UP
 print(dp05_curr) 
@@ -124,7 +124,7 @@ pop_threshold = 250              # define population threshold for screening
 
 ### CT-Assm Crosswalk ### 
 # Import CT-Assm Crosswalk
-xwalk_filter <- dbGetQuery(conn, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, " AS assm_geoid FROM crosswalks.", assm_xwalk))
+xwalk_assm <- dbGetQuery(conn, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, " AS assm_geoid FROM crosswalks.", assm_xwalk))
 
 ##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table(vars = vars_list_dp05, yr = acs_yr, srvy = survey)  # subgeolevel pop
@@ -135,7 +135,7 @@ pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = acs_yr, srvy
   as.data.frame() %>%
   group_by(GEOID, NAME, geolevel) %>% 
   summarise(estimate=sum(estimate),
-            moe=moe_sum(moe,estimate)) %>% mutate(variable = "swana") # subgeolevel pop
+            moe=moe_sum(moe,estimate)) %>% mutate(variable = "swana_") # subgeolevel pop
 
 
 # combine DP05 groups with SWANA tract level estimates 
@@ -143,13 +143,12 @@ pop_ <- rbind(pop, pop_swana %>% filter(geolevel == 'tract')) %>%
   rename(e = estimate, m = moe)
 
 # transform pop data to wide format 
-pop_wide <- pop_ %>% 
-  pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = c(e, m), names_glue = "{variable}{.value}")
+pop_wide <- to_wide(pop_)
 
 
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
 pop_wide <- as.data.frame(pop_wide) %>% 
-  right_join(select(xwalk_filter, c(ct_geoid, assm_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
+  right_join(select(xwalk_assm, c(ct_geoid, assm_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = assm_geoid) # rename to generic column names for WA functions
 
 
@@ -174,9 +173,9 @@ assm_name$NAME <- gsub(", California", "", assm_name$NAME)
 names(assm_name) <- c("target_id", "target_name")
 # View(assm_name)
 
-#add geonames to WA
+# add geonames to WA
 assm_wa <- merge(x=assm_name,y=assm_wa,by="target_id", all=T)
-#View(assm_wa)
+# View(assm_wa)
 
 ############# SENATE DISTRICTS ##################
 
@@ -191,7 +190,7 @@ pop_threshold = 250              # define population threshold for screening
 
 ### CT-Sen Crosswalk ### 
 # Import CT-Sen Crosswalk
-xwalk_filter <- dbGetQuery(conn, paste0("SELECT geo_id AS ct_geoid, ", sen_geoid, " AS sen_geoid FROM crosswalks.", sen_xwalk))
+xwalk_sen <- dbGetQuery(conn, paste0("SELECT geo_id AS ct_geoid, ", sen_geoid, " AS sen_geoid FROM crosswalks.", sen_xwalk))
 
 ##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table(vars = vars_list_dp05, yr = acs_yr, srvy = survey)  # subgeolevel pop
@@ -201,7 +200,7 @@ pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = acs_yr, srvy
   as.data.frame() %>%
   group_by(GEOID, NAME, geolevel) %>% 
   summarise(estimate=sum(estimate),
-            moe=moe_sum(moe,estimate)) %>% mutate(variable = "swana") # subgeolevel pop
+            moe=moe_sum(moe,estimate)) %>% mutate(variable = "swana_") # subgeolevel pop
 
 
 # combine DP05 groups with SWANA tract level estimates 
@@ -209,20 +208,19 @@ pop_ <- rbind(pop, pop_swana %>% filter(geolevel == 'tract')) %>%
   rename(e = estimate, m = moe)
 
 # transform pop data to wide format 
-pop_wide <- pop_ %>% 
-  pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = c(e, m), names_glue = "{variable}{.value}")
+pop_wide <- to_wide(pop_)
 
 
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
 pop_wide <- as.data.frame(pop_wide) %>% 
-  right_join(select(xwalk_filter, c(ct_geoid, sen_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
+  right_join(select(xwalk_sen, c(ct_geoid, sen_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = sen_geoid) # rename to generic column names for WA functions
 
 
 # calc target geolevel pop and number of sub geolevels per target geolevel
 pop_df <- targetgeo_pop(pop_wide) 
 
-##### sen WEIGHTED AVG CALCS ###
+##### Sen WEIGHTED AVG CALCS ###
 pct_df <- pop_pct_multi(pop_df)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
 sen_wa <- wt_avg(pct_df)         # calc weighted average and apply reliability screens
 sen_wa <- sen_wa %>% mutate(geolevel = 'sldu')  # change drop geometry, add geolevel
@@ -240,9 +238,9 @@ sen_name$NAME <- gsub(", California", "", sen_name$NAME)
 names(sen_name) <- c("target_id", "target_name")
 # View(sen_name)
 
-#add geonames to WA
+# add geonames to WA
 sen_wa <- merge(x=sen_name,y=sen_wa,by="target_id", all=T)
-#View(sen_wa)
+# View(sen_wa)
 
 ############# CITY ##################
 
@@ -250,16 +248,16 @@ sen_wa <- merge(x=sen_name,y=sen_wa,by="target_id", all=T)
 
 # set values for weighted average functions - You may need to update these
 subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- c('place')     # define your target geolevel: place
+targetgeolevel <- c('place')      # define your target geolevel: place
 survey <- "acs5"                  # define which Census survey you want
 pop_threshold = 250               # define population threshold for screening
 
 ### Load CT-Place Crosswalk & Places ### 
 source("./Functions/RC_CT_Place_Xwalk.R")
-xwalk_filter <- make_ct_place_xwalk(acs_yr) %>% 
+xwalk_city <- make_ct_place_xwalk(acs_yr) %>% 
   select(ct_geoid, place_geoid, place_name)
 
-places <- xwalk_filter %>% 
+places <- xwalk_city %>% 
   select(c(place_geoid, place_name)) %>% unique()
 
 ##### GET SUB GEOLEVEL POP DATA ###
@@ -277,12 +275,12 @@ pop_ <- rbind(pop, pop_swana %>% filter(geolevel == 'tract')) %>%
 
 
 # transform pop data to wide format 
-pop_wide <- pop_ %>% 
-  pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = c(e, m), names_glue = "{variable}{.value}")
+pop_wide <- to_wide(pop_)
 
 
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
-pop_wide <- as.data.frame(pop_wide) %>% right_join(select(xwalk_filter, c(ct_geoid, place_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
+pop_wide <- as.data.frame(pop_wide) %>% 
+  right_join(select(xwalk_city, c(ct_geoid, place_geoid)), by = c("GEOID" = "ct_geoid"))  # join target geoids/names
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = place_geoid) # rename to generic column names for WA functions
 
 
@@ -293,7 +291,7 @@ pop_df <- targetgeo_pop(pop_wide)
 pct_df <- pop_pct_multi(pop_df)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
 city_wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
 city_wa <- city_wa %>% 
-  left_join(select(places, c(place_geoid, place_name)), by = c("target_id" = "place_geoid"))  # add in target geolevel names
+  left_join(select(places, c(place_geoid, place_name)), by = c("target_id" = "place_geoid")) # add in target geolevel names
 city_wa <- city_wa %>% 
   rename(target_name = place_name) %>% 
   mutate(geolevel = 'city')  # change NAME to target_name, drop geometry, add geolevel
@@ -305,7 +303,7 @@ city_wa <- city_wa %>%
 
 # set values for weighted average functions - You may need to update these
 subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- c('county')     # define your target geolevel: county (state is handled separately)
+targetgeolevel <- c('county')     # define your target geolevel: county
 survey <- "acs5"                  # define which Census survey you want
 pop_threshold = 250               # define population threshold for screening
 
@@ -318,19 +316,20 @@ pop <- update_detailed_table(vars = vars_list_dp05, yr = acs_yr, srvy = survey) 
 # get SWANA pop
 pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = acs_yr, srvy = survey) %>% 
   as.data.frame() %>%
-  group_by(GEOID, NAME, geolevel)%>%
+  group_by(GEOID, NAME, geolevel) %>%
   summarise(estimate=sum(estimate),
             moe=moe_sum(moe,estimate)) %>% mutate(variable = "swana") # subgeolevel pop
 
 # combine DP05 groups with swana estimates 
-pop <- rbind(pop, pop_swana)
+pop <- rbind(pop, pop_swana %>% filter(geolevel == 'tract')) %>% rename(e = estimate, m = moe)
 
 # transform pop data to wide format 
-pop_wide <- to_wide(pop)
+pop_wide <- to_wide(pop_)
 
 #### add target_id field, you may need to update this bit depending on the sub and target_id's in the data you're using
 pop_wide <- as.data.frame(pop_wide) %>% 
   mutate(target_id = substr(GEOID, 1, 5))  # use left 5 characters as target_id
+
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID)                              # rename to generic column name for WA functions
 
 
@@ -363,14 +362,14 @@ wa_all <- union(wa, ca_wa) %>%
   union(sen_wa) 
 wa_all <- rename(wa_all, geoid = target_id, geoname = target_name)   # rename columns for RC functions
 wa_all <- wa_all %>% 
-  dplyr::relocate(geoname, .after = geoid)# move geoname column
+  dplyr::relocate(geoname, .after = geoid)          # move geoname column
 
 d <- wa_all
 View(d)
 
 ############## CALC RACE COUNTS STATS ##############
 ############ To use the following RC Functions, 'd' will need the following columns at minimum: 
-############ geo_id and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
+############ geoid and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
 #set source for RC Functions script
 source(".\\Functions\\RC_Functions.R")
@@ -439,7 +438,7 @@ colnames(county_table)[1:2] <- c("county_id", "county_name")
 colnames(city_table)[1:2] <- c("city_id", "city_name")
 colnames(leg_table)[1:2] <- c("leg_id", "leg_name")
 
-### info for postgres tables will auto update###
+### info for postgres tables will auto update ###
 county_table_name <- paste0("arei_hben_haz_weighted_avg_county_", rc_yr)
 state_table_name <- paste0("arei_hben_haz_weighted_avg_state_", rc_yr)
 city_table_name <- paste0("arei_hben_haz_weighted_avg_city_", rc_yr)
@@ -449,6 +448,7 @@ start_yr <- acs_yr - 4
 
 indicator <- "Proximity to Hazards Score (sum of weighted EnviroStor cleanup sites within buffered distances to populated blocks of census tracts)"
 source <- paste0("CalEnviroScreen ", ces_v, " (", curr_yr, ") https://oehha.ca.gov/calenviroscreen/report/calenviroscreen-40, ACS DP05 (", start_yr, "-", acs_yr, "). QA doc: ", qa_filepath)
+
 
 ## send tables to postgres -----------------------------------------------
 # to_postgres(county_table, state_table)

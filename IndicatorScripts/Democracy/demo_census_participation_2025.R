@@ -26,7 +26,7 @@ con <- connect_to_db("rda_shared_data")
 #set source for Weighted Average Functions
 source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
 
-# update variables used throughout each year
+# update variables used throughout script each year
 curr_yr <- 2020 # yr of Census data release
 rc_yr <- '2025'
 rc_schema <- 'v7'
