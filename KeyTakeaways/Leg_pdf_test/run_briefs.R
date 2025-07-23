@@ -1,3 +1,14 @@
+# This file runs the test_brief.Rmd 
+# File is temporarily created here and then moved to outside of the repo
+# We do not want to store 80 pdfs on GitHub because it will eventually
+# overwhelm our storage.
+
+# This script still needs the following:
+# A df with all our params for each district 
+# A for loop to create each district profile using the df
+# An S3 bucket on AWS and code that will export the final pdfs to it
+
+
 library(here)
 
 # Render in the source directory first
@@ -8,9 +19,10 @@ setwd(here("KeyTakeaways", "Leg_pdf_test"))
 rmarkdown::render("test_brief.Rmd", params = list(
   brief_title="Test Brief Title",
   brief_subtitle="Test Subtitle",
-  rep_name="John A. Smith",
-  district_name="Senate District 1",
-  district_number="1",
+  geolevel="Senate",
+  rep_name="Firstname Lastname",
+  district_name="Senate District XX",
+  district_number="XX",
   disparity_rank="3rd"
 ))
 

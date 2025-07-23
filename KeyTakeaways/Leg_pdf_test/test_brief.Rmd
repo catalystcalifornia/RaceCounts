@@ -4,9 +4,11 @@ output:
   pdf_document:
     latex_engine: xelatex
     keep_tex: false
+documentclass: extarticle
+classoption: 14pt
 geometry: 
-  - top=1.2in
-  - bottom=2.3in
+  - top=0.5in
+  - bottom=2.7in
   - left=0.25in
   - right=0.25in
 header-includes:
@@ -17,20 +19,27 @@ header-includes:
   - \usepackage{titling}
   - \usepackage{array}
   - \usepackage{tabularx}
+  - \usepackage{setspace}
+  - \usepackage{enumitem}
+  - \usepackage{fontspec}
+  - \setmainfont{Arial}   
+  - \definecolor{headerblue}{RGB}{16,127,201}
+  - \setlength{\parskip}{14pt}
   - \pagestyle{fancy}
   - \fancyhf{}
-  - \fancyhead[C]{\begin{tabularx}{\textwidth}{@{}p{2in}@{}X@{}p{2in}@{}} \parbox[c][0.8in][c]{2in}{\centering \includegraphics[height=0.3in]{left_image.png} \\ \vspace{0.05in} \textbf{District Profile}} & \parbox[c][0.8in][c]{\linewidth}{\centering \includegraphics[height=0.6in]{logo.png}} & \parbox[c][0.8in][c]{2in}{\centering \textbf{\Large `r params$rep_name`} \\ \vspace{0.1in} `r params$district_name`} \end{tabularx}}
-  - \fancyfoot[C]{\makebox[0pt]{\includegraphics[width=\paperwidth]{footer.png}}}
+  - \fancyhead[C]{\begin{tabularx}{\textwidth}{@{}p{3in}@{}X@{}p{3in}@{}} \parbox[c][1.4in][c]{3in}{\centering \includegraphics[width=0.9\linewidth]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/racecounts.png} \\ \vspace{0.1in} \textbf{\large `r params$geolevel` District Profile}} & \parbox[c][1.4in][c]{\linewidth}{\centering \includegraphics[height=1.2in]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/assm_logo.png}} & \parbox[c][1.4in][c]{3in}{\centering \vspace{0.1in} \textbf{\Huge `r params$rep_name`} \\ \vspace{0.15in} \textbf{\large `r params$district_name`}} \end{tabularx}} # header
+  - \fancyfoot[C]{\makebox[0pt]{\includegraphics[width=\paperwidth]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/footer.png}}} # footer
   - \renewcommand{\headrulewidth}{0.4pt}
   - \renewcommand{\footrulewidth}{0pt}
-  - \setlength{\headheight}{80pt}
-  - \setlength{\footskip}{95pt}
-  - \setlength{\columnsep}{2em}
+  - \setlength{\headheight}{105pt}
+  - \setlength{\footskip}{105pt}
+  - \setlength{\columnsep}{0.75in}
   - \fancypagestyle{plain}{\pagestyle{fancy}}
-params:
+params: # needs to add params used throughout .Rmd here - also need a df of the variables needed for each district to replace hardcoded values
   brief_title: "Default Brief Title"
   brief_subtitle: "Subtitle Here"
-  rep_name: "John A. Smith"
+  geolevel: "Senate"
+  rep_name: "Brian Dahle"
   district_name: "Senate District 1"
   district_number: "XX"
   disparity_rank: "XXrd"
@@ -42,18 +51,18 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 \vspace{0.5in}
 
 \begin{multicols}{2}
-\LARGE \textbf SUMMARY \\
+{\large \textbf{\textcolor{headerblue}{SUMMARY}}} \\
 District {`r params$district_number`} is the {`r params$disparity_rank`} most racially disparate Senate district in California. It ranks 39th out of 40 Senate districts in outcomes such as employment, life expectancy, and homeownership. 
 
-\LARGE \textbf BACKGROUND \\
+{\large \textbf{\textcolor{headerblue}{BACKGROUND}}} \\
 RACE COUNTS analyzed 47 indicators such as employment, life expectancy, and homeownership, for every State Senate District and ranked districts by their outcomes and differences in those outcomes among racial groups.
 
 Data sources for indicators include the California Department of Education, the California Office of Justice, the California Office of Environmental Health Hazard Assessment, the U.S. Census Bureau's American Community Survey and others. All data are the most recent data published or within one year of publication. See RaceCounts.org/methodology for more information. 
 
-\LARGE \textbf WHY THIS IS IMPORTANT \\
+{\large \textbf{\textcolor{headerblue}{WHY THIS IS IMPORTANT}}} \\
 Lorem ipsum dolor sit amet. At adipisci omnis qui modi soluta et corrupti consequatur est quod asperiores. Aut dolorem reprehenderit et dolorum quibusdam. Lorem ipsum dolor sit amet. At adipisci omnis qui modi soluta et corrupti consequatur est quod asperiores. Aut dolorem reprehenderit et dolorum quibusdam. At adipisci omnis qui modi soluta et corrupti consequatur.
 
-\LARGE \textbf WHAT CAN YOU DO ABOUT IT \\
+{\large \textbf{\textcolor{headerblue}{WHAT CAN YOU DO ABOUT IT}}} \\
 Lorem ipsum dolor sit amet. At adipisci omnis qui modi soluta et corrupti consequatur est quod asperiores. Aut dolorem reprehenderit et dolorum quibusdam ab obcaecati esse est sequi officia qui asperiores ipsa. Ea quod dolorem et enim incidunt id assumenda voluptas aut facere nemo ut inventore accusamus.
 
 \end{multicols}
@@ -62,19 +71,39 @@ See how District {`r params$district_number`} compares to all Districts at RaceC
 
 \newpage
 
-# Page Two Content
+Compared to other Senate Districts, Senate District XX has ...
+\begin{itemize}[itemsep=2pt]
+  \item Worse outcomes and less disparity in Safety I\& Justice indicators.
+  \item Worse outcomes and greater disparity in Democracy indicators.
+  \item Worse outcomes and greater disparity in Economic Opportunity indicators.
+  \item Worse outcomes and less disparity in Education indicators.
+  \item Worse outcomes and greater disparity in Health Access indicators.
+  \item Better outcomes and less disparity in Healthy Built Environment indicators.
+  \item Worse outcomes and greater disparity in Housing indicators.
+\end{itemize}
+\begin{multicols}{2}
+District XX indicators with the lowest outcomes:
+\begin{itemize}[itemsep=2pt]
+  \item Per Capita Income
+  \item Internet Access  
+  \item Foreclosures
+  \item Low Birthweight
+  \item Census Participation
+\end{itemize}
+District XX indicators with the greatest disparity:
+\begin{itemize}[itemsep=2pt]
+  \item Suspensions
+  \item Incarceration
+  \item Asthma
+  \item Police Stops
+  \item Preventable Hospitalizations
+\end{itemize}
+\end{multicols}
 
-Second page with consistent formatting. Headers and footers automatically carry over.
+Across indicators, District 1 Black residents are most impacted by racial disparity in outcomes, with the worst rates for 20 out of 40 indicators measured. All races lose when systemic racism remains unchecked though.
 
-More content for the second page to demonstrate the template's capabilities.
+Want to improve outcomes and reduce racial disparities? Visit info@racecounts.org
 
-# Detailed Analysis
-**Finding 1:** Your first key finding goes here with supporting details and analysis.
-
-**Finding 2:** Second finding with more detailed explanation that will wrap across the columns as needed.
-
-**Finding 3:** Additional findings continue here. The multicols environment automatically balances the content.
-Back to single column for detailed analysis section.
 
 ```{r sample-chart, fig.height=3, fig.width=6, fig.align='center'}
 # Simple chart example (optional)

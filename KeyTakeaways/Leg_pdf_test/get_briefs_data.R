@@ -1,3 +1,8 @@
+#### This script was a start at getting all the params/vars needed for each
+# district. Can develop further (with real or fake data) to test automation.
+# For organization can update this script and source the final df into 
+# run_briefs.R
+
 source("W:\\RDA Team\\R\\credentials_source.R")
 
 conn <- connect_to_db("racecounts")
