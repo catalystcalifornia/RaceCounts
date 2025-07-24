@@ -162,7 +162,7 @@ targetgeolevel <- c('sldl')      # define your target geolevel: state assembly
 survey <- "census"               # define which Census survey you want
 pop_threshold = 50               # define population threshold for screening
 
-### Load CT-Assm Crosswalk ### 
+### Load ZCTA-Assm Crosswalk ### 
 xwalk_assm <- dbGetQuery(conn, paste0("SELECT geo_id, ", assm_geoid, ", afact FROM crosswalks.", assm_xwalk))
 
 #### Get ZCTA under 5 pop by race ##
@@ -242,7 +242,7 @@ targetgeolevel <- c('sldu')      # define your target geolevel: state Senate
 survey <- "census"               # define which Census survey you want
 pop_threshold = 50               # define population threshold for screening
 
-### Load CT-sen Crosswalk ### 
+### Load ZCTA-sen Crosswalk ### 
 xwalk_sen <- dbGetQuery(conn, paste0("SELECT geo_id, ", sen_geoid, ", afact FROM crosswalks.", sen_xwalk))
 
 #### Get ZCTA under 5 pop by race ##
