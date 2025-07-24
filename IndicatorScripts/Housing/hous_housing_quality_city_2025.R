@@ -69,6 +69,7 @@ b25003_curr <- load_variables(acs_yr, "acs5", cache = TRUE) %>%
 print(b25003_curr) 
 
 
+# Check that B01001 variables and RC race names still match each year and update if needed ####
 ## Population used for screening: total, black, aian, asian, pacisl, other, twoormor, nh_white, latinx (All except Two+ and Latinx are 1 race alone, all except Latinx are non-Latinx.)
 vars_list_b01001 <- list("total_" = "B01001_001", 
                          "black_" = "B01001B_001", 
