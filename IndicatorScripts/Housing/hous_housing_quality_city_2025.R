@@ -159,9 +159,7 @@ print(b25052_curr)
 vars_list <- as.list(bind_cols(vars_list_b25003, vars_list_b25040, vars_list_b25048, vars_list_b25052))
 
 
-# HOUSING UNITS BY HOUSEHOLDER RACE, NO FUEL, NO PUMBLING, NO KITCHEN ------------------------------------------------------------------
-
-############## UPDATE FOR SPECIFIC INDICATOR HERE ##############
+# HOUSING UNITS BY HOUSEHOLDER RACE WITH NO FUEL / NO PLUMBING / NO KITCHEN ------------------------------------------------------------------
 
 # Pull data from Census API
 df <- do.call(rbind.data.frame, list(
@@ -186,7 +184,7 @@ df <- df %>%
   rename(sub_id = GEOID)
  
 
-### CT-Place Crosswalk ###
+### CT-Place Crosswalk #####
 # set source for Crosswalk Function script
 source("./Functions/RC_CT_Place_Xwalk.R")
 crosswalk <- make_ct_place_xwalk(acs_yr) # must specify which data year
@@ -205,7 +203,7 @@ pop <- universe %>% rename_all(.funs = funs(sub("*_e", "_pop", names(universe)))
   mutate(geolevel = subgeo)
 
 
-#  CITY WEIGHTED AVG CALCS ------------------------------------------------
+# CITY WEIGHTED AVG CALCS ------------------------------------------------
 # select pop columns and rename to RC names
 b <- select(pop, sub_id, target_id, ends_with("pop"), -NAME)
 
@@ -280,7 +278,7 @@ plumbing_city_wa <- plumbing_city_wa %>%
   rename_all(.funs = funs(sub("rate", "plumbing", names(plumbing_city_wa))))
 
 
-# Merge all 3 -------------------------------------------------------------
+# Merge all 3 indicators
 
 df_calcs <- kitchen_city_wa %>% full_join(heating_city_wa) %>% full_join(plumbing_city_wa) %>%
   rename(geoname = place_name, geoid = target_id) %>%
