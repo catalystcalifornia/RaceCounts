@@ -32,6 +32,14 @@ rc_yr <- '2025'
 rc_schema <- 'v7'
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Crime and Justice\\QA_Sheet_Use_of_Force.docx"
 
+
+# may need to update each year: variables for state assm and senate calcs
+assm_geoid <- 'sldl24'			                    # Define column with Assm geoid
+assm_xwalk <- 'zcta_2020_state_assembly_2024'   # Name of tract-Assm xwalk table
+sen_geoid <- 'sldu24'			                      # Define column with senate geoid
+sen_xwalk <- 'zcta_2020_state_senate_2024'      # Name of tract-Sen xwalk table
+
+
 ############### PREP LATEST URSUS RDA_SHARED_DATA TABLES ########################
 # metadata <- "https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2025-07/Use%20of%20Force%20Readme%2006202025.pdf" # update each year
 # ##### civilian-officer
@@ -107,7 +115,7 @@ prep_ursus <- function(old.x) {
   new.x$race_ethnic_group <- sub("_", " ", new.x$race_ethnic_group)   # replace _ with space
   new.x$race_ethnic_group <- sub(" /", ",", new.x$race_ethnic_group)  # replace / with comma
   new.x$received_force <- as.logical(new.x$received_force)
-  new.x$zip_code <- as.character(new.x$received_force)
+  new.x$zip_code <- as.character(new.x$zip_code)
   
   return(new.x)  
 }
@@ -163,6 +171,25 @@ race_reclass <- race_reclass %>% mutate(city = ifelse(city=='City Of Industry', 
   mutate(city = ifelse(city=='Marina Del Rey', 'Marina del Rey', city)) %>%
   mutate(city = ifelse(city=='El Sobrante' & county == 'Contra Costa', 'El Sobrante CDP (Contra Costa County)', city)) %>%
   mutate(city = ifelse(city=='View Park', 'View Park-Windsor Hills', city))       
+
+
+############# ASSEMBLY DISTRICTS ##################
+
+### Load ZCTA-Assm Crosswalk ### 
+xwalk_assm <- dbGetQuery(con2, paste0("SELECT geo_id, ", assm_geoid, ", afact FROM crosswalks.", assm_xwalk))
+
+test_assm <- race_reclass %>% right_join(select(xwalk_assm, c(geo_id, assm_geoid, afact)), by = c("zip_code" = "geo_id"))  # join target geoids/names
+
+
+############# Senate DISTRICTS ##################
+
+### Load ZCTA-Sen Crosswalk ### 
+xwalk_sen <- dbGetQuery(con2, paste0("SELECT geo_id, ", sen_geoid, ", afact FROM crosswalks.", sen_xwalk))
+
+test_sen <- race_reclass %>% right_join(select(xwalk_sen, c(geo_id, sen_geoid, afact)), by = c("zip_code" = "geo_id"))  # join target geoids/names
+
+
+
 
 #### Calc counts by race ####
 calc_counts <- function(race_eth) {
