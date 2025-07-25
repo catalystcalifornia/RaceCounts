@@ -112,7 +112,7 @@ indicator_codes <- all_indicators %>% select(indicator) %>% distinct() %>%
     indicator=="math"~"3rd Grade Math Proficiency",
     indicator=="susp"~"Suspensions",
     indicator=="ece"~"Early Childhood Education Access",
-    indicator=="diver"~"Teacher & Staff Diversity",
+    indicator=="diver"~"Teacher \\& Staff Diversity",
     indicator=="water"~"Drinking Water Contaminants",
     indicator=="food"~"Food Access",
     indicator=="hazard"~"Proximity to Hazards",
@@ -164,7 +164,8 @@ worst_5_disparity <- all_indicators %>%
   
 # create final df: composite ranks, issue area summaries, and worst outcome and 
 # disparity indicators
-geolevels <- c("Assembly", "Senate")
+geolevels <- c("assembly", "senate")
+races <- c("American Indian / Alaska Native", "Asian", "Black", "Latinx", "Native Hawaiian / Pacific Islander", "White", "Southwest Asian / North African")
 
 final_df <- composite_index %>%
   rename(composite_disparity_rank=disparity_rank,
@@ -177,9 +178,11 @@ final_df <- composite_index %>%
   # cosmetic changes to emulate leg district df 
   rename(district_number=county_id,
          rep_name=county_name) %>%
-  # get two-digit district number, fake rep names
+  # get two-digit district number, fake rep names, etc.
   mutate(district_number=str_sub(district_number,-2,-1),
          rep_name=paste(rep_name, "Surname"),
-         geolevel=sample(geolevels, size=nrow(.), replace=T))
+         geolevel=sample(geolevels, size=nrow(.), replace=T),
+         most_disparate_race=sample(races, size=nrow(.), replace=T),
+         most_disparate_count=sample(1:45, size=nrow(.), replace=T))
   
   
