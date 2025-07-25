@@ -36,7 +36,7 @@ clean_ela_math <- function(x, y) {
   df_subset <- df_subset %>% mutate(raw = ifelse(pop < threshold, NA, raw), rate = ifelse(pop < threshold, NA, rate))
   
   #select just fields we need
-  df_subset <- df_subset %>% select(geoname, cdscode, type_id, race, rate, raw, pop) 
+  df_subset <- df_subset %>% select(geoname, cdscode, geolevel, type_id, race, rate, raw, pop) 
   
   #rename race/eth categories
   df_subset$race <- gsub("001", "total", df_subset$race)
@@ -56,7 +56,7 @@ clean_ela_math <- function(x, y) {
   
   # get school district geoids (NCES District ID) - pull in active district records w/ geoids and names from CDE schools' list
   schools <- paste0('cde_public_schools_',curr_yr) # Pull in public schools table matching CAASPP data year.
-  districts <- st_read(con, query = paste0("SELECT cdscode, district, ncesdist AS geoid FROM education.",schools," WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'"))
+  districts <- dbGetQuery(con, paste0("SELECT cdscode, district, ncesdist AS geoid FROM education.",schools," WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'"))
   district_match <- filter(df_subset,type_id=="06") %>% right_join(districts,by='cdscode')
   
   matched <- union(county_match, district_match) %>% select(c(cdscode, geoid, district)) %>% distinct() # combine distinct county and district geoid matched df's
