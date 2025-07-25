@@ -128,7 +128,8 @@ for (i in year_list) {
   joined[[i]] <- temp   
 }
 
-df_all_years <- as.data.frame(bind_rows(joined, .id = "incident_id")) 
+# note: by changing "incident_id" to "year", I get the incident_ids I want
+df_all_years <- as.data.frame(bind_rows(joined, .id = "year")) 
 # check row counts to see if loop/fx worked correctly
 #join_check <- df_all_years %>% group_by(year) %>% mutate(involved = n()) %>% summarise(total_involved = min(involved))
 
@@ -177,8 +178,57 @@ race_reclass <- race_reclass %>% mutate(city = ifelse(city=='City Of Industry', 
 
 ### Load ZCTA-Assm Crosswalk ### 
 xwalk_assm <- dbGetQuery(con2, paste0("SELECT geo_id, ", assm_geoid, ", afact FROM crosswalks.", assm_xwalk))
+ 
+race_reclass_assm <- race_reclass %>%
+  
+  # join, expecting that zip codes may be in multiple districts
+  left_join(xwalk_assm, by = c("zip_code" = "geo_id"), relationship = "many-to-many") %>% 
 
-test_assm <- race_reclass %>% right_join(select(xwalk_assm, c(geo_id, assm_geoid, afact)), by = c("zip_code" = "geo_id"))  # join target geoids/names
+  # calculate pop-wt'd pct of incidents to each leg dist, 
+  # e.g., if zcta is in 2 districts, and the afact for dist 1 is .7 and the other .3, then we'd attribute 70% of incidents in that zip to dist 1 and 30% of incidents to dist 2.
+  mutate(pop_wt_num_involved_civilians = num_involved_civilians * afact) %>%
+  
+  # remove non-district rows
+  filter(!is.na(sldl24)) %>%
+  
+  #format to fit in function
+  select(-num_involved_civilians) %>% rename(num_involved_civilians = pop_wt_num_involved_civilians)
+
+
+#### Assm Calc counts by race ####
+calc_counts <- function(race_eth) {
+  counts <- race_reclass_assm %>% filter(race_reclass_assm[[race_eth]] == race_eth) %>% group_by(sldl24) %>% 
+    mutate(involved = sum(num_involved_civilians)) %>% summarise(involved = min(involved))
+  new_name <- paste0(race_eth, '_involved')  # generate race-specific col name
+  counts <- counts %>% rename(!!new_name := involved)  # rename to race-specific col name
+  return(counts)  
+}
+
+# Assm: calc counts by race
+total_ <- race_reclass_assm %>% group_by(sldl24) %>% summarise(total_involved = sum(num_involved_civilians))
+nh_black_ <- calc_counts('nh_black')
+nh_aian_ <- calc_counts('nh_aian')
+nh_pacisl_ <- calc_counts('nh_pacisl')
+nh_asian_ <- calc_counts('nh_asian')
+nh_white_ <- calc_counts('nh_white')
+latino_ <- calc_counts('latino')
+nh_twoormor_ <- calc_counts('nh_twoormor')
+
+## join assm calcs by race together
+df_assm <- total_ %>% left_join(nh_pacisl_) %>% left_join(nh_asian_) %>% left_join(nh_black_) %>% left_join(nh_aian_) %>% left_join(nh_white_) %>% left_join(latino_) %>% left_join(nh_twoormor_) %>% 
+  mutate(geolevel='sldl') %>%
+  mutate(last_two = str_sub(sldl24, -2, -1)) %>%
+  mutate(last_two = str_replace(last_two, "01","1")) %>%
+  mutate(last_two = str_replace(last_two, "02","2")) %>%
+  mutate(last_two = str_replace(last_two, "03","3")) %>%
+  mutate(last_two = str_replace(last_two, "04","4")) %>%
+  mutate(last_two = str_replace(last_two, "05","5")) %>%
+  mutate(last_two = str_replace(last_two, "06","6")) %>%
+  mutate(last_two = str_replace(last_two, "07","7")) %>%
+  mutate(last_two = str_replace(last_two, "08","8")) %>%
+  mutate(last_two = str_replace(last_two, "09","9")) %>%
+  mutate("geoname" = paste0("Assembly District ", last_two)) %>% 
+  select(-sldl24, -last_two) %>% select(geoname, geolevel, everything())
 
 
 ############# Senate DISTRICTS ##################
@@ -186,10 +236,61 @@ test_assm <- race_reclass %>% right_join(select(xwalk_assm, c(geo_id, assm_geoid
 ### Load ZCTA-Sen Crosswalk ### 
 xwalk_sen <- dbGetQuery(con2, paste0("SELECT geo_id, ", sen_geoid, ", afact FROM crosswalks.", sen_xwalk))
 
-test_sen <- race_reclass %>% right_join(select(xwalk_sen, c(geo_id, sen_geoid, afact)), by = c("zip_code" = "geo_id"))  # join target geoids/names
+race_reclass_sen <- race_reclass %>%
+  
+  # join, expecting that zip codes may be in multiple districts
+  left_join(xwalk_sen, by = c("zip_code" = "geo_id"), relationship = "many-to-many") %>% 
+  
+  # calculate pop-wt'd pct of incidents to each leg dist, 
+  # e.g., if zcta is in 2 districts, and the afact for dist 1 is .7 and the other .3, then we'd attribute 70% of incidents in that zip to dist 1 and 30% of incidents to dist 2.
+  mutate(pop_wt_num_involved_civilians = num_involved_civilians * afact) %>%
+  
+  # remove non-district rows
+  filter(!is.na(sldu24)) %>%
+  
+  #format to fit in function
+  select(-num_involved_civilians) %>% rename(num_involved_civilians = pop_wt_num_involved_civilians)
 
 
+#### Sen Calc counts by race ####
+calc_counts <- function(race_eth) {
+  counts <- race_reclass_sen %>% filter(race_reclass_sen[[race_eth]] == race_eth) %>% group_by(sldu24) %>% 
+    mutate(involved = sum(num_involved_civilians)) %>% summarise(involved = min(involved))
+  new_name <- paste0(race_eth, '_involved')  # generate race-specific col name
+  counts <- counts %>% rename(!!new_name := involved)  # rename to race-specific col name
+  return(counts)  
+}
 
+# Sen: calc counts by race
+total_ <- race_reclass_sen %>% group_by(sldu24) %>% summarise(total_involved = sum(num_involved_civilians))
+nh_black_ <- calc_counts('nh_black')
+nh_aian_ <- calc_counts('nh_aian')
+nh_pacisl_ <- calc_counts('nh_pacisl')
+nh_asian_ <- calc_counts('nh_asian')
+nh_white_ <- calc_counts('nh_white')
+latino_ <- calc_counts('latino')
+nh_twoormor_ <- calc_counts('nh_twoormor')
+
+## join sen calcs by race together
+df_sen <- total_ %>% left_join(nh_pacisl_) %>% left_join(nh_asian_) %>% left_join(nh_black_) %>% left_join(nh_aian_) %>% left_join(nh_white_) %>% left_join(latino_) %>% left_join(nh_twoormor_) %>% 
+  mutate(geolevel='sldu') %>%
+  mutate(last_two = str_sub(sldu24, -2, -1)) %>%
+  mutate(last_two = str_replace(last_two, "01","1")) %>%
+  mutate(last_two = str_replace(last_two, "02","2")) %>%
+  mutate(last_two = str_replace(last_two, "03","3")) %>%
+  mutate(last_two = str_replace(last_two, "04","4")) %>%
+  mutate(last_two = str_replace(last_two, "05","5")) %>%
+  mutate(last_two = str_replace(last_two, "06","6")) %>%
+  mutate(last_two = str_replace(last_two, "07","7")) %>%
+  mutate(last_two = str_replace(last_two, "08","8")) %>%
+  mutate(last_two = str_replace(last_two, "09","9")) %>%
+  mutate("geoname" = paste0("State Senate District ", last_two)) %>% 
+  select(-sldu24, -last_two) %>% select(geoname, geolevel, everything())
+  
+  
+  
+
+#################### City, County, State ###############################
 
 #### Calc counts by race ####
 calc_counts <- function(race_eth) {
@@ -222,8 +323,8 @@ df_county <- df_county %>% adorn_totals("row") %>% as.data.frame(df_county)
 df_county$geoname[df_county$geoname == 'Total'] <- 'California'
 df_county$geolevel <- ifelse(df_county$geoname == 'California', 'state', 'county')
 
-# join city, county, state together
-df_all <- rbind(df_city, df_county) %>% relocate(geolevel, .after = county)
+# join city, county, state, leg together
+df_all <- rbind(df_city, df_county, df_assm, df_sen) %>% relocate(geolevel, .after = county)
 
 # make NA = 0 for cities/counties that appear in USOF data. Places that are not in the USOF data still receive NA.
 df_all <- df_all %>% mutate(total_involved = coalesce(total_involved, 0), nh_pacisl_involved = coalesce(nh_pacisl_involved, 0), nh_black_involved = coalesce(nh_black_involved, 0), nh_aian_involved = coalesce(nh_aian_involved, 0), nh_asian_involved = coalesce(nh_asian_involved, 0),
@@ -395,6 +496,30 @@ city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "g
 View(city_table)
 
 
+#split LEG DISTRICTS into separate tables and format id, name columns
+upper_table <- d[d$geolevel == 'sldu', ]
+lower_table <- d[d$geolevel == 'sldl', ]
+
+#calculate SLDU z-scores
+upper_table <- calc_z(upper_table)
+
+## Calc SLDU ranks##
+upper_table <- calc_ranks(upper_table)
+View(upper_table)
+
+#calculate SLDL z-scores
+lower_table <- calc_z(lower_table)
+
+## Calc SLDL ranks##
+lower_table <- calc_ranks(lower_table)
+View(lower_table)
+
+## Bind sldu and sldl tables into one leg_table##
+leg_table <- rbind(upper_table, lower_table)
+leg_table <- rename(leg_table, leg_id = geoid, leg_name = geoname)
+View(leg_table)
+
+
 #### EXTRA STEP RENAMING COLUMNS AND CHANGING ABBEST FROM 'MAX' TO 'MIN' DUE TO USING FLIPPED RATES IN DISPARITY CALCS, BUT DISPLAYING REGULAR RATES ON RC.ORG ####
 usof_flip <- function(table) {
   table <- table %>% rename_with(~paste0(., "_flipped"), ends_with("_rate")) %>% mutate(asbest = 'min')
@@ -405,12 +530,14 @@ usof_flip <- function(table) {
 state_table  <- usof_flip(state_table)
 county_table <- usof_flip(county_table)
 city_table   <- usof_flip(city_table)
-
+leg_table    <- usof_flip(leg_table)
 
 ###update info for postgres tables will automatically update###
 county_table_name <- paste0("arei_crim_use_of_force_county_", rc_yr)
 state_table_name <- paste0("arei_crim_use_of_force_state_", rc_yr)
 city_table_name <- paste0("arei_crim_use_of_force_city_", rc_yr)
+leg_table_name <- paste0("arei_crim_use_of_force_leg_", rc_yr)
+
 
 indicator <- paste0("Created on ", Sys.Date(), ". Annual average number of people injured in Law Enforcement Use of force Incidents per 100,000 People over ", data_yrs," years. Raw is total number of people injured over ", data_yrs," years. Note, we use the flipped rates for disparity calcs, but display the regular rates on RC.org. This data is")
 source <- paste0("CADOJ ",curr_yr, " https://openjustice.doj.ca.gov/data")
@@ -418,6 +545,8 @@ source <- paste0("CADOJ ",curr_yr, " https://openjustice.doj.ca.gov/data")
 #send tables to postgres
 #to_postgres(county_table, state_table)
 #city_to_postgres(city_table)
+#leg_to_postgres(leg_table)
+
 
 dbDisconnect(con)
 dbDisconnect(con2)
