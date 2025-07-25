@@ -1,7 +1,7 @@
 ### 3rd Grade English Language Arts & Math RC v7 ###
 
 ## install and load packages ------------------------------
-packages <- c("tidyr", "dplyr", "sf", "tidycensus", "tidyverse", "rpostgis", "usethis", "here")
+packages <- c("tidyr", "dplyr", "sf", "tidycensus", "tidyverse", "rpostgis", "usethis")
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
 if(length(install_packages) > 0) { 
@@ -196,7 +196,7 @@ df_final_e_withleg_method2 <- bind_rows(df_final_e, s_leg_joined, a_leg_joined)
 
 ####### ELA: CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source(here("Functions", "RC_Functions.R"))
+source("./Functions/RC_Functions.R")
 
 d <- df_final_e_withleg     # set ela df as d
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
@@ -274,7 +274,7 @@ leg_to_postgres(leg_table) #07/25/25 DID NOT PUSH TABLE TO POSTGRES BECAUSE METH
 #caaspp_df <- dbGetQuery(con, "SELECT * FROM education.caaspp_multigeo_school_research_file_reformatted_2022_23")
 
 # set functions source
-source(here("Functions", "RC_ELA_Math_Functions.R"))
+source("./Functions/RC_ELA_Math_Functions.R")
 # define test_id as "01" for ELA or "02" for Math
 test_id <- "02" # Math
 
@@ -312,7 +312,7 @@ df_final_m_withleg <- bind_rows(df_final_m, a_esd_joined_df, s_esd_joined_df)
 
 ####### MATH: CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source(here("Functions", "RC_Functions.R"))
+source("./Functions/RC_Functions.R")
 
 d <- df_final_m_withleg # set math df as d
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
