@@ -27,7 +27,7 @@ header-includes:
   - \setlength{\parskip}{14pt}
   - \pagestyle{fancy}
   - \fancyhf{}
-  - \fancyhead[C]{\begin{tabularx}{\textwidth}{@{}p{3in}@{}X@{}p{3in}@{}} \parbox[c][1.4in][c]{3in}{\centering \includegraphics[width=0.9\linewidth]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/racecounts.png} \\ \vspace{0.1in} \textbf{\large `r params$geolevel` District Profile}} & \parbox[c][1.4in][c]{\linewidth}{\centering \includegraphics[height=1.2in]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/assm_logo.png}} & \parbox[c][1.4in][c]{3in}{\centering \vspace{0.1in} \textbf{\Huge `r params$rep_name`} \\ \vspace{0.15in} \textbf{\large `r params$district_name`}} \end{tabularx}} # header
+  - \fancyhead[C]{\begin{tabularx}{\textwidth}{@{}p{3in}@{}X@{}p{3in}@{}} \parbox[c][1.4in][c]{3in}{\centering \includegraphics[width=0.9\linewidth]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/racecounts.png} \\ \vspace{0.1in} \textbf{\large `r params$geolevel` District Profile}} & \parbox[c][1.4in][c]{\linewidth}{\centering \includegraphics[height=1.2in]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/`r params$logo_filename`}} & \parbox[c][1.4in][c]{3in}{\centering \vspace{0.1in} \textbf{\Huge `r params$rep_name`} \\ \vspace{0.15in} \textbf{\large `r params$geolevel` District `r params$district_number`}} \end{tabularx}} # header
   - \fancyfoot[C]{\makebox[0pt]{\includegraphics[width=\paperwidth]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/footer.png}}} # footer
   - \renewcommand{\headrulewidth}{0.4pt}
   - \renewcommand{\footrulewidth}{0pt}
@@ -36,13 +36,32 @@ header-includes:
   - \setlength{\columnsep}{0.75in}
   - \fancypagestyle{plain}{\pagestyle{fancy}}
 params: # needs to add params used throughout .Rmd here - also need a df of the variables needed for each district to replace hardcoded values
-  brief_title: "Default Brief Title"
-  brief_subtitle: "Subtitle Here"
-  geolevel: "Senate"
-  rep_name: "Brian Dahle"
-  district_name: "Senate District 1"
+  geolevel: "geolevel"
+  rep_name: "Firstname Lastname"
   district_number: "XX"
-  disparity_rank: "XXrd"
+  disparity_rank: "composite_disparity_rank"
+  outcome_rank: "composite_outcome_rank"
+  total_districts: "total_districts"
+  crim_summary: "crim_summary"
+  demo_summary: "demo_summary"
+  econ_summary: "econ_summary"
+  educ_summary: "educ_summary"
+  hben_summary: "hben_summary"
+  hlth_summary: "hlth_summary"
+  hous_summary: "hous_summary"
+  worst_outcome_1: "worst_outcome_1"
+  worst_outcome_2: "worst_outcome_2"
+  worst_outcome_3: "worst_outcome_3"
+  worst_outcome_4: "worst_outcome_4"
+  worst_outcome_5: "worst_outcome_5"
+  worst_disparity_1: "worst_disparity_1"
+  worst_disparity_2: "worst_disparity_2"
+  worst_disparity_3: "worst_disparity_3"
+  worst_disparity_4: "worst_disparity_4"
+  worst_disparity_5: "worst_disparity_5"
+  most_disparate_race: "most_disparate_race"
+  most_disparate_count: "most_disparate_count"
+  logo_filename: "logo_filename"
 ---
 
 ```{r setup, include=FALSE}
@@ -52,10 +71,10 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
 \begin{multicols}{2}
 {\large \textbf{\textcolor{headerblue}{SUMMARY}}} \\
-District {`r params$district_number`} is the {`r params$disparity_rank`} most racially disparate Senate district in California. It ranks 39th out of 40 Senate districts in outcomes such as employment, life expectancy, and homeownership. 
+{`r params$geolevel`} District {`r params$district_number`} is the {`r params$disparity_rank`} most racially disparate {`r params$geolevel`} district in California. It ranks {`r params$outcome_rank`} out of {`r params$total_districts`} {`r params$geolevel`} districts in outcomes such as employment, life expectancy, and homeownership. 
 
 {\large \textbf{\textcolor{headerblue}{BACKGROUND}}} \\
-RACE COUNTS analyzed 47 indicators such as employment, life expectancy, and homeownership, for every State Senate District and ranked districts by their outcomes and differences in those outcomes among racial groups.
+RACE COUNTS analyzed 47 indicators such as employment, life expectancy, and homeownership, for every State {`r params$geolevel`} District and ranked districts by their outcomes and differences in those outcomes among racial groups.
 
 Data sources for indicators include the California Department of Education, the California Office of Justice, the California Office of Environmental Health Hazard Assessment, the U.S. Census Bureau's American Community Survey and others. All data are the most recent data published or within one year of publication. See RaceCounts.org/methodology for more information. 
 
@@ -67,58 +86,43 @@ Lorem ipsum dolor sit amet. At adipisci omnis qui modi soluta et corrupti conseq
 
 \end{multicols}
 
-See how District {`r params$district_number`} compares to all Districts at RaceCounts.org/Senate-Rankings or via QR Code
+See how `r params$geolevel` District `r params$district_number` compares to all districts at RaceCounts.org/`r params$geolevel`-Rankings or via QR Code
 
 \newpage
 
-Compared to other Senate Districts, Senate District XX has ...
+Compared to other `r params$geolevel` Districts, `r params$geolevel` District `r params$district_number` has ...
 \begin{itemize}[itemsep=2pt]
-  \item Worse outcomes and less disparity in Safety I\& Justice indicators.
-  \item Worse outcomes and greater disparity in Democracy indicators.
-  \item Worse outcomes and greater disparity in Economic Opportunity indicators.
-  \item Worse outcomes and less disparity in Education indicators.
-  \item Worse outcomes and greater disparity in Health Access indicators.
-  \item Better outcomes and less disparity in Healthy Built Environment indicators.
-  \item Worse outcomes and greater disparity in Housing indicators.
+  \item {`r params$crim_summary`} in Safety \& Justice indicators.
+  \item {`r params$demo_summary`} in Democracy indicators.
+  \item {`r params$econ_summary`} in Economic Opportunity indicators.
+  \item {`r params$educ_summary`} in Education indicators.
+  \item {`r params$hlth_summary`} in Health Access indicators.
+  \item {`r params$hben_summary`} in Healthy Built Environment indicators.
+  \item {`r params$hous_summary`} in Housing indicators.
 \end{itemize}
 \begin{multicols}{2}
-District XX indicators with the lowest outcomes:
+District `r params$district_number` indicators with the lowest outcomes:
 \begin{itemize}[itemsep=2pt]
-  \item Per Capita Income
-  \item Internet Access  
-  \item Foreclosures
-  \item Low Birthweight
-  \item Census Participation
+  \item {`r params$worst_outcome_1`}
+  \item {`r params$worst_outcome_2`}  
+  \item {`r params$worst_outcome_3`}
+  \item {`r params$worst_outcome_4`}
+  \item {`r params$worst_outcome_5`}
 \end{itemize}
-District XX indicators with the greatest disparity:
+District `r params$district_number` indicators with the greatest disparity:
 \begin{itemize}[itemsep=2pt]
-  \item Suspensions
-  \item Incarceration
-  \item Asthma
-  \item Police Stops
-  \item Preventable Hospitalizations
+  \item {`r params$worst_disparity_1`}
+  \item {`r params$worst_disparity_2`}  
+  \item {`r params$worst_disparity_3`}
+  \item {`r params$worst_disparity_4`}
+  \item {`r params$worst_disparity_5`}
 \end{itemize}
 \end{multicols}
 
-Across indicators, District 1 Black residents are most impacted by racial disparity in outcomes, with the worst rates for 20 out of 40 indicators measured. All races lose when systemic racism remains unchecked though.
+Across indicators, District `r params$district_number` `r params$most_disparate_race` residents are most impacted by racial disparity in outcomes, with the worst rates for `r params$most_disparate_count` out of 40 indicators measured. All races lose when systemic racism remains unchecked though.
 
 Want to improve outcomes and reduce racial disparities? Visit info@racecounts.org
 
-
-```{r sample-chart, fig.height=3, fig.width=6, fig.align='center'}
-# Simple chart example (optional)
-library(ggplot2)
-data <- data.frame(
-  Category = c("A", "B", "C", "D"),
-  Value = c(25, 35, 20, 20)
-)
-
-ggplot(data, aes(x = Category, y = Value, fill = Category)) +
-  geom_col() +
-  theme_minimal() +
-  labs(title = "Sample Chart", y = "Percentage") +
-  theme(legend.position = "none")
-```
 
 
 
