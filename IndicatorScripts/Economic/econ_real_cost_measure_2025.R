@@ -1,18 +1,20 @@
-### Cost-of-Living-Adjusted Poverty v6 ### 
+### Cost-of-Living-Adjusted Poverty v7 ### 
 
 #install packages if not already installed
-list.of.packages <- c("DBI", "tidyverse","RPostgreSQL", "tidycensus", "readxl", "sf", "janitor")
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
+packages <- c("DBI", "tidyverse","RPostgres", "tidycensus", "readxl", "sf", "janitor")
+install_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
 
-## packages
-library(DBI)
-library(tidyverse)
-library(RPostgreSQL)
-library(tidycensus)
-library(readxl)
-library(sf)
-library(janitor)
+if(length(install_packages) > 0) {
+  install.packages(install_packages)
+} else {
+  print("All required packages are already installed.")
+}
+
+for(pkg in packages){
+  library(pkg, character.only = TRUE)
+}
+
+options(scipen = 100) # disable scientific notation
 
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
@@ -21,9 +23,11 @@ con2 <- connect_to_db("rda_shared_data")
 # define variables used in several places that must be updated each year
 curr_yr <- "2023"  # must keep same format
 data_yr <- "2021"
-rc_yr <- "2024"
+rc_yr <- "2025"
 dwnld_url <- "https://unitedwaysca.org/download-the-public-data-set/"
-rc_schema <- "v6"
+rc_schema <- "v7"
+
+qa_filepath <- ""
 
 # Read Data ---------------------------------------------------------------
 rcm <- dbGetQuery(con2, "SELECT * FROM economic.uw_2023_county_state_real_cost_measure")
@@ -86,7 +90,7 @@ d <- rcm_subset %>% select(geoid, geoname, ends_with("_pop"), ends_with("_raw"),
 ############ geoid and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
 #set source for RC Functions script
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
+source("./Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
@@ -116,14 +120,45 @@ county_table <- calc_ranks(county_table)
 county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
+
+#split LEG DIST into separate tables
+upper_table <- d[d$geolevel == 'sldu', ]
+lower_table <- d[d$geolevel == 'sldl', ]
+
+#calculate SLDU z-scores and ranks
+upper_table <- calc_z(upper_table)
+
+upper_table <- calc_ranks(upper_table)
+#View(upper_table)
+
+#calculate SLDL z-scores and ranks
+lower_table <- calc_z(lower_table)
+
+lower_table <- calc_ranks(lower_table)
+#View(lower_table)
+
+## Bind sldu and sldl tables into one leg_table##
+leg_table <- rbind(upper_table, lower_table)
+View(leg_table)
+
+state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
+county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
+leg_table <- leg_table %>% dplyr::rename("leg_name" = "geoname", "leg_id" = "geoid")
+
+
+
 ###update info for postgres tables will update automatically###
 county_table_name <- paste0("arei_econ_real_cost_measure_county_", rc_yr)
 state_table_name <- paste0("arei_econ_real_cost_measure_state_", rc_yr)
+leg_table_name <- paste0("arei_econ_real_cost_measure_leg_", rc_yr)
+
 
 indicator <- paste0("Created on ", Sys.Date(), ". Households above the real cost of living (data from ", data_yr, "). This data is")
-source <- paste0("United Ways of California ", curr_yr, " ", dwnld_url)
+source <- paste0("United Ways of California ", curr_yr, " ", dwnld_url, ". QA doc: ", qa_filepath)
 
 #to_postgres(county_table,state_table)
+#leg_to_postgres()
+
 
 dbDisconnect(con)
 dbDisconnect(con2)
