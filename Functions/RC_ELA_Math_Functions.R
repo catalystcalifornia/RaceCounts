@@ -25,7 +25,7 @@ clean_ela_math <- function(x, y) {
   
   # Filter for 3rd grade, ELA test, race/ethnicity subgroups, county/state/district/ level 
   df_subset <- df_subset %>% filter(grade == "03" & test_id == y & race %in% c("001","074","075","076","077","078","079","080","144")
-                                    & type_id %in% c("04", "05", "06"))   
+                                    & type_id %in% c("04", "05", "06", "07"))   
   
   ## calc raw/rate and screen ---------------------------------------------------------
   #calculate raw
@@ -63,7 +63,8 @@ clean_ela_math <- function(x, y) {
   df_final <- df_subset %>% full_join(matched, by='cdscode')
   df_final <- df_final %>% relocate(geoid) %>% mutate(geoname = ifelse(type_id == "04", "California", geoname), # add geoname and geoid for state
                                                       geoid = ifelse(type_id == "04", "06", geoid),
-                                                      geoname = ifelse(type_id == "06", district, geoname)) %>% select(-c(district)) # sub district name into geoname for district rows
+                                                      geoname = ifelse(type_id == "06", district, geoname),
+                                                      geoid = ifelse(type_id == "07", cdscode, geoid)) %>% select(-c(district)) # sub district name into geoname for district rows
   
   # Check that it doesn't match any non-number
   df_final <- df_final %>% filter(str_detect(df_final$geoid, "^[:digit:]+$") == TRUE) %>% filter(!is.na(geoid)) # remove records without fips codes

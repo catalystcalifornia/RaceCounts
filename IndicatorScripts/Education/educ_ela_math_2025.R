@@ -97,7 +97,15 @@ names(counties) <- c("geoid", "geoname")
 
 ###### ELA: PREP FOR RC FUNCTIONS #######
 # comment out code to pull data from CDE above and use this once rda_shared_data table is created
-caaspp_df <- dbGetQuery(con, paste0("SELECT * FROM education.caaspp_multigeo_school_research_file_reformatted_", curr_yr))
+caaspp_df <- dbGetQuery(con, paste0("SELECT * FROM education.caaspp_multigeo_school_research_file_reformatted_", curr_yr)) %>%
+  #adding geolevels
+  mutate(geolevel = ifelse(type_id == "04", "state", 
+                           ifelse(type_id == "05", "county",
+                                  ifelse(type_id == "06", "district",
+                                         ifelse(type_id == "07", "school", 
+                                                ifelse(type_id == "08", "charter_school",
+                                                       ifelse(type_id == "09", "charter_school_local", ""))))))) %>%
+  relocate(geolevel, .before = 3)
 
 # set functions source
 source(here("Functions", "RC_ELA_Math_Functions.R"))
@@ -109,12 +117,88 @@ df_final_e <- clean_ela_math(caaspp_df, test_id)
 # pivot to wide format, ensure correct col names for RC functions
 df_final_e <- df_final_e %>% pivot_wider(names_from = race, names_glue = "{race}_{.value}", values_from = c(pop, raw, rate)) 
 
+####### Legislative Districts Prep #######
+##Step 1: Pull xwalks for district level aggregation
+#Elementary School Districts 
+xwalk_esd_senate <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.esd_2020_state_senate_2024")) %>%
+  rename(geoid = geo_id,
+         leg_id = sldu24) 
+xwalk_esd_assembly <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.esd_2020_state_assembly_2024")) %>%
+  rename(geoid = geo_id,
+         leg_id = sldl24) 
+
+s_esd_joined_df <- xwalk_esd_senate %>% #upperchamber sldu
+  inner_join(df_final_e, by = "geoid") %>%
+  select(-pop20, -num_dist, -int_pt_lat, -int_pt_lon, -afact, -afact2) %>%                     
+  group_by(leg_id) %>%  
+  summarise(across(where(is.numeric), sum, na.rm = TRUE), .groups = "drop") %>%
+  rename(geoid = leg_id) %>%
+  mutate(geoname = paste0("State Senate District ", #adding geoname to match dfs 
+                          as.numeric(str_sub(geoid, -2))),
+         geolevel = "sldu") %>%
+  relocate(geoname, .before = 2) %>%
+  relocate(geolevel, .before = 3)
+
+a_esd_joined_df <- xwalk_esd_assembly %>% #lower chamber sldl
+  inner_join(df_final_e, by = "geoid") %>%
+  select(-pop20, -num_dist, -int_pt_lat, -int_pt_lon, -afact, -afact2) %>%                     
+  group_by(leg_id) %>%  
+  summarise(across(where(is.numeric), sum, na.rm = TRUE), .groups = "drop") %>%
+  rename(geoid = leg_id) %>%
+  mutate(geoname = paste0("State Assembly District ", #adding geoname to match dfs 
+                          as.numeric(str_sub(geoid, -2))),
+         geolevel = "sldl") %>%
+  relocate(geoname, .before = 2) %>%
+  relocate(geolevel, .before = 3)
+
+df_final_e_withleg <- bind_rows(df_final_e, a_esd_joined_df, s_esd_joined_df)
+
+# #Unified School Districts TRIED THIS TO TEST ESD merge VS USD merge
+# xwalk_usd_senate <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.usd_2020_state_senate_2024")) %>%
+#   rename(geoid = geo_id)
+# xwalk_usd_assembly <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.usd_2020_state_assembly_2024")) %>%
+#   rename(geoid = geo_id)
+# s_usd_joined_df <- xwalk_usd_senate %>%
+#   inner_join(df_final_e, by = "geoid")
+# a_usd_joined_df <- xwalk_usd_assembly %>%
+#   inner_join(df_final_e, by = "geoid")
+# 
+# cat("Number of GEOIDs in ESD senate table that were matched:", nrow(s_esd_joined_df), "\n",
+#     "Number of GEOIDs in ESD assembly table that were matched:", nrow(a_esd_joined_df), "\n",
+#     "Number of GEOIDs in USD senate table that were matched:", nrow(s_usd_joined_df), "\n",
+#     "Number of GEOIDs in USD assembly table that were matched:", nrow(a_usd_joined_df), "\n")
+# #The joins report that MORE districts (621/666 total) are matched when using the elementary school districts so we will proceed with those vs the unified ones. 
+
+#SCHOOLS crosswalks.cde_school_leg_districts_2022_23 testing a school to school join
+senate_xwalk_schools <- dbGetQuery(con, paste0("SELECT cdscode as geoid, ca_senate_district FROM crosswalks.cde_school_leg_districts_2022_23")) 
+s_leg_joined <- senate_xwalk_schools %>% 
+  left_join(df_final_e, by = "geoid") %>%
+  group_by(ca_senate_district) %>%
+  summarise(across(where(is.numeric), sum, na.rm = TRUE), .groups = "drop") %>%
+  mutate(geoname = paste0("State Senate District ", #adding geoname to match dfs 
+                          as.numeric(str_sub(ca_senate_district))),
+         geolevel = "sldu") %>%
+  relocate(geoname, .before = 2) %>%
+  relocate(geolevel, .before = 3)
+
+assembly_xwalk_schools <- dbGetQuery(con, paste0("SELECT cdscode as geoid, ca_assembly_district FROM crosswalks.cde_school_leg_districts_2022_23")) 
+a_leg_joined <- assembly_xwalk_schools %>% 
+  left_join(df_final_e, by = "geoid") %>%
+  group_by(ca_assembly_district) %>%
+  summarise(across(where(is.numeric), sum, na.rm = TRUE), .groups = "drop") %>%
+  mutate(geoname = paste0("State Assembly District ", #adding geoname to match dfs 
+                          as.numeric(str_sub(ca_assembly_district))),
+         geolevel = "sldl") %>%
+  relocate(geoname, .before = 2) %>%
+  relocate(geolevel, .before = 3)
+
+df_final_e_withleg_method2 <- bind_rows(df_final_e, s_leg_joined, a_leg_joined)
 
 ####### ELA: CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
 source(here("Functions", "RC_Functions.R"))
 
-d <- df_final_e     # set ela df as d
+d <- df_final_e_withleg     # set ela df as d
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
 d <- count_values(d)    #calculate number of "_rate" values
@@ -151,12 +235,29 @@ city_table <- calc_ranks(city_table)
 city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" = "geoname") %>% relocate(cdscode, .after = dist_id)
 View(city_table)
 
+#split LEGISLATIVE DISTRICTS into separate table 
+upper_leg_table <- d[d$geolevel == 'sldu', ] %>% select(-c(type_id, cdscode))
+lower_leg_table <- d[d$geolevel == 'sldl', ] %>% select(-c(type_id, cdscode))
+
+#calculate LEGISLATIVE DISTRICTS z-scores and bind
+upper_leg_table <- calc_z(upper_leg_table)
+upper_leg_table <- calc_ranks(upper_leg_table)
+upper_leg_table <- upper_leg_table %>% dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname")
+View(upper_leg_table)
+
+lower_leg_table <- calc_z(lower_leg_table)
+lower_leg_table <- calc_ranks(lower_leg_table)
+lower_leg_table <- lower_leg_table %>% dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname")
+View(lower_leg_table)
+
+leg_table <- rbind(upper_leg_table, lower_leg_table)
 
 ###update info for postgres tables###
 test <- "ela"
 county_table_name <- paste0("arei_educ_gr3_",test,"_scores_county_",yr)
 state_table_name <- paste0("arei_educ_gr3_",test,"_scores_state_",yr)
 city_table_name <- paste0("arei_educ_gr3_",test,"_scores_district_",yr)
+leg_table_name <- paste0("arei_educ_gr3_",test,"_scores_leg_",yr)
 
 indicator <- "Students scoring proficient or better on 3rd grade English Language Arts (%)"
 source <- paste0("CAASPP ", curr_yr, " ", dwnld_url)
@@ -164,7 +265,7 @@ source <- paste0("CAASPP ", curr_yr, " ", dwnld_url)
 #send tables to postgres
 #to_postgres(county_table,state_table)
 #city_to_postgres()
-
+leg_to_postgres(leg_table) #07/25/25 DID NOT PUSH TABLE TO POSTGRES BECAUSE METHODOLOGY IS STILL BE FINALIZED
 
 
 ###### MATH: PREP FOR RC FUNCTIONS #######
@@ -182,12 +283,38 @@ df_final_m <- clean_ela_math(caaspp_df, test_id)
 # pivot to wide format, ensure correct col names for RC functions
 df_final_m <- df_final_m %>% pivot_wider(names_from = race, names_glue = "{race}_{.value}", values_from = c(pop, raw, rate)) 
 
+##Additional steps to add leg districts data ##
+s_esd_joined_df <- xwalk_esd_senate %>% #upperchamber sldu
+  inner_join(df_final_m, by = "geoid") %>%
+  select(-pop20, -num_dist, -int_pt_lat, -int_pt_lon, -afact, -afact2) %>%                     
+  group_by(leg_id) %>%  
+  summarise(across(where(is.numeric), sum, na.rm = TRUE), .groups = "drop") %>%
+  rename(geoid = leg_id) %>%
+  mutate(geoname = paste0("State Senate District ", #adding geoname to match dfs 
+                          as.numeric(str_sub(geoid, -2))),
+         geolevel = "sldu") %>%
+  relocate(geoname, .before = 2) %>%
+  relocate(geolevel, .before = 3)
+
+a_esd_joined_df <- xwalk_esd_assembly %>% #lower chamber sldl
+  inner_join(df_final_m, by = "geoid") %>%
+  select(-pop20, -num_dist, -int_pt_lat, -int_pt_lon, -afact, -afact2) %>%                     
+  group_by(leg_id) %>%  
+  summarise(across(where(is.numeric), sum, na.rm = TRUE), .groups = "drop") %>%
+  rename(geoid = leg_id) %>%
+  mutate(geoname = paste0("State Assembly District ", #adding geoname to match dfs 
+                          as.numeric(str_sub(geoid, -2))),
+         geolevel = "sldl") %>%
+  relocate(geoname, .before = 2) %>%
+  relocate(geolevel, .before = 3)
+
+df_final_m_withleg <- bind_rows(df_final_m, a_esd_joined_df, s_esd_joined_df)
 
 ####### MATH: CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
 source(here("Functions", "RC_Functions.R"))
 
-d <- df_final_m # set math df as d
+d <- df_final_m_withleg # set math df as d
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
 d <- count_values(d)    #calculate number of "_rate" values
@@ -224,12 +351,25 @@ city_table <- calc_ranks(city_table)
 city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" = "geoname") %>% relocate(cdscode, .after = dist_id)
 View(city_table)
 
+#calculate LEGISLATIVE DISTRICTS z-scores and bind
+upper_leg_table <- calc_z(upper_leg_table)
+upper_leg_table <- calc_ranks(upper_leg_table)
+upper_leg_table <- upper_leg_table %>% dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname")
+View(upper_leg_table)
+
+lower_leg_table <- calc_z(lower_leg_table)
+lower_leg_table <- calc_ranks(lower_leg_table)
+lower_leg_table <- lower_leg_table %>% dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname")
+View(lower_leg_table)
+
+leg_table <- rbind(upper_leg_table, lower_leg_table)
 
 ###update info for postgres tables###
 test <- "math"
 county_table_name <- paste0("arei_educ_gr3_",test,"_scores_county_",yr)
 state_table_name <- paste0("arei_educ_gr3_",test,"_scores_state_",yr)
 city_table_name <- paste0("arei_educ_gr3_",test,"_scores_district_",yr)
+leg_table_name <- paste0("arei_educ_gr3_",test,"_scores_leg_",yr)
 
 indicator <- paste0("Created on ", Sys.Date(), ". Students scoring proficient or better on 3rd grade Math (%)")
 source <- paste0("CAASPP ", curr_yr, " ", dwnld_url)
@@ -237,5 +377,6 @@ source <- paste0("CAASPP ", curr_yr, " ", dwnld_url)
 #send tables to postgres
 #to_postgres(county_table,state_table)
 #city_to_postgres()
+leg_to_postgres(leg_table) #07/25/25 DID NOT PUSH TABLE TO POSTGRES BECAUSE METHODOLOGY IS STILL BE FINALIZED
 
 dbDisconnect(con)
