@@ -548,42 +548,44 @@ get_cde_schools_metadata <- function(school_layout_url, html_nodes, table_schema
 
 #### Use this fx to get most CDE data ####
 get_cde_data <- function(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) {
-                df <- read_delim(file = filepath, delim = "\t", na = c("*", ""))#, #name_repair=make.names ),
-                                 #col_types = cols('District Code' = col_character()))
+  # read in data
+  df <- read_delim(file = filepath, delim = "\t", na = c("*", ""))#, #name_repair=make.names ),
+  #col_types = cols('District Code' = col_character()))
                 
-                #format column names
-                names(df) <- str_replace_all(names(df), "[^[:alnum:]]", "") # remove non-alphanumeric characters
-                names(df) <- gsub(" ", "", names(df)) # remove spaces
-                names(df) <- tolower(names(df))  # make col names lowercase
-                Encoding(df$schoolname) <- "ISO 8859-1"  # added this piece in 2023 script bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
-                Encoding(df$districtname) <- "ISO 8859-1"  # added this piece in 2023 script bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
-                df$districtcode<-as.character(df$districtcode)
+  #format column names
+  names(df) <- str_replace_all(names(df), "[^[:alnum:]]", "") # remove non-alphanumeric characters
+  names(df) <- gsub(" ", "", names(df)) # remove spaces
+  names(df) <- tolower(names(df))  # make col names lowercase
+  Encoding(df$schoolname) <- "ISO 8859-1"  # added this piece in 2023 script bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+  Encoding(df$districtname) <- "ISO 8859-1"  # added this piece in 2023 script bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+  df$districtcode<-as.character(df$districtcode)
                 
-                #create cdscode field
-                df$cdscode <- ifelse(df$aggregatelevel == "D", paste0(df$countycode,df$districtcode,"0000000"),
-                                     ifelse(df$aggregatelevel == "S", paste0(df$countycode,df$districtcode,df$schoolcode), paste0(df$countycode,"000000000000")))
-                df <- df %>% relocate(cdscode) # make cds code the first col
+  #create cdscode field
+  df$cdscode <- case_when(df$aggregatelevel == "D"~paste0(df$countycode,df$districtcode,"0000000"),
+                          df$aggregatelevel == "S"~paste0(df$countycode,df$districtcode,df$schoolcode), 
+                          .default=paste0(df$countycode,"000000000000"))
+  
+  df <- df %>% relocate(cdscode) # make cds code the first col
                 
-                #  WRITE TABLE TO POSTGRES DB
+  #  WRITE TABLE TO POSTGRES DB
+  # make character vector for field types in postgres table
+  charvect = rep('numeric', dim(df)[2]) 
+  charvect[fieldtype] <- "varchar" # specify which cols are varchar, the rest will be numeric
                 
-                # make character vector for field types in postgres table
-                charvect = rep('numeric', dim(df)[2]) 
-                charvect[fieldtype] <- "varchar" # specify which cols are varchar, the rest will be numeric
+  # add names to the character vector
+  names(charvect) <- colnames(df)
                 
-                # add names to the character vector
-                names(charvect) <- colnames(df)
+  dbWriteTable(con, Id(schema=table_schema, table=table_name), df,
+               overwrite = FALSE, row.names = FALSE,
+               field.types = charvect)
                 
-                dbWriteTable(con, c(table_schema, table_name), df, 
-                             overwrite = FALSE, row.names = FALSE,
-                             field.types = charvect)
+  # write comment to table, and the first three fields that won't change.
+  table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
                 
-                # write comment to table, and the first three fields that won't change.
-                table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
-                
-                # send table comment to database
-                dbSendQuery(conn = con, table_comment)      			
+  # send table comment to database
+  dbSendQuery(conn = con, table_comment)      			
 
-return(df)
+  return(df)
 }
 
 ### Use this fx to get most CDE metadata ####
