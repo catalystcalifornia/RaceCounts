@@ -202,7 +202,7 @@ d <- calc_id(d)         #calculate index of disparity
 View(d)
 
 #split STATE into separate table
-state_table <- d[d$geolvel == 'state', ]
+state_table <- d[d$geolevel == 'state', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
@@ -316,8 +316,8 @@ df_join_m_v1 <- bind_rows(df_final_m, sen_df_m, assm_df_m) %>%
 #set source for RC Functions script
 source("./Functions/RC_Functions.R")
 
-#d <- df_join_m_v1 # set school district-based df as d
-d <- df_join_m_v2 # set school-based df as d
+d <- df_join_m_v1 # set school district-based df as d
+#d <- df_join_m_v2 # set school-based df as d
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
@@ -330,7 +330,7 @@ d <- calc_id(d)         #calculate index of disparity
 View(d)
 
 #split STATE into separate table
-state_table <- d[d$geolvel == 'state', ]
+state_table <- d[d$geolevel == 'state', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
