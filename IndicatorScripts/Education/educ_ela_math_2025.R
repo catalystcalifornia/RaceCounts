@@ -1,7 +1,7 @@
 ### 3rd Grade English Language Arts & Math RC v7 ###
 
 ## install and load packages ------------------------------
-packages <- c("tidyr", "dplyr", "sf", "tidycensus", "tidyverse", "rpostgis", "usethis", "here")
+packages <- c("tidyr", "dplyr", "sf", "tidycensus", "tidyverse", "rpostgis", "usethis")
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
 if(length(install_packages) > 0) { 
@@ -16,14 +16,17 @@ for(pkg in packages){
   library(pkg, character.only = TRUE) 
 } 
 
+options(scipen = 100) # disable scientific notation
+
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Education\\QA_Sheet_ELA_Math.docx"
 
 # update each year --------
 curr_yr <- "2023_24"  # CAASPP year - must keep same format
-acs_yr <- 2022        # county geoid year - match as closely to curr_yr
+acs_yr <- 2023        # county geoid year - match as closely to curr_yr
 rc_schema <- "v7"
 yr <- "2025"
 dwnld_url <- "https://caaspp-elpac.ets.org/caaspp/ResearchFileListSB?ps=true&lstTestYear=2024&lstTestType=B&lstCounty=00&lstDistrict=00000" # try just updating the yr in the URL
@@ -43,27 +46,27 @@ school_layout_url <- "https://www.cde.ca.gov/ds/si/ds/fspubschls.asp"        # t
 # SKIP THIS CODE AFTER SCHOOLS AND CAASPP RDA_SHARED_DATA TABLES HAVE BEEN CREATED AND GO TO NEXT STEP.
       # table_schema <- "education"
       # table_source <- "Wide data format, multigeo table with state, county, district, and school"
-      # source(here("Functions", "rdashared_functions.R"))         # set functions source
+      # source("./Functions/rdashared_functions.R")         # set functions source
       # 
       # ## Create test data download URL and filenames
       #  url = data_url      # "All Student Groups" txt file.
       #  data_file <- str_remove_all(data_url, "https://caaspp-elpac.ets.org/caaspp/researchfiles/|.zip")
-      #  zipfile = paste0("W:\\Data\\Education\\CAASPP\\",curr_yr,"\\",data_file,".zip")  
-      #  file = paste0("W:\\Data\\Education\\CAASPP\\",curr_yr,"\\",data_file,".txt")     
+      #  zipfile = paste0("W:\\Data\\Education\\CAASPP\\",curr_yr,"\\",data_file,".zip")
+      #  file = paste0("W:\\Data\\Education\\CAASPP\\",curr_yr,"\\",data_file,".txt")
       # 
       #  exdir = paste0("W:\\Data\\Education\\CAASPP\\", curr_yr)  # set data download filepath
       # 
       #  ## Create entities data download URL and filenames
-      #  url2 = entities_url   
+      #  url2 = entities_url
       #  entities_file <- str_remove_all(entities_url, "https://caaspp-elpac.ets.org/caaspp/researchfiles/|.zip")
-      #  zipfile2 = paste0("W:\\Data\\Education\\CAASPP\\",curr_yr,"\\",entities_file,".zip") 
-      #  file2 = paste0("W:\\Data\\Education\\CAASPP\\",curr_yr,"\\",entities_file,".txt")    
+      #  zipfile2 = paste0("W:\\Data\\Education\\CAASPP\\",curr_yr,"\\",entities_file,".zip")
+      #  file2 = paste0("W:\\Data\\Education\\CAASPP\\",curr_yr,"\\",entities_file,".txt")
       # 
       #  ## Create layout URL
       #  url3 = layout_url
       # 
       #  ## Run fx to create schools rda_shared_table ------------------------------------------------------------------
-      #  schools <- get_cde_schools(school_url, school_dwnld_url, school_layout_url, table_source)
+      # # schools <- get_cde_schools(school_url, school_dwnld_url, school_layout_url, table_source)
       #  
       #      # Run function to add schools rda_shared_data column comments 
       #      # See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
@@ -72,8 +75,8 @@ school_layout_url <- "https://www.cde.ca.gov/ds/si/ds/fspubschls.asp"        # t
       #      
       #  ## Run fx to create CAASPP rda_shared_table: This may take awhile bc the file is large.  ------------------------------------------------------------------
       #  #### NOTE: EACH YEAR, the xpath needs to be updated in get_caaspp_data{} in rdashared_functions.R ###
-      #  df <- get_caaspp_data(url, zipfile, file, url2, zipfile2, file2, url3, dwnld_url, exdir, table_source)
-      #  head(df)
+       df <- get_caaspp_data(url, zipfile, file, url2, zipfile2, file2, url3, dwnld_url, exdir, table_source)
+       head(df)
       # 
       #      # Run function to add CAASPP rda_shared_data column comments
       #      #### NOTE: EACH YEAR, the xpath needs to be updated in get_caaspp_metadata{} in rdashared_functions.R ###
@@ -83,8 +86,6 @@ school_layout_url <- "https://www.cde.ca.gov/ds/si/ds/fspubschls.asp"        # t
 # Get County GEOIDS --------------------------------------------------------------------
 ### Always run this code before running ELA or Math sections.
 ##### Used in clean_ela_math{} later
-Sys.getenv("CENSUS_API_KEY") # confirms value saved to .renviron
-
 counties <- get_acs(geography = "county",
                     variables = c("B01001_001"), 
                     state = "CA", 
@@ -102,13 +103,12 @@ caaspp_df <- dbGetQuery(con, paste0("SELECT * FROM education.caaspp_multigeo_sch
   mutate(geolevel = ifelse(type_id == "04", "state", 
                            ifelse(type_id == "05", "county",
                                   ifelse(type_id == "06", "district",
-                                         ifelse(type_id == "07", "school", 
-                                                ifelse(type_id == "08", "charter_school",
-                                                       ifelse(type_id == "09", "charter_school_local", ""))))))) %>%
+                                         ifelse(type_id == "07", "school", ""))))) %>%
   relocate(geolevel, .before = 3)
 
 # set functions source
-source(here("Functions", "RC_ELA_Math_Functions.R"))
+source("./Functions/RC_ELA_Math_Functions.R")
+
 # define test_id as "01" for ELA or "02" for Math
 test_id <- "01" # ELA
 
@@ -196,7 +196,7 @@ df_final_e_withleg_method2 <- bind_rows(df_final_e, s_leg_joined, a_leg_joined)
 
 ####### ELA: CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source(here("Functions", "RC_Functions.R"))
+source("./Functions/RC_Functions.R")
 
 d <- df_final_e_withleg     # set ela df as d
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
@@ -274,7 +274,7 @@ leg_to_postgres(leg_table) #07/25/25 DID NOT PUSH TABLE TO POSTGRES BECAUSE METH
 #caaspp_df <- dbGetQuery(con, "SELECT * FROM education.caaspp_multigeo_school_research_file_reformatted_2022_23")
 
 # set functions source
-source(here("Functions", "RC_ELA_Math_Functions.R"))
+source("./Functions/RC_ELA_Math_Functions.R")
 # define test_id as "01" for ELA or "02" for Math
 test_id <- "02" # Math
 
@@ -312,7 +312,7 @@ df_final_m_withleg <- bind_rows(df_final_m, a_esd_joined_df, s_esd_joined_df)
 
 ####### MATH: CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source(here("Functions", "RC_Functions.R"))
+source("./Functions/RC_Functions.R")
 
 d <- df_final_m_withleg # set math df as d
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
