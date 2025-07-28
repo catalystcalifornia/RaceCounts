@@ -1,18 +1,17 @@
 ### Suspension for RC v6 ###
 
 #install packages if not already installed
-list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis")
+list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgres","tidycensus", "rvest", "stringr", "usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
 library(readr)
-library(dplyr)
+library(dplyr) # to scrape metadata table from cde website
 library(tidyr)
 library(DBI)
-library(RPostgreSQL)
+library(RPostgres)
 library(tidycensus)
 library(sf)
-library(tidyverse) # to scrape metadata table from cde website
 library(rvest) # to scrape metadata table from cde website
 library(stringr) # cleaning up data
 library(usethis) # connect to github
@@ -23,32 +22,36 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
 # update each year
-curr_yr <- '2022_23' 
-rc_yr <- '2024'
-rc_schema <- 'v6'
+curr_yr <- '2023_24' 
+rc_yr <- '2025'
+rc_schema <- 'v7'
 
 
 # ## Get Suspensions Data from CDE website
-# filepath = "https://www3.cde.ca.gov/demo-downloads/discipline/suspension23.txt"   # will need to update each year
-# fieldtype = 1:11 # specify which cols should be varchar, the rest will be assigned numeric
-# 
-# ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
-# table_schema <- "education"
-# table_name <- paste0("cde_multigeo_calpads_suspensions_", curr_yr)
-# table_comment_source <- "NOTE: Only use suspension data from this link, https://www.cde.ca.gov/ds/ad/filessd.asp. The Dashboard download is incomplete and lacks data for most high schools (at least within LAUSD). Wide data format, multigeo table with state, county, district, and school"
-# table_source <- "Wide data format, multigeo table with state, county, district, and school"
-# 
-# ## Run function to prep and export rda_shared_data table
-# source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
-# df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
-# 
-# ###### NOTE: This function isn't working for Suspensions (loop part of function is the issue).
-# ## Run function to add rda_shared_data column comments
-# # See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
-# url <-  "https://www.cde.ca.gov/ds/ad/fssd.asp"   # define webpage with metadata
-# html_nodes <- "table"
-# colcomments <- get_cde_metadata(url, html_nodes, table_schema, table_name)
-# View(colcomments)
+filepath = "https://www3.cde.ca.gov/demo-downloads/discipline/suspension24.txt"   # will need to update each year
+fieldtype = 1:11 # specify which cols should be varchar, the rest will be assigned numeric
+
+## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+table_schema <- "education"
+table_name <- paste0("cde_multigeo_calpads_suspensions_", curr_yr)
+table_comment_source <- "NOTE: Only use suspension data from this link, https://www.cde.ca.gov/ds/ad/filessd.asp. The Dashboard download is incomplete and lacks data for most high schools (at least within LAUSD). Wide data format, multigeo table with state, county, district, and school"
+table_source <- "Wide data format, multigeo table with state, county, district, and school"
+
+## Run function to prep and export rda_shared_data table
+source("./Functions/rdashared_functions.R")
+
+# function to create and export rda_shared_table to postgres db
+df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) 
+
+###### NOTE: This function isn't working for Suspensions (loop part of function is the issue).
+## Run function to add rda_shared_data column comments
+# See for more on scraping tables from websites: 
+# https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r 
+# https://cran.r-project.org/web/packages/rvest/rvest.pdf
+url <-  "https://www.cde.ca.gov/ds/ad/fssd.asp"   # define webpage with metadata
+html_nodes <- "table"
+colcomments <- get_cde_metadata(url, html_nodes, table_schema, table_name)
+View(colcomments)
 
 ##### get county geoids-----
 census_api_key(census_key1, overwrite = TRUE)
