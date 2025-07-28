@@ -45,12 +45,8 @@ df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_
 
 ###### NOTE: This function isn't working for Suspensions (loop part of function is the issue).
 ## Run function to add rda_shared_data column comments
-# See for more on scraping tables from websites: 
-# https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r 
-# https://cran.r-project.org/web/packages/rvest/rvest.pdf
 url <-  "https://www.cde.ca.gov/ds/ad/fssd.asp"   # define webpage with metadata
-html_nodes <- "table"
-colcomments <- get_cde_metadata(url, html_nodes, table_schema, table_name)
+colcomments <- get_cde_metadata(url, html_element="table", table_schema, table_name, exclude_cols=c("Errata Flag (Y/N)"))
 View(colcomments)
 
 ##### get county geoids-----
