@@ -1,12 +1,14 @@
 #install packages if not already installed
-list.of.packages <- c("readr", "DBI", "RPostgres", "rvest", "tidyverse", "stringr", "dplyr", "rpostgis")
+list.of.packages <- c("readr", "DBI", "RPostgres", "rvest", "tidyverse", "stringr", "dplyr", "httr2", "rpostgis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
 library(readr)
 library(RPostgres)
 library(DBI)
-library(tidyverse) # to scrape metadata table from cde website
+library(tidyverse)
+library(dplyr) # to scrape metadata table from cde website
+library(httr2) # to scrape metadata table from cde website (prevents getting flagged as a bot)
 library(rvest) # to scrape metadata table from cde website
 library(stringr) # cleaning up data
 library(data.table) # %like% function
@@ -548,84 +550,124 @@ get_cde_schools_metadata <- function(school_layout_url, html_nodes, table_schema
 
 #### Use this fx to get most CDE data ####
 get_cde_data <- function(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) {
-                df <- read_delim(file = filepath, delim = "\t", na = c("*", ""))#, #name_repair=make.names ),
-                                 #col_types = cols('District Code' = col_character()))
+  # read in data
+  df <- read_delim(file = filepath, delim = "\t", na = c("*", ""))#, #name_repair=make.names ),
+  #col_types = cols('District Code' = col_character()))
                 
-                #format column names
-                names(df) <- str_replace_all(names(df), "[^[:alnum:]]", "") # remove non-alphanumeric characters
-                names(df) <- gsub(" ", "", names(df)) # remove spaces
-                names(df) <- tolower(names(df))  # make col names lowercase
-                Encoding(df$schoolname) <- "ISO 8859-1"  # added this piece in 2023 script bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
-                Encoding(df$districtname) <- "ISO 8859-1"  # added this piece in 2023 script bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
-                df$districtcode<-as.character(df$districtcode)
+  #format column names
+  names(df) <- str_replace_all(names(df), "[^[:alnum:]]", "") # remove non-alphanumeric characters
+  names(df) <- gsub(" ", "", names(df)) # remove spaces
+  names(df) <- tolower(names(df))  # make col names lowercase
+  Encoding(df$schoolname) <- "ISO 8859-1"  # added this piece in 2023 script bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+  Encoding(df$districtname) <- "ISO 8859-1"  # added this piece in 2023 script bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+  df$districtcode<-as.character(df$districtcode)
                 
-                #create cdscode field
-                df$cdscode <- ifelse(df$aggregatelevel == "D", paste0(df$countycode,df$districtcode,"0000000"),
-                                     ifelse(df$aggregatelevel == "S", paste0(df$countycode,df$districtcode,df$schoolcode), paste0(df$countycode,"000000000000")))
-                df <- df %>% relocate(cdscode) # make cds code the first col
+  #create cdscode field
+  df$cdscode <- case_when(df$aggregatelevel == "D"~paste0(df$countycode,df$districtcode,"0000000"),
+                          df$aggregatelevel == "S"~paste0(df$countycode,df$districtcode,df$schoolcode), 
+                          .default=paste0(df$countycode,"000000000000"))
+  
+  df <- df %>% relocate(cdscode) # make cds code the first col
                 
-                #  WRITE TABLE TO POSTGRES DB
+  #  WRITE TABLE TO POSTGRES DB
+  # make character vector for field types in postgres table
+  charvect = rep('numeric', dim(df)[2]) 
+  charvect[fieldtype] <- "varchar" # specify which cols are varchar, the rest will be numeric
                 
-                # make character vector for field types in postgres table
-                charvect = rep('numeric', dim(df)[2]) 
-                charvect[fieldtype] <- "varchar" # specify which cols are varchar, the rest will be numeric
+  # add names to the character vector
+  names(charvect) <- colnames(df)
                 
-                # add names to the character vector
-                names(charvect) <- colnames(df)
+  dbWriteTable(con, Id(schema=table_schema, table=table_name), df,
+               overwrite = FALSE, row.names = FALSE,
+               field.types = charvect)
                 
-                dbWriteTable(con, c(table_schema, table_name), df, 
-                             overwrite = FALSE, row.names = FALSE,
-                             field.types = charvect)
+  # write comment to table, and the first three fields that won't change.
+  table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
                 
-                # write comment to table, and the first three fields that won't change.
-                table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
-                
-                # send table comment to database
-                dbSendQuery(conn = con, table_comment)      			
+  # send table comment to database
+  dbSendQuery(conn = con, table_comment)      			
 
-return(df)
+  return(df)
 }
 
 ### Use this fx to get most CDE metadata ####
-get_cde_metadata <- function(url, html_nodes, table_schema, table_name) {
-# See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
-                    df_metadata <- url %>% 
-                      read_html() %>% 
-                      html_nodes(html_nodes) %>% 
-                      html_table(fill = T) %>% 
-                      lapply(., function(x) setNames(x, c("label", "variable"))) # define/rename columns
-                    
-                    df_metadata <- data.frame(df_metadata)
-                    df_metadata <- df_metadata %>% add_row(label = "cdscode", variable = "unique id")
-                    n <- nrow(df_metadata)
-                    df_metadata <- df_metadata[c(n, (1:nrow(df_metadata))[-n]), ] # move newly added cdscode row (last row) to row 1 to match order of df_names
-                    df_metadata <- subset(df_metadata, label!="Errata Flag (Y/N)") # removes extra row in metadata that is not in data, ex. in suspensions            
-
-                    # format metadata
-                    df_names <- data.frame(names(df))  # pull in df col names 
-
-    #### BEFORE THIS STEP, YOU MUST FIRST CHECK THAT THE COLS IN DF AND METADATA TABLES ARE IN THE SAME ORDER ####
-                    colcomments <- df_metadata %>% 
-                      mutate(label = df_names$names.df., # sub in df col names
-                             variable = str_squish(variable))  # remove extra spaces from variables
-                    
-                    # Adapted from W:\RDA Team\R\ACS Updates\Update Detailed Tables - template.R
-                    # make character vectors for column names and metadata. 
-                    colcomments_charvar <- colcomments$variable
-                    colname_charvar <- colcomments$label
-                    
-                    # loop through the columns that will change depending on the table. This loop writes comments for all columns, then sends to the postgres db. 
-                     for (i in seq_along(colname_charvar)){
-                       sqlcolcomment <-
-                        paste0("COMMENT ON COLUMN ", table_schema, ".", table_name, ".",
-                                colname_charvar[[i]], " IS '", colcomments_charvar[[i]], "'; COMMENT ON COLUMN ", table_schema, ".", table_name, ".",
-                                colname_charvar[[i]], " IS '", colcomments_charvar[[i]], "';" )
-
-                    # send sql comment to database
-                       dbSendQuery(conn = con, sqlcolcomment)
-                     }
-
-return(colcomments)
+get_cde_metadata <- function(url, html_element, table_schema, table_name, exclude_cols=c()) {
+  # See for more on scraping tables from websites: 
+  # https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r 
+  # https://cran.r-project.org/web/packages/rvest/rvest.pdf
+  # https://cran.r-project.org/web/packages/httr/index.html
+  
+  # Open a session to reach the URL
+  resp <- request(url) %>%
+    req_user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36") %>%
+    req_headers(
+      "Accept" = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "Accept-Language" = "en-US,en;q=0.5",
+      "Connection" = "keep-alive") %>%
+    req_perform()
+  
+  # Get HTML of URL 
+  html_content <- resp_body_html(resp)
+  
+  # Parse html for the needed element (i.e., <table>)
+  df_metadata <- html_content %>%
+    html_elements(html_element) %>%
+    html_table(fill = TRUE) %>%
+    # define/rename columns
+    lapply(., function(x)
+      setNames(x, c("label", "variable"))) %>% 
+    as.data.frame() %>% 
+    add_row(label = "cdscode", variable = "unique id")
+  
+  n <- nrow(df_metadata)
+  # move newly added cdscode row (last row) to row 1 to match order of df_names
+  df_metadata <- df_metadata[c(n, (1:n)[-n]), ] 
+  # removes extra row in metadata that is not in data, ex. in suspensions
+  df_metadata <- subset(df_metadata, !label %in% exclude_cols)
+  
+  # format metadata
+  # pull in df col names
+  df_names <- colnames(df)  
+  
+  #### BEFORE THIS STEP, YOU MUST FIRST CHECK THAT THE COLS IN DF AND METADATA TABLES ARE IN THE SAME ORDER ####
+  colcomments <- df_metadata %>%
+    mutate(label = df_names, # sub in df col names
+           variable = str_squish(variable))  # remove extra spaces from variables
+  
+  # Adapted from W:\RDA Team\R\ACS Updates\Update Detailed Tables - template.R
+  # make character vectors for column names and metadata.
+  colcomments_charvar <- colcomments$variable
+  colname_charvar <- colcomments$label
+  
+  # clean up special characters in variable
+  colcomments_charvar <- gsub("'", "''", colcomments_charvar, fixed=TRUE)
+  
+  # loop through the columns that will change depending on the table. 
+  # This loop writes and submits comments for all columns (one at a time).
+  # Start a transaction
+  dbBegin(con)
+  
+  # Try to execute all comments
+  tryCatch({
+    
+    # Execute each column comment separately
+    for (i in seq_along(colname_charvar)) {
+      column_comment <- paste0("COMMENT ON COLUMN ", table_schema, ".", table_name, ".",
+                               colname_charvar[[i]], " IS '", colcomments_charvar[[i]], "';" )
+      dbExecute(con, column_comment)
+    }
+  
+    # Commit the transaction if everything succeeded
+    dbCommit(con)
+    print("Columns comments added to table!")
+  
+  }, error = function(e) {
+    # If there's an error, roll back the transaction
+    dbRollback(con)
+    stop(paste("Error adding comments:", e$message))
+  })
+  
+  return(colcomments)
 }
 
 ### Use this fx to get CAASPP (ELA/Math testing) data ####
