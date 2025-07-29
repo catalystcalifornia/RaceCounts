@@ -114,9 +114,9 @@ caaspp_df <- dbGetQuery(con, paste0("SELECT * FROM education.caaspp_multigeo_sch
 
 ##### ELA: PREP FOR RC FUNCTIONS #######
 # define test_id as "01" for ELA or "02" for Math
-test <- "01" # ELA
+test_id <- "01" # ELA
 
-df_final_e <- clean_ela_math(caaspp_df, test)
+df_final_e <- clean_ela_math(caaspp_df, test_id)
 
 # pivot to wide format, ensure correct col names for RC functions
 df_final_e <- df_final_e %>% pivot_wider(names_from = race, names_glue = "{race}_{.value}", values_from = c(pop, raw, rate)) 
@@ -266,9 +266,9 @@ source <- paste0("CAASPP ", curr_yr, " ", dwnld_url, ". QA doc: ", qa_filepath)
 # set functions source
 source("./Functions/RC_ELA_Math_Functions.R")
 # define test_id as "01" for ELA or "02" for Math
-test <- "02" # Math
+test_id <- "02" # Math
 
-df_final_m <- clean_ela_math(caaspp_df, test)
+df_final_m <- clean_ela_math(caaspp_df, test_id)
 
 # pivot to wide format, ensure correct col names for RC functions
 df_final_m <- df_final_m %>% pivot_wider(names_from = race, names_glue = "{race}_{.value}", values_from = c(pop, raw, rate)) 
@@ -402,8 +402,8 @@ indicator <- paste0("Created on ", Sys.Date(), ". Students scoring proficient or
 source <- paste0("CAASPP ", curr_yr, " ", dwnld_url, ". QA doc: ", qa_filepath)
 
 #send tables to postgres
-to_postgres(county_table,state_table)
-city_to_postgres()
-leg_to_postgres(leg_table) 
+#to_postgres(county_table,state_table)
+#city_to_postgres()
+#leg_to_postgres(leg_table) 
 
-dbDisconnect(con)
+#dbDisconnect(con)
