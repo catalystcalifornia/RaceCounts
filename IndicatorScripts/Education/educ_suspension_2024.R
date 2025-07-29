@@ -114,7 +114,7 @@ districts <- dbGetQuery(con, statement =
                                  " WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'")) 
 
 df_final <- df_wide %>%
-  left_join(districts, by = c('cdscode')) %>% 
+  left_join(districts, by = "cdscode") %>% 
   rename(geoid = geoid.x) %>%
   mutate(
     geoid=ifelse(aggregatelevel == "D", geoid.y, geoid), 
@@ -122,7 +122,9 @@ df_final <- df_wide %>%
   select(-c(geoid.y, districtname, countycode, districtcode)) %>% 
   # combine distinct county and district geoid matched df's
   distinct() %>%  
-  relocate(geoid, geoname, cdscode, aggregatelevel) %>%
+  # add geolevel for RC calc functions
+  mutate(geolevel = ifelse(geoname == "California", "state", "county")) %>%
+  relocate(geoid, geoname, cdscode, aggregatelevel, geolevel) %>%
   # remove records without fips codes
   filter(!is.na(geoid))
  
@@ -133,9 +135,10 @@ d <- df_final
 ####################################################################################################################################################
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
+source("./Functions/RC_Functions.R")
 
-d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
+# Assign Suspensions asbest to 'min' (i.e., fewer suspensions is best)
+d$asbest = 'min'    
 
 d <- count_values(d) #calculate number of "_rate" values
 d <- calc_best(d) #calculate best rates -- be sure to update previous line of code accordingly before running this function.
