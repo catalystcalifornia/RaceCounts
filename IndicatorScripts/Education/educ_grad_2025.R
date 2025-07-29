@@ -68,7 +68,9 @@ names(counties) <- c("geoid", "geoname")
 
 ###### High School Graduation Data: Prep for RC Functions #########
 # comment out code to pull data and use this once rda_shared_data table is created
-df <- st_read(con, query = paste0("SELECT * FROM education.cde_multigeo_calpads_graduation_",curr_yr))
+df <- st_read(con, query = paste0("SELECT * FROM education.cde_multigeo_calpads_graduation_",curr_yr)) 
+
+
   
 
 #### Continue prep for RC ####
@@ -76,6 +78,13 @@ df <- st_read(con, query = paste0("SELECT * FROM education.cde_multigeo_calpads_
 #filter for county and state rows, all types of schools, and racial categories
 df_subset <- df %>% filter(aggregatelevel %in% c("C", "T", "D") & charterschool == "All" & dass == "All" & reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
   dplyr::select(aggregatelevel, cdscode, countyname, districtname, reportingcategory, cohortstudents, regularhsdiplomagraduatescount, regularhsdiplomagraduatesrate)
+
+df_subset <- df_subset %>%
+  mutate(geolevel = case_when(
+    aggregatelevel == "C" ~ "county",
+    aggregatelevel == "T" ~ "state",
+    aggregatelevel == "D" ~ "district"
+  ))
 
 #format for column headers
 df_subset <- rename(df_subset, raw = "regularhsdiplomagraduatescount", pop = "cohortstudents", rate = "regularhsdiplomagraduatesrate")
