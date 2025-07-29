@@ -1,5 +1,5 @@
 #install packages if not already installed
-list.of.packages <- c("readr", "DBI", "RPostgres", "rvest", "tidyverse", "stringr", "dplyr", "rpostgis")
+list.of.packages <- c("readr", "DBI", "RPostgres", "rvest", "tidyverse", "stringr", "dplyr", "httr2", "rpostgis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
@@ -8,7 +8,7 @@ library(RPostgres)
 library(DBI)
 library(tidyverse)
 library(dplyr) # to scrape metadata table from cde website
-library(httr) # to scrape metadata table from cde website (prevents getting flagged as a bot)
+library(httr2) # to scrape metadata table from cde website (prevents getting flagged as a bot)
 library(rvest) # to scrape metadata table from cde website
 library(stringr) # cleaning up data
 library(data.table) # %like% function
@@ -621,7 +621,7 @@ get_cde_metadata <- function(url, html_element, table_schema, table_name, exclud
   
   n <- nrow(df_metadata)
   # move newly added cdscode row (last row) to row 1 to match order of df_names
-  df_metadata <- df_metadata[c(n, (1:nrow(df_metadata))[-n]), ] 
+  df_metadata <- df_metadata[c(n, (1:n)[-n]), ] 
   # removes extra row in metadata that is not in data, ex. in suspensions
   df_metadata <- subset(df_metadata, !label %in% exclude_cols)
   
@@ -650,13 +650,6 @@ get_cde_metadata <- function(url, html_element, table_schema, table_name, exclud
   # Try to execute all comments
   tryCatch({
     
-    # Constructing comment for the table
-    table_comment <- paste0("COMMENT ON COLUMN ", table_schema, ".", table_name, ".",
-                            colname_charvar[[i]], " IS '", colcomments_charvar[[i]], "';")
-    
-    # Execute table comment
-    dbExecute(con, table_comment)
-    
     # Execute each column comment separately
     for (i in seq_along(colname_charvar)) {
       column_comment <- paste0("COMMENT ON COLUMN ", table_schema, ".", table_name, ".",
@@ -666,7 +659,7 @@ get_cde_metadata <- function(url, html_element, table_schema, table_name, exclud
   
     # Commit the transaction if everything succeeded
     dbCommit(con)
-    print("Table and columns comments added to table!")
+    print("Columns comments added to table!")
   
   }, error = function(e) {
     # If there's an error, roll back the transaction

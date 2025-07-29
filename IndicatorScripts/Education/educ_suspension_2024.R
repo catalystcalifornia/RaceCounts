@@ -7,6 +7,7 @@ if(length(new.packages)) install.packages(new.packages)
 
 library(readr)
 library(dplyr) # to scrape metadata table from cde website
+library(httr2) # to scrape metadata table from cde website
 library(tidyr)
 library(DBI)
 library(RPostgres)
