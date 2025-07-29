@@ -16,38 +16,37 @@ library(rvest) # to scrape metadata table from cde website
 library(stringr) # cleaning up data
 library(usethis) # connect to github
 
+source("W:\\RDA Team\\R\\credentials_source.R") # connect_to_db()
+source("./Functions/rdashared_functions.R") # get_cde_data(), get_cde_metadata()
 
 # create connection for rda database
-source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
-# update each year
+##### update each year #####
 curr_yr <- '2023_24' 
 acs_yr <- 2023
 rc_yr <- '2025'
 rc_schema <- 'v7'
 
-
-# # ## Get Suspensions Data from CDE website
-# filepath = "https://www3.cde.ca.gov/demo-downloads/discipline/suspension24.txt"   # will need to update each year
-# fieldtype = 1:11 # specify which cols should be varchar, the rest will be assigned numeric
-# 
-# ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+# To get Suspensions Data from CDE website
+filepath = "https://www3.cde.ca.gov/demo-downloads/discipline/suspension24.txt"   # will need to update each year
+fieldtype = 1:11 # specify which cols should be varchar, the rest will be assigned numeric
+url <-  "https://www.cde.ca.gov/ds/ad/fssd.asp"   # define webpage with metadata
+exclude_cols <- c("Errata Flag (Y/N)") # list of metadata columns excluded from export to postgres
+html_element <- "table" # html element name where metadata is located
+ 
+# Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 table_schema <- "education"
 table_name <- paste0("cde_multigeo_calpads_suspensions_", curr_yr)
-# table_comment_source <- "NOTE: Only use suspension data from this link, https://www.cde.ca.gov/ds/ad/filessd.asp. The Dashboard download is incomplete and lacks data for most high schools (at least within LAUSD). Wide data format, multigeo table with state, county, district, and school"
-# table_source <- "Wide data format, multigeo table with state, county, district, and school"
-# 
-# ## Run function to prep and export rda_shared_data table
-# source("./Functions/rdashared_functions.R")
-# 
-# # function to create and export rda_shared_table to postgres db
+table_comment_source <- paste("NOTE: Only use suspension data from this link: ", url, ". The Dashboard download is incomplete and lacks data for most high schools (at least within LAUSD). Wide data format, multigeo table with state, county, district, and school")
+table_source <- "Wide data format, multigeo table with state, county, district, and school"
+
+##### Prep and export indicator data rda_shared_data table with metadata #####
+## function to create and export rda_shared_table to postgres db
 # df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) 
-# 
-# ###### NOTE: This function isn't working for Suspensions (loop part of function is the issue).
-# ## Run function to add rda_shared_data column comments
-# url <-  "https://www.cde.ca.gov/ds/ad/fssd.asp"   # define webpage with metadata
-# colcomments <- get_cde_metadata(url, html_element="table", table_schema, table_name, exclude_cols=c("Errata Flag (Y/N)"))
+
+## Run function to add rda_shared_data column comments
+# colcomments <- get_cde_metadata(url, html_element, table_schema, table_name, exclude_cols)
 # View(colcomments)
 
 ##### get county geoids-----
@@ -56,12 +55,11 @@ Sys.getenv("CENSUS_API_KEY") # confirms value saved to .renviron
 counties <- get_acs(geography = "county", 
               variables = c("B01001_001"), 
               state = "CA", 
-              year = acs_yr)
-
-counties <- counties[,1:2]
-counties$NAME <- gsub(" County, California", "", counties$NAME)
-names(counties) <- c("geoid", "geoname")
-
+              year = acs_yr) %>%
+  select(GEOID, NAME) %>%
+  mutate(NAME=gsub(" County, California", "", NAME, fixed=TRUE)) %>%
+  rename(geoid=GEOID,
+         geoname=NAME)
 
 #### Continue prep for RC ####
 # comment out code to pull data and use this once rda_shared_data table is created
@@ -191,7 +189,7 @@ state_table_name <- paste0("arei_educ_suspension_state_", rc_yr)
 city_table_name <- paste0("arei_educ_suspension_district_", rc_yr)
 
 indicator <- paste0("Created on ", Sys.Date(), ". Unduplicated students suspended, cumulative enrollment, and unduplicated suspension rate. This data is")
-source <- paste0("CDE ", curr_yr, " https://www.cde.ca.gov/ds/ad/filessd.asp")
+source <- paste("CDE", curr_yr, url)
 
 #send tables to postgres
 # to_postgres(county_table,state_table)
