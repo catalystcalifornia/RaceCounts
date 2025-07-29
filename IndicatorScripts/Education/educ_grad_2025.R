@@ -29,28 +29,29 @@ rc_schema <- 'v7'
 
 ############### PREP RDA_SHARED_DATA TABLE ########################
 
-#Get HS Grad, handle nas, ensure DistrictCode reads in right
-# Data Dictionary: https://www.cde.ca.gov/ds/ad/fsacgr.asp
-filepath = "https://www3.cde.ca.gov/demo-downloads/acgr/acgr24.txt"
-fieldtype = 1:12 # specify which cols should be varchar, the rest will be assigned numeric
-
-## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
-table_schema <- "education"
-table_name <- paste0("cde_multigeo_calpads_graduation_",curr_yr)
-table_comment_source <- "NOTE: This data is not trendable with data from before 2016-17. See more here: https://www.cde.ca.gov/ds/sd/sd/acgrinfo.asp"
-table_source <- "Downloaded from https://www.cde.ca.gov/ds/ad/filesacgr.asp. Headers were cleaned of characters like /, ., ), and (. Cells with values of * were nullified. Created cdscode by concatenating county, district, and school codes"
-
-## Run function to prep and export rda_shared_data table
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
-df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
-# View(df)
-
-## Run function to add rda_shared_data column comments
-## See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
-url <-  "https://www.cde.ca.gov/ds/ad/fsacgr.asp"   # define webpage with metadata
-html_nodes <- "table"
-colcomments <- get_cde_metadata(url, html_nodes, table_schema, table_name)
-View(colcomments)
+# #Get HS Grad, handle nas, ensure DistrictCode reads in right
+# # Data Dictionary: https://www.cde.ca.gov/ds/ad/fsacgr.asp
+# filepath = "https://www3.cde.ca.gov/demo-downloads/acgr/acgr24.txt"
+# fieldtype = 1:12 # specify which cols should be varchar, the rest will be assigned numeric
+# 
+# ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+# table_schema <- "education"
+# table_name <- paste0("cde_multigeo_calpads_graduation_",curr_yr)
+# table_comment_source <- "NOTE: This data is not trendable with data from before 2016-17. See more here: https://www.cde.ca.gov/ds/sd/sd/acgrinfo.asp"
+# table_source <- "Downloaded from https://www.cde.ca.gov/ds/ad/filesacgr.asp. Headers were cleaned of characters like /, ., ), and (. Cells with values of * were nullified. Created cdscode by concatenating county, district, and school codes"
+# 
+# ## Run function to prep and export rda_shared_data table
+# # source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
+# source("W:/Project/RACE COUNTS/2025_v7/RC_Github/CR/Functions/RC_Functions.R")
+# df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
+# # View(df)
+# 
+# ## Run function to add rda_shared_data column comments
+# ## See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
+# url <-  "https://www.cde.ca.gov/ds/ad/fsacgr.asp"   # define webpage with metadata
+# html_nodes <- "table"
+# colcomments <- get_cde_metadata(url, html_nodes, table_schema, table_name)
+# View(colcomments)
 
 # Get County GEOIDS --------------------------------------------------------------------
 census_api_key(census_key1, install = TRUE, overwrite = TRUE)
@@ -66,7 +67,9 @@ counties$NAME <- gsub(" County, California", "", counties$NAME)
 names(counties) <- c("geoid", "geoname")
 
 ###### High School Graduation Data: Prep for RC Functions #########
-df <- st_read(con, query = paste0("SELECT * FROM education.cde_multigeo_calpads_graduation_",curr_yr)) # comment out code to pull data and use this once rda_shared_data table is created
+# comment out code to pull data and use this once rda_shared_data table is created
+df <- st_read(con, query = paste0("SELECT * FROM education.cde_multigeo_calpads_graduation_",curr_yr))
+  
 
 #### Continue prep for RC ####
 
@@ -113,7 +116,8 @@ d <- df_final
 ####################################################################################################################################################
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
+# source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
+source("W:/Project/RACE COUNTS/2025_v7/RC_Github/CR/Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
