@@ -106,7 +106,9 @@ caaspp_df <- dbGetQuery(con, paste0("SELECT * FROM education.caaspp_multigeo_sch
   mutate(geolevel = ifelse(type_id == "04", "state", 
                            ifelse(type_id == "05", "county",
                                   ifelse(type_id == "06", "district",
-                                         ifelse(type_id == "07", "school", ""))))) %>%
+                                         ifelse(type_id == "07", "school",
+                                                ifelse(type_id == "09", "school",
+                                                       ifelse(type_id == "10", "school",""))))))) %>%
   relocate(geolevel, .before = 3)
 
 
@@ -118,47 +120,47 @@ df_final_e <- clean_ela_math(caaspp_df, test)
 
 # pivot to wide format, ensure correct col names for RC functions
 df_final_e <- df_final_e %>% pivot_wider(names_from = race, names_glue = "{race}_{.value}", values_from = c(pop, raw, rate)) 
-schools_final_e <- df_final_e %>% filter(type_id == '07')  # create school-level only df
-df_final_e <- df_final_e %>% filter(type_id != '07')       # drop school-level rows, keep sch dist/county/state rows
+schools_final_e <- df_final_e %>% filter(geolevel == 'school')  # create school-level only df
+df_final_e <- df_final_e %>% filter(geolevel != 'school')       # drop school-level rows, keep sch dist/county/state rows
 
-####### Legislative Districts Prep From School District Data #######
-##Step 1: Prep school district data for Leg Dist calcs
-leg_schdist_df <- clean_leg_elamath(caaspp_df)
-
-
-##Step 2: Pull xwalks for district level aggregation
-#Elementary School Districts 
-xwalk_esd_sen <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.esd_2020_state_senate_2024"))
-xwalk_esd_assm <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.esd_2020_state_assembly_2024"))
-
-#Unified School Districts
-xwalk_usd_sen <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.usd_2020_state_senate_2024"))
-xwalk_usd_assm <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.usd_2020_state_assembly_2024"))
-
-xwalk_sen <- rbind(xwalk_esd_sen, xwalk_usd_sen) %>%
-  rename(geoid = geo_id,
-         geoname = geo_name,
-         leg_id = sldu24)  %>%
-  mutate(geolevel = 'sldu')
-
-xwalk_assm <- rbind(xwalk_esd_assm, xwalk_usd_assm) %>%
-  rename(geoid = geo_id,
-         geoname = geo_name,
-         leg_id = sldl24) %>%
-  mutate(geolevel = 'sldl')
-
-
-##Step 3: Calc & screen weighted Leg Dist data from school dist data
-sen_df_e <- calc_leg_elamath_sd(leg_schdist_df, xwalk_sen, threshold) %>% 
-  filter(test_id == test) %>%
-  mutate(geoname = paste0("State Senate District ", #adding geoname
-                          as.numeric(str_sub(geoid, -2))))
-assm_df_e <- calc_leg_elamath_sd(leg_schdist_df, xwalk_assm, threshold) %>% 
-  filter(test_id == test) %>%
-mutate(geoname = paste0("State Assembly District ", #adding geoname
-                        as.numeric(str_sub(geoid, -2))))
-df_join_e_v1 <- bind_rows(df_final_e, sen_df_e, assm_df_e) %>%
-  select(-type_id, -test_id, -cdscode)
+# ####### Legislative Districts Prep From School District Data #######
+# ##Step 1: Prep school district data for Leg Dist calcs
+# leg_schdist_df <- clean_leg_elamath(caaspp_df)
+# 
+# 
+# ##Step 2: Pull xwalks for district level aggregation
+# #Elementary School Districts 
+# xwalk_esd_sen <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.esd_2020_state_senate_2024"))
+# xwalk_esd_assm <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.esd_2020_state_assembly_2024"))
+# 
+# #Unified School Districts
+# xwalk_usd_sen <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.usd_2020_state_senate_2024"))
+# xwalk_usd_assm <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.usd_2020_state_assembly_2024"))
+# 
+# xwalk_sen <- rbind(xwalk_esd_sen, xwalk_usd_sen) %>%
+#   rename(geoid = geo_id,
+#          geoname = geo_name,
+#          leg_id = sldu24)  %>%
+#   mutate(geolevel = 'sldu')
+# 
+# xwalk_assm <- rbind(xwalk_esd_assm, xwalk_usd_assm) %>%
+#   rename(geoid = geo_id,
+#          geoname = geo_name,
+#          leg_id = sldl24) %>%
+#   mutate(geolevel = 'sldl')
+# 
+# 
+# ##Step 3: Calc & screen weighted Leg Dist data from school dist data
+# sen_df_e <- calc_leg_elamath_sd(leg_schdist_df, xwalk_sen, threshold) %>% 
+#   filter(test_id == test) %>%
+#   mutate(geoname = paste0("State Senate District ", #adding geoname
+#                           as.numeric(str_sub(geoid, -2))))
+# assm_df_e <- calc_leg_elamath_sd(leg_schdist_df, xwalk_assm, threshold) %>% 
+#   filter(test_id == test) %>%
+# mutate(geoname = paste0("State Assembly District ", #adding geoname
+#                         as.numeric(str_sub(geoid, -2))))
+# df_join_e_v1 <- bind_rows(df_final_e, sen_df_e, assm_df_e) %>%
+#   select(-type_id, -test_id, -cdscode)
 
 
 ####### Legislative Districts Prep From School Data #######
@@ -188,8 +190,8 @@ df_join_e_v2 <- bind_rows(df_final_e, sen_df_e_, assm_df_e_) %>%
 #set source for RC Functions script
 source("./Functions/RC_Functions.R")
 
-d <- df_join_e_v1   # set sch dist-based ela df as d
-#d <- df_join_e_v2   # set school-based ela df as d
+#d <- df_join_e_v1   # set sch dist-based ela df as d
+d <- df_join_e_v2   # set school-based ela df as d
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
@@ -257,7 +259,7 @@ source <- paste0("CAASPP ", curr_yr, " ", dwnld_url, ". QA doc: ", qa_filepath)
 #send tables to postgres
 #to_postgres(county_table,state_table)
 #city_to_postgres()
-leg_to_postgres(leg_table)
+#leg_to_postgres(leg_table)
 
 
 ##### MATH: PREP FOR RC FUNCTIONS #######
@@ -270,54 +272,71 @@ df_final_m <- clean_ela_math(caaspp_df, test)
 
 # pivot to wide format, ensure correct col names for RC functions
 df_final_m <- df_final_m %>% pivot_wider(names_from = race, names_glue = "{race}_{.value}", values_from = c(pop, raw, rate)) 
-schools_final_m <- df_final_m %>% filter(type_id == '07')  # create school-level only df
-df_final_m <- df_final_m %>% filter(type_id != '07')       # drop school-level rows, keep sch dist/county/state rows
+schools_final_m <- df_final_m %>% filter(geolevel == 'school')  # create school-level only df
+df_final_m <- df_final_m %>% filter(geolevel != 'school')       # drop school-level rows, keep sch dist/county/state rows
 
-####### Legislative Districts Prep From School District Data #######
-##Step 1: Prep school district data for Leg Dist calcs
-leg_schdist_df <- clean_leg_elamath(caaspp_df)
+# ####### Legislative Districts Prep From School District Data #######
+# ##Step 1: Prep school district data for Leg Dist calcs
+# leg_schdist_df <- clean_leg_elamath(caaspp_df)
+# 
+# 
+# ##Step 2: Pull xwalks for district level aggregation
+# #Elementary School Districts 
+# xwalk_esd_sen <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.esd_2020_state_senate_2024"))
+# xwalk_esd_assm <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.esd_2020_state_assembly_2024"))
+# 
+# #Unified School Districts
+# xwalk_usd_sen <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.usd_2020_state_senate_2024"))
+# xwalk_usd_assm <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.usd_2020_state_assembly_2024"))
+# 
+# xwalk_sen <- rbind(xwalk_esd_sen, xwalk_usd_sen) %>%
+#   rename(geoid = geo_id,
+#          geoname = geo_name,
+#          leg_id = sldu24)  %>%
+#   mutate(geolevel = 'sldu')
+# 
+# xwalk_assm <- rbind(xwalk_esd_assm, xwalk_usd_assm) %>%
+#   rename(geoid = geo_id,
+#          geoname = geo_name,
+#          leg_id = sldl24) %>%
+#   mutate(geolevel = 'sldl')
+# 
+# 
+# ##Step 3: Calc & screen weighted Leg Dist data from school dist data
+# sen_df_m <- calc_leg_elamath_sd(leg_schdist_df, xwalk_sen, threshold) %>% 
+#   filter(test_id == test) %>%
+#   mutate(geoname = paste0("State Senate District ", #adding geoname
+#                           as.numeric(str_sub(geoid, -2))))
+# assm_df_m <- calc_leg_elamath_sd(leg_schdist_df, xwalk_assm, threshold) %>% 
+#   filter(test_id == test) %>%
+#   mutate(geoname = paste0("State Assembly District ", #adding geoname
+#                           as.numeric(str_sub(geoid, -2))))
+# df_join_m_v1 <- bind_rows(df_final_m, sen_df_m, assm_df_m) %>%
+#   select(-type_id, -test_id, -cdscode)
 
+####### Legislative Districts Prep From School Data #######
+##Step 1: Pull xwalks for district level aggregation
+# Done for ELA
 
-##Step 2: Pull xwalks for district level aggregation
-#Elementary School Districts 
-xwalk_esd_sen <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.esd_2020_state_senate_2024"))
-xwalk_esd_assm <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.esd_2020_state_assembly_2024"))
-
-#Unified School Districts
-xwalk_usd_sen <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.usd_2020_state_senate_2024"))
-xwalk_usd_assm <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.usd_2020_state_assembly_2024"))
-
-xwalk_sen <- rbind(xwalk_esd_sen, xwalk_usd_sen) %>%
-  rename(geoid = geo_id,
-         geoname = geo_name,
-         leg_id = sldu24)  %>%
-  mutate(geolevel = 'sldu')
-
-xwalk_assm <- rbind(xwalk_esd_assm, xwalk_usd_assm) %>%
-  rename(geoid = geo_id,
-         geoname = geo_name,
-         leg_id = sldl24) %>%
-  mutate(geolevel = 'sldl')
-
-
-##Step 3: Calc & screen weighted Leg Dist data from school dist data
-sen_df_m <- calc_leg_elamath_sd(leg_schdist_df, xwalk_sen, threshold) %>% 
-  filter(test_id == test) %>%
+##Step 2: Calc & screen weighted Leg Dist data from school dist data
+sen_df_m_ <- calc_leg_elamath(schools_final_m, xwalk_school_sen, threshold) %>% 
   mutate(geoname = paste0("State Senate District ", #adding geoname
                           as.numeric(str_sub(geoid, -2))))
-assm_df_m <- calc_leg_elamath_sd(leg_schdist_df, xwalk_assm, threshold) %>% 
-  filter(test_id == test) %>%
+
+assm_df_m_ <- calc_leg_elamath(schools_final_m, xwalk_school_assm, threshold) %>% 
   mutate(geoname = paste0("State Assembly District ", #adding geoname
                           as.numeric(str_sub(geoid, -2))))
-df_join_m_v1 <- bind_rows(df_final_m, sen_df_m, assm_df_m) %>%
-  select(-type_id, -test_id, -cdscode)
+
+df_join_m_v2 <- bind_rows(df_final_m, sen_df_m_, assm_df_m_) %>%
+  select(-type_id, -cdscode)
+
 
 ####### MATH: CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
 source("./Functions/RC_Functions.R")
 
-d <- df_join_m_v1 # set school district-based df as d
-#d <- df_join_m_v2 # set school-based df as d
+#d <- df_join_m_v1 # set school district-based df as d
+d <- df_join_m_v2 # set school-based df as d
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
@@ -383,8 +402,8 @@ indicator <- paste0("Created on ", Sys.Date(), ". Students scoring proficient or
 source <- paste0("CAASPP ", curr_yr, " ", dwnld_url, ". QA doc: ", qa_filepath)
 
 #send tables to postgres
-#to_postgres(county_table,state_table)
-#city_to_postgres()
+to_postgres(county_table,state_table)
+city_to_postgres()
 leg_to_postgres(leg_table) 
 
 dbDisconnect(con)
