@@ -120,13 +120,13 @@ df_final <- df_wide %>%
     geoid=ifelse(aggregatelevel == "D", geoid.y, geoid), 
     geoname=ifelse(!is.na(districtname), districtname, geoname)) %>% 
   select(-c(geoid.y, districtname, countycode, districtcode)) %>% 
-  # combine distinct county and district geoid matched df's
-  distinct() %>%  
   # add geolevel for RC calc functions
   mutate(geolevel = ifelse(geoname == "California", "state", "county")) %>%
   relocate(geoid, geoname, cdscode, aggregatelevel, geolevel) %>%
   # remove records without fips codes
-  filter(!is.na(geoid))
+  filter(!is.na(geoid) & geoid != "No Data") %>%
+  # combine distinct county and district geoid matched df's
+  distinct()
  
 # View(df_final)
 
