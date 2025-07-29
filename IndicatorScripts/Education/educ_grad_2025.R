@@ -42,7 +42,6 @@ rc_schema <- 'v7'
 # 
 # ## Run function to prep and export rda_shared_data table
 # # source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
-# source("W:/Project/RACE COUNTS/2025_v7/RC_Github/CR/Functions/RC_Functions.R")
 # df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
 # # View(df)
 # 
@@ -69,9 +68,6 @@ names(counties) <- c("geoid", "geoname")
 ###### High School Graduation Data: Prep for RC Functions #########
 # comment out code to pull data and use this once rda_shared_data table is created
 df <- st_read(con, query = paste0("SELECT * FROM education.cde_multigeo_calpads_graduation_",curr_yr)) 
-
-
-  
 
 #### Continue prep for RC ####
 
@@ -125,8 +121,7 @@ d <- df_final
 ####################################################################################################################################################
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-# source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
-source("W:/Project/RACE COUNTS/2025_v7/RC_Github/CR/Functions/RC_Functions.R")
+source("./Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
