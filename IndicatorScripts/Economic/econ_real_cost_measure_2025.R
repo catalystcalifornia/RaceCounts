@@ -17,8 +17,8 @@ for(pkg in packages){
 options(scipen = 100) # disable scientific notation
 
 source("W:\\RDA Team\\R\\credentials_source.R")
-con <- connect_to_db("racecounts")
-con2 <- connect_to_db("rda_shared_data")
+con_rc <- connect_to_db("racecounts")
+con_shared <- connect_to_db("rda_shared_data")
 
 # define variables used in several places that must be updated each year
 curr_yr <- "2023"  # must keep same format
@@ -30,11 +30,11 @@ rc_schema <- "v7"
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Real_Cost_Measure.docx"
 
 # Read Data ---------------------------------------------------------------
-rcm <- dbGetQuery(con2, "SELECT * FROM economic.uw_2023_county_state_real_cost_measure")
+rcm <- dbGetQuery(con_shared, "SELECT * FROM economic.uw_2025_county_state_real_cost_measure")
 
 # select only fields we want
 # asian = api for UW, so after initial grab I start renaming asian to api
-rcm_subset <- rcm %>% select(geoid, county,  
+rcm_subset <- rcm %>% select(geoid, geoname, geolevel,  
                              num_hh_below_rcm, pct_hh_below_rcm, 
                              num_nh_white_hh_below_rcm, pct_nh_white_hh_below_rcm,
                              num_nh_black_hh_below_rcm, pct_nh_black_hh_below_rcm,
@@ -42,9 +42,9 @@ rcm_subset <- rcm %>% select(geoid, county,
                              num_latino_hh_below_rcm, pct_latino_hh_below_rcm,
                              num_nh_aian_hh_below_rcm, pct_nh_aian_hh_below_rcm,
                              num_nh_other_hh_below_rcm, pct_nh_other_hh_below_rcm,
-                             num_hh_california) %>%
+                             num_hh) %>%
  
-   rename(geoname = county, total_pop = num_hh_california)
+   rename(total_pop = num_hh)
 
 # calculate rest of universes (_pops)
 rcm_subset <- rcm_subset %>% mutate(nh_white_pop = num_nh_white_hh_below_rcm/pct_nh_white_hh_below_rcm,
@@ -73,14 +73,101 @@ rcm_subset <- rcm_subset %>% mutate(total_rate = (1 - pct_hh_below_rcm) * 100,
                                     nh_aian_rate = (1 - pct_nh_aian_hh_below_rcm) * 100,
                                     nh_other_rate = (1 - pct_nh_other_hh_below_rcm) * 100)
 
-# add geolevel
-d <- rcm_subset %>% mutate(geolevel = ifelse(geoname == "California", "state", "county")) %>% 
-
-  # select just fields we want  
-  select(geoid, geoname, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate")) %>%
+# add select just fields we want
+d <- rcm_subset %>% select(geoid, geoname, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate")) %>%
   
   # filter out regions
   filter(!geoid %in% c("06117","06119","06121","06123","06125","06127","06129"))
+
+# 
+# ################# STATE ASSEMBLY ########################
+# 
+# rcm_puma <- dbGetQuery(con_shared, "SELECT * FROM economic.uw_2025_puma_real_cost_measure") %>%
+#   rename(puma = geoid)
+# 
+# # read in croswalk
+# assm_crosswalk <- dbGetQuery(con_shared, "select geo_id AS puma, sldl24 AS geoid, afact from crosswalks.puma_2020_state_assembly_2024")
+# 
+# # join assm crosswalk to data expecting pumas will be in multiple districts
+# rcm_assm <- left_join(rcm_puma, assm_crosswalk, by="puma") 
+# 
+# # select only fields we want
+# rcm_assm_subset <- rcm_assm %>% select(geoid, geoname, geolevel, afact, 
+#                              num_hh_below_rcm, pct_hh_below_rcm, 
+#                              num_nh_white_hh_below_rcm, pct_nh_white_hh_below_rcm,
+#                              num_nh_black_hh_below_rcm, pct_nh_black_hh_below_rcm,
+#                              num_nh_api_hh_below_rcm, pct_nh_api_hh_below_rcm,
+#                              num_latino_hh_below_rcm, pct_latino_hh_below_rcm,
+#                              num_nh_aian_hh_below_rcm, pct_nh_aian_hh_below_rcm,
+#                              num_nh_other_hh_below_rcm, pct_nh_other_hh_below_rcm,
+#                              num_hh) %>%
+#   
+#   rename(total_pop = num_hh)
+# 
+# 
+# # calculate rest of universes (_pops)
+# rcm_assm_subset <- rcm_assm_subset %>% mutate(nh_white_pop = num_nh_white_hh_below_rcm/pct_nh_white_hh_below_rcm,
+#                                     nh_black_pop = num_nh_black_hh_below_rcm/pct_nh_black_hh_below_rcm,
+#                                     nh_api_pop = num_nh_api_hh_below_rcm/pct_nh_api_hh_below_rcm,
+#                                     latino_pop = num_latino_hh_below_rcm/pct_latino_hh_below_rcm,
+#                                     nh_aian_pop = num_nh_aian_hh_below_rcm/pct_nh_aian_hh_below_rcm,
+#                                     nh_other_pop = num_nh_other_hh_below_rcm/pct_nh_other_hh_below_rcm)
+# 
+# # calculate ABOVE RCM raws
+# rcm_assm_subset <- rcm_assm_subset  %>% mutate(total_raw = total_pop - num_hh_below_rcm,
+#                                     nh_white_raw = nh_white_pop - num_nh_white_hh_below_rcm,
+#                                     nh_black_raw = nh_black_pop - num_nh_black_hh_below_rcm,
+#                                     nh_api_raw = nh_api_pop - num_nh_api_hh_below_rcm,
+#                                     latino_raw = latino_pop - num_latino_hh_below_rcm,
+#                                     nh_aian_raw = nh_aian_pop - num_nh_aian_hh_below_rcm,
+#                                     nh_other_raw = nh_other_pop - num_nh_other_hh_below_rcm)
+# 
+# # calculate pop-wt'd pct of indicator to each leg dist, 
+# # e.g., if puma is in 2 districts, and the afact for dist 1 is .7 and the other .3, then we'd attribute 70% of incidents in that zip to dist 1 and 30% of incidents to dist 2.
+# #mutate(pop_wt_num_involved_civilians = num_involved_civilians * afact) %>%
+# 
+# # calculate rest of universes (_pops) - WEIGHTED  
+# rcm_assm_subset <- rcm_assm_subset %>% mutate(nh_white_pop = nh_white_pop * afact,
+#                                               nh_black_pop = nh_black_pop * afact,
+#                                               nh_api_pop = nh_api_pop * afact,
+#                                               latino_pop = latino_pop * afact,
+#                                               nh_aian_pop = nh_aian_pop * afact,
+#                                               nh_other_pop = nh_other_pop * afact)
+# 
+# # calculate ABOVE RCM raws - WEIGHTED
+# rcm_assm_subset <- rcm_assm_subset  %>% mutate(total_raw = total_raw * afact,
+#                                                nh_white_raw = nh_white_raw * afact,
+#                                                nh_black_raw = nh_black_raw * afact,
+#                                                nh_api_raw = nh_api_raw * afact,
+#                                                latino_raw = latino_raw * afact,
+#                                                nh_aian_raw = nh_aian_raw * afact,
+#                                                nh_other_raw = nh_other_raw * afact)
+# 
+# # select columns we want
+# d_assm <- rcm_assm_subset %>% select(geoid, ends_with("_pop"), ends_with("_raw")) %>%
+#   
+#   # summarize by district
+#   group_by(geoid) %>% summarise_all(sum) %>% 
+#   
+#   # calculate district rates
+#   mutate(total_rate = total_raw / total_pop * 100,
+#   nh_white_rate = nh_white_raw / nh_white_pop * 100,
+#   nh_black_rate = nh_black_raw / nh_black_pop * 100,
+#   nh_api_rate = nh_api_raw / nh_api_pop * 100,
+#   latino_rate = latino_raw / latino_pop * 100,
+#   nh_aian_rate = nh_aian_raw / nh_aian_pop * 100,
+#   nh_other_rate = nh_other_raw /  nh_other_pop * 100)
+
+# THIS RESULTS IN TOO FEW ASSEMBLY DISTRICT RATES SO DROPPING LEG DIST AS AN OPTION
+# LOOKING BACK AT THE ORIGINAL DATA I ONLY SAW 1 PUMA WITH RATES FOR 3 RACES AND MAY WITH ZERO
+  
+# NOT DOING STATE SENATE BECAUSE ASSEMBLY IS NOT GOOD ENOUGH.
+  
+  ################# STATE SENATE ########################
+
+# read in croswalk
+#sen_crosswalk <- dbGetQuery(con_shared, "select geo_id AS puma, sldu24 AS geoid, afact from crosswalks.puma_2020_state_senate_2024")
+
 
 
 # Screen data ----------------------------------------------------------
@@ -159,10 +246,10 @@ state_table_name <- paste0("arei_econ_real_cost_measure_state_", rc_yr)
 indicator <- paste0("Created on ", Sys.Date(), ". Households above the real cost of living (data from ", data_yr, "). This data is")
 source <- paste0("United Ways of California ", curr_yr, " ", dwnld_url, ". QA doc: ", qa_filepath)
 
-to_postgres(county_table,state_table)
+#to_postgres(county_table,state_table)
 #leg_to_postgres()
 
 
-#dbDisconnect(con)
-#dbDisconnect(con2)
+dbDisconnect(con_rc)
+dbDisconnect(con_shared)
 
