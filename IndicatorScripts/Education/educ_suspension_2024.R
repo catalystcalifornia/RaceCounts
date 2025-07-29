@@ -121,7 +121,12 @@ df_final <- df_wide %>%
     geoname=ifelse(!is.na(districtname), districtname, geoname)) %>% 
   select(-c(geoid.y, districtname, countycode, districtcode)) %>% 
   # add geolevel for RC calc functions
-  mutate(geolevel = ifelse(geoname == "California", "state", "county")) %>%
+  mutate(geolevel = case_when(
+    aggregatelevel=="T"~"state",
+    aggregatelevel=='C'~"county",
+    aggregatelevel=="D"~"place",
+    .default = aggregatelevel
+  )) %>%
   relocate(geoid, geoname, cdscode, aggregatelevel, geolevel) %>%
   # remove records without fips codes
   filter(!is.na(geoid) & geoid != "No Data") %>%
@@ -149,7 +154,9 @@ d <- calc_id(d) #calculate index of disparity
 # View(d)
 
 #split STATE into separate table and format id, name columns
-state_table <- d[d$geoname == 'California', ] %>% select(-c(cdscode, aggregatelevel))
+state_table <- d %>%
+  filter(geolevel=="state") %>%
+  select(-c(cdscode, aggregatelevel))
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
@@ -157,7 +164,9 @@ state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id
 # View(state_table)
 
 #remove state from county table
-county_table <- d[d$aggregatelevel == 'C', ] %>% select(-c(cdscode, aggregatelevel))
+county_table <- d %>%
+  filter(geolevel=="county") %>% 
+  select(-c(cdscode, aggregatelevel))
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
@@ -166,7 +175,9 @@ county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "count
 # View(county_table)
 
 #split CITY into separate table
-city_table <- d[d$aggregatelevel == 'D', ] %>% select(-c(aggregatelevel))
+city_table <- d %>%
+  filter(geolevel=="place") %>% 
+  select(-c(aggregatelevel))
 
 #calculate DISTRICT z-scores
 city_table <- calc_z(city_table)
