@@ -118,7 +118,7 @@ df_final <- left_join(df_wide, districts, by = c('cdscode')) %>% dplyr::rename("
   select(-c(geoid.y, districtname)) %>% distinct() %>%  # combine distinct county and district geoid matched df's
   relocate(geoid, geoname, cdscode, aggregatelevel)
 
-df_final <- filter(df_final, !is.na(geoid)) # remove records without fips codes
+df_final <- filter(df_final, !is.na(geoid) & geoid != "No Data") # remove records without fips codes
 
 d <- df_final
 
