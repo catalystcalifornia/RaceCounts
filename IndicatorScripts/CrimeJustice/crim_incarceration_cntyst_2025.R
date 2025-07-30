@@ -29,7 +29,7 @@ con_shared <- connect_to_db("rda_shared_data")
 curr_yr <- "2020-2024"  # must keep same format
 dwnld_url <- "https://github.com/vera-institute/incarceration-trends"
 rc_schema <- "v7"
-yr <- "2025"
+rc_yr <- "2025"
 
 
 ############### PREP DATA ########################
@@ -92,7 +92,8 @@ d <- df_summary %>% mutate(geolevel = ifelse(geoid == '06', 'state', 'county')) 
 
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
+#source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
+source("./Functions/RC_Functions.R")
 
 #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max' as 'best'
 d$asbest = 'min'    
@@ -133,5 +134,5 @@ source <- paste0("Vera Institute (", curr_yr, ")")
 #send tables to postgres
 #to_postgres(county_table, state_table)
 
-dbDisconnect(con)
-dbDisconnect(con2)
+dbDisconnect(con_rc)
+dbDisconnect(con_shared)
