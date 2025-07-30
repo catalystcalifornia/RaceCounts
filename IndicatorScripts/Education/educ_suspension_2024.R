@@ -7,7 +7,7 @@ if(length(new.packages)) install.packages(new.packages)
 
 library(readr)
 library(dplyr) # to scrape metadata table from cde website
-library(httr2) # to scrape metadata table from cde website
+library(httr2) # to scrape metadata table from cde website and avoid being flagged as bot
 library(tidyr)
 library(DBI)
 library(RPostgres)
@@ -22,7 +22,7 @@ source("./Functions/rdashared_functions.R") # get_cde_data(), get_cde_metadata()
 # create connection for rda database
 con <- connect_to_db("rda_shared_data")
 
-##### update each year #####
+##### update/confirm each year #####
 curr_yr <- '2023_24' 
 acs_yr <- 2023
 rc_yr <- '2025'
@@ -122,7 +122,7 @@ df_final <- df_wide %>%
   mutate(geolevel = case_when(
     aggregatelevel=="T"~"state",
     aggregatelevel=='C'~"county",
-    aggregatelevel=="D"~"place",
+    aggregatelevel=="D"~"district",
     .default = aggregatelevel
   )) %>%
   relocate(geoid, geoname, cdscode, aggregatelevel, geolevel) %>%
@@ -172,9 +172,9 @@ county_table <- calc_ranks(county_table)
 county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
 # View(county_table)
 
-#split CITY into separate table
+#split CITY (district for education data) into separate table
 city_table <- d %>%
-  filter(geolevel=="place") %>% 
+  filter(geolevel=="district") %>% 
   select(-c(aggregatelevel))
 
 #calculate DISTRICT z-scores
