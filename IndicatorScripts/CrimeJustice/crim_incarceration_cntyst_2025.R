@@ -1,19 +1,22 @@
-## Incarceration (County and State-Level) for RC v6 -- minor update to county/state exports only
+## Incarceration (County and State-Level) for RC v7
 
 ## Set up ----------------------------------------------------------------
 #install packages if not already installed
-list.of.packages <- c("RPostgreSQL", "sf", "janitor", "tidyr", "dplyr", "data.table", "usethis")
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
+packages <- c("tidyr", "dplyr", "sf", "tidycensus", "tidyverse", "usethis", "readxl", "RPostgres")  
 
-## packages
-library(RPostgreSQL)
-library(sf)
-library(janitor) #used for adorn_totals() in state calcs
-library(tidyr)
-library(dplyr)
-library(data.table)
-library(usethis)
+install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
+
+if(length(install_packages) > 0) { 
+  install.packages(install_packages) 
+  
+} else { 
+  
+  print("All required packages are already installed.") 
+} 
+
+for(pkg in packages){ 
+  library(pkg, character.only = TRUE) 
+} 
 
 options(scipen = 999) # disable scientific notation
 
@@ -22,10 +25,11 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
 con2 <- connect_to_db("rda_shared_data")
 
-# Update each year
-curr_yr <- '2018'
-rc_yr <- '2024'
-rc_schema <- 'v6'
+# define variables used in several places that must be updated each year
+curr_yr <- "2023"  # must keep same format
+dwnld_url <- "https://github.com/vera-institute/incarceration-trends"
+rc_schema <- "v7"
+yr <- "2025"
 
 
 ############### PREP DATA ########################
