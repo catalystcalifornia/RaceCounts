@@ -1,26 +1,32 @@
-### Chronic Absenteeism RC v6 ### 
+### Chronic Absenteeism RC v7 ### 
 
 #install packages if not already installed
-list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "usethis")
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
+packages <- c("data.table","stringr","dplyr","RPostgres","dbplyr","srvyr", "DBI", "tidyverse",
+              "tidycensus","tidyr","rpostgis", "here", "sf", "usethis", "readr", "rvest")
 
-#library(readr)
-library(dplyr)
-library(tidyr)
-library(DBI)
-library(RPostgreSQL)
-library(tidycensus)
-library(sf)
-library(tidyverse) # to scrape metadata table from cde website
-#library(rvest) # to scrape metadata table from cde website
-library(stringr) # cleaning up data
-library(usethis) # connect to github
+install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
+if(length(install_packages) > 0) { 
+  install.packages(install_packages) 
+  
+} else { 
+  
+  print("All required packages are already installed.") 
+} 
+
+for(pkg in packages){ 
+  library(pkg, character.only = TRUE) 
+} 
+
+options(scipen = 100) # disable scientific notation
 
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
-con <- connect_to_db("rda_shared_data")
+con_shared <- connect_to_db("rda_shared_data")
+con_rc <- connect_to_db("racecounts")
+
+# update QA doc filepath
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Education\\QA_Sheet_Chr_Abs.docx"
 
 # update each year
 curr_yr <- '2023_24' # CDE data year, must keep this format
@@ -170,4 +176,8 @@ source <- paste0("CDE ", curr_yr, " https://www.cde.ca.gov/ds/ad/filesabd.asp")
 #send tables to postgres
 to_postgres(county_table,state_table)
 city_to_postgres()
+
+#disconnect
+dbDisconnect(con_shared)
+dbDisconnect(con_rc)
 
