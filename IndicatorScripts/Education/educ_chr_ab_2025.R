@@ -35,30 +35,30 @@ rc_schema <- 'v7'
 
 ############### PREP RDA_SHARED_DATA TABLE ########################
 
-## Get Chronic Absenteeism
-  filepath = "https://www3.cde.ca.gov/demo-downloads/attendance/chronicabsenteeism24.txt"   # will need to update each year
-  fieldtype = 1:12 # specify which cols should be varchar, the rest will be assigned numeric in table export
-
-## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
-     table_schema <- "education"
-     table_name <- "cde_multigeo_chronicabs_2023_24"
-     table_comment_source <- "NOTE: Only use chronic absenteeism data from this link. The Dashboard download is incomplete and lacks data for most high schools (at least within LAUSD).
-     Chronic absenteeism data downloaded from https://www.cde.ca.gov/ds/ad/filesabd.asp"
-     table_source <- "Wide data format, multigeo table with state, county, district, and school"
-
-## Run function to prep and export rda_shared_data table
-  source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
-  df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
-  View(df)
-
-## Run function to add rda_shared_data column comments
-# See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
-url <-  "https://www.cde.ca.gov/ds/ad/fsabd.asp"   # define webpage with metadata
-html_nodes <- "table"
-colcomments <- get_cde_metadata(url, html_nodes, table_schema, table_name)
-View(colcomments)
-
-df <- st_read(con, query = "SELECT * FROM education.cde_multigeo_chronicabs_2023_24") # comment out code to pull data and use this once rda_shared_data table is created
+# ## Get Chronic Absenteeism
+#   filepath = "https://www3.cde.ca.gov/demo-downloads/attendance/chronicabsenteeism24.txt"   # will need to update each year
+#   fieldtype = 1:12 # specify which cols should be varchar, the rest will be assigned numeric in table export
+# 
+# ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+#      table_schema <- "education"
+#      table_name <- "cde_multigeo_chronicabs_2023_24"
+#      table_comment_source <- "NOTE: Only use chronic absenteeism data from this link. The Dashboard download is incomplete and lacks data for most high schools (at least within LAUSD).
+#      Chronic absenteeism data downloaded from https://www.cde.ca.gov/ds/ad/filesabd.asp"
+#      table_source <- "Wide data format, multigeo table with state, county, district, and school"
+# 
+# ## Run function to prep and export rda_shared_data table
+#   source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
+#   df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
+#   View(df)
+# 
+# ## Run function to add rda_shared_data column comments
+# # See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
+# url <-  "https://www.cde.ca.gov/ds/ad/fsabd.asp"   # define webpage with metadata
+# html_nodes <- "table"
+# colcomments <- get_cde_metadata(url, html_nodes, table_schema, table_name)
+# View(colcomments)
+# 
+df <- st_read(con_shared, query = "SELECT * FROM education.cde_multigeo_chronicabs_2023_24") # comment out code to pull data and use this once rda_shared_data table is created
 
 #### Continue prep for RC ####
 
@@ -110,7 +110,7 @@ names(counties) <- c("geoid", "geoname")
 county_match <- filter(df_wide,aggregatelevel=="C") %>% right_join(counties,by=c('countyname'='geoname'))
 
 # get school district geoids - pull in active district records w/ geoids from CDE schools' list (NCES District ID)
-districts <- st_read(con, query = "SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_2023_24 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'")
+districts <- st_read(con_shared, query = "SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_2023_24 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'")
 district_match <- filter(df_wide,aggregatelevel=="D") %>% right_join(districts,by='cdscode')
 
 matched <- union(county_match, district_match) %>% select(c(cdscode, geoid)) # combine county and district geoid match df's back together
@@ -120,13 +120,19 @@ df_final <- df_final %>% relocate(geoid) %>% mutate(countyname = ifelse(aggregat
 df_final <- filter(df_final, !is.na(geoid)) # remove records without fips codes
 df_final <- rename(df_final, geoname = countyname)
 
-d <- df_final
+# add geolevel and remove records with no geoids
+d <- df_final %>% mutate(geolevel = ifelse(aggregatelevel == "T", "state",
+                                           ifelse(aggregatelevel == "C", "county",
+                                                  ifelse(aggregatelevel == "D", "district", "")))) %>%
+  relocate(geolevel, .after = geoname) %>%
+  filter(geoid != "No Data")
 
 
 ####################################################################################################################################################
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
+# source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
+source("./Functions/RC_Functions.R")
 
 d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
 
@@ -174,8 +180,8 @@ indicator <- paste0("Created on ", Sys.Date(), ". Chronic Absenteeism Eligible C
 source <- paste0("CDE ", curr_yr, " https://www.cde.ca.gov/ds/ad/filesabd.asp")
 
 #send tables to postgres
-to_postgres(county_table,state_table)
-city_to_postgres()
+#to_postgres(county_table,state_table)
+#city_to_postgres()
 
 #disconnect
 dbDisconnect(con_shared)
