@@ -49,7 +49,9 @@ table_source <- "Wide data format, multigeo table with state, county, district, 
 # colcomments <- get_cde_metadata(url, html_element, table_schema, table_name, exclude_cols)
 # View(colcomments)
 
-##### get county geoids-----
+
+##### Once data imported to rda_shared, pull in and start RC data prep #####
+# get county geoids-----
 census_api_key(census_key1, overwrite = TRUE)
 Sys.getenv("CENSUS_API_KEY") # confirms value saved to .renviron
 counties <- get_acs(geography = "county", 
@@ -61,24 +63,15 @@ counties <- get_acs(geography = "county",
   rename(geoid=GEOID,
          geoname=NAME)
 
-#### Continue prep for RC ####
-# comment out code to pull data and use this once rda_shared_data table is created
-df <- dbGetQuery(con, statement = paste0("SELECT * FROM ", table_schema, ".", table_name,";")) 
-
-#filter for county and state rows, all types of schools, and racial categories only
-df_subset <- df %>% 
-  filter(aggregatelevel %in% c("C", "T", "D") & 
-           charteryn == "All" & 
-           reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
+# Continue prep for RC ####
+# get indicator table from rda_shared_data 
+df <- dbGetQuery(con, statement = paste0("SELECT * FROM ", table_schema, ".", table_name,";")) %>%
   # select needed fields
-  select(cdscode, aggregatelevel, countycode, districtcode, countyname, 
+  select(cdscode, aggregatelevel, countycode, districtcode, countyname, charteryn,
          districtname, reportingcategory, unduplicatedcountofstudentssuspendedtotal, 
          cumulativeenrollment, suspensionratetotal) %>%
-  # rename for standard RC columns names
-  rename(
-    raw = unduplicatedcountofstudentssuspendedtotal, 
-    pop = cumulativeenrollment, 
-    rate = suspensionratetotal) %>%
+  # filter for race categories:
+  filter(reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
   #rename race categories
   mutate(reportingcategory=case_when(
     reportingcategory=="TA"~"total",
@@ -91,54 +84,132 @@ df_subset <- df %>%
     reportingcategory=="RT"~"nh_twoormor",
     reportingcategory=="RW"~"nh_white",
     .default = reportingcategory
-  ))
-
-# pivot wider
-df_wide <- df_subset %>% 
-  pivot_wider(names_from = reportingcategory, 
-              names_glue = "{reportingcategory}_{.value}", 
-              values_from = c(raw, pop, rate)) %>% 
-  rename(geoname=countyname) %>%
-  # get county geoids
-  left_join(counties, by="geoname") %>%
-  # rename state to California and add geoid
-  mutate(geoname=ifelse(geoname=="State", "California", geoname)) %>%
-  within(geoid[geoname == 'California'] <- '06') 
-
+  )) %>%
+  # rename for standard RC columns names
+  rename(
+    raw = unduplicatedcountofstudentssuspendedtotal, 
+    pop = cumulativeenrollment, 
+    rate = suspensionratetotal)
+  
 # get school district geoids (NCES District ID) - pull in active district records w/ geoids and names from CDE schools' list
 districts <- dbGetQuery(con, statement = 
-                          paste0("SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_", 
+                          paste0("SELECT cdscode, ncesdist AS ncesdist_geoid FROM education.cde_public_schools_", 
                                  curr_yr, 
-                                 " WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'")) 
+                                 " WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'"))
 
-df_final <- df_wide %>%
-  left_join(districts, by = "cdscode") %>% 
-  rename(geoid = geoid.x) %>%
-  mutate(
-    geoid=ifelse(aggregatelevel == "D", geoid.y, geoid), 
-    geoname=ifelse(!is.na(districtname), districtname, geoname)) %>% 
-  select(-c(geoid.y, districtname, countycode, districtcode)) %>% 
-  # add geolevel for RC calc functions
+# get leg districts (senate, assembly) and join to districts
+xwalk_school_sen <- dbGetQuery(con, paste0("SELECT cdscode, ca_senate_district FROM crosswalks.cde_school_leg_districts_2022_23")) %>%
+  mutate(leg_id = paste0('060', ca_senate_district),
+         geolevel = 'sldu')
+
+xwalk_school_assm <- dbGetQuery(con, paste0("SELECT cdscode, ca_assembly_district FROM crosswalks.cde_school_leg_districts_2022_23")) %>%
+  mutate(leg_id = paste0('060', ca_assembly_district),
+         geolevel = 'sldl')
+
+# join senate and assembly districts to create senate and assm dfs
+joined <- df %>% 
+  left_join(districts, by="cdscode") %>%
+  left_join(xwalk_school_sen, by="cdscode") %>% 
+  rename(senate_geoid=leg_id,
+         sldu_geolevel=geolevel) %>%
+  left_join(xwalk_school_assm, by="cdscode") %>%
+  rename(assm_geoid=leg_id,
+         sldl_geolevel=geolevel)
+
+df <- joined
+
+df_senate <- df %>% 
+  filter(!is.na(sldu_geolevel)) %>% 
+  mutate(geolevel="sldu",
+         final_geoid=senate_geoid,
+         geoname=paste("Senate District", ca_senate_district)) %>%
+  # select needed cols
+  select(final_geoid, geoname, geolevel, reportingcategory, raw, pop, rate) %>%
+  group_by(final_geoid, geoname, geolevel, reportingcategory) %>%
+  summarize(
+    raw=sum(raw, na.rm=TRUE),
+    pop=sum(pop, na.rm = TRUE),
+    rate=sum(raw, na.rm=TRUE)/sum(pop, na.rm=TRUE)*100
+  ) %>%
+  ungroup()
+
+df_assm <- df %>% 
+  filter(!is.na(sldl_geolevel)) %>% 
+  mutate(geolevel="sldl",
+         final_geoid=assm_geoid,
+         geoname=paste("Assembly District", ca_assembly_district)) %>%
+  # select needed cols
+  select(final_geoid, geoname, geolevel, reportingcategory, raw, pop, rate) %>%
+  group_by(final_geoid, geoname, geolevel, reportingcategory) %>%
+  summarize(
+    raw=sum(raw, na.rm=TRUE),
+    pop=sum(pop, na.rm = TRUE),
+    rate=sum(raw, na.rm=TRUE)/sum(pop, na.rm=TRUE)*100
+  ) %>%
+  ungroup()
+
+df_legdists <- rbind(df_senate, df_assm) %>%
+  mutate(cdscode=NA)
+
+# filter for county and state rows, all types of schools, and racial categories only
+df_cntyst_districts <- df %>% 
+  filter(aggregatelevel %in% c("C", "T", "D") &
+                      charteryn == "All") %>%
+  select(-charteryn) %>%
   mutate(geolevel = case_when(
     aggregatelevel=="T"~"state",
     aggregatelevel=='C'~"county",
     aggregatelevel=="D"~"district",
     .default = aggregatelevel
   )) %>%
-  relocate(geoid, geoname, cdscode, aggregatelevel, geolevel) %>%
+  # get county geoids
+  left_join(counties, by=c("countyname" ="geoname")) %>%
+  mutate(
+    # create geoid
+    final_geoid=case_when(
+      # district geoids should be ncesdist
+      !is.na(ncesdist_geoid)~ncesdist_geoid,
+      # county geoids should be geoid (counties and state will have NA ncesdist)
+      (is.na(ncesdist_geoid)&!is.na(geoid))~geoid,
+      # only state will have NA geoid and ncesdist_geoid
+      (is.na(ncesdist_geoid)&is.na(geoid))~"06",
+      .default=("unassigned geoid")),
+    # create geoname
+    geoname=case_when(
+      geolevel=="state"~"California",
+      geolevel=="county"~countyname,
+      geolevel=="district"~districtname,
+      .default="no geolevel, no name")) %>%
+  # select needed cols
+  select(final_geoid, geoname, geolevel, cdscode, reportingcategory, raw, pop, rate) 
+
+# combine all geolevels into one table
+df_subset <- rbind(df_legdists, df_cntyst_districts) %>%
+  rename(geoid=final_geoid)
+  
+# pivot wider, create rc standard column names
+df_wide <- df_subset %>% 
+  pivot_wider(names_from = reportingcategory, 
+              names_glue = "{reportingcategory}_{.value}", 
+              values_from = c(raw, pop, rate)) 
+
+df_final <- df_wide %>%
+  relocate(geoid, geoname, cdscode, geolevel) %>%
   # remove records without fips codes
   filter(!is.na(geoid) & geoid != "No Data") %>%
-  # combine distinct county and district geoid matched df's
+  # there are duplicate geolevel and 
   distinct()
  
 # View(df_final)
 
-d <- df_final
+table(df_final$geolevel)
 
 ####################################################################################################################################################
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
 source("./Functions/RC_Functions.R")
+
+d <- df_final
 
 # Assign Suspensions asbest to 'min' (i.e., fewer suspensions is best)
 d$asbest = 'min'    
@@ -151,42 +222,71 @@ d <- calc_p_var(d) #calculate (row wise) population or sample variance. be sure 
 d <- calc_id(d) #calculate index of disparity
 # View(d)
 
-#split STATE into separate table and format id, name columns
+# split STATE into separate table and format id, name columns
 state_table <- d %>%
   filter(geolevel=="state") %>%
-  select(-c(cdscode, aggregatelevel))
+  select(-c(cdscode))
 
-#calculate STATE z-scores
+# calculate STATE z-scores
 state_table <- calc_state_z(state_table)
-state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
+state_table <- state_table %>% 
+  dplyr::rename(
+    state_name=geoname, 
+    state_id= geoid)
 # View(state_table)
 
-#remove state from county table
+
+# remove state from county table
 county_table <- d %>%
   filter(geolevel=="county") %>% 
-  select(-c(cdscode, aggregatelevel))
+  select(-c(cdscode))
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
-county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
+county_table <- county_table %>% 
+  dplyr::rename(county_name=geoname,
+                county_id=geoid)
 # View(county_table)
+
 
 #split CITY (district for education data) into separate table
 city_table <- d %>%
-  filter(geolevel=="district") %>% 
-  select(-c(aggregatelevel))
+  filter(geolevel=="district")
 
 #calculate DISTRICT z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
-city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" = "geoname") %>% relocate(cdscode, .after = dist_id) 
+city_table <- city_table %>% 
+  dplyr::rename(dist_id = geoid, 
+                district_name = geoname) %>% 
+  relocate(cdscode, .after = dist_id)
 # View(city_table)
+
+# split senate districts (sldu) into separate table
+sldu_table <- d %>%
+  filter(geolevel=="sldu") %>% 
+  select(-c(cdscode))
+
+sldu_table <- calc_z(sldu_table)
+sldu_table<- calc_ranks(sldu_table)
+
+# split assembly districts (sldl) into separate table
+sldl_table <- d %>%
+  filter(geolevel=="sldl") %>% 
+  select(-c(cdscode))
+
+sldl_table <- calc_z(sldl_table)
+sldl_table<- calc_ranks(sldl_table)
+
+leg_table <- rbind(sldu_table, sldl_table) %>% 
+  dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname")
 
 ###update info for postgres tables###
 county_table_name <- paste0("arei_educ_suspension_county_", rc_yr)
 state_table_name <- paste0("arei_educ_suspension_state_", rc_yr)
 city_table_name <- paste0("arei_educ_suspension_district_", rc_yr)
+leg_table_name <- paste0("arei_educ_suspension_leg_",rc_yr)
 
 indicator <- paste0("Created on ", Sys.Date(), ". Unduplicated students suspended, cumulative enrollment, and unduplicated suspension rate. This data is")
 source <- paste("CDE", curr_yr, url)
@@ -194,4 +294,5 @@ source <- paste("CDE", curr_yr, url)
 #send tables to postgres
 # to_postgres(county_table,state_table)
 # city_to_postgres()
+# leg_to_postgres(leg_table)
 # dbDisconnect(con)
