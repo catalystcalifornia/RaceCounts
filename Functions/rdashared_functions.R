@@ -436,6 +436,17 @@ get_cde_schools <- function(school_url, school_dwnld_url, school_layout_url, tab
                 df <- read_delim(file = school_url, delim = "\t", na = c("*", ""))
                 View(head(df))
                 
+                #### THIS SECTION NOT WORKING YET ####
+                # # download data to W drive if not already downloaded
+                # if (file.exists(paste0("W:\\Data\\Education\\Public Schools\\", curr_yr, "sb_ca20", str_sub(curr_yr, -2), "_all_ascii_v1.txt"))) {
+                #   # Print message if file exists
+                #   print(paste0("Schools file is already saved here: W:\\Data\\Education\\California Department of Education\\Public Schools\\", str_sub(curr_yr, 1,4), "-20", str_sub(curr_yr, -2), "\\"))
+                # } else {
+                #   # Download file and print message if file doesn't exist
+                #   write.table(df, paste0("W:\\Data\\Education\\California Department of Education\\Public Schools\\", str_sub(curr_yr, 1,4), "-20", str_sub(curr_yr, -2), "\\", "pubschls.txt"))
+                #   print(paste0("Schools file does not exist on W drive. Saving to W:\\Data\\Education\\Public Schools\\", str_sub(curr_yr, 1,4), "-20", str_sub(curr_yr, -2), " now."))
+                # }
+                
                 #add latitude and longitude numeric type columns, used later to add geom field
                 df$latitude <- as.numeric(df$Latitude, na.rm = TRUE)
                 df$longitude <- as.numeric(df$Longitude, na.rm = TRUE)
@@ -465,7 +476,7 @@ get_cde_schools <- function(school_url, school_dwnld_url, school_layout_url, tab
                 charvect[(lat_pos:long_pos)] <- "numeric"             # specify lat/long as numeric
                 charvect
                 
-                dbWriteTable(con, c(table_schema, table_name), df, 
+                dbWriteTable(con, Id(table_schema, table_name), df, 
                              overwrite = FALSE, row.names = FALSE,
                              field.types = charvect)
                 print("Schools table exported to postgres.")
@@ -473,7 +484,8 @@ get_cde_schools <- function(school_url, school_dwnld_url, school_layout_url, tab
                 # Add geom field to postgres table based on lat/long
                 geom <- paste0("alter table ", table_schema, ".", table_name, " add column geom Geometry('POINT', 3310);
                             update ", table_schema, ".", table_name, " set geom = st_setsrid(st_point(longitude, latitude), 3310);")
-                dbSendQuery(conn = con, geom)
+                dbBegin(con)
+                dbExecute(con, geom)
                 print("Geom column added to schools postgres table.")
                 
                 
@@ -481,8 +493,10 @@ get_cde_schools <- function(school_url, school_dwnld_url, school_layout_url, tab
                 table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
                 
                 # send table comment to database
-                dbSendQuery(conn = con, table_comment)      			
+                dbExecute(con, table_comment)      			
                 print("Schools table comment exported to postgres.")
+                
+                dbCommit(con)
                 
                 return(df)
 }
@@ -744,7 +758,7 @@ get_caaspp_data <- function(url, zipfile, file, url2, zipfile2, file2, url3, dwn
    print("Table sent to postgres and imported to R.")
   
   #write comment to table.
-   table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
+   table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ". QA doc: ", qa_filepath,"';")
   
   #send table comment to database
    dbSendQuery(conn = con, table_comment)
