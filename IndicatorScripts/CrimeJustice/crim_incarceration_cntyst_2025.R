@@ -2,7 +2,7 @@
 
 ## Set up ----------------------------------------------------------------
 #install packages if not already installed
-packages <- c("tidyr", "dplyr", "sf", "tidycensus", "tidyverse", "usethis", "readxl", "RPostgres")  
+packages <- c("tidyr", "dplyr", "janitor", "tidycensus", "tidyverse", "usethis", "readxl", "RPostgres")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -22,21 +22,41 @@ options(scipen = 999) # disable scientific notation
 
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
-con <- connect_to_db("racecounts")
-con2 <- connect_to_db("rda_shared_data")
+con_rc <- connect_to_db("racecounts")
+con_shared <- connect_to_db("rda_shared_data")
 
 # define variables used in several places that must be updated each year
-curr_yr <- "2023"  # must keep same format
+curr_yr <- "2020-2024"  # must keep same format
 dwnld_url <- "https://github.com/vera-institute/incarceration-trends"
 rc_schema <- "v7"
 yr <- "2025"
 
 
 ############### PREP DATA ########################
-# must update yr in the query below
-df <- st_read(con2, query = "SELECT fips as geoid, county_name AS geoname, total_pop_15to64, aapi_pop_15to64, black_pop_15to64, latinx_pop_15to64, native_pop_15to64, white_pop_15to64, 
-                            total_jail_pop, aapi_jail_pop, black_jail_pop, latinx_jail_pop, native_jail_pop, white_jail_pop FROM crime_and_justice.vera_county_incarceration_trends_1970_2018
-                            WHERE year = '2018'")
+
+county_data <- read_excel("W:/Data/Crime and Justice/vera_institute/2024/incarceration_trends_county.xlsx")
+
+# filter for latest complete year and CA counties
+df <- county_data %>% filter(year %in% c(2020, 2021, 2022, 2023, 2024), str_detect(fips, "^06")) %>% 
+  
+  # select columns we want
+  select(fips, county_name, 
+         total_pop_15to64, 
+         aapi_pop_15to64, 
+         black_pop_15to64, 
+         latinx_pop_15to64, 
+         native_pop_15to64, 
+         white_pop_15to64, 
+         
+         total_jail_pop, 
+         aapi_jail_pop, 
+         black_jail_pop, 
+         latinx_jail_pop, 
+         native_jail_pop, 
+         white_jail_pop) %>%
+  
+  # rename a couple
+  rename(geoid = fips, geoname = county_name)
 
 #COUNTY PREP
 #rename columns and clean data. be sure to assign correct race/eth labels (non-Latinx or not etc.)
@@ -49,13 +69,24 @@ names(df) <- gsub("white", "nh_white", names(df))
 names(df) <- gsub("latinx", "latino", names(df))
 df$geoname <- gsub(" County", "", df$geoname)
 
+df_summary <- df %>%
+  group_by(geoid, geoname) %>%
+  summarise(across(where(is.numeric), ~ mean(.x, na.rm = TRUE)))
 
 #STATE PREP
-df <- df %>% adorn_totals(name = "06", fill = "California")
+df_summary <- df_summary %>% adorn_totals(name = "06", fill = "California")
+View(df_summary)
 
-View(df)
-
-d <- df
+# add geolevel, remove NaNs, and order by geoid
+d <- df_summary %>% mutate(geolevel = ifelse(geoid == '06', 'state', 'county')) %>%
+  relocate(geolevel, .after = geoname) %>%
+  mutate(total_raw = as.numeric(str_replace(as.character(total_raw), "NaN", "")),
+         nh_api_raw = as.numeric(str_replace(as.character(nh_api_raw), "NaN", "")),
+         nh_black_raw = as.numeric(str_replace(as.character(nh_black_raw), "NaN", "")),
+         latino_raw = as.numeric(str_replace(as.character(latino_raw), "NaN", "")),
+         nh_aian_raw = as.numeric(str_replace(as.character(nh_aian_raw), "NaN", "")),
+         nh_white_raw = as.numeric(str_replace(as.character(nh_white_raw), "NaN", ""))) %>%
+  arrange(geoid)
 
 
 
