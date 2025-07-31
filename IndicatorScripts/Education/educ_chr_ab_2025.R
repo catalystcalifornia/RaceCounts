@@ -92,7 +92,11 @@ df <- dbGetQuery(con_shared, statement = "SELECT * FROM education.cde_multigeo_c
 
 ############### Leg District ###############
 # filter for schools
-leg_subset <- df %>% filter(aggregatelevel %in% c("S"))
+leg_subset <- df %>% 
+  filter(aggregatelevel %in% c("S")) %>%
+  # remove schools where last 7 digits of cdscode are all zeros
+  mutate(last_7_digits = substr(cdscode, nchar(cdscode) - 7 + 1, nchar(cdscode))) %>%
+  filter(last_7_digits != "0000000")
 
 #### Continue prep for RC ####
 # filter for county and state rows, all types of schools
@@ -132,36 +136,41 @@ counties <- get_acs(geography = "county",
   rename(geoid=GEOID, geoname=NAME) %>%
   mutate(geoname = gsub(" County, California", "", geoname))
 
-county_match <- filter(df_wide,aggregatelevel=="C") %>% right_join(counties,by=c('countyname'='geoname'))
+county_match <- df_wide %>%
+  filter(aggregatelevel=="C") %>% 
+  right_join(counties, by=c('countyname'='geoname'))
 
 # get school district geoids - pull in active district records w/ geoids from CDE schools' list (NCES District ID)
-districts <- st_read(con_shared, query = "SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_2023_24 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'")
-district_match <- filter(df_wide,aggregatelevel=="D") %>% right_join(districts,by='cdscode')
+districts <- dbGetQuery(con_shared, statement = "SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_2023_24 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'")
+district_match <- df_wide %>%
+  filter(aggregatelevel=="D") %>% 
+  right_join(districts, by='cdscode')
 
-matched <- union(county_match, district_match) %>% select(c(cdscode, geoid)) # combine county and district geoid match df's back together
-df_final <- df_wide %>% full_join(matched, by='cdscode')
-df_final <- df_final %>% relocate(geoid) %>% mutate(countyname = ifelse(aggregatelevel == "T", "California", countyname), # add geoname and geoid for state
-                                                    geoid = ifelse(aggregatelevel == "T", "06", geoid)) 
-df_final <- filter(df_final, !is.na(geoid)) # remove records without fips codes
-df_final <- rename(df_final, geoname = countyname)
+# combine county and district geoid match df's back together
+matched <- union(county_match, district_match) %>% select(c(cdscode, geoid)) 
 
-
-# remove records with no geoids
-d <- df_final %>% filter(geoid != "No Data") %>%
-  
-  # update district name
-  mutate(geoname = ifelse(geolevel == "district", districtname, geoname)) %>%
-  
+df_final <- df_wide %>% 
+  full_join(matched, by='cdscode') %>% 
+  relocate(geoid) %>%
+  rename(geoname = countyname) %>%
+  # add geoname and geoid
+  mutate(
+    geoname = case_when(
+      geolevel=="state"~"California", 
+      geolevel=="county"~geoname,
+      geolevel=="district"~districtname), 
+    geoid = case_when(
+      geolevel=="state"~"06",
+      geolevel=="county"~ geoid,
+      geolevel=="school"~cdscode)) %>%
+  # remove records without fips codes or "No Data"
+  filter(!is.na(geoid) & geoid != "No Data") %>%
   # remove columns we don't need
   select(-cdscode, -aggregatelevel, -districtname)
+ 
+d <- df_final
 
-# make separate schools df for leg work
-schools <- df_wide %>% filter(geolevel == 'school') %>% # create school-level only df
-  mutate(geoid = cdscode) %>% select(geoid, everything()) %>% # add geoid column to append to d later
-  mutate(last_7_digits = substr(cdscode, nchar(cdscode) - 7 + 1, nchar(cdscode))) %>%
-  filter(last_7_digits != "0000000")
-  
-  
+
 ####### Legislative Districts Prep From School Data #######
 ##Step 1: Pull xwalks for district level aggregation
 xwalk_school_sen <- dbGetQuery(con_shared, paste0("SELECT cdscode as geoid, ca_senate_district FROM crosswalks.cde_school_leg_districts_2022_23")) %>%
