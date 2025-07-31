@@ -160,18 +160,93 @@ d_assm <- rcm_assm_subset %>% select(geoid, ends_with("_pop"), ends_with("_raw")
   
   mutate(geolevel="sldl",
          geoname=paste("Assembly District", substr(geoid, 4, 5))) %>%
-  select(geoid, geoname, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate")) 
-
-# THIS RESULTS IN TOO FEW ASSEMBLY DISTRICT RATES SO DROPPING LEG DIST AS AN OPTION
-# LOOKING BACK AT THE ORIGINAL DATA I ONLY SAW 1 PUMA WITH RATES FOR 3 RACES AND MAY WITH ZERO
-# UPDATE: include na.rm=TRUE, there are 16 assembly districts with 3 races, 48 with 2 races, and 15 with 1 (only 1 has 0 races)
+  select(geoid, geoname, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate")) %>%
   
-# NOT DOING STATE SENATE BECAUSE ASSEMBLY IS NOT GOOD ENOUGH.
+  # replace zeros with nas
+  mutate(across(everything(), ~replace(., . == 0, NA)))
+
   
   ################# STATE SENATE ########################
 
 # read in croswalk
-#sen_crosswalk <- dbGetQuery(con_shared, "select geo_id AS puma, sldu24 AS geoid, afact from crosswalks.puma_2020_state_senate_2024")
+sen_crosswalk <- dbGetQuery(con_shared, "select geo_id AS puma, sldu24 AS geoid, afact from crosswalks.puma_2020_state_senate_2024")
+
+# join assm crosswalk to data expecting pumas will be in multiple districts
+rcm_sen <- left_join(rcm_puma, sen_crosswalk, by="puma")
+
+# select only fields we want
+rcm_sen_subset <- rcm_sen %>% select(geoid, geoname, geolevel, afact,
+                                       num_hh_below_rcm, pct_hh_below_rcm,
+                                       num_nh_white_hh_below_rcm, pct_nh_white_hh_below_rcm,
+                                       num_nh_black_hh_below_rcm, pct_nh_black_hh_below_rcm,
+                                       num_nh_api_hh_below_rcm, pct_nh_api_hh_below_rcm,
+                                       num_latino_hh_below_rcm, pct_latino_hh_below_rcm,
+                                       num_nh_aian_hh_below_rcm, pct_nh_aian_hh_below_rcm,
+                                       num_nh_other_hh_below_rcm, pct_nh_other_hh_below_rcm,
+                                       num_hh) %>%
+  
+  rename(total_pop = num_hh)
+
+
+# calculate rest of universes (_pops)
+rcm_sen_subset <- rcm_sen_subset %>% mutate(nh_white_pop = num_nh_white_hh_below_rcm/pct_nh_white_hh_below_rcm,
+                                              nh_black_pop = num_nh_black_hh_below_rcm/pct_nh_black_hh_below_rcm,
+                                              nh_api_pop = num_nh_api_hh_below_rcm/pct_nh_api_hh_below_rcm,
+                                              latino_pop = num_latino_hh_below_rcm/pct_latino_hh_below_rcm,
+                                              nh_aian_pop = num_nh_aian_hh_below_rcm/pct_nh_aian_hh_below_rcm,
+                                              nh_other_pop = num_nh_other_hh_below_rcm/pct_nh_other_hh_below_rcm)
+
+# calculate ABOVE RCM raws
+rcm_sen_subset <- rcm_sen_subset  %>% mutate(total_raw = total_pop - num_hh_below_rcm,
+                                               nh_white_raw = nh_white_pop - num_nh_white_hh_below_rcm,
+                                               nh_black_raw = nh_black_pop - num_nh_black_hh_below_rcm,
+                                               nh_api_raw = nh_api_pop - num_nh_api_hh_below_rcm,
+                                               latino_raw = latino_pop - num_latino_hh_below_rcm,
+                                               nh_aian_raw = nh_aian_pop - num_nh_aian_hh_below_rcm,
+                                               nh_other_raw = nh_other_pop - num_nh_other_hh_below_rcm)
+
+# calculate pop-wt'd pct of indicator to each leg dist,
+# e.g., if puma is in 2 districts, and the afact for dist 1 is .7 and the other .3, then we'd attribute 70% of incidents in that zip to dist 1 and 30% of incidents to dist 2.
+#mutate(pop_wt_num_involved_civilians = num_involved_civilians * afact) %>%
+
+# calculate rest of universes (_pops) - WEIGHTED
+rcm_sen_subset <- rcm_sen_subset %>% mutate(nh_white_pop = nh_white_pop * afact,
+                                              nh_black_pop = nh_black_pop * afact,
+                                              nh_api_pop = nh_api_pop * afact,
+                                              latino_pop = latino_pop * afact,
+                                              nh_aian_pop = nh_aian_pop * afact,
+                                              nh_other_pop = nh_other_pop * afact)
+
+# calculate ABOVE RCM raws - WEIGHTED
+rcm_sen_subset <- rcm_sen_subset  %>% mutate(total_raw = total_raw * afact,
+                                               nh_white_raw = nh_white_raw * afact,
+                                               nh_black_raw = nh_black_raw * afact,
+                                               nh_api_raw = nh_api_raw * afact,
+                                               latino_raw = latino_raw * afact,
+                                               nh_aian_raw = nh_aian_raw * afact,
+                                               nh_other_raw = nh_other_raw * afact)
+
+# select columns we want
+d_sen <- rcm_sen_subset %>% select(geoid, ends_with("_pop"), ends_with("_raw")) %>%
+  
+  # summarize by district
+  group_by(geoid) %>% summarise_all(sum, na.rm=TRUE) %>%
+  
+  # calculate district rates
+  mutate(total_rate = total_raw / total_pop * 100,
+         nh_white_rate = nh_white_raw / nh_white_pop * 100,
+         nh_black_rate = nh_black_raw / nh_black_pop * 100,
+         nh_api_rate = nh_api_raw / nh_api_pop * 100,
+         latino_rate = latino_raw / latino_pop * 100,
+         nh_aian_rate = nh_aian_raw / nh_aian_pop * 100,
+         nh_other_rate = nh_other_raw /  nh_other_pop * 100) %>%
+  
+  mutate(geolevel="sldu",
+         geoname=paste("State Senate District", substr(geoid, 4, 5))) %>%
+  select(geoid, geoname, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"))  %>%
+  
+  # replace zeros with nas
+  mutate(across(everything(), ~replace(., . == 0, NA)))
 
 
 
@@ -187,7 +262,7 @@ d_assm <- rcm_assm_subset %>% select(geoid, ends_with("_pop"), ends_with("_raw")
 #source("./Functions/RC_Functions.R")
 source("W:/Project/RACE COUNTS/2025_v7/RC_Github/CR/Functions/RC_Functions.R")
 
-d <- rbind(d, d_assm)
+d <- rbind(d, d_assm, d_sen)
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
@@ -220,33 +295,33 @@ county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
 #split LEG DIST into separate tables
-# upper_table <- d[d$geolevel == 'sldu', ]
+upper_table <- d[d$geolevel == 'sldu', ]
 lower_table <- d %>%
   filter(geolevel=="sldl")
-# 
-# #calculate SLDU z-scores and ranks
-# upper_table <- calc_z(upper_table)
-# 
-# upper_table <- calc_ranks(upper_table)
-# #View(upper_table)
-# 
+
+#calculate SLDU z-scores and ranks
+upper_table <- calc_z(upper_table)
+
+upper_table <- calc_ranks(upper_table)
+View(upper_table)
+
 #calculate SLDL z-scores and ranks
 lower_table <- calc_z(lower_table)
 lower_table <- calc_ranks(lower_table)
 View(lower_table)
-# 
+ 
 # ## Bind sldu and sldl tables into one leg_table##
-# leg_table <- rbind(upper_table, lower_table)
-# View(leg_table)
+leg_table <- rbind(upper_table, lower_table)
+View(leg_table)
 
-#leg_table <- leg_table %>% dplyr::rename("leg_name" = "geoname", "leg_id" = "geoid")
+leg_table <- leg_table %>% dplyr::rename("leg_name" = "geoname", "leg_id" = "geoid")
 
 
 
 ###update info for postgres tables will update automatically###
 county_table_name <- paste0("arei_econ_real_cost_measure_county_", rc_yr)
 state_table_name <- paste0("arei_econ_real_cost_measure_state_", rc_yr)
-#leg_table_name <- paste0("arei_econ_real_cost_measure_leg_", rc_yr)
+leg_table_name <- paste0("arei_econ_real_cost_measure_leg_", rc_yr)
 
 
 indicator <- paste0("Created on ", Sys.Date(), ". Households above the real cost of living (data from ", data_yr, "). This data is")
