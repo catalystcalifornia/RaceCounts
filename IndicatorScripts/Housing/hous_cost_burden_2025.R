@@ -241,7 +241,7 @@ owners <- filter(df, tenure == "owner")
 
 # set variables used in RC tables
 hud_yrs <- paste(first(data_yrs), last(data_yrs), sep = "-")
-source <- paste0("HUD CHAS (", hud_yrs, ") for city, county, state legislateive districts and state from https://www.huduser.gov/portal/datasets/cp.html")
+source <- paste0("HUD CHAS (", hud_yrs, ") for city, county, state legislative districts and state from https://www.huduser.gov/portal/datasets/cp.html")
 
 
 ########## OWNER: RACE COUNTS STATS ##############
@@ -310,7 +310,7 @@ state_table_name <- paste0("arei_hous_cost_burden_owner_state_", rc_yr)
 city_table_name <- paste0("arei_hous_cost_burden_owner_city_", rc_yr)
 leg_table_name <- paste0("arei_hous_cost_burden_owner_leg_", rc_yr)
 
-indicator <- paste0("Created on ", Sys.date(), ". The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. This data is")
+indicator <- paste0("Created on ", Sys.Date(), ". The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. This data is")
 
 # send tables to postgres
 to_postgres(county_table, state_table)
