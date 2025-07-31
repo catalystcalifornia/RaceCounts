@@ -199,7 +199,8 @@ d <- calc_p_var(d) #calculate (row wise) population or sample variance. be sure 
 d <- calc_id(d) #calculate index of disparity
 
 #split STATE into separate table and format id, name columns
-state_table <- d[d$geoname == 'California', ]
+state_table <- d %>%
+  filter(geolevel=="state")
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
@@ -208,7 +209,8 @@ state_table <- rename(state_table, state_id = geoid, state_name = geoname)
 View(state_table)
 
 #remove state from county table
-county_table <- d[d$geoname != 'California', ]
+county_table <- d %>%
+  filter(geolevel=="county")
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
@@ -217,10 +219,10 @@ county_table <- calc_ranks(county_table)
 county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
-
 #split LEG DIST into separate tables
 # upper_table <- d[d$geolevel == 'sldu', ]
-# lower_table <- d[d$geolevel == 'sldl', ]
+lower_table <- d %>%
+  filter(geolevel=="sldl")
 # 
 # #calculate SLDU z-scores and ranks
 # upper_table <- calc_z(upper_table)
@@ -228,11 +230,10 @@ View(county_table)
 # upper_table <- calc_ranks(upper_table)
 # #View(upper_table)
 # 
-# #calculate SLDL z-scores and ranks
-# lower_table <- calc_z(lower_table)
-# 
-# lower_table <- calc_ranks(lower_table)
-# #View(lower_table)
+#calculate SLDL z-scores and ranks
+lower_table <- calc_z(lower_table)
+lower_table <- calc_ranks(lower_table)
+View(lower_table)
 # 
 # ## Bind sldu and sldl tables into one leg_table##
 # leg_table <- rbind(upper_table, lower_table)
