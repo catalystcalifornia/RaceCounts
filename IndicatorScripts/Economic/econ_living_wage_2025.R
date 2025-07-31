@@ -69,11 +69,11 @@ root <- paste0("W:/Data/Demographics/PUMS/CA_", start_yr, "_", curr_yr, "/")
 
 # Load ONLY the PUMS columns needed for this indicator
 cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0))    # get all PUMS cols 
-cols_wts <- grep("^PWGTP*", cols, value = TRUE)                   # filter for PUMS weight colnames
+cols_wts <- grep(paste0("^", weight, "*"), cols, value = TRUE)                   # filter for PUMS weight colnames
 
 ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE, select = c(cols_wts, "RT", "SERIALNO", "AGEP", "ESR", "SCH", "PUMA",
-                                                                                                   "ANC1P", "ANC2P", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH", 
-                                                                                                   "ADJINC", "WAGP", "COW", "WKHP", "WRK", "WKWN"),
+                                                                                         "ANC1P", "ANC2P", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH", 
+                                                                                         "ADJINC", "WAGP", "COW", "WKHP", "WRK", "WKWN"),
              colClasses = list(character = c("PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH", 
                                              "ADJINC", "WAGP", "COW", "WKHP", "ESR", "WRK", "WKWN")))
 
@@ -82,7 +82,7 @@ ppl$state_geoid <- "06"
 ppl$puma_id <- paste0(ppl$state_geoid, ppl$PUMA)
 
 # create list of replicate weights
-repwlist = rep(paste0("PWGTP", 1:80))
+repwlist = rep(paste0(weight, 1:80))
 
 # save copy of original data
 orig_data <- ppl
@@ -153,7 +153,6 @@ ppl$living_wage <- case_when(ppl$hrly_wage >= lw ~ "livable", ppl$hrly_wage < lw
 # View(ppl[c("RT","SERIALNO","COW","ESR","wages_adj","WKHP","WKWN","wks_worked","wkly_hrs","hrly_wage","living_wage")])
 
 # Convert to factor for indicator
-ppl$indicator <- as.factor(ppl$living_wage)
 ppl$living_wage <- as.factor(ppl$living_wage)
 
 #review
