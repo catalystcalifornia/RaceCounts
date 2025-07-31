@@ -57,47 +57,46 @@ rc_schema <- 'v7'
 # html_nodes <- "table"
 # colcomments <- get_cde_metadata(url, html_nodes, table_schema, table_name)
 # View(colcomments)
-# 
-df <- st_read(con_shared, query = "SELECT * FROM education.cde_multigeo_chronicabs_2023_24") # comment out code to pull data and use this once rda_shared_data table is created
+
+# Get rda_shared_data table and do initial RC prep
+df <- dbGetQuery(con_shared, statement = "SELECT * FROM education.cde_multigeo_chronicabs_2023_24") %>%
+  #select just fields we need
+  select(cdscode, countyname, districtname, aggregatelevel, reportingcategory, 
+         chronicabsenteeismeligiblecumulativeenrollment, chronicabsenteeismcount, 
+         chronicabsenteeismrate) %>%
+  # filter for RC races
+  filter(reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
+  # rename columns for rc standards:
+  rename(raw = chronicabsenteeismcount,
+         pop = chronicabsenteeismeligiblecumulativeenrollment,
+         rate = chronicabsenteeismrate) %>%
+  # replace reportingcategory codes with rc race codes
+  mutate(reportingcategory=
+           case_when(
+             reportingcategory == "TA" ~ "total", 
+             reportingcategory == "RB" ~ "nh_black", 
+             reportingcategory == "RI" ~ "nh_aian", 
+             reportingcategory == "RA" ~ "nh_asian", 
+             reportingcategory == "RF" ~ "nh_filipino", 
+             reportingcategory == "RH" ~ "latino", 
+             reportingcategory == "RP" ~ "nh_pacisl", 
+             reportingcategory == "RT" ~ "nh_twoormor", 
+             reportingcategory == "RW" ~ "nh_white", 
+             .default = reportingcategory))
 
 
 ############### Leg District ###############
 
-#filter for schools and racial categories
-leg_subset <- df %>% filter(aggregatelevel %in% c("S"), 
-                             reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
+# filter for schools
+leg_subset <- df %>% filter(aggregatelevel %in% c("S"))
   
-  #select just fields we need
-  select(cdscode, countyname, districtname, aggregatelevel, reportingcategory, chronicabsenteeismeligiblecumulativeenrollment, chronicabsenteeismcount, chronicabsenteeismrate)
-
 
 #### Continue prep for RC ####
 
-#filter for county and state rows, all types of schools, and racial categories
-df_subset <- df %>% filter(aggregatelevel %in% c("C", "T", "D") & charterschool == "All" & dass == "All" &
-                             reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
-    
-  #select just fields we need
-  select(cdscode, countyname, districtname, aggregatelevel, reportingcategory, chronicabsenteeismeligiblecumulativeenrollment, chronicabsenteeismcount, chronicabsenteeismrate) %>%
-  
+# filter for county and state rows, all types of schools
+df_subset <- df %>% filter(aggregatelevel %in% c("C", "T", "D") & charterschool == "All" & dass == "All") %>%
   #append leg_subset
   bind_rows(leg_subset)
-
-#format for column headers
-df_subset <- rename(df_subset, 
-                    raw = "chronicabsenteeismcount",
-                    pop = "chronicabsenteeismeligiblecumulativeenrollment",
-                    rate = "chronicabsenteeismrate")
-
-df_subset$reportingcategory <- gsub("TA", "total", df_subset$reportingcategory)
-df_subset$reportingcategory <- gsub("RB", "nh_black", df_subset$reportingcategory)
-df_subset$reportingcategory <- gsub("RI", "nh_aian", df_subset$reportingcategory)
-df_subset$reportingcategory <- gsub("RA", "nh_asian", df_subset$reportingcategory)
-df_subset$reportingcategory <- gsub("RF", "nh_filipino", df_subset$reportingcategory)
-df_subset$reportingcategory <- gsub("RH", "latino", df_subset$reportingcategory)
-df_subset$reportingcategory <- gsub("RP", "nh_pacisl", df_subset$reportingcategory)
-df_subset$reportingcategory <- gsub("RT", "nh_twoormor", df_subset$reportingcategory)
-df_subset$reportingcategory <- gsub("RW", "nh_white", df_subset$reportingcategory)
 
 #pop screen on number of chronically absent students (raw)
 threshold <- 20
