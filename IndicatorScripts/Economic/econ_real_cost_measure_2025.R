@@ -21,7 +21,7 @@ con_rc <- connect_to_db("racecounts")
 con_shared <- connect_to_db("rda_shared_data")
 
 # define variables used in several places that must be updated each year
-curr_yr <- "2023"  # must keep same format
+curr_yr <- "2025"  # must keep same format
 data_yr <- "2023"
 rc_yr <- "2025"
 dwnld_url <- "https://unitedwaysca.org/download-the-public-data-set/"
@@ -239,8 +239,6 @@ View(lower_table)
 # leg_table <- rbind(upper_table, lower_table)
 # View(leg_table)
 
-#state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
-#county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
 #leg_table <- leg_table %>% dplyr::rename("leg_name" = "geoname", "leg_id" = "geoid")
 
 
