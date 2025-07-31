@@ -67,9 +67,9 @@ acs_yr <- 2023
 # Get rda_shared_data table and do initial RC prep
 df <- dbGetQuery(con_shared, statement = "SELECT * FROM education.cde_multigeo_chronicabs_2023_24") %>%
   #select just fields we need
-  select(cdscode, countyname, districtname, aggregatelevel, reportingcategory, 
-         chronicabsenteeismeligiblecumulativeenrollment, chronicabsenteeismcount, 
-         chronicabsenteeismrate) %>%
+  select(cdscode, countyname, districtname, aggregatelevel, charterschool, dass,
+         reportingcategory, chronicabsenteeismeligiblecumulativeenrollment, 
+         chronicabsenteeismcount, chronicabsenteeismrate) %>%
   # filter for RC races
   filter(reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
   # rename columns for rc standards:
@@ -90,44 +90,48 @@ df <- dbGetQuery(con_shared, statement = "SELECT * FROM education.cde_multigeo_c
              reportingcategory == "RW" ~ "nh_white", 
              .default = reportingcategory))
 
-
 ############### Leg District ###############
-
 # filter for schools
 leg_subset <- df %>% filter(aggregatelevel %in% c("S"))
-  
 
 #### Continue prep for RC ####
 # filter for county and state rows, all types of schools
-df_subset <- df %>% filter(aggregatelevel %in% c("C", "T", "D") & charterschool == "All" & dass == "All") %>%
-  #append leg_subset
+df_subset <- df %>% 
+  filter(aggregatelevel %in% c("C", "T", "D") & charterschool == "All" & dass == "All") %>%
+  # append leg_subset
   bind_rows(leg_subset)
 
-df_subset <- df_subset %>% mutate(raw = ifelse(raw < threshold, NA, raw)) %>%
-  mutate(rate = ifelse(raw < threshold, NA, rate))
+# apply population threshold
+df_subset <- df_subset %>% 
+  mutate(raw = ifelse(raw < threshold, NA, raw),
+         rate = ifelse(raw < threshold, NA, rate))
 # View(df_subset)
 
-#pivot
-df_wide <- df_subset %>% pivot_wider(names_from = reportingcategory, names_glue = "{reportingcategory}_{.value}", 
-                                     values_from = c(raw, pop, rate)) %>%
-  mutate(geolevel = ifelse(aggregatelevel == "T", "state",
-                           ifelse(aggregatelevel == "C", "county",
-                                  ifelse(aggregatelevel == "D", "district", 
-                                         ifelse(aggregatelevel == "S", "school",""))))) %>%
+# pivot
+df_wide <- df_subset %>% 
+  pivot_wider(names_from = reportingcategory, 
+              values_from = c(raw, pop, rate),
+              names_glue = "{reportingcategory}_{.value}") %>%
+  mutate(geolevel = 
+           case_when(
+             aggregatelevel == "T"~"state",
+             aggregatelevel == "C"~"county",
+             aggregatelevel == "D"~"district",
+             aggregatelevel == "S"~"school",
+             .default = aggregatelevel)) %>%
   relocate(geolevel, .after = countyname)
 
 
 ####### GET COUNTY & SCHOOL DISTRICT GEOIDS ##### ---------------------------------------------------------------------
-
 # county geoids
 counties <- get_acs(geography = "county",
                     variables = c("B01001_001"), 
                     state = "CA", 
-                    year = acs_yr)
+                    year = acs_yr) %>%
+  select(GEOID, NAME) %>%
+  rename(geoid=GEOID, geoname=NAME) %>%
+  mutate(geoname = gsub(" County, California", "", geoname))
 
-counties <- counties[,1:2]
-counties$NAME <- gsub(" County, California", "", counties$NAME) 
-names(counties) <- c("geoid", "geoname")
 county_match <- filter(df_wide,aggregatelevel=="C") %>% right_join(counties,by=c('countyname'='geoname'))
 
 # get school district geoids - pull in active district records w/ geoids from CDE schools' list (NCES District ID)
