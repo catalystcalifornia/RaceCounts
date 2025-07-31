@@ -33,6 +33,12 @@ curr_yr <- '2023_24' # CDE data year, must keep this format
 rc_yr <- '2025'    # RC year
 rc_schema <- 'v7'
 
+# other variables that may not update each year
+# pop screen on number of chronically absent students (raw)
+threshold <- 20
+# ACS year to get list of counties
+acs_yr <- 2023
+
 ############### PREP RDA_SHARED_DATA TABLE ########################
 
 # ## Get Chronic Absenteeism
@@ -92,14 +98,11 @@ leg_subset <- df %>% filter(aggregatelevel %in% c("S"))
   
 
 #### Continue prep for RC ####
-
 # filter for county and state rows, all types of schools
 df_subset <- df %>% filter(aggregatelevel %in% c("C", "T", "D") & charterschool == "All" & dass == "All") %>%
   #append leg_subset
   bind_rows(leg_subset)
 
-#pop screen on number of chronically absent students (raw)
-threshold <- 20
 df_subset <- df_subset %>% mutate(raw = ifelse(raw < threshold, NA, raw)) %>%
   mutate(rate = ifelse(raw < threshold, NA, rate))
 # View(df_subset)
@@ -120,7 +123,7 @@ df_wide <- df_subset %>% pivot_wider(names_from = reportingcategory, names_glue 
 counties <- get_acs(geography = "county",
                     variables = c("B01001_001"), 
                     state = "CA", 
-                    year = 2023)
+                    year = acs_yr)
 
 counties <- counties[,1:2]
 counties$NAME <- gsub(" County, California", "", counties$NAME) 
