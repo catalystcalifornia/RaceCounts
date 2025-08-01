@@ -58,7 +58,7 @@ rc_schema <- 'v7'
 # colcomments <- get_cde_metadata(url, html_nodes, table_schema, table_name)
 # View(colcomments)
 # 
-df <- st_read(con_shared, query = "SELECT * FROM education.cde_multigeo_chronicabs_2023_24") # comment out code to pull data and use this once rda_shared_data table is created
+df <- dbGetQuery(con_shared, statement = "SELECT * FROM education.cde_multigeo_chronicabs_2023_24") # comment out code to pull data and use this once rda_shared_data table is created
 
 
 ############### Leg District ###############
@@ -129,7 +129,7 @@ names(counties) <- c("geoid", "geoname")
 county_match <- filter(df_wide,aggregatelevel=="C") %>% right_join(counties,by=c('countyname'='geoname'))
 
 # get school district geoids - pull in active district records w/ geoids from CDE schools' list (NCES District ID)
-districts <- st_read(con_shared, query = "SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_2023_24 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'")
+districts <- dbGetQuery(con_shared, statement = "SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_2023_24 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'")
 district_match <- filter(df_wide,aggregatelevel=="D") %>% right_join(districts,by='cdscode')
 
 matched <- union(county_match, district_match) %>% select(c(cdscode, geoid)) # combine county and district geoid match df's back together
