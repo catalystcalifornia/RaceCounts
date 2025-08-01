@@ -64,21 +64,29 @@ df <- dbGetQuery(con_shared, statement = "SELECT * FROM education.cde_multigeo_c
 ############### Leg District ###############
 
 #filter for schools and racial categories
-leg_subset <- df %>% filter(aggregatelevel %in% c("S"), 
-                             reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
+leg_subset <- df %>% 
+  filter(aggregatelevel %in% c("S"),
+         reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
   
   #select just fields we need
-  select(cdscode, countyname, districtname, aggregatelevel, reportingcategory, chronicabsenteeismeligiblecumulativeenrollment, chronicabsenteeismcount, chronicabsenteeismrate)
+  select(cdscode, countyname, districtname, aggregatelevel, reportingcategory, 
+         chronicabsenteeismeligiblecumulativeenrollment, chronicabsenteeismcount, 
+         chronicabsenteeismrate)
 
 
 #### Continue prep for RC ####
 
 #filter for county and state rows, all types of schools, and racial categories
-df_subset <- df %>% filter(aggregatelevel %in% c("C", "T", "D") & charterschool == "All" & dass == "All" &
-                             reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
+df_subset <- df %>% 
+  filter(aggregatelevel %in% c("C", "T", "D") & 
+           charterschool == "All" & 
+           dass == "All" &
+           reportingcategory %in% c("TA", "RB", "RI", "RA", "RF", "RH", "RP", "RT", "RW")) %>%
     
   #select just fields we need
-  select(cdscode, countyname, districtname, aggregatelevel, reportingcategory, chronicabsenteeismeligiblecumulativeenrollment, chronicabsenteeismcount, chronicabsenteeismrate) %>%
+  select(cdscode, countyname, districtname, aggregatelevel, reportingcategory, 
+         chronicabsenteeismeligiblecumulativeenrollment, chronicabsenteeismcount, 
+         chronicabsenteeismrate) %>%
   
   #append leg_subset
   bind_rows(leg_subset)
@@ -101,13 +109,16 @@ df_subset$reportingcategory <- gsub("RW", "nh_white", df_subset$reportingcategor
 
 #pop screen on number of chronically absent students (raw)
 threshold <- 20
-df_subset <- df_subset %>% mutate(raw = ifelse(raw < threshold, NA, raw)) %>%
+df_subset <- df_subset %>% 
+  mutate(raw = ifelse(raw < threshold, NA, raw)) %>%
   mutate(rate = ifelse(raw < threshold, NA, rate))
 # View(df_subset)
 
 #pivot
-df_wide <- df_subset %>% pivot_wider(names_from = reportingcategory, names_glue = "{reportingcategory}_{.value}", 
-                                     values_from = c(raw, pop, rate)) %>%
+df_wide <- df_subset %>% 
+  pivot_wider(names_from = reportingcategory, 
+              names_glue = "{reportingcategory}_{.value}",
+              values_from = c(raw, pop, rate)) %>%
   mutate(geolevel = ifelse(aggregatelevel == "T", "state",
                            ifelse(aggregatelevel == "C", "county",
                                   ifelse(aggregatelevel == "D", "district", 
@@ -126,28 +137,36 @@ counties <- get_acs(geography = "county",
 counties <- counties[,1:2]
 counties$NAME <- gsub(" County, California", "", counties$NAME) 
 names(counties) <- c("geoid", "geoname")
-county_match <- filter(df_wide,aggregatelevel=="C") %>% right_join(counties,by=c('countyname'='geoname'))
+county_match <- filter(df_wide,aggregatelevel=="C") %>% 
+  right_join(counties, by=c('countyname'='geoname'))
 
 # get school district geoids - pull in active district records w/ geoids from CDE schools' list (NCES District ID)
 districts <- dbGetQuery(con_shared, statement = "SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_2023_24 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'")
-district_match <- filter(df_wide,aggregatelevel=="D") %>% right_join(districts,by='cdscode')
+district_match <- filter(df_wide,aggregatelevel=="D") %>% 
+  right_join(districts,by='cdscode')
 
-matched <- union(county_match, district_match) %>% select(c(cdscode, geoid)) # combine county and district geoid match df's back together
-df_final <- df_wide %>% full_join(matched, by='cdscode')
-df_final <- df_final %>% relocate(geoid) %>% mutate(countyname = ifelse(aggregatelevel == "T", "California", countyname), # add geoname and geoid for state
+matched <- union(county_match, district_match) %>% 
+  select(c(cdscode, geoid)) # combine county and district geoid match df's back together
+df_final <- df_wide %>% 
+  full_join(matched, by='cdscode')
+df_final <- df_final %>% 
+  relocate(geoid) %>% 
+  mutate(countyname = ifelse(aggregatelevel == "T", "California", countyname), # add geoname and geoid for state
                                                     geoid = ifelse(aggregatelevel == "T", "06", geoid)) 
 df_final <- filter(df_final, !is.na(geoid)) # remove records without fips codes
 df_final <- rename(df_final, geoname = countyname)
 
 
 # remove records with no geoids
-d <- df_final %>% filter(geoid != "No Data" & !is.na(geoid)) %>%
+d <- df_final %>% 
+  filter(geoid != "No Data" & !is.na(geoid)) %>%
   # update district name
   mutate(geoname = ifelse(geolevel == "district", districtname, geoname)) 
 
 
 # make separate schools df for leg work
-schools <- df_wide %>% filter(geolevel == 'school') %>% # create school-level only df
+schools <- df_wide %>% 
+  filter(geolevel == 'school') %>% # create school-level only df
   mutate(geoid = cdscode) %>% select(geoid, everything()) %>% # add geoid column to append to d later
   mutate(last_7_digits = substr(cdscode, nchar(cdscode) - 7 + 1, nchar(cdscode))) %>%
   filter(last_7_digits != "0000000")
