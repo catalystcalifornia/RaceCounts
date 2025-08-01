@@ -141,14 +141,10 @@ df_final <- rename(df_final, geoname = countyname)
 
 
 # remove records with no geoids
-d <- df_final %>% filter(geoid != "No Data") %>%
-  
+d <- df_final %>% filter(geoid != "No Data" & !is.na(geoid)) %>%
   # update district name
   mutate(geoname = ifelse(geolevel == "district", districtname, geoname)) 
-# %>%
-#   
-#   # remove columns we don't need
-#   select(-cdscode, -aggregatelevel, -districtname)
+
 
 # make separate schools df for leg work
 schools <- df_wide %>% filter(geolevel == 'school') %>% # create school-level only df
@@ -182,7 +178,9 @@ assm_df_ <- calc_leg_elamath(schools, xwalk_school_assm, threshold) %>%
 
 d <- bind_rows(d, sen_df_, assm_df_) 
 
-
+# table(d$geolevel)
+# # county district   school     sldl     sldu    state 
+# # 58      997       97       80       40        1 
 
 ####################################################################################################################################################
 ############## CALC RACE COUNTS STATS ##############
@@ -201,7 +199,8 @@ d <- calc_id(d) #calculate index of disparity
 View(d)
 
 #split STATE into separate table and format id, name columns
-state_table <- d[d$geoname == 'California', ]
+state_table <- d %>%
+  filter(geolevel=="state")
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
@@ -210,7 +209,8 @@ state_table <- state_table %>% dplyr::rename("state_id" = "geoid", "state_name" 
 View(state_table)
 
 #remove state from county table
-county_table <- d[d$aggregatelevel == 'C', ]
+county_table <- d %>%
+  filter(geolevel=="county")
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
@@ -220,7 +220,9 @@ county_table <- county_table %>% dplyr::rename("county_id" = "geoid", "county_na
 View(county_table)
 
 #remove county/state from place table
-city_table <- d[d$aggregatelevel == 'D', ] %>% select(-c(aggregatelevel)) 
+city_table <- d %>%
+  filter(geolevel=="district") %>% 
+  select(-c(aggregatelevel)) 
 
 #calculate DISTRICT z-scores
 city_table <- calc_z(city_table)
@@ -229,8 +231,10 @@ city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" 
 View(city_table)
 
 #split LEGISLATIVE DISTRICTS into separate table 
-upper_leg_table <- d[d$geolevel == 'sldu', ]
-lower_leg_table <- d[d$geolevel == 'sldl', ]
+upper_leg_table <- d %>%
+  filter(geolevel=="sldu")
+lower_leg_table <- d %>%
+  filter(geolevel=="sldl")
 
 #calculate LEGISLATIVE DISTRICTS z-scores and bind
 upper_leg_table <- calc_z(upper_leg_table)
