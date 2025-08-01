@@ -144,10 +144,11 @@ df_final <- rename(df_final, geoname = countyname)
 d <- df_final %>% filter(geoid != "No Data") %>%
   
   # update district name
-  mutate(geoname = ifelse(geolevel == "district", districtname, geoname)) %>%
-  
-  # remove columns we don't need
-  select(-cdscode, -aggregatelevel, -districtname)
+  mutate(geoname = ifelse(geolevel == "district", districtname, geoname)) 
+# %>%
+#   
+#   # remove columns we don't need
+#   select(-cdscode, -aggregatelevel, -districtname)
 
 # make separate schools df for leg work
 schools <- df_wide %>% filter(geolevel == 'school') %>% # create school-level only df
@@ -204,7 +205,8 @@ state_table <- d[d$geoname == 'California', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
-state_table <- state_table %>% dplyr::rename("state_id" = "geoid", "state_name" = "geoname") %>% select(-c(districtname, cdscode, aggregatelevel))
+state_table <- state_table %>% dplyr::rename("state_id" = "geoid", "state_name" = "geoname") %>% 
+  select(-c(districtname, cdscode, aggregatelevel))
 View(state_table)
 
 #remove state from county table
@@ -213,7 +215,8 @@ county_table <- d[d$aggregatelevel == 'C', ]
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
-county_table <- county_table %>% dplyr::rename("county_id" = "geoid", "county_name" = "geoname") %>% select(-c(districtname, cdscode, aggregatelevel))
+county_table <- county_table %>% dplyr::rename("county_id" = "geoid", "county_name" = "geoname") %>% 
+  select(-c(districtname, cdscode, aggregatelevel))
 View(county_table)
 
 #remove county/state from place table
