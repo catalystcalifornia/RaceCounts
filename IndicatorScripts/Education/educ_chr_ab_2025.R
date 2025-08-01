@@ -39,8 +39,32 @@ threshold <- 20
 # ACS year to get list of counties
 acs_yr <- 2023
 
-############### PREP RDA_SHARED_DATA TABLE ########################
+###### Get supporting data for geolevel analysis #####
+# county geoids
+counties <- get_acs(geography = "county",
+                    variables = c("B01001_001"), 
+                    state = "CA", 
+                    year = acs_yr) %>%
+  select(GEOID, NAME) %>%
+  rename(geoid=GEOID, geoname=NAME) %>%
+  mutate(geoname = gsub(" County, California", "", geoname))
 
+# get school district geoids (NCES District ID) - pull in active district records w/ geoids and names from CDE schools' list
+districts <- dbGetQuery(con_shared, statement = 
+                          paste0("SELECT cdscode, ncesdist AS ncesdist_geoid FROM education.cde_public_schools_", 
+                                 curr_yr, 
+                                 " WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'"))
+
+# get leg districts (senate, assembly) and join to districts
+xwalk_school_sen <- dbGetQuery(con_shared, paste0("SELECT cdscode, ca_senate_district FROM crosswalks.cde_school_leg_districts_2022_23")) %>%
+  mutate(leg_id = paste0('060', ca_senate_district),
+         geolevel = 'sldu')
+
+xwalk_school_assm <- dbGetQuery(con_shared, paste0("SELECT cdscode, ca_assembly_district FROM crosswalks.cde_school_leg_districts_2022_23")) %>%
+  mutate(leg_id = paste0('060', ca_assembly_district),
+         geolevel = 'sldl')
+
+############### PREP RDA_SHARED_DATA TABLE ########################
 # ## Get Chronic Absenteeism
 #   filepath = "https://www3.cde.ca.gov/demo-downloads/attendance/chronicabsenteeism24.txt"   # will need to update each year
 #   fieldtype = 1:12 # specify which cols should be varchar, the rest will be assigned numeric in table export
@@ -64,7 +88,7 @@ acs_yr <- 2023
 # colcomments <- get_cde_metadata(url, html_nodes, table_schema, table_name)
 # View(colcomments)
 
-# Get rda_shared_data table and do initial RC prep
+# Get rda_shared_data table and do initial RC prep (select cols, filter, apply rc naming)
 df <- dbGetQuery(con_shared, statement = "SELECT * FROM education.cde_multigeo_chronicabs_2023_24") %>%
   #select just fields we need
   select(cdscode, countyname, districtname, aggregatelevel, charterschool, dass,
@@ -76,7 +100,7 @@ df <- dbGetQuery(con_shared, statement = "SELECT * FROM education.cde_multigeo_c
   rename(raw = chronicabsenteeismcount,
          pop = chronicabsenteeismeligiblecumulativeenrollment,
          rate = chronicabsenteeismrate) %>%
-  # replace reportingcategory codes with rc race codes
+  # replace reportingcategory codes with rc race codes, add geolevel
   mutate(reportingcategory=
            case_when(
              reportingcategory == "TA" ~ "total", 
@@ -88,115 +112,106 @@ df <- dbGetQuery(con_shared, statement = "SELECT * FROM education.cde_multigeo_c
              reportingcategory == "RP" ~ "nh_pacisl", 
              reportingcategory == "RT" ~ "nh_twoormor", 
              reportingcategory == "RW" ~ "nh_white", 
-             .default = reportingcategory))
-
-############### Leg District ###############
-# filter for schools
-leg_subset <- df %>% 
-  filter(aggregatelevel %in% c("S")) %>%
-  # remove schools where last 7 digits of cdscode are all zeros
-  mutate(last_7_digits = substr(cdscode, nchar(cdscode) - 7 + 1, nchar(cdscode))) %>%
-  filter(last_7_digits != "0000000")
-
-#### Continue prep for RC ####
-# filter for county and state rows, all types of schools
-df_subset <- df %>% 
-  filter(aggregatelevel %in% c("C", "T", "D") & charterschool == "All" & dass == "All") %>%
-  # append leg_subset
-  bind_rows(leg_subset)
-
-# apply population threshold
-df_subset <- df_subset %>% 
-  mutate(raw = ifelse(raw < threshold, NA, raw),
-         rate = ifelse(raw < threshold, NA, rate))
-# View(df_subset)
-
-# pivot
-df_wide <- df_subset %>% 
-  pivot_wider(names_from = reportingcategory, 
-              values_from = c(raw, pop, rate),
-              names_glue = "{reportingcategory}_{.value}") %>%
-  mutate(geolevel = 
+             .default = reportingcategory),
+         geolevel = 
            case_when(
              aggregatelevel == "T"~"state",
              aggregatelevel == "C"~"county",
              aggregatelevel == "D"~"district",
              aggregatelevel == "S"~"school",
              .default = aggregatelevel)) %>%
-  relocate(geolevel, .after = countyname)
+  # apply population threshold
+  mutate(raw = ifelse(raw < threshold, NA, raw),
+         rate = ifelse(raw < threshold, NA, rate)) %>%
+  # get related counties, school districts, senate, and assembly leg districts
+  right_join(counties, by=c("countyname"="geoname")) %>%
+  rename(county_geoid=geoid) %>%
+  left_join(districts, by="cdscode") %>%
+  left_join(xwalk_school_sen, by="cdscode", suffix=c("", "_senate")) %>% 
+  rename(senate_geoid=leg_id) %>%
+  left_join(xwalk_school_assm, by="cdscode", suffix=c("", "_assm")) %>%
+  rename(assm_geoid=leg_id)
 
 
-####### GET COUNTY & SCHOOL DISTRICT GEOIDS ##### ---------------------------------------------------------------------
-# county geoids
-counties <- get_acs(geography = "county",
-                    variables = c("B01001_001"), 
-                    state = "CA", 
-                    year = acs_yr) %>%
-  select(GEOID, NAME) %>%
-  rename(geoid=GEOID, geoname=NAME) %>%
-  mutate(geoname = gsub(" County, California", "", geoname))
+############### Leg District Prep ###############
+# filter for schools and exclude those where last 7 digits of cdscode are all zeros
+df_subset_leg <- df %>% 
+  filter(geolevel=="school") %>%
+  mutate(last_7_digits = substr(cdscode, nchar(cdscode) - 7 + 1, nchar(cdscode))) %>%
+  filter(last_7_digits != "0000000") %>%
+  select(-last_7_digits) 
 
-county_match <- df_wide %>%
-  filter(aggregatelevel=="C") %>% 
-  right_join(counties, by=c('countyname'='geoname'))
+# split into senate and assembly
+df_subset_senate <- df_subset_leg %>%
+  filter(!is.na(geolevel_senate)) %>% 
+  mutate(geolevel="sldu",
+         final_geoid=senate_geoid,
+         geoname=paste("Senate District", ca_senate_district)) %>%
+  # select needed cols
+  select(final_geoid, geoname, geolevel, reportingcategory, raw, pop, rate) %>%
+  group_by(final_geoid, geoname, geolevel, reportingcategory) %>%
+  summarize(
+    raw=sum(raw, na.rm=TRUE),
+    pop=sum(pop, na.rm = TRUE),
+    rate=sum(raw, na.rm=TRUE)/sum(pop, na.rm=TRUE)*100
+  ) %>%
+  ungroup()
 
-# get school district geoids - pull in active district records w/ geoids from CDE schools' list (NCES District ID)
-districts <- dbGetQuery(con_shared, statement = "SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_2023_24 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'")
-district_match <- df_wide %>%
-  filter(aggregatelevel=="D") %>% 
-  right_join(districts, by='cdscode')
+df_subset_assm <- df %>% 
+  filter(!is.na(geolevel_assm)) %>% 
+  mutate(geolevel="sldl",
+         final_geoid=assm_geoid,
+         geoname=paste("Assembly District", ca_assembly_district)) %>%
+  # select needed cols
+  select(final_geoid, geoname, geolevel, reportingcategory, raw, pop, rate) %>%
+  group_by(final_geoid, geoname, geolevel, reportingcategory) %>%
+  summarize(
+    raw=sum(raw, na.rm=TRUE),
+    pop=sum(pop, na.rm = TRUE),
+    rate=sum(raw, na.rm=TRUE)/sum(pop, na.rm=TRUE)*100
+  ) %>%
+  ungroup()
 
-# combine county and district geoid match df's back together
-matched <- union(county_match, district_match) %>% select(c(cdscode, geoid)) 
+df_subset_leg <- rbind(df_subset_senate, df_subset_assm) %>%
+  mutate(cdscode=NA)
 
-df_final <- df_wide %>% 
-  full_join(matched, by='cdscode') %>% 
-  relocate(geoid) %>%
-  rename(geoname = countyname) %>%
-  # add geoname and geoid
-  mutate(
-    geoname = case_when(
-      geolevel=="state"~"California", 
-      geolevel=="county"~geoname,
-      geolevel=="district"~districtname), 
-    geoid = case_when(
-      geolevel=="state"~"06",
-      geolevel=="county"~ geoid,
-      geolevel=="school"~cdscode)) %>%
+############### County, State, and School District Prep ###############
+df_subset <- df %>% 
+  # filter for county, state, and school district rows, all types of schools
+  filter(aggregatelevel %in% c("C", "T", "D") & charterschool == "All" & dass == "All") %>%
+  mutate(final_geoid = 
+           case_when(
+             geolevel=="state"~"06",
+             geolevel=="county"~county_geoid,
+             geolevel=="district"~ncesdist_geoid),
+         geoname=
+           case_when(
+             geolevel=="state"~"California",
+             geolevel=="county"~countyname,
+             geolevel=="district"~districtname)) %>%
+  # select needed cols
+  select(final_geoid, cdscode, geoname, geolevel, reportingcategory, raw, pop, rate) 
+
+# View(df_subset)
+
+####### Combine all geolevels (county, state, school district, leg district) ##### ---------------------------------------------------------------------
+df_final <- rbind(df_subset_leg, df_subset) %>%
+  rename(geoid=final_geoid) %>%
   # remove records without fips codes or "No Data"
   filter(!is.na(geoid) & geoid != "No Data") %>%
-  # remove columns we don't need
-  select(-cdscode, -aggregatelevel, -districtname)
- 
+  # pivot to get into RC table format
+  pivot_wider(names_from = reportingcategory, 
+              values_from = c(raw, pop, rate),
+              names_glue = "{reportingcategory}_{.value}") %>%
+  relocate(geoid, geoname, cdscode, geolevel) %>%
+  distinct()
+
+# View(df_final)
+
 d <- df_final
-
-
-####### Legislative Districts Prep From School Data #######
-##Step 1: Pull xwalks for district level aggregation
-xwalk_school_sen <- dbGetQuery(con_shared, paste0("SELECT cdscode as geoid, ca_senate_district FROM crosswalks.cde_school_leg_districts_2022_23")) %>%
-  mutate(leg_id = paste0('060', ca_senate_district),
-         geolevel = 'sldu')
-
-xwalk_school_assm <- dbGetQuery(con_shared, paste0("SELECT cdscode as geoid, ca_assembly_district FROM crosswalks.cde_school_leg_districts_2022_23")) %>%
-  mutate(leg_id = paste0('060', ca_assembly_district),
-         geolevel = 'sldl')
-
-##Step 2: Calc & screen weighted Leg Dist data from school dist data
-source("./Functions/RC_ELA_Math_Functions.R")
-
-sen_df_ <- calc_leg_elamath(schools, xwalk_school_sen, threshold) %>% 
-  mutate(geoname = paste0("State Senate District ", #adding geoname
-                          as.numeric(str_sub(geoid, -2)))) %>% 
-  select(geoid, geoname, geolevel, everything())
-
-assm_df_ <- calc_leg_elamath(schools, xwalk_school_assm, threshold) %>% 
-  mutate(geoname = paste0("State Assembly District ", #adding geoname
-                          as.numeric(str_sub(geoid, -2)))) %>% 
-  select(geoid, geoname, geolevel, everything())
-
-d <- bind_rows(d, sen_df_, assm_df_) 
-
-
+# table(d$geolevel)
+# county district     sldl     sldu 
+# 58      997       80       40 
 
 ####################################################################################################################################################
 ############## CALC RACE COUNTS STATS ##############
