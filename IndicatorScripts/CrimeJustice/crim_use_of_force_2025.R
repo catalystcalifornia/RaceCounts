@@ -200,6 +200,7 @@ race_reclass <- df_all_years %>% mutate(nh_white = ifelse(race_ethnic_group == '
                                         city = trimws(city)) # remove leading/trailing spaces for match on geoname with ACS later 
 race_reclass$nh_twoormor = ifelse(grepl('hispanic', race_reclass$race_ethnic_group), 'not twoormor', race_reclass$nh_twoormor)
 
+
 #### Fix city names that should match to ACS later on in script where possible #### Manually look up places with USOF data that do not match to ACS pop data ####
 ######## THIS MANUAL RESEARCH & CLEANING PROCESS MUST BE REVIEWED/UPDATED EACH TIME WE PREP THIS DATA 
 la_nhood <- race_reclass$city %in% c("Canoga Park", "Chatsworth", "North Hills", "Pacoima", "Panorama City", "Playa Del Rey", "San Pedro", "Sherman Oaks", "Studio City", "Sylmar", "Tujunga", "Van Nuys", "West Hills", "Woodland Hills")
@@ -207,6 +208,7 @@ race_reclass$city[la_nhood] <- "Los Angeles"
 race_reclass <- race_reclass %>% mutate(city = ifelse(city=='City Of Industry', 'Industry', city)) %>%
   mutate(city = ifelse(city=='Ventura', 'San Buenaventura (Ventura)', city)) %>%
   mutate(city = ifelse(city=='Rivererside', 'Riverside', city)) %>%
+  mutate(city = ifelse(city=='American Cyn', 'American Canyon', city)) %>%
   mutate(city = ifelse(city=='Saint Helena', 'St. Helena', city)) %>%
   mutate(city = ifelse(city=='White Water', 'Whitewater', city)) %>%
   mutate(city = ifelse(city=='Cottonwood' & county == 'Shasta', 'Cottonwood CDP (Shasta County)', city)) %>%
@@ -220,7 +222,8 @@ race_reclass <- race_reclass %>% mutate(city = ifelse(city=='City Of Industry', 
   mutate(city = ifelse(city=='Mckinleyville', 'McKinleyville', city)) %>%
   mutate(city = ifelse(city=='Marina Del Rey', 'Marina del Rey', city)) %>%
   mutate(city = ifelse(city=='El Sobrante' & county == 'Contra Costa', 'El Sobrante CDP (Contra Costa County)', city)) %>%
-  mutate(city = ifelse(city=='View Park', 'View Park-Windsor Hills', city))       
+  mutate(city = ifelse(city=='View Park', 'View Park-Windsor Hills', city) %>%
+  mutate(county = ifelse(city=='Pomona', 'Los Angeles', county)))       
 
 
 ############# ASSEMBLY DISTRICTS ##################
@@ -232,7 +235,6 @@ race_reclass_assm <- race_reclass %>%
   
   # join, expecting that zip codes may be in multiple districts
   inner_join(xwalk_assm, by = c("zip_code" = "geo_id"), relationship = "many-to-many")
-
 
 
 #### Assm Calc counts by race ####
@@ -255,20 +257,16 @@ latino_ <- calc_counts('latino')
 nh_twoormor_ <- calc_counts('nh_twoormor')
 
 ## join assm calcs by race together
-df_assm <- total_ %>% left_join(nh_pacisl_) %>% left_join(nh_asian_) %>% left_join(nh_black_) %>% left_join(nh_aian_) %>% left_join(nh_white_) %>% left_join(latino_) %>% left_join(nh_twoormor_) %>% 
-  mutate(geolevel='sldl') %>%
-  mutate(last_two = str_sub(sldl24, -2, -1)) %>%
-  mutate(last_two = str_replace(last_two, "01","1")) %>%
-  mutate(last_two = str_replace(last_two, "02","2")) %>%
-  mutate(last_two = str_replace(last_two, "03","3")) %>%
-  mutate(last_two = str_replace(last_two, "04","4")) %>%
-  mutate(last_two = str_replace(last_two, "05","5")) %>%
-  mutate(last_two = str_replace(last_two, "06","6")) %>%
-  mutate(last_two = str_replace(last_two, "07","7")) %>%
-  mutate(last_two = str_replace(last_two, "08","8")) %>%
-  mutate(last_two = str_replace(last_two, "09","9")) %>%
-  mutate("geoname" = paste0("Assembly District ", last_two)) %>% 
-  select(-sldl24, -last_two) %>% select(geoname, geolevel, everything())
+df_assm <- total_ %>% left_join(nh_pacisl_) %>% 
+  left_join(nh_asian_) %>% 
+  left_join(nh_black_) %>% 
+  left_join(nh_aian_) %>% 
+  left_join(nh_white_) %>% 
+  left_join(latino_) %>% 
+  left_join(nh_twoormor_) %>% 
+  mutate(geoname = paste0("Assembly District ", as.numeric(str_sub(sldl24, -2))),
+         geolevel = 'sldl') %>%
+  select(-sldl24) %>% select(geoname, geolevel, everything())
 
 
 ############# Senate DISTRICTS ##################
@@ -279,30 +277,20 @@ xwalk_sen <- dbGetQuery(con2, paste0("SELECT geo_id, ", sen_geoid, ", afact FROM
 race_reclass_sen <- race_reclass %>%
   
   # join, expecting that zip codes may be in multiple districts
-  left_join(xwalk_sen, by = c("zip_code" = "geo_id"), relationship = "many-to-many") %>% 
-  
-  # calculate pop-wt'd pct of incidents to each leg dist, 
-  # e.g., if zcta is in 2 districts, and the afact for dist 1 is .7 and the other .3, then we'd attribute 70% of incidents in that zip to dist 1 and 30% of incidents to dist 2.
-  mutate(pop_wt_num_involved_civilians = num_involved_civilians * afact) %>%
-  
-  # remove non-district rows
-  filter(!is.na(sldu24)) %>%
-  
-  #format to fit in function
-  select(-num_involved_civilians) %>% rename(num_involved_civilians = pop_wt_num_involved_civilians)
+  inner_join(xwalk_sen, by = c("zip_code" = "geo_id"), relationship = "many-to-many")
 
 
 #### Sen Calc counts by race ####
 calc_counts <- function(race_eth) {
   counts <- race_reclass_sen %>% filter(race_reclass_sen[[race_eth]] == race_eth) %>% group_by(sldu24) %>% 
-    mutate(involved = sum(num_involved_civilians)) %>% summarise(involved = min(involved))
+    summarise(involved = sum(afact))
   new_name <- paste0(race_eth, '_involved')  # generate race-specific col name
   counts <- counts %>% rename(!!new_name := involved)  # rename to race-specific col name
   return(counts)  
 }
 
 # Sen: calc counts by race
-total_ <- race_reclass_sen %>% group_by(sldu24) %>% summarise(total_involved = sum(num_involved_civilians))
+total_ <- race_reclass_sen %>% group_by(sldu24) %>% summarise(total_involved = sum(afact))
 nh_black_ <- calc_counts('nh_black')
 nh_aian_ <- calc_counts('nh_aian')
 nh_pacisl_ <- calc_counts('nh_pacisl')
@@ -312,23 +300,17 @@ latino_ <- calc_counts('latino')
 nh_twoormor_ <- calc_counts('nh_twoormor')
 
 ## join sen calcs by race together
-df_sen <- total_ %>% left_join(nh_pacisl_) %>% left_join(nh_asian_) %>% left_join(nh_black_) %>% left_join(nh_aian_) %>% left_join(nh_white_) %>% left_join(latino_) %>% left_join(nh_twoormor_) %>% 
-  mutate(geolevel='sldu') %>%
-  mutate(last_two = str_sub(sldu24, -2, -1)) %>%
-  mutate(last_two = str_replace(last_two, "01","1")) %>%
-  mutate(last_two = str_replace(last_two, "02","2")) %>%
-  mutate(last_two = str_replace(last_two, "03","3")) %>%
-  mutate(last_two = str_replace(last_two, "04","4")) %>%
-  mutate(last_two = str_replace(last_two, "05","5")) %>%
-  mutate(last_two = str_replace(last_two, "06","6")) %>%
-  mutate(last_two = str_replace(last_two, "07","7")) %>%
-  mutate(last_two = str_replace(last_two, "08","8")) %>%
-  mutate(last_two = str_replace(last_two, "09","9")) %>%
-  mutate("geoname" = paste0("State Senate District ", last_two)) %>% 
-  select(-sldu24, -last_two) %>% select(geoname, geolevel, everything())
-  
-  
-  
+df_sen <- total_ %>% left_join(nh_pacisl_) %>% 
+  left_join(nh_asian_) %>% 
+  left_join(nh_black_) %>% 
+  left_join(nh_aian_) %>% 
+  left_join(nh_white_) %>% 
+  left_join(latino_) %>% 
+  left_join(nh_twoormor_) %>% 
+  mutate(geoname = paste0("State Senate District ", as.numeric(str_sub(sldu24, -2))),
+         geolevel = 'sldu') %>%
+  select(-sldu24) %>% select(geoname, geolevel, everything())
+
 
 #################### City, County, State ###############################
 
@@ -370,20 +352,7 @@ df_all <- rbind(df_city, df_county, df_assm, df_sen) %>% relocate(geolevel, .aft
 df_all <- df_all %>% mutate(total_involved = coalesce(total_involved, 0), nh_pacisl_involved = coalesce(nh_pacisl_involved, 0), nh_black_involved = coalesce(nh_black_involved, 0), nh_aian_involved = coalesce(nh_aian_involved, 0), nh_asian_involved = coalesce(nh_asian_involved, 0),
                             nh_white_involved = coalesce(nh_white_involved, 0), latino_involved = coalesce(latino_involved, 0), nh_twoormor_involved = coalesce(nh_twoormor_involved, 0))
 
-# Summarize Pomona bc it throws an error in d <- calc_diff(d) later. Pomona is listed in 2 different counties LA and SB Counties in the data, but is actually in LAC.
-df_all <- df_all %>% filter(geoname != "Pomona") %>% bind_rows(
-  df_all %>% filter(geoname == "Pomona") %>% summarise(across(where(is.numeric), ~sum(.x, na.rm = TRUE))) %>%
-    mutate(county = "Los Angeles", geolevel = "city") %>%
-    select(geoname, county, everything())
-) %>% arrange(geoname)
 
-# Summarize American Canyon bc it throws an error in d <- calc_diff(d) later. American Canyon has 2 listings, 1 with a typo.
-df_all <- df_all %>% mutate(geoname = ifelse(geoname == 'American Cyn', 'American Canyon', geoname)) 
-df_all <- df_all %>% filter(geoname != "American Canyon") %>% bind_rows(
-  df_all %>% filter(geoname == "American Canyon") %>% summarise(across(where(is.numeric), ~sum(.x, na.rm = TRUE))) %>%
-    mutate(county = "Napa", geolevel = "city") %>%
-    select(geoname, county, everything())
-) %>% arrange(geoname)
 
 # Get ACS population data ----------------------------------------------------
 dp05 <- dbGetQuery(con, "SELECT * FROM v7.arei_race_multigeo") %>% mutate(name = gsub(" County, California", "", name),
