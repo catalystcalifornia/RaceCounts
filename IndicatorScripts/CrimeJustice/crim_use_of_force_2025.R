@@ -206,12 +206,15 @@ race_reclass$nh_twoormor = ifelse(grepl('hispanic', race_reclass$race_ethnic_gro
 la_nhood <- race_reclass$city %in% c("Canoga Park", "Chatsworth", "North Hills", "Pacoima", "Panorama City", "Playa Del Rey", "San Pedro", "Sherman Oaks", "Studio City", "Sylmar", "Tujunga", "Van Nuys", "West Hills", "Woodland Hills")
 race_reclass$city[la_nhood] <- "Los Angeles"
 race_reclass <- race_reclass %>% mutate(city = ifelse(city=='City Of Industry', 'Industry', city)) %>%
-  mutate(city = ifelse(city=='Ventura', 'San Buenaventura (Ventura)', city)) %>%
+  mutate(city = ifelse(city=='Ventura', 'San Buenaventura', city)) %>%
+  mutate(city = ifelse(city=='San Buenaventura (Ventura)', 'San Buenaventura', city)) %>%
   mutate(city = ifelse(city=='Rivererside', 'Riverside', city)) %>%
   mutate(city = ifelse(city=='American Cyn', 'American Canyon', city)) %>%
+  mutate(city = ifelse(city=='Twenty Nine Palms', 'Twentynine Palms', city)) %>%
   mutate(city = ifelse(city=='Saint Helena', 'St. Helena', city)) %>%
   mutate(city = ifelse(city=='White Water', 'Whitewater', city)) %>%
   mutate(city = ifelse(city=='Cottonwood' & county == 'Shasta', 'Cottonwood CDP (Shasta County)', city)) %>%
+  mutate(city = ifelse(city=='Cottonwood (Shasta County)', 'Cottonwood', city)) %>%
   mutate(city = ifelse(city=='Lakeside' & county == 'San Diego', 'Lakeside CDP (San Diego County)', city)) %>%
   mutate(city = ifelse(city=='Spring Valley' & county == 'San Diego', 'Spring Valley CDP (San Diego County)', city)) %>%
   mutate(city = ifelse(city=='Tahoe City', 'Sunnyside-Tahoe City', city)) %>%
@@ -219,12 +222,23 @@ race_reclass <- race_reclass %>% mutate(city = ifelse(city=='City Of Industry', 
   mutate(city = ifelse(city=='Brownsville', 'Challenge-Brownsville', city)) %>%
   mutate(city = ifelse(city=='Mcfarland', 'McFarland', city)) %>%
   mutate(city = ifelse(city=='Mcarthur', 'McArthur', city)) %>%
+  mutate(city = ifelse(city=='Morongo', 'Morongo Valley', city)) %>%
+  mutate(city = ifelse(city=='Big Bear', 'Big Bear City', city)) %>%
+  mutate(city = ifelse(city=='Carmel', 'Carmel-by-the-Sea', city)) %>%
+  mutate(city = ifelse(city=='Fallb', 'Fallbrook', city)) %>%
+  mutate(city = ifelse(city=='Lakeside (San Diego County)', 'Lakeside', city)) %>%
+  mutate(city = ifelse(city=='Pinon Hills', 'Piñon Hills', city)) %>%
+  mutate(city = ifelse(city=='Railroad Flat', 'Rail Road Flat', city)) %>%
+  mutate(city = ifelse(city=='Reddomg', 'Redding', city)) %>%
+  mutate(city = ifelse(city=='Spring Valley (San Diego County)', 'Spring Valley', city)) %>%
   mutate(city = ifelse(city=='Mckinleyville', 'McKinleyville', city)) %>%
   mutate(city = ifelse(city=='Marina Del Rey', 'Marina del Rey', city)) %>%
   mutate(city = ifelse(city=='El Sobrante' & county == 'Contra Costa', 'El Sobrante CDP (Contra Costa County)', city)) %>%
-  mutate(city = ifelse(city=='View Park', 'View Park-Windsor Hills', city) %>%
-  mutate(county = ifelse(city=='Pomona', 'Los Angeles', county)))       
-
+  mutate(city = ifelse(city=='View Park', 'View Park-Windsor Hills', city)) %>%
+  mutate(county = ifelse(city=='Pomona', 'Los Angeles', county)) %>%
+  mutate(county = ifelse(city=='Colton', 'San Bernardino', county)) %>%
+  mutate(county = ifelse(city=='Delano', 'Kern', county)) %>%
+  mutate(county = ifelse(city=='La Mirada', 'Los Angeles', county))
 
 ############# ASSEMBLY DISTRICTS ##################
 
@@ -358,6 +372,7 @@ df_all <- df_all %>% mutate(total_involved = coalesce(total_involved, 0), nh_pac
 dp05 <- dbGetQuery(con, "SELECT * FROM v7.arei_race_multigeo") %>% mutate(name = gsub(" County, California", "", name),
                                                                           name =  gsub(" CDP, California", "", name),
                                                                           name =  gsub(" city, California", "", name),
+                                                                          name =  gsub("city, California", "", name), # to get a clean Paso Robles
                                                                           name =  gsub(" town, California", "", name),
                                                                           name =  gsub(", California", "", name)) %>% 
   select(-c(contains(c("swana", "nh_other_", "aian", "pacisl", "pct_"))))
