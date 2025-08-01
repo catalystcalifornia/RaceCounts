@@ -143,11 +143,23 @@ df_schools_assembly <-  staff %>% filter(aggregatelevel == "S",
 
 
 staff_df_final <- bind_rows(staff_df, df_schools_assembly, df_schools_senate) %>%
-  relocate(leg_id, leg_name, .after = districtname) %>% #move metadata columns to 
-  select(-schoolname) #no longer need schoolname 
+  mutate(geoid = ifelse(aggregatelevel == "T", "06", 
+                        ifelse(aggregatelevel == "D", districtcode,
+                               ifelse(aggregatelevel == "C", geoid,
+                                      ifelse(aggregatelevel == 'sldl' , paste0(leg_id, "_l"),
+                                             ifelse(aggregatelevel == 'sldu', paste0(leg_id,"_u"),
+                                                    "NA"
+                                             ))))),
+         geolevel = aggregatelevel,
+         geoname = ifelse(aggregatelevel == "T", "California",
+                          ifelse(aggregatelevel == "D", districtname, 
+                                 ifelse(aggregatelevel == "C", countyname, 
+                                        ifelse(aggregatelevel == "sldu" | aggregatelevel == "sldl", leg_name,
+                                               "NA"))))) %>%
+  select(geoid, geolevel, geoname, total:nh_twoormor)
   
   
-###### STEP 2: get STUDENT ENROLLMENT data -----
+###### STEP 2: get STUDENT ENROLLMENT data and save it in pgadmin -----
 filepath = "https://www3.cde.ca.gov/demo-downloads/ce/cenroll2324.txt" 
 fieldtype = 1:12 # specify which cols should be varchar, the rest will be assigned numeric
 
@@ -218,12 +230,26 @@ enrollment_assembly <-  enrollment_wide %>%
 
 enrollment_df_final <- bind_rows(enrollment_wide, enrollment_senate, enrollment_assembly) %>%
   filter(aggregatelevel != "S") %>%
-  relocate(leg_id, leg_name, .after = districtname) %>% #move metadata columns to 
-  select(-schoolname, -schoolcode) #no longer need schoolname and id
+  mutate(geoid =
+           ifelse(aggregatelevel == 'D', districtcode, 
+                  ifelse(aggregatelevel == 'T', '06',
+                         ifelse(aggregatelevel == 'sldl' , paste0(leg_id, "_l"),
+                                ifelse(aggregatelevel == 'sldu', paste0(leg_id,"_u"),
+                                       geoid
+                                )))),
+         geolevel = aggregatelevel, 
+         geoname =
+           ifelse(geolevel == 'D', districtname,
+                  ifelse(geolevel == 'C', countyname,
+                         ifelse(geolevel == 'T', "California",
+                                ifelse(geolevel == "sldl" | geolevel == "sldu", leg_name,
+                                       'NA'))))) %>%
+  select(geoid, geolevel, geoname, nh_asian_pop:total_pop)
 
 ###### STEP 3: Calculate student to staff ratios -----
-#join together to calculate rate----
-df_enroll_staff <- right_join(enrollment_df_final, staff_df_final, by= c("districtcode", "countyname", "districtname", "geoid","leg_id", "leg_name" ,"aggregatelevel"))
+#join together to calculate rate
+df_enroll_staff <- right_join(enrollment_df_final, staff_df_final, 
+                              by= c("geoid", "geolevel" ,"geoname")) 
 
 #screen data and set population screen threshold
 pop_screen <- 100
@@ -249,19 +275,6 @@ df_enroll_staff <- df_enroll_staff %>% mutate(
   nh_twoormor_rate = ifelse(is.na(nh_twoormor) | is.na(nh_twoormor_pop) | nh_twoormor_pop == 0, NA, (nh_twoormor / total_pop)*100))
 # View(df_enroll_staff)
 
-
-# DO WE NEED THIS?!?####### GET SCHOOL DISTRICT GEOIDS ##### ---------------------------------------------------------------------
-# # get school district geoids - pull in active district records w/ geoids from CDE schools' list (NCES District ID).
-# ## can't get archival data, so using 2019-20 bc that is closest match to data vintage (2018-19)
-# districts <- st_read(con, query = "SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_2019_20 WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'")
-# # View(districts)
-# 
-# # join dist geoids to data df, coalesce combined geoid col, drop separate county/state and district geoid cols
-# df_final <- df_enroll_staff %>% left_join(districts, by="cdscode") %>% mutate(geoid = coalesce(geoid.x, geoid.y)) %>% 
-#   select(-c(geoid.x, geoid.y, countycode)) %>% relocate(geoid, .before = everything())
-# 
-# d <- df_final %>% drop_na(geoid) # drop records without geoids, these are all districts
-
 ###### STEP 4: Calculate Race Counts Stats -----
 #set source for RC Functions script
 source("./Functions/RC_Functions.R")
@@ -278,42 +291,62 @@ d <- calc_p_var(d) #calculate (row wise) population or sample variance. be sure 
 d <- calc_id(d) #calculate index of disparity
 # View(d)
 
-#split STATE into separate table and format id, name columns ----
-state_table <- d[d$aggregatelevel == 'T', ]
+#split STATE into separate table and format id, name columns 
+state_table <- d[d$geolevel == 'T', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
-state_table <- state_table %>% dplyr::rename("state_id" = "geoid", "state_name" = "countyname") %>% select(-c(districtname, districtcode, cdscode, aggregatelevel))
+state_table <- state_table %>% dplyr::rename("state_id" = "geoid", "state_name" = "geoname") 
 View(state_table)
 
 #remove state from county table
-county_table <- d[d$aggregatelevel == 'C', ]
+county_table <- d[d$geolevel == 'C', ]
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
-county_table <- county_table %>% dplyr::rename("county_id" = "geoid", "county_name" = "countyname") %>% select(-c(districtname, districtcode, cdscode, aggregatelevel))
+county_table <- county_table %>% dplyr::rename("county_id" = "geoid", "county_name" = "geoname") 
 View(county_table)
 
-#remove county/state from place table -----
-city_table <- d[d$aggregatelevel == 'D', ] %>% select(-c(aggregatelevel, districtcode))
+#remove county/state from place table 
+city_table <- d[d$geolevel == 'D', ] 
 
 #calculate DISTRICT z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
-city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" = "districtname", "county_name" = "countyname") %>% relocate(county_name, .after = district_name)
+city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" = "geoname")
 View(city_table)
+
+#remove county/state/district from place table 
+upper_leg_table <- d[d$geolevel == 'sldu', ]
+lower_leg_table <- d[d$geolevel == 'sldl', ]
+
+#calculate LEGISLATIVE DISTRICTS z-scores and bind
+upper_leg_table <- calc_z(upper_leg_table)
+upper_leg_table <- calc_ranks(upper_leg_table)
+upper_leg_table <- upper_leg_table
+#View(upper_leg_table)
+
+lower_leg_table <- calc_z(lower_leg_table)
+lower_leg_table <- calc_ranks(lower_leg_table)
+lower_leg_table <- lower_leg_table
+#View(lower_leg_table)
+
+leg_table <- rbind(upper_leg_table, lower_leg_table) %>% dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname")
 
 
 ###update info for postgres tables###
-county_table_name <- "arei_educ_staff_diversity_county_2023"
-state_table_name <- "arei_educ_staff_diversity_state_2023"
-city_table_name <- "arei_educ_staff_diversity_district_2023"
-rc_schema <- "v5"
+county_table_name <- "arei_educ_staff_diversity_county_2025"
+state_table_name <- "arei_educ_staff_diversity_state_2025"
+city_table_name <- "arei_educ_staff_diversity_district_2025"
+leg_table_name <- "arei_educ_staff_diversity_leg_2025"
+
+rc_schema <- "v7"
 
 indicator <- paste0("Created on ", Sys.Date(), ". Staff and Teacher Diversity Count and Rate. This data is")
-source <- "CDE 2018-2019 https://www.cde.ca.gov/ds/ad/filesabd.asp"
+source <- "CDE 2023-2024 https://www.cde.ca.gov/ds/ad/fsstre.asp"
 
 # send tables to postgres
-# to_postgres(county_table,state_table)
-city_to_postgres()
+to_postgres(county_table,state_table)
+city_to_postgres(city_table)
+leg_to_postgres(leg_table)
