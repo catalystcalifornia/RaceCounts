@@ -259,8 +259,7 @@ d_sen <- rcm_sen_subset %>% select(geoid, ends_with("_pop"), ends_with("_raw")) 
 ############ geoid and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
 #set source for RC Functions script
-#source("./Functions/RC_Functions.R")
-source("W:/Project/RACE COUNTS/2025_v7/RC_Github/CR/Functions/RC_Functions.R")
+source("./Functions/RC_Functions.R")
 
 d <- rbind(d, d_assm, d_sen)
 
