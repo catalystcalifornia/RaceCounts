@@ -1,4 +1,4 @@
-### Suspension for RC v6 ###
+### Suspension for RC v7 ###
 
 #install packages if not already installed
 list.of.packages <- c("readr","tidyr","dplyr","DBI","RPostgres","tidycensus", "rvest", "stringr", "usethis")
