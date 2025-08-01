@@ -318,29 +318,29 @@ dbDisconnect(con_shared)
 dbDisconnect(con_rc)
 
 
-#### QA Notes: Leg, city check
-og_city <- dbGetQuery(con_rc, statement = paste0("SELECT * FROM v7.",city_table_name)) 
-qa_city <- og_city %>%
-  left_join(city_table, by=c("dist_id", "cdscode", "geolevel", "district_name", "county_name"), suffix=c("_og", "_qa")) %>%
-  select(dist_id, cdscode, geolevel, district_name, county_name, starts_with("disparity_rank_"), starts_with("performance_rank_"),
-           starts_with("rank_"), starts_with("performance_z_quartile_"), starts_with("disparity_z_quartile_")) %>%
-  mutate(across(c(starts_with("disparity_rank_"), starts_with("performance_rank_"),
-                  starts_with("rank_"), starts_with("performance_z_quartile_"), 
-                  starts_with("disparity_z_quartile_")), as.character)) %>%
-  pivot_longer(
-    cols = c(starts_with("disparity_rank_"), starts_with("performance_rank_"),
-             starts_with("rank_"), starts_with("performance_z_quartile_"), 
-             starts_with("disparity_z_quartile_")),
-    names_to = c("metric", ".value"),
-    names_pattern = "(.*)(og|qa)$"
-  ) %>%
-  mutate(qa_check=ifelse(og==qa, "same", "different"))
-
-leg_table <- leg_table %>%
-  # mutate(leg_name = paste("State", leg_name)) %>%
-  mutate(leg_name = gsub("0+([0-9]$)", "\\1", leg_name))
-  
-
+# #### QA Notes: Leg, city check
+# og_city <- dbGetQuery(con_rc, statement = paste0("SELECT * FROM v7.",city_table_name)) 
+# qa_city <- og_city %>%
+#   left_join(city_table, by=c("dist_id", "cdscode", "geolevel", "district_name", "county_name"), suffix=c("_og", "_qa")) %>%
+#   select(dist_id, cdscode, geolevel, district_name, county_name, starts_with("disparity_rank_"), starts_with("performance_rank_"),
+#            starts_with("rank_"), starts_with("performance_z_quartile_"), starts_with("disparity_z_quartile_")) %>%
+#   mutate(across(c(starts_with("disparity_rank_"), starts_with("performance_rank_"),
+#                   starts_with("rank_"), starts_with("performance_z_quartile_"), 
+#                   starts_with("disparity_z_quartile_")), as.character)) %>%
+#   pivot_longer(
+#     cols = c(starts_with("disparity_rank_"), starts_with("performance_rank_"),
+#              starts_with("rank_"), starts_with("performance_z_quartile_"), 
+#              starts_with("disparity_z_quartile_")),
+#     names_to = c("metric", ".value"),
+#     names_pattern = "(.*)(og|qa)$"
+#   ) %>%
+#   mutate(qa_check=ifelse(og==qa, "same", "different"))
+# 
+# leg_table <- leg_table %>%
+#   # mutate(leg_name = paste("State", leg_name)) %>%
+#   mutate(leg_name = gsub("0+([0-9]$)", "\\1", leg_name))
+#   
+# 
 # og_leg <- dbGetQuery(con_rc, statement = paste0("SELECT * FROM v7.",leg_table_name)) 
 # qa_leg <- og_leg %>%
 #   left_join(leg_table, by=c("leg_id", "geolevel", "leg_name"), suffix=c("_og", "_qa")) %>%
