@@ -40,6 +40,50 @@ sen_geoid <- 'sldu24'			                      # Define column with senate geoid
 sen_xwalk <- 'zcta_2020_state_senate_2024'      # Name of tract-Sen xwalk table
 
 
+# For V7 there were two latest sets of Ursus tables 2023 and 2024
+# Next year we expect to update only one latest year
+# Startring here with 2023 and 2024 is below
+############### PREP LATEST URSUS RDA_SHARED_DATA TABLES ########################
+# metadata <- "https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-07/use-of-force-readme-06202024f.pdf" # update each year
+# ##### civilian-officer
+# filepath = "https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-07/UseofForce_Civilian-Officer_2023.csv" # update each year
+# fieldtype = 1:27  # confirm using metadata link
+# 
+# ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+# table_schema <- "crime_and_justice"
+# table_name <- paste0("ursus_civilian_officer_", substr(curr_yr, 6,9))
+# table_comment_source <- "NOTE: race/eth column values have inconsistencies, for example ''''asian indian'''' and ''''asian_indian''''."
+# table_source <- paste0("Use of force data downloaded ", Sys.Date(), " from https://openjustice.doj.ca.gov/data. Metadata here: ", metadata,
+#                        " and saved here: W:/Data/Crime and Justice/Police Violence/Open Justice/", substr(curr_yr, 6,9))
+# 
+# # comment on table
+# indicator <- "Use of Force Civilians and Officers 2023"
+# column_names <- colnames(df)
+# column_comments <- ""
+# 
+# ### Use this fx to get URSUS (Use of Force) data ####
+# source("W:/Project/RACE COUNTS/2025_v7/RC_Github/CR/Functions/rdashared_functions.R") # getting locally for the moment while updating
+# #source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
+# 
+# get_ursus_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source)
+# 
+# 
+# # ##### incident
+# filepath = "https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-07/UseofForce_Incident_2023.csv" # update each year
+# fieldtype = 1:11  # confirm using metadata link
+# 
+# ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
+# table_name <- paste0("ursus_incident_", substr(curr_yr, 6,9))
+# table_comment_source <- "NOTE: This table has 1 row per incident with total # of civilians involved in Use of Force incident. Tables like ursus_civilian_officer_2016, have 1 row per civilian involved in an incident. So if you join the tables, then sum the num_involved_civilians field, you will double-count people."
+# 
+# # comment on table
+# indicator <- "Use of Force Incidents 2023"
+# column_names <- colnames(df)
+# column_comments <- ""
+# 
+# df <- get_ursus_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
+
+
 ############### PREP LATEST URSUS RDA_SHARED_DATA TABLES ########################
 # metadata <- "https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2025-07/Use%20of%20Force%20Readme%2006202025.pdf" # update each year
 # ##### civilian-officer
