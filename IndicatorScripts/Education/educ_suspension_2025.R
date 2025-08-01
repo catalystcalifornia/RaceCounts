@@ -289,7 +289,10 @@ city_table_name <- paste0("arei_educ_suspension_district_", rc_yr)
 leg_table_name <- paste0("arei_educ_suspension_leg_",rc_yr)
 
 indicator <- paste0("Created on ", Sys.Date(), ". Unduplicated students suspended, cumulative enrollment, and unduplicated suspension rate. This data is")
-source <- paste("CDE", curr_yr, url)
+qa_filepath <- paste0("W:\\Project\\RACE COUNTS\\", rc_yr,"_", rc_schema,"\\Education\\QA_Sheet_Suspension.docx")
+source <- paste("CDE", curr_yr, url,". QA doc: ", qa_filepath)
+
+
 
 #send tables to postgres
 # to_postgres(county_table,state_table)
