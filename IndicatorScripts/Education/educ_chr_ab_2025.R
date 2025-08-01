@@ -124,7 +124,7 @@ df <- dbGetQuery(con_shared, statement = "SELECT * FROM education.cde_multigeo_c
   mutate(raw = ifelse(raw < threshold, NA, raw),
          rate = ifelse(raw < threshold, NA, rate)) %>%
   # get related counties, school districts, senate, and assembly leg districts
-  right_join(counties, by=c("countyname"="geoname")) %>%
+  left_join(counties, by=c("countyname"="geoname")) %>%
   rename(county_geoid=geoid) %>%
   left_join(districts, by="cdscode") %>%
   left_join(xwalk_school_sen, by="cdscode", suffix=c("", "_senate")) %>% 
@@ -173,7 +173,9 @@ df_subset_assm <- df %>%
   ungroup()
 
 df_subset_leg <- rbind(df_subset_senate, df_subset_assm) %>%
-  mutate(cdscode=NA)
+  # add cdscode and countyname (needed for school districts) - to bind all geos later
+  mutate(cdscode=NA,
+         countyname=NA)
 
 ############### County, State, and School District Prep ###############
 df_subset <- df %>% 
@@ -190,11 +192,11 @@ df_subset <- df %>%
              geolevel=="county"~countyname,
              geolevel=="district"~districtname)) %>%
   # select needed cols
-  select(final_geoid, cdscode, geoname, geolevel, reportingcategory, raw, pop, rate) 
+  select(final_geoid, cdscode, countyname, geoname, geolevel, reportingcategory, raw, pop, rate) 
 
 # View(df_subset)
 
-####### Combine all geolevels (county, state, school district, leg district) ##### ---------------------------------------------------------------------
+####### Combine all geolevels (county, state, school district, leg district) for RC Calcs ##### ---------------------------------------------------------------------
 df_final <- rbind(df_subset_leg, df_subset) %>%
   rename(geoid=final_geoid) %>%
   # remove records without fips codes or "No Data"
@@ -210,13 +212,12 @@ df_final <- rbind(df_subset_leg, df_subset) %>%
 
 d <- df_final
 # table(d$geolevel)
-# county district     sldl     sldu 
-# 58      997       80       40 
+# county district     sldl     sldu    state 
+# 58      997       80       40        1 
 
 ####################################################################################################################################################
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-# source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 source("./Functions/RC_Functions.R")
 
 d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
@@ -230,47 +231,69 @@ d <- calc_id(d) #calculate index of disparity
 View(d)
 
 #split STATE into separate table and format id, name columns
-state_table <- d[d$geoname == 'California', ]
+state_table <- d %>%
+  filter(geolevel=="state")
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
-state_table <- state_table %>% dplyr::rename("state_id" = "geoid", "state_name" = "geoname") %>% select(-c(districtname, cdscode, aggregatelevel))
-View(state_table)
+state_table <- state_table %>% 
+  dplyr::rename(state_id = geoid, 
+                state_name = geoname) %>% 
+  # drop columns for school districts only
+  select(-c(cdscode, countyname))
+# View(state_table)
 
 #remove state from county table
-county_table <- d[d$aggregatelevel == 'C', ]
+county_table <- d %>%
+  filter(geolevel=="county")
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
-county_table <- county_table %>% dplyr::rename("county_id" = "geoid", "county_name" = "geoname") %>% select(-c(districtname, cdscode, aggregatelevel))
-View(county_table)
+county_table <- county_table %>% 
+  dplyr::rename(county_id = geoid, 
+                county_name = geoname) %>% 
+  # drop columns for school districts only
+  select(-c(cdscode, countyname))
+# View(county_table)
 
 #remove county/state from place table
-city_table <- d[d$aggregatelevel == 'D', ] %>% select(-c(aggregatelevel)) 
+city_table <- d %>%
+  filter(geolevel=="district")
 
 #calculate DISTRICT z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
-city_table <- city_table %>% dplyr::rename("dist_id" = "geoid", "district_name" = "districtname", "county_name" = "geoname") %>% relocate(county_name, .after = district_name)
-View(city_table)
+city_table <- city_table %>% 
+  dplyr::rename(dist_id = geoid, 
+                district_name = geoname, 
+                county_name = countyname) %>% 
+  relocate(county_name, .after = district_name)
+# View(city_table)
 
-#split LEGISLATIVE DISTRICTS into separate table 
-upper_leg_table <- d[d$geolevel == 'sldu', ]
-lower_leg_table <- d[d$geolevel == 'sldl', ]
+# Senate Districts
+upper_leg_table <- d %>%
+  filter(geolevel=="sldu")
 
-#calculate LEGISLATIVE DISTRICTS z-scores and bind
 upper_leg_table <- calc_z(upper_leg_table)
 upper_leg_table <- calc_ranks(upper_leg_table)
-upper_leg_table <- upper_leg_table
 #View(upper_leg_table)
 
+# Assembly Districts
+lower_leg_table <- d %>%
+  filter(geolevel=="sldl")
+
+# calculate ASSEMBLY DISTRICTS z-scores 
 lower_leg_table <- calc_z(lower_leg_table)
 lower_leg_table <- calc_ranks(lower_leg_table)
-lower_leg_table <- lower_leg_table
 #View(lower_leg_table)
 
-leg_table <- rbind(upper_leg_table, lower_leg_table) %>% dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname")
+# Bind senate and assembly into one leg district table for export
+leg_table <- rbind(upper_leg_table, lower_leg_table) %>% 
+  dplyr::rename(leg_id = geoid, 
+                leg_name = geoname) %>%
+  # drop columns for school districts only
+  select(-c(cdscode, countyname))
 
 
 ###update info for postgres tables###
