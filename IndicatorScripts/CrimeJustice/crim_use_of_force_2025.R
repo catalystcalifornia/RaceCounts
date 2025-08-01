@@ -189,7 +189,12 @@ race_reclass <- df_all_years %>% mutate(nh_white = ifelse(race_ethnic_group == '
                                         nh_black = ifelse(race_ethnic_group == 'black', 'nh_black', 'not_black'),
                                         nh_aian = ifelse(grepl('american indian', race_ethnic_group), 'nh_aian', 'not nh_aian'), 
                                         nh_pacisl = ifelse(grepl('islander', race_ethnic_group), 'nh_pacisl', 'not nh_pacisl'),
-                                        nh_asian = ifelse(race_ethnic_group == 'asian' | race_ethnic_group == 'asian indian', 'nh_asian', 'not nh_asian'),
+                                        nh_asian = ifelse(race_ethnic_group == 'asian' | 
+                                                            race_ethnic_group == 'asian indian' |
+                                                            race_ethnic_group == 'filipino' |
+                                                            race_ethnic_group == 'japanese' |
+                                                            race_ethnic_group == 'vietname' |
+                                                            race_ethnic_group == 'laotian', 'nh_asian', 'not nh_asian'),
                                         latino = ifelse(grepl('hispanic', race_ethnic_group), 'latino', 'not latino'),
                                         nh_twoormor = ifelse(grepl(',', race_ethnic_group), 'nh_twoormor', 'not twoormor'),
                                         city = trimws(city)) # remove leading/trailing spaces for match on geoname with ACS later 
@@ -226,30 +231,21 @@ xwalk_assm <- dbGetQuery(con2, paste0("SELECT geo_id, ", assm_geoid, ", afact FR
 race_reclass_assm <- race_reclass %>%
   
   # join, expecting that zip codes may be in multiple districts
-  left_join(xwalk_assm, by = c("zip_code" = "geo_id"), relationship = "many-to-many") %>% 
+  inner_join(xwalk_assm, by = c("zip_code" = "geo_id"), relationship = "many-to-many")
 
-  # calculate pop-wt'd pct of incidents to each leg dist, 
-  # e.g., if zcta is in 2 districts, and the afact for dist 1 is .7 and the other .3, then we'd attribute 70% of incidents in that zip to dist 1 and 30% of incidents to dist 2.
-  mutate(pop_wt_num_involved_civilians = num_involved_civilians * afact) %>%
-  
-  # remove non-district rows
-  filter(!is.na(sldl24)) %>%
-  
-  #format to fit in function
-  select(-num_involved_civilians) %>% rename(num_involved_civilians = pop_wt_num_involved_civilians)
 
 
 #### Assm Calc counts by race ####
 calc_counts <- function(race_eth) {
   counts <- race_reclass_assm %>% filter(race_reclass_assm[[race_eth]] == race_eth) %>% group_by(sldl24) %>% 
-    mutate(involved = sum(num_involved_civilians)) %>% summarise(involved = min(involved))
+    summarise(involved = sum(afact))
   new_name <- paste0(race_eth, '_involved')  # generate race-specific col name
   counts <- counts %>% rename(!!new_name := involved)  # rename to race-specific col name
   return(counts)  
 }
 
 # Assm: calc counts by race
-total_ <- race_reclass_assm %>% group_by(sldl24) %>% summarise(total_involved = sum(num_involved_civilians))
+total_ <- race_reclass_assm %>% group_by(sldl24) %>% summarise(total_involved = sum(afact))
 nh_black_ <- calc_counts('nh_black')
 nh_aian_ <- calc_counts('nh_aian')
 nh_pacisl_ <- calc_counts('nh_pacisl')
