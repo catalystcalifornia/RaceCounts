@@ -1,8 +1,8 @@
 ### Chronic Absenteeism RC v7 ### 
 
 #install packages if not already installed
-packages <- c("data.table","stringr","dplyr","RPostgres","dbplyr","srvyr", "DBI", "tidyverse",
-              "tidycensus","tidyr","rpostgis", "here", "sf", "usethis", "readr", "rvest")
+packages <- c("stringr","dplyr","RPostgres","DBI", 
+              "tidycensus", "usethis","rvest")
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
