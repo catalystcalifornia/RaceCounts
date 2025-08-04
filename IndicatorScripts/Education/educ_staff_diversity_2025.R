@@ -75,7 +75,7 @@ staff_df <- staff %>% filter(charterschool == "ALL",
                                        dass == "ALL") %>%
   #select just fields we need
   select(-academicyear,-countycode, -schoolcode, -charterschool, -dass, -stafftype, -staffgender, -schoolgradespan,
-         -notreported) %>% #note that not reported data is excludeed for the purpose of this project focusing on race. 
+         -notreported) %>% #note that not reported data is excluded for the purpose of this project focusing on race. 
   #rename fields to column names we use 
   rename(total = totalstaffcount,
          nh_black = africanamerican, 
@@ -91,7 +91,7 @@ staff_df <- staff %>% filter(charterschool == "ALL",
 #add county geoids
 staff_df <- left_join(x=staff_df,y=ca,by=c("countyname"="geoname")) %>% mutate(geoid = ifelse(aggregatelevel=="D", NA, geoid))
 # add state geoid
-staff_df <- within(staff_df, geoid[countyname == 'California'] <- '06') %>%
+staff_df <- within(staff_df, geoid[cdscode == '00000000000000'] <- '06') %>%
   select(geoid, everything())
 
 #Must make a separate dataframe for schools because the categorizations are not applicable at school level and then aggregate to leg district
@@ -100,7 +100,7 @@ df_schools_senate <-  staff %>% filter(aggregatelevel == "S",
                                                 staffgender == "ALL") %>%
   #select just fields we need
   select(-academicyear,-countycode, -charterschool, -dass, -stafftype, -staffgender, -schoolgradespan,
-         -notreported) %>% #note that not reported data is excludeed for the purpose of this project focusing on race. 
+         -notreported) %>% #note that not reported data is excluded for the purpose of this project focusing on race. 
   #rename fields to column names we use 
   rename(total = totalstaffcount,
          nh_black = africanamerican, 
@@ -123,7 +123,7 @@ df_schools_assembly <-  staff %>% filter(aggregatelevel == "S",
                                             staffgender == "ALL") %>%
   #select just fields we need
   select(-academicyear,-countycode, -charterschool, -dass, -stafftype, -staffgender, -schoolgradespan,
-         -notreported) %>% #note that not reported data is excludeed for the purpose of this project focusing on race. 
+         -notreported) %>% #note that not reported data is excluded for the purpose of this project focusing on race. 
   #rename fields to column names we use 
   rename(total = totalstaffcount,
          nh_black = africanamerican, 
@@ -166,7 +166,7 @@ fieldtype = 1:12 # specify which cols should be varchar, the rest will be assign
 ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 table_schema <- "education"
 table_name <- "cde_multigeo_enrollment_2023_24"
-table_comment_source <- "QA DOC: W:\Project\RACE COUNTS\2025_v7\Education\QA_Sheet_Staff_Diversity.docx"
+table_comment_source <- "QA DOC: W://Project//RACE COUNTS//2025_v7//Education//QA_Sheet_Staff_Diversity.docx"
 table_source <- "Downloaded from https://www.cde.ca.gov/ds/ad/filesenrcum.asp. Headers were cleaned of characters like /, ., ), and (. Cells with values of * were nullified. Created cdscode by concatenating county, district, and school codes"
 
 ## Run function to prep and export rda_shared_data table
