@@ -187,19 +187,29 @@ df_all_years <- as.data.frame(bind_rows(joined, .id = "year"))
 # sort(races) # get list of unique race/ethnic groups
 race_reclass <- df_all_years %>% mutate(nh_white = ifelse(race_ethnic_group == 'white', 'nh_white', 'not nh_white'), 
                                         nh_black = ifelse(race_ethnic_group == 'black', 'nh_black', 'not_black'),
-                                        nh_aian = ifelse(grepl('american indian', race_ethnic_group), 'nh_aian', 'not nh_aian'), 
+                                        nh_aian = ifelse(grepl('american indian', race_ethnic_group), 'nh_aian', 'not nh_aian'), # aian alone or in combination
+                                        # # use this code for non-hispanic aian, alone
+                                        # nh_aian = ifelse(race_ethnic_group=='american indian or alaska native' |
+                                        #                    race_ethnic_group == 'american indian' , 'nh_aian', 'not nh_aian'),
                                         nh_pacisl = ifelse(grepl('islander', race_ethnic_group), 'nh_pacisl', 'not nh_pacisl'),
+                                        # # use this code for non-hispanic nhpi, alone
+                                        # nh_pacisl = ifelse(race_ethnic_group=='hawaiian islander' |
+                                        #                    race_ethnic_group == 'pacific islander' , 'nh_pacisl', 'not nh_pacisl'),
                                         nh_asian = ifelse(race_ethnic_group == 'asian' | 
                                                             race_ethnic_group == 'asian indian' |
                                                             race_ethnic_group == 'filipino' |
                                                             race_ethnic_group == 'japanese' |
                                                             race_ethnic_group == 'vietname' |
-                                                            race_ethnic_group == 'laotian', 'nh_asian', 'not nh_asian'),
+                                                            race_ethnic_group == 'laotian' |
+                                                            race_ethnic_group == 'chinese' |
+                                                            race_ethnic_group == 'other asian' , 'nh_asian', 'not nh_asian'),
                                         latino = ifelse(grepl('hispanic', race_ethnic_group), 'latino', 'not latino'),
                                         nh_twoormor = ifelse(grepl(',', race_ethnic_group), 'nh_twoormor', 'not twoormor'),
                                         city = trimws(city)) # remove leading/trailing spaces for match on geoname with ACS later 
 race_reclass$nh_twoormor = ifelse(grepl('hispanic', race_reclass$race_ethnic_group), 'not twoormor', race_reclass$nh_twoormor)
 
+# check race race_reclass
+View(race_reclass[c("race_ethnic_group","nh_white","nh_black","nh_aian","nh_pacisl", "nh_asian", "latino", "nh_twoormor")])
 
 #### Fix city names that should match to ACS later on in script where possible #### Manually look up places with USOF data that do not match to ACS pop data ####
 ######## THIS MANUAL RESEARCH & CLEANING PROCESS MUST BE REVIEWED/UPDATED EACH TIME WE PREP THIS DATA 
