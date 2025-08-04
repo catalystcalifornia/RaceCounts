@@ -99,8 +99,22 @@ df_subset_schools <- df %>% filter(aggregatelevel == "S" & reportingcategory %in
 df_subset_sen <- df_subset_schools %>%
   left_join(xwalk_school_sen, by = "cdscode")
 
+# check join
+check_sen <- df_subset_sen %>% filter(is.na(leg_id)) %>%
+  filter(!is.na(cohortstudents)) %>%
+  filter(reportingcategory=="TA")
+View(check_sen)
+# Culver Park High and Los Padrinos Juvenile Hall don't join to a senate district - they should be manually assigned
+
 df_subset_assm <- df_subset_schools %>%
   left_join(xwalk_school_assm, by = "cdscode")
+
+# check join
+check_assm <- df_subset_assm %>% filter(is.na(leg_id)) %>%
+  filter(!is.na(cohortstudents)) %>%
+  filter(reportingcategory=="TA")
+View(check_assm)
+# Culver Park High and Los Padrinos Juvenile Hall don't join to a assembly district district - they should be manually assigned
 
 #format for column headers
 format_column_headers <- function(df){
@@ -132,7 +146,8 @@ sen <- df_subset_sen %>%
     pop=sum(pop, na.rm = TRUE),
     rate=sum(raw, na.rm=TRUE)/sum(pop, na.rm=TRUE)*100
   ) %>%
-  ungroup()
+  ungroup() %>%
+  filter(!is.na(leg_id))
 
 assm <- df_subset_assm %>% 
   group_by(ca_assembly_district, leg_id, geolevel, reportingcategory) %>%
@@ -141,11 +156,13 @@ assm <- df_subset_assm %>%
     pop=sum(pop, na.rm = TRUE),
     rate=sum(raw, na.rm=TRUE)/sum(pop, na.rm=TRUE)*100
   ) %>%
-  ungroup()
+  ungroup() %>%
+  filter(!is.na(leg_id))
 
 #pop screen. suppress raw/rate for groups with fewer than 20 graduating students.
 threshold = 20
 df_subset <- df_subset %>% mutate(rate = ifelse(raw < threshold, NA, rate), raw = ifelse(raw < threshold, NA, raw))
+
 sen <- sen %>% mutate(rate = ifelse(raw < threshold, NA, rate), raw = ifelse(raw < threshold, NA, raw))
 assm <- assm %>% mutate(rate = ifelse(raw < threshold, NA, rate), raw = ifelse(raw < threshold, NA, raw))
 
@@ -168,7 +185,7 @@ df_final <- left_join(df_wide, districts, by = c('cdscode')) %>% dplyr::rename("
   select(-c(geoid.y, districtname)) %>% distinct() %>%  # combine distinct county and district geoid matched df's
   relocate(geoid, geoname, cdscode, aggregatelevel)
 
-df_final <- filter(df_final, !is.na(geoid) & geoid != "No Data") # remove records without fips codes
+df_final <- filter(df_final, !is.na(geoid) & geoid != "No Data") %>% select(-schoolname) # remove records without fips codes
 d <- df_final
 
 # edit columns for the senate and assembly dataframes so that it can be combined into 1 dataframe for legislative districts
