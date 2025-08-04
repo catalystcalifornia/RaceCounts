@@ -31,6 +31,7 @@ dwnld_url <- "https://github.com/vera-institute/incarceration-trends"
 rc_schema <- "v7"
 rc_yr <- "2025"
 
+qa_filepath <- "W://Project//RACE COUNTS//2025_v7//Crime and Justice//QA_Sheet_Incarceration_CountySt.docx"
 
 ############### PREP DATA ########################
 
@@ -129,7 +130,7 @@ View(county_table)
 county_table_name <- paste0("arei_crim_incarceration_county_", rc_yr)
 state_table_name <- paste0("arei_crim_incarceration_state_", rc_yr)
 indicator <- paste0("Created on ", Sys.Date(), ". Jail population per 100,000 15 to 64 year olds")
-source <- paste0("Vera Institute (", curr_yr, ")")
+source <- paste0("Vera Institute (", curr_yr, ")", ". QA doc: ", qa_filepath)
 
 #send tables to postgres
 #to_postgres(county_table, state_table)
