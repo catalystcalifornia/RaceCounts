@@ -209,11 +209,14 @@ race_reclass <- df_all_years %>% mutate(nh_white = ifelse(race_ethnic_group == '
 race_reclass$nh_twoormor = ifelse(grepl('hispanic', race_reclass$race_ethnic_group), 'not twoormor', race_reclass$nh_twoormor)
 
 # check race race_reclass
-View(race_reclass[c("race_ethnic_group","nh_white","nh_black","nh_aian","nh_pacisl", "nh_asian", "latino", "nh_twoormor")])
+# View(race_reclass[c("race_ethnic_group","nh_white","nh_black","nh_aian","nh_pacisl", "nh_asian", "latino", "nh_twoormor")])
 
 #### Fix city names that should match to ACS later on in script where possible #### Manually look up places with USOF data that do not match to ACS pop data ####
 ######## THIS MANUAL RESEARCH & CLEANING PROCESS MUST BE REVIEWED/UPDATED EACH TIME WE PREP THIS DATA 
-la_nhood <- race_reclass$city %in% c("Canoga Park", "Chatsworth", "North Hills", "Pacoima", "Panorama City", "Playa Del Rey", "San Pedro", "Sherman Oaks", "Studio City", "Sylmar", "Tujunga", "Van Nuys", "West Hills", "Woodland Hills")
+race_reclass$city_orig <- race_reclass$city
+race_reclass$county_orig <- race_reclass$county
+
+la_nhood <- race_reclass$city %in% c("Canoga Park", "Chatsworth", "North Hills", "Encino","Pacoima", "Panorama City", "Playa Del Rey", "San Pedro", "Sherman Oaks", "Studio City", "Sylmar", "Tujunga", "Van Nuys", "West Hills", "Woodland Hills")
 race_reclass$city[la_nhood] <- "Los Angeles"
 race_reclass <- race_reclass %>% mutate(city = ifelse(city=='City Of Industry', 'Industry', city)) %>%
   mutate(city = ifelse(city=='Ventura', 'San Buenaventura', city)) %>%
@@ -223,12 +226,8 @@ race_reclass <- race_reclass %>% mutate(city = ifelse(city=='City Of Industry', 
   mutate(city = ifelse(city=='Twenty Nine Palms', 'Twentynine Palms', city)) %>%
   mutate(city = ifelse(city=='Saint Helena', 'St. Helena', city)) %>%
   mutate(city = ifelse(city=='White Water', 'Whitewater', city)) %>%
-  mutate(city = ifelse(city=='Cottonwood' & county == 'Shasta', 'Cottonwood CDP (Shasta County)', city)) %>%
-  mutate(city = ifelse(city=='Cottonwood (Shasta County)', 'Cottonwood', city)) %>%
-  mutate(city = ifelse(city=='Lakeside' & county == 'San Diego', 'Lakeside CDP (San Diego County)', city)) %>%
-  mutate(city = ifelse(city=='Spring Valley' & county == 'San Diego', 'Spring Valley CDP (San Diego County)', city)) %>%
   mutate(city = ifelse(city=='Tahoe City', 'Sunnyside-Tahoe City', city)) %>%
-  mutate(city = ifelse(city=='Paso Robles', 'El Paso de Robles (Paso Robles)', city)) %>%
+  mutate(city = ifelse(city=='Paso Robles', 'El Paso de Robles', city)) %>%
   mutate(city = ifelse(city=='Brownsville', 'Challenge-Brownsville', city)) %>%
   mutate(city = ifelse(city=='Mcfarland', 'McFarland', city)) %>%
   mutate(city = ifelse(city=='Mcarthur', 'McArthur', city)) %>%
@@ -240,22 +239,25 @@ race_reclass <- race_reclass %>% mutate(city = ifelse(city=='City Of Industry', 
   mutate(city = ifelse(city=='Pinon Hills', 'Piñon Hills', city)) %>%
   mutate(city = ifelse(city=='Railroad Flat', 'Rail Road Flat', city)) %>%
   mutate(city = ifelse(city=='Reddomg', 'Redding', city)) %>%
-  mutate(city = ifelse(city=='Spring Valley (San Diego County)', 'Spring Valley', city)) %>%
+  mutate(city = ifelse(city=='Valencia', 'Santa Clarita', city)) %>%
   mutate(city = ifelse(city=='Mckinleyville', 'McKinleyville', city)) %>%
   mutate(city = ifelse(city=='Marina Del Rey', 'Marina del Rey', city)) %>%
-  mutate(city = ifelse(city=='El Sobrante' & county == 'Contra Costa', 'El Sobrante CDP (Contra Costa County)', city)) %>%
   mutate(city = ifelse(city=='View Park', 'View Park-Windsor Hills', city)) %>%
   mutate(county = ifelse(city=='Pomona', 'Los Angeles', county)) %>%
   mutate(county = ifelse(city=='Colton', 'San Bernardino', county)) %>%
   mutate(county = ifelse(city=='Delano', 'Kern', county)) %>%
+  mutate(county = ifelse(city=='Cottonwood' & county=='Tehama', 'Shasta', county)) %>%
   mutate(county = ifelse(city=='La Mirada', 'Los Angeles', county))
 
+# check city/county recode
+View(race_reclass[c("city","county","city_orig","county_orig")])
+check <- race_reclass %>% group_by(city,county,city_orig, county_orig) %>% summarise(count=n())
 ############# ASSEMBLY DISTRICTS ##################
 
 ### Load ZCTA-Assm Crosswalk ### 
 xwalk_assm <- dbGetQuery(con2, paste0("SELECT geo_id, ", assm_geoid, ", afact FROM crosswalks.", assm_xwalk))
  
-race_reclass_assm <- race_reclass %>%
+race_reclass_assm <- race_reclass %>% select(-c(city_orig,county_orig)) %>%
   
   # join, expecting that zip codes may be in multiple districts
   inner_join(xwalk_assm, by = c("zip_code" = "geo_id"), relationship = "many-to-many")
@@ -419,6 +421,9 @@ df_calcs <- full_join(df_all, dp05_, by = c("geoname", "geolevel", "county")) %>
 df_calcs$geoname <- gsub(" CDP", "", df_calcs$geoname)
 # usof_nomatch_final <- filter(df_all_, is.na(geoid)) # check if manual fixes worked: this df should have 21 unmatched
 # View(usof_nomatch_final)
+# # check using df_calcs for cleaner workflow
+# usof_nomatch <- filter(df_calcs, is.na(geoid)) 
+# View(usof_nomatch) # this df has 33 rows
 
 # Data screening / calc rates ----------------------------------------------------------
 pop_threshold = 100
