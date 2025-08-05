@@ -577,7 +577,8 @@ get_cde_data <- function(filepath, fieldtype, table_schema, table_name, table_co
   df$districtcode<-as.character(df$districtcode)
                 
   #create cdscode field
-  df$cdscode <- case_when(df$aggregatelevel == "D"~paste0(df$countycode,df$districtcode,"0000000"),
+  df$cdscode <- case_when(df$aggregatelevel == "T"~paste0("00000000000000"),
+                          df$aggregatelevel == "D"~paste0(df$countycode,df$districtcode,"0000000"),
                           df$aggregatelevel == "S"~paste0(df$countycode,df$districtcode,df$schoolcode), 
                           .default=paste0(df$countycode,"000000000000"))
   
