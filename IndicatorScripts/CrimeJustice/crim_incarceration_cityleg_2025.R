@@ -22,7 +22,7 @@ options(scipen=999)
 # define variables used in several places that must be updated each year
 curr_yr <- 2020  # must keep same format
 acs_yr <- 2020
-rc_yr <- '2020'
+rc_yr <- '2025'
 rc_schema <- 'v7'
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Crime and Justice\\QA_Sheet_Incarceration.docx" # update QA doc filepath
 
