@@ -252,12 +252,14 @@ race_reclass <- race_reclass %>% mutate(city = ifelse(city=='City Of Industry', 
 # check city/county recode
 View(race_reclass[c("city","county","city_orig","county_orig")])
 check <- race_reclass %>% group_by(city,county,city_orig, county_orig) %>% summarise(count=n())
+race_reclass <- race_reclass %>% select(-c(city_orig,county_orig)) # remove extra columns
+
 ############# ASSEMBLY DISTRICTS ##################
 
 ### Load ZCTA-Assm Crosswalk ### 
 xwalk_assm <- dbGetQuery(con2, paste0("SELECT geo_id, ", assm_geoid, ", afact FROM crosswalks.", assm_xwalk))
  
-race_reclass_assm <- race_reclass %>% select(-c(city_orig,county_orig)) %>%
+race_reclass_assm <- race_reclass %>%
   
   # join, expecting that zip codes may be in multiple districts
   inner_join(xwalk_assm, by = c("zip_code" = "geo_id"), relationship = "many-to-many")
@@ -422,7 +424,7 @@ df_calcs$geoname <- gsub(" CDP", "", df_calcs$geoname)
 # usof_nomatch_final <- filter(df_all_, is.na(geoid)) # check if manual fixes worked: this df should have 21 unmatched
 # View(usof_nomatch_final)
 # # check using df_calcs for cleaner workflow
-# usof_nomatch <- filter(df_calcs, is.na(geoid)) 
+# usof_nomatch <- filter(df_calcs, is.na(geoid))
 # View(usof_nomatch) # this df has 33 rows
 
 # Data screening / calc rates ----------------------------------------------------------
