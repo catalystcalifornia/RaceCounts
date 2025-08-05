@@ -42,7 +42,7 @@ sen_xwalk <- 'zcta_2020_state_senate_2024'      # Name of tract-Sen xwalk table
 
 # For V7 there were two latest sets of Ursus tables 2023 and 2024
 # Next year we expect to update only one latest year
-# Startring here with 2023 and 2024 is below
+# Starting here with 2023 and 2024 is below
 ############### PREP LATEST URSUS RDA_SHARED_DATA TABLES ########################
 # metadata <- "https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-07/use-of-force-readme-06202024f.pdf" # update each year
 # ##### civilian-officer
@@ -557,7 +557,7 @@ View(lower_table)
 
 ## Bind sldu and sldl tables into one leg_table##
 leg_table <- rbind(upper_table, lower_table)
-leg_table <- rename(leg_table, leg_id = geoid, leg_name = geoname)
+leg_table <- rename(leg_table, leg_id = geoid, leg_name = geoname) %>% select(-county)
 View(leg_table)
 
 
