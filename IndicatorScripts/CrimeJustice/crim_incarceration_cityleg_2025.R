@@ -61,8 +61,8 @@ source("W:/RDA Team/R/Github/RDA Functions/AB/RDA-Functions/Cnty_St_Wt_Avg_Funct
 # #   aian_pop = DP1_0088C,
 # #   pacisl_pop = DP1_0090C) %>% 
 # #   select(sub_id, target_id, NAME, geolevel, ends_with("pop"))
-#### Check that P9 variables and RC race names still match each year and update if needed --------
-## Population: All AIAN/PacIsl Latinx incl, NH Alone White/Black/Asian/Other, NH Two+, Latinx of any race
+### Check that P9 variables and RC race names still match each year and update if needed --------
+# Population: All AIAN/PacIsl Latinx incl, NH Alone White/Black/Asian/Other, NH Two+, Latinx of any race
 
 # Load 2020 Decennial Census variables
 vars_2020 <- load_variables(year = 2020, dataset = "dhc", cache = TRUE)
@@ -85,7 +85,7 @@ race_mapping <- data.frame(
   stringsAsFactors = FALSE
 )
 
-P9_curr <- load_variables(acs_yr, sum_file, cache = TRUE) %>% 
+p9_curr <- load_variables(acs_yr, sum_file, cache = TRUE) %>%
   filter(name %in% vars_list_p9) %>%
   left_join(race_mapping, by="name") %>%
   mutate(rc_races = paste0(race, "pop")) %>%
@@ -94,38 +94,38 @@ P9_curr <- load_variables(acs_yr, sum_file, cache = TRUE) %>%
 vars_list_p9 <- vars_list_p9  # vars used in update_detailed_table_census{}
 
 # CHECK THIS TABLE TO MAKE SURE THE LABEL AND RC_RACES COLUMNS MATCH UP
-print(P9_curr) 
+print(p9_curr)
 
-# # select acs race/eth pop variables: All AIAN/PacIsl, NH Alone White/Black/Asian/Other, NH Two+, Latinx of any race
-# ## the variables MUST BE in this order:
-# vars_list_dp05 <-      c('total_'= "DP05_0001",
-#                          'aian_' = "DP05_0071",
-#                          'pacisl_' = "DP05_0073",
-#                          'latino_' = "DP05_0076",
-#                          'nh_white_' = "DP05_0082",
-#                          'nh_black_' = "DP05_0083",
-#                          'nh_asian_' = "DP05_0085",
-#                          'nh_other_' = "DP05_0087",
-#                          'nh_twoormor_' = "DP05_0088")
-# 
-# race_mapping <- data.frame(
-#   name = unlist(vars_list_dp05),
-#   race = names(vars_list_dp05),
-#   stringsAsFactors = FALSE
-# )
-# 
-# dp05_curr <- load_variables(curr_yr, "acs5/profile", cache = TRUE) %>% 
-#   select(-c(concept)) %>% 
-#   filter(name %in% vars_list_dp05) %>%
-#   left_join(race_mapping, by="name") %>%
-#   mutate(rc_races = paste0(race, "pop"), 
-#          name = tolower(name),            # get all DP05 vars
-#          label <- gsub("Estimate!!|HISPANIC OR LATINO AND RACE!!", "", label))              
-# 
-# # CHECK THIS TABLE TO MAKE SURE THE LABEL AND RC_RACES COLUMNS MATCH UP
-# print(dp05_curr) 
+# select acs race/eth pop variables: All AIAN/PacIsl, NH Alone White/Black/Asian/Other, NH Two+, Latinx of any race
+## the variables MUST BE in this order:
+vars_list_dp05 <-      c('total_'= "DP05_0001", # Estimate!!SEX AND AGE!!Total population
+                         'aian_' = "DP05_0066", # Estimate!!Race alone or in combination with one or more other races!!Total population!!American Indian and Alaska Native
+                         'pacisl_' = "DP05_0068", # Estimate!!Race alone or in combination with one or more other races!!Total population!!Native Hawaiian and Other Pacific Islander
+                         'latino_' = "DP05_0071", # Estimate!!HISPANIC OR LATINO AND RACE!!Total population!!Hispanic or Latino (of any race)
+                         'nh_white_' = "DP05_0077", # Estimate!!HISPANIC OR LATINO AND RACE!!Total population!!Not Hispanic or Latino!!White alone
+                         'nh_black_' = "DP05_0078", #Estimate!!HISPANIC OR LATINO AND RACE!!Total population!!Not Hispanic or Latino!!Black or African American alone
+                         'nh_asian_' = "DP05_0080", # Estimate!!HISPANIC OR LATINO AND RACE!!Total population!!Not Hispanic or Latino!!Asian alone
+                         'nh_other_' = "DP05_0082", # Estimate!!HISPANIC OR LATINO AND RACE!!Total population!!Some other race alone
+                         'nh_twoormor_' = "DP05_0083") # Estimate!!HISPANIC OR LATINO AND RACE!!Total population!!Two or more races
 
-# may need to update each year: variables for state assm and senate calcs
+race_mapping <- data.frame(
+  name = unlist(vars_list_dp05),
+  race = names(vars_list_dp05),
+  stringsAsFactors = FALSE
+)
+
+dp05_curr <- load_variables(curr_yr, "acs5/profile", cache = TRUE) %>%
+  select(-c(concept)) %>%
+  filter(name %in% vars_list_dp05) %>%
+  left_join(race_mapping, by="name") %>%
+  mutate(rc_races = paste0(race, "pop"),
+         name = tolower(name),            # get all DP05 vars
+         label <- gsub("Estimate!!|HISPANIC OR LATINO AND RACE!!", "", label))
+
+# CHECK THIS TABLE TO MAKE SURE THE LABEL AND RC_RACES COLUMNS MATCH UP
+print(dp05_curr)
+
+# may need to update each year: variables for state assm and senate calcs ------
 assm_geoid <- 'sldl24'			                    # Define column with Assm geoid
 assm_xwalk <- 'tract_2020_state_assembly_2024'  # Name of tract-Assm xwalk table
 sen_geoid <- 'sldu24'			                      # Define column with senate geoid
@@ -151,30 +151,40 @@ census_api_key(census_key1)       # reload census API key
 ### Load CT-Assm Crosswalk ### 
 xwalk_assm <- dbGetQuery(conn, paste0("SELECT geo_id, ", assm_geoid, ", afact FROM crosswalks.", assm_xwalk))
 
+# Pull in California State Assembly districts (lower chamber)
+assembly_districts <- state_legislative_districts(
+  state = "CA",
+  house = "lower",
+  year = 2020,
+  cb = TRUE
+) %>%
+  select(-c(STATEFP, SLDLST, AFFGEOID, STUSPS, LSAD, ALAND, AWATER))
+
 ##### GET SUB GEOLEVEL POP DATA ######
 vars_list <- "vars_list_p9"
 pop <- update_detailed_table_census(vars = vars_list_p9, yr = acs_yr, srvy = survey, subgeo = subgeo)  # subgeolevel total, nh alone pop
-# vars_list <- "vars_list_dp"
-# pop2 <- update_detailed_table(vars = vars_list_dp, yr = acs_yr, srvy = "acs5/profile", subgeo = subgeo)  # all aian, all nhpi subgeolevel pop
+# vars_list <- "vars_list_p2"
+# pop <- update_detailed_table_census(vars = vars_list_p2, yr = year, srvy = survey)  # subgeolevel total, nh alone pop
+vars_list <- "vars_list_dp"
+pop2 <- update_detailed_table(vars = vars_list_dp, yr = acs_yr, srvy = "acs5/profile", subgeo = subgeo)  # all aian, all nhpi subgeolevel pop
 
 pop_wide <- pop %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = value)
-# pop2_wide <- pop2 %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = value) #%>% select(GEOID, "DP1_0088C", "DP1_0090C")
-# pop_wide <- pop_wide %>% left_join(pop2_wide, by = 'GEOID') #maybe delete
+# pop2_wide <- pop2 %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = value) %>% select(GEOID, "aian_", "pacisl_")
+# pop_wide <- pop_wide %>% left_join(pop2_wide, by = 'GEOID') 
 
-pop_wide_assm <- pop_wide %>% right_join(select(xwalk_assm, c(geo_id, assm_geoid, afact)), by = c("GEOID" = "geo_id"))  # join target geoids/names
-pop_wide_assm <- dplyr::rename(pop_wide_assm, sub_id = GEOID, target_id = assm_geoid)                            # rename to generic column names for WA functions
-pop_wide_assm <- pop_wide_assm %>% rename_with(~ paste0(.x, "_sub_pop"), ends_with("_"))
+pop_wide <- pop_wide %>% right_join(select(xwalk_assm, c(geo_id, assm_geoid, afact)), by = c("GEOID" = "geo_id"))  # join target geoids/names
+pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = assm_geoid)                            # rename to generic column names for WA functions
+pop_wide <- pop_wide %>% rename_with(~ paste0(.x, "_sub_pop"), ends_with("_"))
 
-# Calc ZCTA pop in each targetgeo using afact (pct of zcta pop in targetgeo)
-pop_wt <- pop_wide_assm %>% 
+# Calc leg dist pop in each targetgeo using afact (pct of leg dist pop in targetgeo)
+pop_wt <- pop_wide %>% 
   select(c(sub_id, target_id, afact, ends_with("sub_pop"))) %>% 
-  mutate(across(where(is.numeric), ~.x * afact)) %>% #calc wt zcta pop
+  mutate(across(where(is.numeric), ~.x * afact)) %>% #calc wt leg dist pop
   select(-afact) 
 
 # Get Targetgeo Pop
 pop_df <- update_detailed_table_census(vars = vars_list_p9, yr = acs_yr, srvy = survey, subgeo = "State Legislative District (Lower Chamber)", sumfile = sum_file)
 pop_df_ <- as.data.frame(pop_df) %>% select(-NAME)
-pop_df_ <- pop_df_ %>% mutate(variable = gsub("female_|male_", "", variable))
 pop_df_ <- pop_df_ %>% group_by(GEOID, variable, geolevel) %>% summarise(value_sum=sum(value, na.rm=TRUE))
 pop_wide_ <- pop_df_ %>% pivot_wider(id_cols = c(GEOID, geolevel), names_from = variable, values_from = value_sum)
 pop_wide_ <- pop_wide_ %>% rename(target_id = GEOID)
@@ -188,7 +198,6 @@ pop_wt <- pop_wt %>% left_join(n_df, by = "target_id")
 
 pct_df <- pop_pct_multi(pop_wt)        # NOTE: use this function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
 
-
 #### ind_df: Calc wt total rate by targetgeo calc ################
 # start indicator calc for weighted total enr rate for zctas
 ind_df <- pop_wide_ %>% select(sub_id, total__sub_pop) %>% 
@@ -197,7 +206,6 @@ ind_df <- pop_wide_ %>% select(sub_id, total__sub_pop) %>%
 
 ind_df$indicator <- ind_df$enrollment / ind_df$total_ * 100     # calc overall enrollment/access rate by zcta
 ind_df$indicator[ind_df$indicator == "Inf"] <- 100              # assign rate of 100 when there are seats, but no kid pop
-
 
 ##### ASSEMBLY WEIGHTED AVG CALCS ###
 assm_wa <- wt_avg(pct_df, ind_df)     # calc weighted average and apply reliability screens
