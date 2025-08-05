@@ -303,7 +303,7 @@ city_table_name <- paste0("arei_educ_chronic_absenteeism_district_", rc_yr)
 leg_table_name <- paste0("arei_educ_chronic_absenteeism_leg_", rc_yr)
 
 
-indicator <- paste0("Created on ", Sys.Date(), ". Chronic Absenteeism Eligible Cumulative Enrollment, Chronic Absenteeism Count, and Chronic Absenteeism Rate. This data is")
+indicator <- paste0("Chronic Absenteeism Eligible Cumulative Enrollment, Chronic Absenteeism Count, and Chronic Absenteeism Rate. This data is")
 
 source <- paste0("CDE ", curr_yr, " https://www.cde.ca.gov/ds/ad/filesabd.asp")
 
@@ -316,81 +316,3 @@ source <- paste0("CDE ", curr_yr, " https://www.cde.ca.gov/ds/ad/filesabd.asp")
 #disconnect
 dbDisconnect(con_shared)
 dbDisconnect(con_rc)
-
-
-# #### QA Notes: Leg, city check
-# og_city <- dbGetQuery(con_rc, statement = paste0("SELECT * FROM v7.",city_table_name)) 
-# qa_city <- og_city %>%
-#   left_join(city_table, by=c("dist_id", "cdscode", "geolevel", "district_name", "county_name"), suffix=c("_og", "_qa")) %>%
-#   select(dist_id, cdscode, geolevel, district_name, county_name, starts_with("disparity_rank_"), starts_with("performance_rank_"),
-#            starts_with("rank_"), starts_with("performance_z_quartile_"), starts_with("disparity_z_quartile_")) %>%
-#   mutate(across(c(starts_with("disparity_rank_"), starts_with("performance_rank_"),
-#                   starts_with("rank_"), starts_with("performance_z_quartile_"), 
-#                   starts_with("disparity_z_quartile_")), as.character)) %>%
-#   pivot_longer(
-#     cols = c(starts_with("disparity_rank_"), starts_with("performance_rank_"),
-#              starts_with("rank_"), starts_with("performance_z_quartile_"), 
-#              starts_with("disparity_z_quartile_")),
-#     names_to = c("metric", ".value"),
-#     names_pattern = "(.*)(og|qa)$"
-#   ) %>%
-#   mutate(qa_check=ifelse(og==qa, "same", "different"))
-# 
-# leg_table <- leg_table %>%
-#   # mutate(leg_name = paste("State", leg_name)) %>%
-#   mutate(leg_name = gsub("0+([0-9]$)", "\\1", leg_name))
-#   
-# 
-# og_leg <- dbGetQuery(con_rc, statement = paste0("SELECT * FROM v7.",leg_table_name)) 
-# qa_leg <- og_leg %>%
-#   left_join(leg_table, by=c("leg_id", "geolevel", "leg_name"), suffix=c("_og", "_qa")) %>%
-#   select(c(leg_id, geolevel, leg_name, starts_with("disparity_rank_"), starts_with("performance_rank_"),
-#            starts_with("rank_"), starts_with("performance_z_quartile_"), starts_with("disparity_z_quartile_"))) %>%
-#   mutate(across(c(starts_with("disparity_rank_"), starts_with("performance_rank_"),
-#                   starts_with("rank_"), starts_with("performance_z_quartile_"), 
-#                   starts_with("disparity_z_quartile_")), as.character)) %>%
-#   pivot_longer(
-#     cols = c(starts_with("disparity_rank_"), starts_with("performance_rank_"),
-#              starts_with("rank_"), starts_with("performance_z_quartile_"), 
-#              starts_with("disparity_z_quartile_")),
-#     names_to = c("metric", ".value"),
-#     names_pattern = "(.*)(og|qa)$"
-#   ) %>%
-#   mutate(qa_check=ifelse(og==qa, "same", "different"))
-# 
-# #### Citys check out, Leg has differences in disparity ranks, disparity quartiles
-# qa_subset_leg <- df_subset_leg %>%
-#   select(-c(cdscode, countyname)) %>%
-#   rename(geoid=final_geoid) %>%
-#   mutate(geoname = paste("State", geoname)) %>%
-#   mutate(geoname = gsub("0+([0-9]$)", "\\1", geoname)) %>%
-#   # remove records without fips codes or "No Data"
-#   filter(!is.na(geoid) & geoid != "No Data") %>%
-#   # pivot to get into RC table format
-#   pivot_wider(names_from = reportingcategory, 
-#               values_from = c(raw, pop, rate),
-#               names_glue = "{reportingcategory}_{.value}") 
-# 
-# og_subset_leg <- rbind (assm_df_, sen_df_)
-# 
-# ## initial data and aggregations from schools to leg districts are the same
-# qa_leg2 <- og_subset_leg %>%
-#   left_join(qa_subset_leg, by=c("geoid", "geolevel", "geoname"), suffix=c("_og", "_qa")) %>%
-#   select(c(geoid, geolevel, geoname, ends_with("_raw_og"), ends_with("_raw_qa"),
-#            ends_with("_pop_og"), ends_with("_pop_qa"),
-#            ends_with("_rate_og"), ends_with("_rate_qa"))) %>%
-#   # mutate(across(c(starts_with("disparity_rank_"), starts_with("performance_rank_"),
-#   #                 starts_with("rank_"), starts_with("performance_z_quartile_"), 
-#   #                 starts_with("disparity_z_quartile_")), as.character)) %>%
-#   pivot_longer(
-#     cols = c(ends_with("_raw_og"), ends_with("_raw_qa"),
-#              ends_with("_pop_og"), ends_with("_pop_qa"),
-#              ends_with("_rate_og"), ends_with("_rate_qa")),
-#     names_to = c("metric", ".value"),
-#     names_pattern = "(.*)_(og|qa)$"
-#   ) %>%
-#   mutate(qa_check=ifelse(og==qa, "same", "different"))
-# 
-# ## check leg districts after intial RC calcs (best, diff, avg_diff, p_var, id)
-# og_d <- d %>%
-#   filter(geolevel == "sldl" | geolevel=="sldu")
