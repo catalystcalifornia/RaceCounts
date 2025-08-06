@@ -33,8 +33,6 @@ conn <- connect_to_db("rda_shared_data")
 #set source for weighted averages script
 source("W:/RDA Team/R/Github/RDA Functions/AB/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
 
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Crime and Justice\\QA_Sheet_Incarceration_Leg.docx"
-
 ### Check that P9 variables and RC race names still match each year and update if needed --------
 # Population: All AIAN/PacIsl Latinx incl, NH Alone White/Black/Asian/Other, NH Two+, Latinx of any race
 
@@ -174,7 +172,7 @@ pop_wide <- pop %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geo
 pop_wide <- pop_wide %>% right_join(select(crosswalk, c(geo_id, sldu24, afact)), by = c("GEOID" = "geo_id"))  # join target geoids/names
 pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = sldu24)                               # rename to generic column names for WA functions
 
-##### ASSEMBLY WEIGHTED AVG CALCS ###
+##### SENATE WEIGHTED AVG CALCS ###
 # pop_df <- targetgeo_pop(pop_wide_sen) # calc target geolevel pop and number of sub geolevels per target geolevel
 pop_wide <- pop_wide %>% rename_with(~ paste0(.x, "_sub_pop"), ends_with("_"))
 
