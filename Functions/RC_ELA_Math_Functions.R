@@ -211,7 +211,7 @@ calc_leg_elamath <- function(d, xwalk, threshold) {
   
   calcs_long <- pop_long %>% 
     left_join(raw_long, by = c('cdscode', 'leg_id', 'race', 'geolevel')) %>%
-    mutate(agg_pop = ifelse(!is.na(raw), pop, NA)) %>%  # remove pop where raw is NA, so we only include pop in denominators where raw is not NA
+    mutate(agg_pop = ifelse(!is.na(raw), pop, NA)) %>%  # exclude pop where raw is NA, so we only include pop in denominators where raw is not NA
     group_by(leg_id, geolevel, race) %>%  
     summarise(pop = sum(agg_pop, na.rm=TRUE),           # sum agg_pop to calc pop denominator
               raw = sum(raw, na.rm=TRUE)) %>%
