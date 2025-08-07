@@ -1,5 +1,5 @@
 ### 3rd Grade English Language Arts & Math Functions for RC ### 
-######## These fx are used to prep the rda_shared_data tables for 3rd Grade ELA and Math RC calcs
+######## These fx are used to prep the 3rd Grade ELA and Math RC tables
 
 ##install packages if not already installed ------------------------------
 list.of.packages <- c("tidyr", "dplyr", "sf", "tidycensus", "tidyverse", "usethis")
@@ -114,7 +114,7 @@ clean_ela_math <- function(x, y) {
 
 
 
-clean_leg_elamath <- function(x) {
+clean_leg_elamath <- function(x) { # Used for testing sch dist to leg dist aggregation
   # clean school dist data for leg dist
   # x = caaspp dataframe, type = desired CDE type_id
   leg_df <- rename(x, rate = percentage_standard_met_and_above, pop = total_students_tested_with_scores, race = student_group_id)
@@ -154,7 +154,7 @@ return(leg_df)
 }
 
 
-calc_leg_elamath_sd <- function(d, xwalk, threshold) {
+calc_leg_elamath_sd <- function(d, xwalk, threshold) { # Used for testing sch dist to leg dist aggregation
   ##Calc weighted Leg Dist stats from school dist data
   
   calcs <- d %>% 
@@ -211,8 +211,9 @@ calc_leg_elamath <- function(d, xwalk, threshold) {
   
   calcs_long <- pop_long %>% 
     left_join(raw_long, by = c('cdscode', 'leg_id', 'race', 'geolevel')) %>%
+    mutate(agg_pop = ifelse(!is.na(raw), pop, NA)) %>%  # remove pop where raw is NA, so we only include pop in denominators where raw is not NA
     group_by(leg_id, geolevel, race) %>%  
-    summarise(pop = sum(pop, na.rm=TRUE),
+    summarise(pop = sum(agg_pop, na.rm=TRUE),           # sum agg_pop to calc pop denominator
               raw = sum(raw, na.rm=TRUE)) %>%
     mutate(rate = raw / pop * 100) %>%
     rename(geoid = leg_id) %>%
