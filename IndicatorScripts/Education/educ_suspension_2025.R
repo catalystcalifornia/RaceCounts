@@ -19,6 +19,8 @@ library(usethis) # connect to github
 source("W:\\RDA Team\\R\\credentials_source.R") # connect_to_db()
 source("./Functions/rdashared_functions.R") # get_cde_data(), get_cde_metadata()
 
+qa_filepath <- paste0("W:\\Project\\RACE COUNTS\\", rc_yr,"_", rc_schema,"\\Education\\QA_Sheet_Suspension.docx")
+
 # create connection for rda database
 con <- connect_to_db("rda_shared_data")
 
@@ -38,7 +40,7 @@ html_element <- "table" # html element name where metadata is located
 # Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 table_schema <- "education"
 table_name <- paste0("cde_multigeo_calpads_suspensions_", curr_yr)
-table_comment_source <- paste("NOTE: Only use suspension data from this link: ", url, ". The Dashboard download is incomplete and lacks data for most high schools (at least within LAUSD). Wide data format, multigeo table with state, county, district, and school")
+table_comment_source <- paste0("Created on ", Sys.Date(), ". NOTE: Only use suspension data from this link: ", url, ". The Dashboard download is incomplete and lacks data for most high schools (at least within LAUSD). Wide data format, multigeo table with state, county, district, and school. QA doc: ", qa_filepath)
 table_source <- "Wide data format, multigeo table with state, county, district, and school"
 
 ##### Prep and export indicator data rda_shared_data table with metadata #####
@@ -289,7 +291,6 @@ city_table_name <- paste0("arei_educ_suspension_district_", rc_yr)
 leg_table_name <- paste0("arei_educ_suspension_leg_",rc_yr)
 
 indicator <- paste0("Created on ", Sys.Date(), ". Unduplicated students suspended, cumulative enrollment, and unduplicated suspension rate. This data is")
-qa_filepath <- paste0("W:\\Project\\RACE COUNTS\\", rc_yr,"_", rc_schema,"\\Education\\QA_Sheet_Suspension.docx")
 source <- paste("CDE", curr_yr, url,". QA doc: ", qa_filepath)
 
 
