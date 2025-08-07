@@ -19,8 +19,6 @@ library(usethis) # connect to github
 source("W:\\RDA Team\\R\\credentials_source.R") # connect_to_db()
 source("./Functions/rdashared_functions.R") # get_cde_data(), get_cde_metadata()
 
-qa_filepath <- paste0("W:\\Project\\RACE COUNTS\\", rc_yr,"_", rc_schema,"\\Education\\QA_Sheet_Suspension.docx")
-
 # create connection for rda database
 con <- connect_to_db("rda_shared_data")
 
@@ -29,6 +27,8 @@ curr_yr <- '2023_24'
 acs_yr <- 2023
 rc_yr <- '2025'
 rc_schema <- 'v7'
+
+qa_filepath <- paste0("W:\\Project\\RACE COUNTS\\", rc_yr,"_", rc_schema,"\\Education\\QA_Sheet_Suspension.docx")
 
 # To get Suspensions Data from CDE website
 filepath = "https://www3.cde.ca.gov/demo-downloads/discipline/suspension24.txt"   # will need to update each year
