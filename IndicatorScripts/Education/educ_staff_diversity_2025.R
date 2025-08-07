@@ -30,11 +30,11 @@ con <- connect_to_db("rda_shared_data")
 source("./Functions/rdashared_functions.R")
 
 #Pull in xwalks first for leg dist to use later
-xwalk_school_sen <- dbGetQuery(con, paste0("SELECT school_code AS schoolcode, ca_senate_district FROM crosswalks.cde_school_leg_districts_2022_23")) %>%
+xwalk_school_sen <- dbGetQuery(con, paste0("SELECT cdscode, ca_senate_district FROM crosswalks.cde_school_leg_districts_2022_23")) %>%
   mutate(leg_id = paste0('060', ca_senate_district),
          geolevel = 'sldu')
 
-xwalk_school_assm <- dbGetQuery(con, paste0("SELECT school_code AS schoolcode, ca_assembly_district FROM crosswalks.cde_school_leg_districts_2022_23")) %>%
+xwalk_school_assm <- dbGetQuery(con, paste0("SELECT cdscode, ca_assembly_district FROM crosswalks.cde_school_leg_districts_2022_23")) %>%
   mutate(leg_id = paste0('060', ca_assembly_district),
          geolevel = 'sldl')
 
@@ -68,13 +68,20 @@ staff <- st_read(con, query = "select * from education.cde_2023_24_staff_demo")
 #View(staff)
 staff <- staff %>% mutate(districtcode = ifelse(!is.na(districtcode),paste0(staff$countycode,staff$districtcode), NA))
 
-staff_df <- staff %>% filter(charterschool == "ALL",
-                                       stafftype == "ALL",
-                                       staffgender == "ALL",
-                                       schoolgradespan == "ALL",
-                                       dass == "ALL") %>%
+staff_df <- staff %>% filter(
+  (aggregatelevel == "S" &
+     stafftype == "ALL" &
+     staffgender == "ALL") |
+    
+    (aggregatelevel != "S" &
+       charterschool == "ALL" &
+       stafftype == "ALL" &
+       staffgender == "ALL" &
+       schoolgradespan == "ALL" &
+       dass == "ALL")
+) %>%
   #select just fields we need
-  select(-academicyear,-countycode, -schoolcode, -charterschool, -dass, -stafftype, -staffgender, -schoolgradespan,
+  select(-academicyear,-countycode, -charterschool, -dass, -stafftype, -staffgender, -schoolgradespan,
          -notreported) %>% #note that not reported data is excluded for the purpose of this project focusing on race. 
   #rename fields to column names we use 
   rename(total = totalstaffcount,
@@ -93,71 +100,20 @@ staff_df <- left_join(x=staff_df,y=ca,by=c("countyname"="geoname")) %>% mutate(g
 # add state geoid
 staff_df <- within(staff_df, geoid[cdscode == '00000000000000'] <- '06') %>%
   select(geoid, everything())
-
-#Must make a separate dataframe for schools because the categorizations are not applicable at school level and then aggregate to leg district
-df_schools_senate <-  staff %>% filter(aggregatelevel == "S",
-                                                stafftype == "ALL",
-                                                staffgender == "ALL") %>%
-  #select just fields we need
-  select(-academicyear,-countycode, -charterschool, -dass, -stafftype, -staffgender, -schoolgradespan,
-         -notreported) %>% #note that not reported data is excluded for the purpose of this project focusing on race. 
-  #rename fields to column names we use 
-  rename(total = totalstaffcount,
-         nh_black = africanamerican, 
-         nh_aian =  americanindianoralaskanative,
-         nh_asian = asian, 
-         nh_filipino = filipino,
-         latino = hispanicorlatino,
-         nh_pacisl = pacificislander,
-         nh_white = white,
-         nh_twoormor = twoormoreraces
-  ) %>%
-  inner_join(xwalk_school_sen, by = "schoolcode") %>%
-  group_by(leg_id) %>%
-  summarise(across(total:nh_twoormor,\(x) sum(x, na.rm = TRUE)), .groups = "drop") %>%
-  mutate(aggregatelevel = "sldu", 
-         leg_name = paste0("State Senate District ", as.numeric(str_sub(leg_id, -2)))) 
-
-df_schools_assembly <-  staff %>% filter(aggregatelevel == "S",
-                                            stafftype == "ALL",
-                                            staffgender == "ALL") %>%
-  #select just fields we need
-  select(-academicyear,-countycode, -charterschool, -dass, -stafftype, -staffgender, -schoolgradespan,
-         -notreported) %>% #note that not reported data is excluded for the purpose of this project focusing on race. 
-  #rename fields to column names we use 
-  rename(total = totalstaffcount,
-         nh_black = africanamerican, 
-         nh_aian =  americanindianoralaskanative,
-         nh_asian = asian, 
-         nh_filipino = filipino,
-         latino = hispanicorlatino,
-         nh_pacisl = pacificislander,
-         nh_white = white,
-         nh_twoormor = twoormoreraces
-  ) %>%
-  inner_join(xwalk_school_assm, by = "schoolcode") %>%
-  group_by(leg_id) %>%
-  summarise(across(total:nh_twoormor,\(x) sum(x, na.rm = TRUE)), .groups = "drop") %>%
-  mutate(aggregatelevel = "sldl", 
-         leg_name = paste0("State Assembly District ", as.numeric(str_sub(leg_id, -2)))) 
-
-
-staff_df_final <- bind_rows(staff_df, df_schools_assembly, df_schools_senate) %>%
-  mutate(geoid = ifelse(aggregatelevel == "T", "06", 
-                        ifelse(aggregatelevel == "D", districtcode,
-                               ifelse(aggregatelevel == "C", geoid,
-                                      ifelse(aggregatelevel == 'sldl' , paste0(leg_id, "_l"),
-                                             ifelse(aggregatelevel == 'sldu', paste0(leg_id,"_u"),
-                                                    "NA"
-                                             ))))),
-         geolevel = aggregatelevel,
-         geoname = ifelse(aggregatelevel == "T", "California",
-                          ifelse(aggregatelevel == "D", districtname, 
-                                 ifelse(aggregatelevel == "C", countyname, 
-                                        ifelse(aggregatelevel == "sldu" | aggregatelevel == "sldl", leg_name,
-                                               "NA"))))) %>%
+#fix column names 
+staff_df <- staff_df %>%
+  mutate(geolevel = aggregatelevel,
+         geoname = ifelse(aggregatelevel == 'D', districtname,
+                          ifelse(aggregatelevel == 'C', countyname,
+                                 ifelse(aggregatelevel == 'T', "California",
+                                        ifelse(aggregatelevel == "S", schoolname,
+                                               'NA')))),
+         geoid = ifelse(geolevel == 'S' | geolevel == 'D', cdscode,
+                        ifelse(geolevel == 'C', geoid,
+                               ifelse(geolevel == 'T', '06', 'NA')))
+         ) %>%
   select(geoid, geolevel, geoname, total:nh_twoormor)
-  
+
   
 ###### STEP 2: get STUDENT ENROLLMENT data and save it in pgadmin -----
 filepath = "https://www3.cde.ca.gov/demo-downloads/ce/cenroll2324.txt" 
@@ -208,52 +164,53 @@ enrollment_wide <- left_join(x=enrollment_wide,y=ca,by=c("countyname"="geoname")
 # add state geoid
 enrollment_wide <- within(enrollment_wide, geoid[countyname == 'California'] <- '06') %>%
   select(geoid, everything())
-
-
-#Must make a separate dataframe for schools because the categorizations are not applicable at school level and then aggregate to leg district
-enrollment_senate <-  enrollment_wide %>% 
-  filter(aggregatelevel == "S") %>%
-  inner_join(xwalk_school_sen, by = "schoolcode") %>%
-  group_by(leg_id) %>%
-  summarise(across(nh_asian_pop:total_pop,\(x) sum(x, na.rm = TRUE)), .groups = "drop") %>%
-  mutate(aggregatelevel = "sldu", 
-         leg_name = paste0("State Senate District ", as.numeric(str_sub(leg_id, -2)))) 
-
-enrollment_assembly <-  enrollment_wide %>% 
-  filter(aggregatelevel == "S") %>%
-  inner_join(xwalk_school_assm, by = "schoolcode") %>%
-  group_by(leg_id) %>%
-  summarise(across(nh_asian_pop:total_pop,\(x) sum(x, na.rm = TRUE)), .groups = "drop") %>%
-  mutate(aggregatelevel = "sldl", 
-         leg_name = paste0("State Assembly District ", as.numeric(str_sub(leg_id, -2)))) 
-
-
-enrollment_df_final <- bind_rows(enrollment_wide, enrollment_senate, enrollment_assembly) %>%
-  filter(aggregatelevel != "S") %>%
-  mutate(geoid =
-           ifelse(aggregatelevel == 'D', districtcode, 
-                  ifelse(aggregatelevel == 'T', '06',
-                         ifelse(aggregatelevel == 'sldl' , paste0(leg_id, "_l"),
-                                ifelse(aggregatelevel == 'sldu', paste0(leg_id,"_u"),
-                                       geoid
-                                )))),
-         geolevel = aggregatelevel, 
-         geoname =
-           ifelse(geolevel == 'D', districtname,
-                  ifelse(geolevel == 'C', countyname,
-                         ifelse(geolevel == 'T', "California",
-                                ifelse(geolevel == "sldl" | geolevel == "sldu", leg_name,
-                                       'NA'))))) %>%
+#fix column names 
+enrollment_wide <- enrollment_wide %>%
+  mutate(geolevel = aggregatelevel,
+         geoname = ifelse(aggregatelevel == 'D', districtname,
+                          ifelse(aggregatelevel == 'C', countyname,
+                                 ifelse(aggregatelevel == 'T', "California",
+                                        ifelse(aggregatelevel == "S", schoolname,
+                                               'NA')))),
+         geoid = ifelse(geolevel == 'S' | geolevel == 'D', cdscode,
+                        ifelse(geolevel == 'C', geoid,
+                               ifelse(geolevel == 'T', '06', 'NA')))
+  ) %>%
   select(geoid, geolevel, geoname, nh_asian_pop:total_pop)
 
 ###### STEP 3: Calculate student to staff ratios -----
 #join together to calculate rate
-df_enroll_staff <- right_join(enrollment_df_final, staff_df_final, 
-                              by= c("geoid", "geolevel" ,"geoname")) 
+df_enroll_staff <- left_join(enrollment_wide, staff_df, 
+                              by= c("geoid","geoname", "geolevel")) 
+#NOTE THAT staff data had more schools (about 341) than enrolllment data, not sure why? You can check that by running table()
+
+df_enroll_staff_senate <-  df_enroll_staff %>%
+  filter(geolevel == "S") %>%
+  inner_join(xwalk_school_sen, by = c("geoid" = "cdscode")) %>%
+  group_by(leg_id) %>%
+  summarise(across(nh_asian_pop:nh_twoormor,\(x) sum(x, na.rm = TRUE)), .groups = "drop") %>%
+  mutate(geolevel = "sldu",
+         geoname = paste0("State Senate District ", as.numeric(str_sub(leg_id, -2))),
+         geoid = leg_id) %>%
+  select(geoid, geolevel, geoname, nh_asian_pop:nh_twoormor)
+
+df_enroll_staff_assembly <-  df_enroll_staff %>%
+  filter(geolevel == "S") %>%
+  inner_join(xwalk_school_assm,  by = c("geoid" = "cdscode")) %>%
+  group_by(leg_id) %>%
+  summarise(across(nh_asian_pop:nh_twoormor,\(x) sum(x, na.rm = TRUE)), .groups = "drop") %>%
+  mutate(geolevel = "sldl",
+         geoname = paste0("State Assembly District ", as.numeric(str_sub(leg_id, -2))),
+         geoid = leg_id) %>%
+  select(geoid, geolevel, geoname, nh_asian_pop:nh_twoormor)
+
+
+df_enroll_staff_final <- bind_rows(df_enroll_staff %>% filter(geolevel != "S"), df_enroll_staff_senate, df_enroll_staff_assembly) 
+
 
 #screen data and set population screen threshold
 pop_screen <- 100
-df_enroll_staff <- df_enroll_staff %>% mutate(
+df_enroll_staff_final <- df_enroll_staff_final %>% mutate(
   total = ifelse(total_pop < pop_screen, NA, total),
   nh_black = ifelse(nh_black_pop < pop_screen, NA, nh_black),
   nh_aian = ifelse(nh_aian_pop < pop_screen, NA, nh_aian),
@@ -273,13 +230,13 @@ df_enroll_staff <- df_enroll_staff %>% mutate(
   nh_pacisl_rate = ifelse(is.na(nh_pacisl) | is.na(nh_pacisl_pop) | nh_pacisl_pop == 0, NA, (nh_pacisl / total_pop)*100),
   nh_white_rate = ifelse(is.na(nh_white) | is.na(nh_white_pop) | nh_white_pop == 0, NA, (nh_white / total_pop)*100),
   nh_twoormor_rate = ifelse(is.na(nh_twoormor) | is.na(nh_twoormor_pop) | nh_twoormor_pop == 0, NA, (nh_twoormor / total_pop)*100))
-# View(df_enroll_staff)
+# View(df_enroll_staff_final)
 
 ###### STEP 4: Calculate Race Counts Stats -----
 #set source for RC Functions script
 source("./Functions/RC_Functions.R")
 
-d <- df_enroll_staff
+d <- df_enroll_staff_final
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
 
@@ -343,7 +300,7 @@ leg_table_name <- "arei_educ_staff_diversity_leg_2025"
 
 rc_schema <- "v7"
 
-indicator <- paste0("Created on ", Sys.Date(), ". Staff and Teacher Diversity Count and Rate. This data is")
+indicator <- paste0(". Staff and Teacher Diversity Count and Rate. This data is")
 source <- "CDE 2023-2024 https://www.cde.ca.gov/ds/ad/fsstre.asp"
 
 # send tables to postgres
