@@ -61,7 +61,7 @@ table_comment_source <- "QA DOC: W://Project//RACE COUNTS//2025_v7//Education//Q
 table_source <- "Downloaded from https://www.cde.ca.gov/ds/ad/filesstre.asp. Headers were cleaned of characters like /, ., ), and (. Cells with values of * were nullified. Created cdscode by concatenating county, district, and school codes"
 
 ## Run function to prep and export rda_shared_data table
-df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
+#df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
 
 ## Get staff data for population values
 staff <- st_read(con, query = "select * from education.cde_2023_24_staff_demo")
@@ -126,7 +126,7 @@ table_comment_source <- "QA DOC: W://Project//RACE COUNTS//2025_v7//Education//Q
 table_source <- "Downloaded from https://www.cde.ca.gov/ds/ad/filesenrcum.asp. Headers were cleaned of characters like /, ., ), and (. Cells with values of * were nullified. Created cdscode by concatenating county, district, and school codes"
 
 ## Run function to prep and export rda_shared_data table
-df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
+#df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
 
 ## Get student cumulative enrollment data for population values
 enrollment <- st_read(con, query = "select * from education.cde_multigeo_enrollment_2023_24")
@@ -182,7 +182,7 @@ enrollment_wide <- enrollment_wide %>%
 #join together to calculate rate
 df_enroll_staff <- left_join(enrollment_wide, staff_df, 
                               by= c("geoid","geoname", "geolevel")) 
-#NOTE THAT staff data had more schools (about 341) than enrolllment data, not sure why? You can check that by running table()
+#NOTE THAT staff data had more schools (about 341) than enrollment data, not sure why? You can check that by running table()
 
 df_enroll_staff_senate <-  df_enroll_staff %>%
   filter(geolevel == "S") %>%
