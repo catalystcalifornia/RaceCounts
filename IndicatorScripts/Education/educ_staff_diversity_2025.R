@@ -211,25 +211,30 @@ df_enroll_staff_final <- bind_rows(df_enroll_staff %>% filter(geolevel != "S"), 
 #screen data and set population screen threshold
 pop_screen <- 100
 df_enroll_staff_final <- df_enroll_staff_final %>% mutate(
-  total = ifelse(total_pop < pop_screen, NA, total),
-  nh_black = ifelse(nh_black_pop < pop_screen, NA, nh_black),
-  nh_aian = ifelse(nh_aian_pop < pop_screen, NA, nh_aian),
-  nh_asian = ifelse(nh_asian_pop < pop_screen, NA, nh_asian),
-  nh_filipino = ifelse(nh_filipino_pop < pop_screen, NA, nh_filipino),
-  latino =   ifelse(latino_pop < pop_screen, NA, latino),
-  nh_pacisl =  ifelse(nh_pacisl_pop < pop_screen, NA, nh_pacisl),
-  nh_twoormor =  ifelse(nh_twoormor_pop < pop_screen, NA, nh_twoormor),
-  nh_white =  ifelse(nh_white_pop < pop_screen, NA, nh_white),
+  total_raw = ifelse(total_pop < pop_screen, NA, total),
+  nh_black_raw = ifelse(nh_black_pop < pop_screen, NA, nh_black),
+  nh_aian_raw = ifelse(nh_aian_pop < pop_screen, NA, nh_aian),
+  nh_asian_raw = ifelse(nh_asian_pop < pop_screen, NA, nh_asian),
+  nh_filipino_raw = ifelse(nh_filipino_pop < pop_screen, NA, nh_filipino),
+  latino_raw =   ifelse(latino_pop < pop_screen, NA, latino),
+  nh_pacisl_raw =  ifelse(nh_pacisl_pop < pop_screen, NA, nh_pacisl),
+  nh_twoormor_raw =  ifelse(nh_twoormor_pop < pop_screen, NA, nh_twoormor),
+  nh_white_raw =  ifelse(nh_white_pop < pop_screen, NA, nh_white),
   
-  total_rate = ifelse(is.na(total) | is.na(total_pop) | total_pop == 0, NA, (total / total_pop)*100),
-  nh_black_rate = ifelse(is.na(nh_black) | is.na(nh_black_pop) | nh_black_pop == 0, NA, (nh_black / total_pop)*100),
-  nh_aian_rate = ifelse(is.na(nh_aian) | is.na(nh_aian_pop) |  nh_aian_pop == 0, NA, (nh_aian / total_pop)*100),
-  nh_asian_rate = ifelse(is.na(nh_asian) | is.na(nh_asian_pop) | nh_asian_pop == 0, NA, (nh_asian / total_pop)*100),
-  nh_filipino_rate = ifelse(is.na(nh_filipino) | is.na(nh_filipino_pop) | nh_filipino_pop == 0, NA, (nh_filipino / total_pop)*100),
-  latino_rate = ifelse(is.na(latino) | is.na(latino_pop) | latino_pop == 0, NA, (latino / total_pop)*100),
-  nh_pacisl_rate = ifelse(is.na(nh_pacisl) | is.na(nh_pacisl_pop) | nh_pacisl_pop == 0, NA, (nh_pacisl / total_pop)*100),
-  nh_white_rate = ifelse(is.na(nh_white) | is.na(nh_white_pop) | nh_white_pop == 0, NA, (nh_white / total_pop)*100),
-  nh_twoormor_rate = ifelse(is.na(nh_twoormor) | is.na(nh_twoormor_pop) | nh_twoormor_pop == 0, NA, (nh_twoormor / total_pop)*100))
+  total_rate = ifelse(is.na(total_raw) | is.na(total_pop) | total_pop == 0, NA, (total_raw / total_pop)*100),
+  nh_black_rate = ifelse(is.na(nh_black_raw) | is.na(nh_black_pop) | nh_black_pop == 0, NA, (nh_black_raw / total_pop)*100),
+  nh_aian_rate = ifelse(is.na(nh_aian_raw) | is.na(nh_aian_pop) |  nh_aian_pop == 0, NA, (nh_aian_raw / total_pop)*100),
+  nh_asian_rate = ifelse(is.na(nh_asian_raw) | is.na(nh_asian_pop) | nh_asian_pop == 0, NA, (nh_asian_raw / total_pop)*100),
+  nh_filipino_rate = ifelse(is.na(nh_filipino_raw) | is.na(nh_filipino_pop) | nh_filipino_pop == 0, NA, (nh_filipino_raw / total_pop)*100),
+  latino_rate = ifelse(is.na(latino_raw) | is.na(latino_pop) | latino_pop == 0, NA, (latino_raw / total_pop)*100),
+  nh_pacisl_rate = ifelse(is.na(nh_pacisl_raw) | is.na(nh_pacisl_pop) | nh_pacisl_pop == 0, NA, (nh_pacisl_raw / total_pop)*100),
+  nh_white_rate = ifelse(is.na(nh_white_raw) | is.na(nh_white_pop) | nh_white_pop == 0, NA, (nh_white_raw / total_pop)*100),
+  nh_twoormor_rate = ifelse(is.na(nh_twoormor_raw) | is.na(nh_twoormor_pop) | nh_twoormor_pop == 0, NA, (nh_twoormor_raw)*100)) %>%
+  select(-all_of(c(
+    "total", "nh_black", "nh_aian", "nh_asian", "nh_filipino", 
+    "latino", "nh_pacisl", "nh_white", "nh_twoormor"
+  )))
+    
 # View(df_enroll_staff_final)
 
 ###### STEP 4: Calculate Race Counts Stats -----
