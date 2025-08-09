@@ -2,7 +2,7 @@
 
 ## Set up ----------------------------------------------------------------
 #install packages if not already installed
-list.of.packages <- c("DBI", "tidyverse", "RPostgreSQL", "tidycensus", "readxl", "sf", "janitor", "stringr", "data.table", "usethis")
+list.of.packages <- c("DBI", "tidyverse", "RPostgres", "tidycensus", "readxl", "sf", "janitor", "stringr", "data.table", "usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
@@ -28,9 +28,14 @@ con2 <- connect_to_db("rda_shared_data")
 
 # Update each year
 curr_yr <- '2016-2024'
+acs_yr <- '2023'  # ACS yr for population used as denominators
 rc_yr <- '2025'
 rc_schema <- 'v7'
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Crime and Justice\\QA_Sheet_Use_of_Force.docx"
+
+# update appropriately each year to ensure counties with few incidents and small pops do not result in outlier rates
+pop_threshold = 100     # data for groups with pop < threshold are suppressed
+incident_threshold = 5  # data for groups with incidents < threshold are suppressed
 
 
 # may need to update each year: variables for state assm and senate calcs
@@ -39,11 +44,12 @@ assm_xwalk <- 'zcta_2020_state_assembly_2024'   # Name of tract-Assm xwalk table
 sen_geoid <- 'sldu24'			                      # Define column with senate geoid
 sen_xwalk <- 'zcta_2020_state_senate_2024'      # Name of tract-Sen xwalk table
 
+city_county <- st_read(con2, query = "SELECT place_geoid, county_name FROM crosswalks.county_place_2023")  # city-county xwalk
 
-# For V7 there were two latest sets of Ursus tables 2023 and 2024
+# For v7 there were two latest sets of URSUS tables 2023 and 2024
 # Next year we expect to update only one latest year
-# Starting here with 2023 and 2024 is below
-############### PREP LATEST URSUS RDA_SHARED_DATA TABLES ########################
+# Pulled 2023 data first, then 2024. '2023' is hard-coded into this section. Next yr, keep only 2024 section and update.
+############### PREP 2023 URSUS RDA_SHARED_DATA TABLES ########################
 # metadata <- "https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-07/use-of-force-readme-06202024f.pdf" # update each year
 # ##### civilian-officer
 # filepath = "https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-07/UseofForce_Civilian-Officer_2023.csv" # update each year
@@ -51,21 +57,18 @@ sen_xwalk <- 'zcta_2020_state_senate_2024'      # Name of tract-Sen xwalk table
 # 
 # ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 # table_schema <- "crime_and_justice"
-# table_name <- paste0("ursus_civilian_officer_", substr(curr_yr, 6,9))
-# table_comment_source <- "NOTE: race/eth column values have inconsistencies, for example ''''asian indian'''' and ''''asian_indian''''."
-# table_source <- paste0("Use of force data downloaded ", Sys.Date(), " from https://openjustice.doj.ca.gov/data. Metadata here: ", metadata,
-#                        " and saved here: W:/Data/Crime and Justice/Police Violence/Open Justice/", substr(curr_yr, 6,9))
-# 
-# # comment on table
+# table_name <- "ursus_civilian_officer_2023"
+# table_comment_source <- "NOTE: race/eth column values have inconsistencies, for example 'asian indian' and 'asian_indian'."
+# table_source <- paste0(table_comment_source, " Table created ", Sys.Date(), " from https://openjustice.doj.ca.gov/data. Metadata here: ", metadata,
+#                        " and saved here: W:/Data/Crime and Justice/Police Violence/Open Justice/2023")
 # indicator <- "Use of Force Civilians and Officers 2023"
 # column_names <- colnames(df)
 # column_comments <- ""
 # 
 # ### Use this fx to get URSUS (Use of Force) data ####
 # source("W:/Project/RACE COUNTS/2025_v7/RC_Github/CR/Functions/rdashared_functions.R") # getting locally for the moment while updating
-# #source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
 # 
-# get_ursus_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source)
+# get_ursus_data(filepath, fieldtype, table_schema, table_name, table_source)
 # 
 # 
 # # ##### incident
@@ -73,15 +76,15 @@ sen_xwalk <- 'zcta_2020_state_senate_2024'      # Name of tract-Sen xwalk table
 # fieldtype = 1:11  # confirm using metadata link
 # 
 # ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
-# table_name <- paste0("ursus_incident_", substr(curr_yr, 6,9))
+# table_name <- "ursus_incident_2023"
 # table_comment_source <- "NOTE: This table has 1 row per incident with total # of civilians involved in Use of Force incident. Tables like ursus_civilian_officer_2016, have 1 row per civilian involved in an incident. So if you join the tables, then sum the num_involved_civilians field, you will double-count people."
-# 
-# # comment on table
-# indicator <- "Use of Force Incidents 2023"
+# table_source <- paste0(table_comment_source, " Table created ", Sys.Date(), " from https://openjustice.doj.ca.gov/data. Metadata here: ", metadata,
+#                        " and saved here: W:/Data/Crime and Justice/Police Violence/Open Justice/2023")
+# indicator <- "Use of Force Incidents (2023)"
 # column_names <- colnames(df)
 # column_comments <- ""
 # 
-# df <- get_ursus_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
+# df <- get_ursus_data(filepath, fieldtype, table_schema, table_name, table_source) # function to create and export rda_shared_table to postgres db
 
 
 ############### PREP LATEST URSUS RDA_SHARED_DATA TABLES ########################
@@ -93,20 +96,19 @@ sen_xwalk <- 'zcta_2020_state_senate_2024'      # Name of tract-Sen xwalk table
 # ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 # table_schema <- "crime_and_justice"
 # table_name <- paste0("ursus_civilian_officer_", substr(curr_yr, 6,9))
-# table_comment_source <- "NOTE: race/eth column values have inconsistencies, for example ''''asian indian'''' and ''''asian_indian''''."
-# table_source <- paste0("Use of force data downloaded ", Sys.Date(), " from https://openjustice.doj.ca.gov/data. Metadata here: ", metadata,
+# table_comment_source <- "NOTE: race/eth column values have inconsistencies, for example ''asian indian'' and ''asian_indian''."
+# table_source <- paste0(table_comment_source, " Table created ", Sys.Date(), " from https://openjustice.doj.ca.gov/data. Metadata here: ", metadata,
 #                         " and saved here: W:/Data/Crime and Justice/Police Violence/Open Justice/", substr(curr_yr, 6,9))
 # 
 # # comment on table
-# indicator <- "Use of Force Civilians and Officers 2024"
+# indicator <- paste0("Use of Force Civilians and Officers (", substr(curr_yr, 6,9), ")")
 # column_names <- colnames(df)
 # column_comments <- ""
 # 
 # ### Use this fx to get URSUS (Use of Force) data ####
 # source("W:/Project/RACE COUNTS/2025_v7/RC_Github/CR/Functions/rdashared_functions.R") # getting locally for the moment while updating
-# #source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
 # 
-# get_ursus_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source)
+# get_ursus_data(filepath, fieldtype, table_schema, table_name, table_source)
 # 
 # 
 # # ##### incident
@@ -116,13 +118,13 @@ sen_xwalk <- 'zcta_2020_state_senate_2024'      # Name of tract-Sen xwalk table
 # # ## Manually define postgres schema, table name, table comment, data source for rda_shared_data table
 # table_name <- paste0("ursus_incident_", substr(curr_yr, 6,9))
 # table_comment_source <- "NOTE: This table has 1 row per incident with total # of civilians involved in Use of Force incident. Tables like ursus_civilian_officer_2016, have 1 row per civilian involved in an incident. So if you join the tables, then sum the num_involved_civilians field, you will double-count people."
-# 
-# # comment on table
-# indicator <- "Use of Force Incidents 2024"
+# table_source <- paste0(table_comment_source, " Table created ", Sys.Date(), " from https://openjustice.doj.ca.gov/data. Metadata here: ", metadata,
+#                        " and saved here: W:/Data/Crime and Justice/Police Violence/Open Justice/", substr(curr_yr, 6,9), ". QA doc: ", qa_filepath)
+# indicator <- paste0("Use of Force Incidents (", substr(curr_yr, 6,9), ")")"
 # column_names <- colnames(df)
 # column_comments <- ""
 # 
-# df <- get_ursus_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
+# df <- get_ursus_data(filepath, fieldtype, table_schema, table_name, table_source) # function to create and export rda_shared_table to postgres db
 
 
 
@@ -183,30 +185,32 @@ df_all_years <- as.data.frame(bind_rows(joined, .id = "year"))
 ######### NOTE: Due to using our custom race groups, some people are double-counted. Ex: Someone who id's as more than 1 group will be counted in both groups.
 
 # create new race columns for our custom groups, you may need to update this code for race_reclass df based on 'races' df created below
-# races <- unique(df_all_years$race_ethnic_group)  # check which race groups are present in data #
-# sort(races) # get list of unique race/ethnic groups
-race_reclass <- df_all_years %>% mutate(nh_white = ifelse(race_ethnic_group == 'white', 'nh_white', 'not nh_white'), 
-                                        nh_black = ifelse(race_ethnic_group == 'black', 'nh_black', 'not_black'),
-                                        nh_aian = ifelse(grepl('american indian', race_ethnic_group), 'nh_aian', 'not nh_aian'), # aian alone or in combination
-                                        # # use this code for non-hispanic aian, alone
-                                        # nh_aian = ifelse(race_ethnic_group=='american indian or alaska native' |
-                                        #                    race_ethnic_group == 'american indian' , 'nh_aian', 'not nh_aian'),
-                                        nh_pacisl = ifelse(grepl('islander', race_ethnic_group), 'nh_pacisl', 'not nh_pacisl'),
-                                        # # use this code for non-hispanic nhpi, alone
-                                        # nh_pacisl = ifelse(race_ethnic_group=='hawaiian islander' |
-                                        #                    race_ethnic_group == 'pacific islander' , 'nh_pacisl', 'not nh_pacisl'),
-                                        nh_asian = ifelse(race_ethnic_group == 'asian' | 
-                                                            race_ethnic_group == 'asian indian' |
-                                                            race_ethnic_group == 'filipino' |
-                                                            race_ethnic_group == 'japanese' |
-                                                            race_ethnic_group == 'vietname' |
-                                                            race_ethnic_group == 'laotian' |
-                                                            race_ethnic_group == 'chinese' |
-                                                            race_ethnic_group == 'other asian' , 'nh_asian', 'not nh_asian'),
-                                        latino = ifelse(grepl('hispanic', race_ethnic_group), 'latino', 'not latino'),
-                                        nh_twoormor = ifelse(grepl(',', race_ethnic_group), 'nh_twoormor', 'not twoormor'),
-                                        city = trimws(city)) # remove leading/trailing spaces for match on geoname with ACS later 
-race_reclass$nh_twoormor = ifelse(grepl('hispanic', race_reclass$race_ethnic_group), 'not twoormor', race_reclass$nh_twoormor)
+# uniq_race <- as.data.frame(unique.default(sapply(df_all_years$race_ethnic_group, unique))) %>% setorder() # check which race groups are present in data #
+# View(uniq_race) # view list of unique race/ethnic groups
+race_reclass <- df_all_years %>% 
+  mutate(nh_white = ifelse(race_ethnic_group == 'white', 'nh_white', 'not nh_white'), 
+         nh_black = ifelse(race_ethnic_group == 'black', 'nh_black', 'not nh_black'),
+         nh_aian = ifelse(grepl('american indian', race_ethnic_group), 'nh_aian', 'not nh_aian'),  # aian alone or in combination
+            # # use this code for non-hispanic aian, alone
+            # nh_aian = ifelse(race_ethnic_group=='american indian or alaska native' |
+            #                  race_ethnic_group == 'american indian' , 'nh_aian', 'not nh_aian'), # nhpi alone or in combination
+         nh_pacisl = ifelse(grepl('islander', race_ethnic_group), 'nh_pacisl', 'not nh_pacisl'),
+            # # use this code for non-hispanic nhpi, alone
+            # nh_pacisl = ifelse(race_ethnic_group=='hawaiian islander' |
+            #                    race_ethnic_group == 'pacific islander' , 'nh_pacisl', 'not nh_pacisl'),
+         nh_asian = ifelse(race_ethnic_group == 'asian' | 
+                           race_ethnic_group == 'asian indian' |
+                           race_ethnic_group == 'chinese' |
+                           race_ethnic_group == 'filipino' |
+                           race_ethnic_group == 'japanese' |
+                           race_ethnic_group == 'laotian' |
+                           race_ethnic_group == 'vietname' |
+                           race_ethnic_group == 'other asian' , 'nh_asian', 'not nh_asian'),
+         latino = ifelse(grepl('hispanic', race_ethnic_group), 'latino', 'not latino'),
+         nh_twoormor = ifelse(grepl(',', race_ethnic_group), 'nh_twoormor', 'not nh_twoormor'),
+         city = trimws(city)) # remove leading/trailing spaces for match on geoname with ACS later 
+
+race_reclass$nh_twoormor = ifelse(grepl('hispanic', race_reclass$race_ethnic_group), 'not nh_twoormor', race_reclass$nh_twoormor) # remove hispanic
 
 # check race race_reclass
 # View(race_reclass[c("race_ethnic_group","nh_white","nh_black","nh_aian","nh_pacisl", "nh_asian", "latino", "nh_twoormor")])
@@ -264,25 +268,28 @@ race_reclass_assm <- race_reclass %>%
   # join, expecting that zip codes may be in multiple districts
   inner_join(xwalk_assm, by = c("zip_code" = "geo_id"), relationship = "many-to-many")
 
+# rename geoid col to 'geoid'  
+colnames(race_reclass_assm) <- ifelse(str_detect(colnames(race_reclass_assm), assm_geoid) == TRUE, "geoid", colnames(race_reclass_assm))
 
-#### Assm Calc counts by race ####
-calc_counts <- function(race_eth) {
-  counts <- race_reclass_assm %>% filter(race_reclass_assm[[race_eth]] == race_eth) %>% group_by(sldl24) %>% 
-    summarise(involved = sum(afact))
+
+#### Leg: Calc counts by race ####
+calc_counts_leg <- function(df, race_eth) {
+  counts <- df %>% filter(df[[race_eth]] == race_eth) %>% group_by(geoid) %>% 
+    summarise(involved = sum(afact))         # each row represents 1 person so we can sum the weights
   new_name <- paste0(race_eth, '_involved')  # generate race-specific col name
   counts <- counts %>% rename(!!new_name := involved)  # rename to race-specific col name
   return(counts)  
 }
 
-# Assm: calc counts by race
-total_ <- race_reclass_assm %>% group_by(sldl24) %>% summarise(total_involved = sum(afact))
-nh_black_ <- calc_counts('nh_black')
-nh_aian_ <- calc_counts('nh_aian')
-nh_pacisl_ <- calc_counts('nh_pacisl')
-nh_asian_ <- calc_counts('nh_asian')
-nh_white_ <- calc_counts('nh_white')
-latino_ <- calc_counts('latino')
-nh_twoormor_ <- calc_counts('nh_twoormor')
+#### Assm Calc counts by race ####
+total_ <- race_reclass_assm %>% group_by(geoid) %>% summarise(total_involved = sum(afact))
+nh_black_ <- calc_counts_leg(race_reclass_assm,'nh_black')
+nh_aian_ <- calc_counts_leg(race_reclass_assm, 'nh_aian')
+nh_pacisl_ <- calc_counts_leg(race_reclass_assm, 'nh_pacisl')
+nh_asian_ <- calc_counts_leg(race_reclass_assm, 'nh_asian')
+nh_white_ <- calc_counts_leg(race_reclass_assm, 'nh_white')
+latino_ <- calc_counts_leg(race_reclass_assm, 'latino')
+nh_twoormor_ <- calc_counts_leg(race_reclass_assm, 'nh_twoormor')
 
 ## join assm calcs by race together
 df_assm <- total_ %>% left_join(nh_pacisl_) %>% 
@@ -292,9 +299,10 @@ df_assm <- total_ %>% left_join(nh_pacisl_) %>%
   left_join(nh_white_) %>% 
   left_join(latino_) %>% 
   left_join(nh_twoormor_) %>% 
-  mutate(geoname = paste0("Assembly District ", as.numeric(str_sub(sldl24, -2))),
+  mutate(geoname = paste0("Assembly District ", as.numeric(str_sub(geoid, -2))),
          geolevel = 'sldl') %>%
-  select(-sldl24) %>% select(geoname, geolevel, everything())
+  select(-geoid) %>%
+  select(geoname, geolevel, everything())
 
 
 ############# Senate DISTRICTS ##################
@@ -307,25 +315,18 @@ race_reclass_sen <- race_reclass %>%
   # join, expecting that zip codes may be in multiple districts
   inner_join(xwalk_sen, by = c("zip_code" = "geo_id"), relationship = "many-to-many")
 
+# rename geoid col to 'geoid'  
+colnames(race_reclass_sen) <- ifelse(str_detect(colnames(race_reclass_sen), sen_geoid) == TRUE, "geoid", colnames(race_reclass_sen))
 
 #### Sen Calc counts by race ####
-calc_counts <- function(race_eth) {
-  counts <- race_reclass_sen %>% filter(race_reclass_sen[[race_eth]] == race_eth) %>% group_by(sldu24) %>% 
-    summarise(involved = sum(afact))
-  new_name <- paste0(race_eth, '_involved')  # generate race-specific col name
-  counts <- counts %>% rename(!!new_name := involved)  # rename to race-specific col name
-  return(counts)  
-}
-
-# Sen: calc counts by race
-total_ <- race_reclass_sen %>% group_by(sldu24) %>% summarise(total_involved = sum(afact))
-nh_black_ <- calc_counts('nh_black')
-nh_aian_ <- calc_counts('nh_aian')
-nh_pacisl_ <- calc_counts('nh_pacisl')
-nh_asian_ <- calc_counts('nh_asian')
-nh_white_ <- calc_counts('nh_white')
-latino_ <- calc_counts('latino')
-nh_twoormor_ <- calc_counts('nh_twoormor')
+total_ <- race_reclass_sen %>% group_by(geoid) %>% summarise(total_involved = sum(afact))
+nh_black_ <- calc_counts_leg(race_reclass_sen, 'nh_black')
+nh_aian_ <- calc_counts_leg(race_reclass_sen, 'nh_aian')
+nh_pacisl_ <- calc_counts_leg(race_reclass_sen, 'nh_pacisl')
+nh_asian_ <- calc_counts_leg(race_reclass_sen, 'nh_asian')
+nh_white_ <- calc_counts_leg(race_reclass_sen, 'nh_white')
+latino_ <- calc_counts_leg(race_reclass_sen, 'latino')
+nh_twoormor_ <- calc_counts_leg(race_reclass_sen, 'nh_twoormor')
 
 ## join sen calcs by race together
 df_sen <- total_ %>% left_join(nh_pacisl_) %>% 
@@ -335,16 +336,19 @@ df_sen <- total_ %>% left_join(nh_pacisl_) %>%
   left_join(nh_white_) %>% 
   left_join(latino_) %>% 
   left_join(nh_twoormor_) %>% 
-  mutate(geoname = paste0("State Senate District ", as.numeric(str_sub(sldu24, -2))),
+  mutate(geoname = paste0("State Senate District ", as.numeric(str_sub(geoid, -2))),
          geolevel = 'sldu') %>%
-  select(-sldu24) %>% select(geoname, geolevel, everything())
+  select(-geoid) %>%
+  select(geoname, geolevel, everything())
 
 
 #################### City, County, State ###############################
 
 #### Calc counts by race ####
-calc_counts <- function(race_eth) {
-  counts <- race_reclass %>% filter(race_reclass[[race_eth]] == race_eth) %>% group_by(city, county) %>% mutate(involved = n()) %>% summarise(involved = min(involved))
+calc_counts <- function(df, race_eth) {
+  counts <- df %>% filter(race_reclass[[race_eth]] == race_eth) %>% 
+    group_by(city, county) %>% mutate(involved = n()) %>% 
+    summarise(involved = min(involved))
   new_name <- paste0(race_eth, '_involved')  # generate race-specific col name
   counts <- counts %>% rename(!!new_name := involved)  # rename to race-specific col name
   return(counts)  
@@ -352,20 +356,22 @@ calc_counts <- function(race_eth) {
 
 # City: calc counts by race
 total_ <- race_reclass %>% group_by(city, county) %>% mutate(total_involved = n()) %>% summarise(total_involved = min(total_involved))
-nh_black_ <- calc_counts('nh_black')
-nh_aian_ <- calc_counts('nh_aian')
-nh_pacisl_ <- calc_counts('nh_pacisl')
-nh_asian_ <- calc_counts('nh_asian')
-nh_white_ <- calc_counts('nh_white')
-latino_ <- calc_counts('latino')
-nh_twoormor_ <- calc_counts('nh_twoormor')
+nh_black_ <- calc_counts(race_reclass, 'nh_black')
+nh_aian_ <- calc_counts(race_reclass, 'nh_aian')
+nh_pacisl_ <- calc_counts(race_reclass, 'nh_pacisl')
+nh_asian_ <- calc_counts(race_reclass, 'nh_asian')
+nh_white_ <- calc_counts(race_reclass, 'nh_white')
+latino_ <- calc_counts(race_reclass, 'latino')
+nh_twoormor_ <- calc_counts(race_reclass, 'nh_twoormor')
 
 ## join city calcs by race together
-df_city <- total_ %>% left_join(nh_pacisl_) %>% left_join(nh_asian_) %>% left_join(nh_black_) %>% left_join(nh_aian_) %>% left_join(nh_white_) %>% left_join(latino_) %>% left_join(nh_twoormor_) %>% rename("geoname" = "city") %>% mutate(geolevel='city')
+df_city <- total_ %>% left_join(nh_pacisl_) %>% left_join(nh_asian_) %>% left_join(nh_black_) %>% left_join(nh_aian_) %>% left_join(nh_white_) %>% left_join(latino_) %>% left_join(nh_twoormor_) %>% 
+  rename("geoname" = "city") %>% mutate(geolevel='city')
 
 
 # County: calc counts by race
-df_county <- df_city %>% group_by(county) %>% summarise(across(ends_with("involved"), sum, na.rm=TRUE)) %>% # here we can sum not count bc df_city has unduplicated counts
+df_county <- df_city %>% group_by(county) %>% 
+  summarise(across(ends_with("involved"), sum, na.rm=TRUE)) %>% # here we can sum not count bc df_city has unduplicated counts
   rename("geoname" = "county")
 
 # State: calc counts by race
@@ -377,37 +383,33 @@ df_county$geolevel <- ifelse(df_county$geoname == 'California', 'state', 'county
 df_all <- rbind(df_city, df_county, df_assm, df_sen) %>% relocate(geolevel, .after = county)
 
 # make NA = 0 for cities/counties that appear in USOF data. Places that are not in the USOF data still receive NA.
-df_all <- df_all %>% mutate(total_involved = coalesce(total_involved, 0), nh_pacisl_involved = coalesce(nh_pacisl_involved, 0), nh_black_involved = coalesce(nh_black_involved, 0), nh_aian_involved = coalesce(nh_aian_involved, 0), nh_asian_involved = coalesce(nh_asian_involved, 0),
-                            nh_white_involved = coalesce(nh_white_involved, 0), latino_involved = coalesce(latino_involved, 0), nh_twoormor_involved = coalesce(nh_twoormor_involved, 0))
-
-
+df_all <- df_all %>% mutate(
+  total_involved = coalesce(total_involved, 0), 
+  nh_pacisl_involved = coalesce(nh_pacisl_involved, 0), 
+  nh_black_involved = coalesce(nh_black_involved, 0), 
+  nh_aian_involved = coalesce(nh_aian_involved, 0), 
+  nh_asian_involved = coalesce(nh_asian_involved, 0),
+  nh_white_involved = coalesce(nh_white_involved, 0), 
+  latino_involved = coalesce(latino_involved, 0), 
+  nh_twoormor_involved = coalesce(nh_twoormor_involved, 0))
 
 # Get ACS population data ----------------------------------------------------
-dp05 <- dbGetQuery(con, "SELECT * FROM v7.arei_race_multigeo") %>% mutate(name = gsub(" County, California", "", name),
-                                                                          name =  gsub(" CDP, California", "", name),
-                                                                          name =  gsub(" city, California", "", name),
-                                                                          name =  gsub("city, California", "", name), # to get a clean Paso Robles
-                                                                          name =  gsub(" town, California", "", name),
-                                                                          name =  gsub(", California", "", name)) %>% 
+dp05 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_race_multigeo")) %>% 
+  mutate(name = gsub(" County, California", "", name),
+         name =  gsub(" CDP, California", "", name),
+         name =  gsub(" city, California", "", name),
+         name =  gsub("city, California", "", name), # to get a clean Paso Robles
+         name =  gsub(" town, California", "", name),
+         name =  gsub(", California", "", name)) %>% 
   select(-c(contains(c("swana", "nh_other_", "aian", "pacisl", "pct_"))))
-nh_aian_pacisl <- dbGetQuery(con2, "SELECT geoid, dp05_0081e AS nh_aian_pop, dp05_0083e as nh_pacisl_pop FROM demographics.acs_5yr_dp05_multigeo_2022 WHERE geolevel IN ('state', 'county', 'place')")
+nh_aian_pacisl <- dbGetQuery(con2, paste0("SELECT geoid, geolevel, nh_aian_count AS nh_aian_pop, nh_nhpi_count as nh_pacisl_pop FROM demographics.acs_5yr_multigeo_", acs_yr, "_race_wide WHERE geolevel IN ('state', 'county', 'place', 'sldl', 'sldu')"))
 dp05 <- dp05 %>% full_join(nh_aian_pacisl)
 
-
-city_county <- st_read(con2, query = "SELECT place_geoid, county_name FROM crosswalks.county_place_2020")
-
-# clean up name col
-dp05$name <- gsub(" County, California", "", dp05$name)
-dp05$name <- gsub(" CDP, California", "", dp05$name)
-dp05$name <- gsub(" town, California", "", dp05$name)
-dp05$name <- gsub(" City city, California", " City", dp05$name)
-dp05$name <- gsub(" city, California", "", dp05$name)
-dp05$name <- gsub(", California", "", dp05$name)
-names(dp05) <- tolower(names(dp05))
 # note: CDP names have not been modified and will not match, in next section we check to see if any of them actually have USOF data and make appropriate fixes ~line 138
 
-dp05_ <- dp05 %>% left_join(city_county, by = c("geoid" = "place_geoid")) %>% mutate(county_name = gsub(" County", "", county_name), geolevel = gsub("place", "city", geolevel)) %>%
-  rename(geoname = name, county = county_name) # Foresta is the only city that doesn't match to a county, it is in a nat'l park so we can exclude
+dp05_ <- dp05 %>% left_join(city_county, by = c("geoid" = "place_geoid")) %>% 
+  mutate(county_name = gsub(" County", "", county_name), geolevel = gsub("place", "city", geolevel)) %>%
+  rename(geoname = name, county = county_name) 
 
 
 # Join USOF and Pop Data to check for unmatched cities --------------------------------------------------
@@ -419,17 +421,15 @@ dp05_ <- dp05 %>% left_join(city_county, by = c("geoid" = "place_geoid")) %>% mu
 # View(acs_nomatch)
 
 # Re-join USOF and pop data after manual fixes
-df_calcs <- full_join(df_all, dp05_, by = c("geoname", "geolevel", "county")) %>% arrange(geoname) %>% select(geoid, geoname, everything())
-df_calcs$geoname <- gsub(" CDP", "", df_calcs$geoname)
-# usof_nomatch_final <- filter(df_all_, is.na(geoid)) # check if manual fixes worked: this df should have 21 unmatched
+df_calcs <- full_join(df_all, dp05_, by = c("geoname", "geolevel", "county")) %>% arrange(geoname) %>% select(geoid, geoname, everything()) %>%
+  select(-county)
+# usof_nomatch_final <- filter(df_all_, is.na(geoid)) # check if manual fixes worked: this df will have 30 unmatched. these places don't appear in acs data
 # View(usof_nomatch_final)
 # # check using df_calcs for cleaner workflow
 # usof_nomatch <- filter(df_calcs, is.na(geoid))
 # View(usof_nomatch) # this df has 33 rows
 
 # Data screening / calc rates ----------------------------------------------------------
-pop_threshold = 100
-incident_threshold = 5  # update appropriately each year to ensure counties with few incidents and small pops do not result in outlier rates
 data_yrs = length(unique(year_list))  # auto updates based on number of data yrs in ursus_tables. you must multiply pop by this number to get accurate annual avg rate. raw is the sum of incidents across yrs, not annual avg.
 
 df_screened <- df_calcs %>% 
@@ -496,8 +496,7 @@ d <- ungroup(df_screened) %>% select(!ends_with("involved")) %>% select(!starts_
 ############ geoid and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
 #set source for RC Functions script
-#source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
-source("W:/Project/RACE COUNTS/2025_v7/RC_Github/CR/Functions/RC_Functions.R")
+source("./Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'. 
 #For USOF: For calcs, set to 'max' bc we use non-force rate. After calcs, we update 'max' to 'min' bc we display force rate where min is best.
@@ -511,7 +510,7 @@ d <- calc_id(d) #calculate index of disparity
 
 
 #split STATE into separate table and format id, name columns. Drop unneeded cols.
-state_table <- d[d$geoname == 'California', ] %>% select(-c(geolevel, county))
+state_table <- d[d$geoname == 'California', ] %>% select(-geolevel)
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
@@ -519,7 +518,7 @@ state_table <- rename(state_table, state_id = geoid, state_name = geoname)
 View(state_table)
 
 #split COUNTY into separate table and format id, name columns. Drop unneeded cols.
-county_table <- d[d$geolevel == 'county', ] %>% select(-c(geolevel, county))
+county_table <- d[d$geolevel == 'county', ] %>% select(-geolevel)
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
@@ -528,7 +527,7 @@ county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
 #split CITY into separate table and format id, name columns
-city_table <- d[d$geolevel == 'city', ] %>% select(-c(geolevel, county))
+city_table <- d[d$geolevel == 'city', ] %>% select(-geolevel)
 
 #calculate city z-scores
 city_table <- calc_z(city_table)
@@ -557,7 +556,7 @@ View(lower_table)
 
 ## Bind sldu and sldl tables into one leg_table##
 leg_table <- rbind(upper_table, lower_table)
-leg_table <- rename(leg_table, leg_id = geoid, leg_name = geoname) %>% select(-county)
+leg_table <- rename(leg_table, leg_id = geoid, leg_name = geoname)
 View(leg_table)
 
 
@@ -580,7 +579,7 @@ city_table_name <- paste0("arei_crim_use_of_force_city_", rc_yr)
 leg_table_name <- paste0("arei_crim_use_of_force_leg_", rc_yr)
 
 
-indicator <- paste0("Created on ", Sys.Date(), ". Annual average number of people injured in Law Enforcement Use of force Incidents per 100,000 People over ", data_yrs," years. Raw is total number of people injured over ", data_yrs," years. Note, we use the flipped rates for disparity calcs, but display the regular rates on RC.org. This data is")
+indicator <- paste0("Annual average number of people injured in Law Enforcement Use of force Incidents per 100,000 People over ", data_yrs," years. Raw is total number of people injured over ", data_yrs," years. Note, we use the flipped rates for disparity calcs, but display the regular rates on RC.org. QA doc: ", qa_filepath, ". This data is")
 source <- paste0("CADOJ ",curr_yr, " https://openjustice.doj.ca.gov/data")
 
 #send tables to postgres
