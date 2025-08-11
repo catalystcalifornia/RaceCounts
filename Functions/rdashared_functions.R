@@ -779,7 +779,7 @@ get_caaspp_metadata <- function(url3, table_schema)  {
 }
 
 ### Use this fx to get URSUS (Use of Force) data ####
-get_ursus_data <- function(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) {
+get_ursus_data <- function(filepath, fieldtype, table_schema, table_name, table_source) {
   # CA DOJ Use of Force data
   df <- read_csv(file = filepath, na = c("*", "")) 
   
