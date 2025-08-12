@@ -2,21 +2,21 @@
 
 ## Set up ----------------------------------------------------------------
 #install packages if not already installed
-list.of.packages <- c("DBI", "tidyverse", "RPostgres", "tidycensus", "readxl", "sf", "janitor", "stringr", "data.table", "usethis")
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
+packages <- c("DBI", "tidyverse", "RPostgres", "tidycensus", "readxl", "sf", "janitor", "stringr", "data.table", "usethis")
 
-## packages
-library(tidyverse)
-library(readxl)
-library(RPostgres) 
-library(sf)
-library(tidycensus)
-library(DBI)
-library(janitor)
-library(stringr)
-library(data.table) # %like% operator
-library(usethis)
+install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
+
+if(length(install_packages) > 0) { 
+  install.packages(install_packages) 
+  
+} else { 
+  
+  print("All required packages are already installed.") 
+} 
+
+for(pkg in packages){ 
+  library(pkg, character.only = TRUE) 
+} 
 
 options(scipen = 999) # disable scientific notation
 
@@ -34,7 +34,7 @@ rc_schema <- 'v7'
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Crime and Justice\\QA_Sheet_Use_of_Force.docx"
 
 # update appropriately each year to ensure counties with few incidents and small pops do not result in outlier rates
-pop_threshold = 100     # data for groups with pop < threshold are suppressed
+pop_threshold = 800     # data for groups with pop < threshold are suppressed
 incident_threshold = 5  # data for groups with incidents < threshold are suppressed
 
 
@@ -44,7 +44,7 @@ assm_xwalk <- 'zcta_2020_state_assembly_2024'   # Name of tract-Assm xwalk table
 sen_geoid <- 'sldu24'			                      # Define column with senate geoid
 sen_xwalk <- 'zcta_2020_state_senate_2024'      # Name of tract-Sen xwalk table
 
-city_county <- st_read(con2, query = "SELECT place_geoid, county_name FROM crosswalks.county_place_2023")  # city-county xwalk
+city_county <- dbGetQuery(con2, "SELECT place_geoid, county_name FROM crosswalks.county_place_2023")  # city-county xwalk
 
 # For v7 there were two latest sets of URSUS tables 2023 and 2024
 # Next year we expect to update only one latest year
@@ -134,6 +134,7 @@ sql_query <- "SELECT table_name FROM information_schema.tables
                    WHERE table_schema='crime_and_justice' AND table_type='BASE TABLE'
                    ORDER BY table_name"
 table_list <- dbGetQuery(con2, sql_query)
+
 # filter for only URSUS tables
 ursus_list <- filter(table_list, grepl("ursus_",table_name)) 
 ursus_list <- ursus_list[order(ursus_list$table_name), ]  # alphabetize list of URSUS tables, needed to format list correctly for next step
@@ -210,7 +211,7 @@ race_reclass <- df_all_years %>%
          nh_twoormor = ifelse(grepl(',', race_ethnic_group), 'nh_twoormor', 'not nh_twoormor'),
          city = trimws(city)) # remove leading/trailing spaces for match on geoname with ACS later 
 
-race_reclass$nh_twoormor = ifelse(grepl('hispanic', race_reclass$race_ethnic_group), 'not nh_twoormor', race_reclass$nh_twoormor) # remove hispanic
+race_reclass$nh_twoormor = ifelse(grepl('hispanic', race_reclass$race_ethnic_group), 'not nh_twoormor', race_reclass$nh_twoormor) # remove hispanic two+
 
 # check race race_reclass
 # View(race_reclass[c("race_ethnic_group","nh_white","nh_black","nh_aian","nh_pacisl", "nh_asian", "latino", "nh_twoormor")])
@@ -469,21 +470,21 @@ df_screened <- df_calcs %>%
     nh_twoormor_rate = ifelse(nh_twoormor_pop < pop_threshold | total_involved < incident_threshold, NA, ((nh_twoormor_pop * data_yrs) - nh_twoormor_raw) / (nh_twoormor_pop * data_yrs) * 100000),
     
     # Screen and calc Use of Force Rates - will be displayed on RC.org
-    total_rate_usof = ifelse(total_pop < pop_threshold | total_involved < incident_threshold, NA, round((total_raw / (total_pop * data_yrs)) * 100000,1)),
+    total_rate_usof = ifelse(total_pop < pop_threshold | total_involved < incident_threshold, NA, (total_raw / (total_pop * data_yrs)) * 100000),
     
-    nh_white_rate_usof = ifelse(nh_white_pop < pop_threshold | total_involved < incident_threshold, NA, round((nh_white_raw / (nh_white_pop * data_yrs)) * 100000,1)),
+    nh_white_rate_usof = ifelse(nh_white_pop < pop_threshold | total_involved < incident_threshold, NA, (nh_white_raw / (nh_white_pop * data_yrs)) * 100000),
     
-    nh_black_rate_usof = ifelse(nh_black_pop < pop_threshold | total_involved < incident_threshold, NA, round((nh_black_raw / (nh_black_pop * data_yrs)) * 100000,1)),
+    nh_black_rate_usof = ifelse(nh_black_pop < pop_threshold | total_involved < incident_threshold, NA, (nh_black_raw / (nh_black_pop * data_yrs)) * 100000),
     
-    nh_aian_rate_usof = ifelse(nh_aian_pop < pop_threshold | total_involved < incident_threshold, NA, round((nh_aian_raw / (nh_aian_pop * data_yrs)) * 100000,1)),
+    nh_aian_rate_usof = ifelse(nh_aian_pop < pop_threshold | total_involved < incident_threshold, NA, (nh_aian_raw / (nh_aian_pop * data_yrs)) * 100000),
     
-    nh_pacisl_rate_usof = ifelse(nh_pacisl_pop < pop_threshold | total_involved < incident_threshold, NA, round((nh_pacisl_raw / (nh_pacisl_pop * data_yrs)) * 100000,1)),
+    nh_pacisl_rate_usof = ifelse(nh_pacisl_pop < pop_threshold | total_involved < incident_threshold, NA, (nh_pacisl_raw / (nh_pacisl_pop * data_yrs)) * 100000),
     
-    nh_asian_rate_usof = ifelse(nh_asian_pop < pop_threshold | total_involved < incident_threshold, NA, round((nh_asian_raw / (nh_asian_pop * data_yrs)) * 100000,1)),
+    nh_asian_rate_usof = ifelse(nh_asian_pop < pop_threshold | total_involved < incident_threshold, NA, (nh_asian_raw / (nh_asian_pop * data_yrs)) * 100000),
     
-    latino_rate_usof = ifelse(latino_pop < pop_threshold | total_involved < incident_threshold, NA, round((latino_raw / (latino_pop * data_yrs)) * 100000,1)),
+    latino_rate_usof = ifelse(latino_pop < pop_threshold | total_involved < incident_threshold, NA, (latino_raw / (latino_pop * data_yrs)) * 100000),
     
-    nh_twoormor_rate_usof = ifelse(nh_twoormor_pop < pop_threshold | total_involved < incident_threshold, NA, round((nh_twoormor_raw / (nh_twoormor_pop * data_yrs)) * 100000,1))
+    nh_twoormor_rate_usof = ifelse(nh_twoormor_pop < pop_threshold | total_involved < incident_threshold, NA, (nh_twoormor_raw / (nh_twoormor_pop * data_yrs)) * 100000)
     
   )
 
@@ -583,9 +584,9 @@ indicator <- paste0("Annual average number of people injured in Law Enforcement 
 source <- paste0("CADOJ ",curr_yr, " https://openjustice.doj.ca.gov/data")
 
 #send tables to postgres
-#to_postgres(county_table, state_table)
-#city_to_postgres(city_table)
-#leg_to_postgres(leg_table)
+# to_postgres(county_table, state_table)
+# city_to_postgres(city_table)
+# leg_to_postgres(leg_table)
 
 
 dbDisconnect(con)
