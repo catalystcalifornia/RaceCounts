@@ -25,9 +25,11 @@ con <- connect_to_db("rda_shared_data")
 
 # update each year
 curr_yr <- '2023_24' # CDE data year, must keep this format
+acs_yr <- 2023       # acs year used for geoid/geonames
 rc_yr <- '2025'    # RC year
 rc_schema <- 'v7'
 data_url <- "https://www.cde.ca.gov/ds/ad/fileshse.asp"
+url <-  "https://www.cde.ca.gov/ds/ad/fshse.asp"   # define webpage with metadata
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Student_Homelessness.docx"
 threshold = 50 #applied to pop below
 
@@ -42,25 +44,24 @@ threshold = 50 #applied to pop below
 # table_source <- "Downloaded from https://www.cde.ca.gov/ds/ad/fileshse.asp. Headers were cleaned of characters like /, ., ), and (. Also cells with values of * were nullified. Created cdscode by concatenating county, district, and school codes"
 # 
 # ## Run function to prep and export rda_shared_data table
-# source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/rdashared_functions.R")
+# source("./Functions/rdashared_functions.R")
 # df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
 # 
 # ##### NOTE: This function isn't working for Student Homelessness (loop part of function is the issue).
 # # Run function to add rda_shared_data column comments
 # # See for more on scraping tables from websites: https://stackoverflow.com/questions/55092329/extract-table-from-webpage-using-r and https://cran.r-project.org/web/packages/rvest/rvest.pdf
-# url <-  "https://www.cde.ca.gov/ds/ad/fshse.asp"   # define webpage with metadata
 # html_nodes <- "table"
 # colcomments <- get_cde_metadata(url, html_nodes, table_schema, table_name)
 # View(colcomments)
 
-df <- st_read(con, query = "SELECT * FROM education.cde_multigeo_calpads_homelessness_2023_24") # comment out code above to pull data and use this once rda_shared_data table is created
+df <- dbGetQuery(con, paste0("SELECT * FROM education.cde_multigeo_calpads_homelessness_", curr_yr)) # comment out code above to pull data and use this once rda_shared_data table is created
 
 #### 2) Get census geoids----
 
 counties <- get_acs(geography = "county", 
                     variables = c("B01001_001"), 
                     state = "CA", 
-                    year = 2023)
+                    year = acs_yr)
 
 counties <- counties[,1:2]
 counties$NAME <- gsub(" County, California", "", counties$NAME)
@@ -91,7 +92,8 @@ df_subset$reportingcategory <- gsub("RW", "nh_white", df_subset$reportingcategor
 df_subset <- df_subset %>% mutate(rate = ifelse(pop < threshold, NA, rate), raw = ifelse(pop < threshold, NA, raw))
 
 #pivot wider
-df_wide <- df_subset %>% pivot_wider(names_from = reportingcategory, names_glue = "{reportingcategory}_{.value}", values_from = c(raw, pop, rate)) %>% rename( c("geoname" = "countyname"))
+df_wide <- df_subset %>% pivot_wider(names_from = reportingcategory, names_glue = "{reportingcategory}_{.value}", values_from = c(raw, pop, rate)) %>%
+  rename( c("geoname" = "countyname"))
 df_wide$geoname[df_wide$geoname =='State'] <- 'California'   # update state rows' geoname field values
 df_wide <- merge(x=counties,y=df_wide,by="geoname", all=T) # add county geoids
 df_wide <- within(df_wide, geoid[geoname == 'California'] <- '06') # add state geoid
@@ -102,7 +104,6 @@ d <- df_wide %>% mutate(geolevel = ifelse(aggregatelevel == 'T', 'state', 'count
 
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-#source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 source("./Functions/RC_Functions.R")
 d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 

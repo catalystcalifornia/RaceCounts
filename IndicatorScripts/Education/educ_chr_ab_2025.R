@@ -89,7 +89,7 @@ xwalk_school_assm <- dbGetQuery(con_shared, paste0("SELECT cdscode, ca_assembly_
 # View(colcomments)
 
 # Get rda_shared_data table and do initial RC prep (select cols, filter, apply rc naming)
-df <- dbGetQuery(con_shared, statement = "SELECT * FROM education.cde_multigeo_chronicabs_2023_24") %>%
+df <- dbGetQuery(con_shared, statement = paste0("SELECT * FROM education.cde_multigeo_chronicabs_", curr_yr)) %>%
   #select just fields we need
   select(cdscode, countyname, districtname, aggregatelevel, charterschool, dass,
          reportingcategory, chronicabsenteeismeligiblecumulativeenrollment, 
@@ -168,6 +168,13 @@ df_subset_assm <- df %>%
     rate=sum(raw, na.rm=TRUE)/sum(pop, na.rm=TRUE)*100
   ) %>%
   ungroup()
+
+# check schools-leg dist matches
+# no_leg_id_sen <- df_subset_sen %>% filter(is.na(leg_id)) %>% filter(schoolname != 'District Office') %>% filter(schoolname != 'Nonpublic, Nonsectarian Schools')
+#  length(unique(no_leg_id_sen$cdscode))  # 28
+# no_leg_id_assm <- df_subset_assm %>% filter(is.na(leg_id)) %>% filter(schoolname != 'District Office') %>% filter(schoolname != 'Nonpublic, Nonsectarian Schools')
+#  length(unique(no_leg_id_assm$cdscode))  # 28
+
 
 df_subset_leg <- rbind(df_subset_senate, df_subset_assm) %>%
   # add cdscode and countyname (needed for school districts) - to bind all geos later
@@ -303,7 +310,7 @@ city_table_name <- paste0("arei_educ_chronic_absenteeism_district_", rc_yr)
 leg_table_name <- paste0("arei_educ_chronic_absenteeism_leg_", rc_yr)
 
 
-indicator <- paste0("Chronic Absenteeism Eligible Cumulative Enrollment, Chronic Absenteeism Count, and Chronic Absenteeism Rate. This data is")
+indicator <- paste0("Chronic Absenteeism Eligible Cumulative Enrollment, Chronic Absenteeism Count, and Chronic Absenteeism Rate. QA doc: ", qa_filepath, ". This data is")
 
 source <- paste0("CDE ", curr_yr, " https://www.cde.ca.gov/ds/ad/filesabd.asp")
 
