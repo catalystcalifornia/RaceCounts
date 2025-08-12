@@ -23,13 +23,15 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con_shared <- connect_to_db("rda_shared_data")
 con_rc <- connect_to_db("racecounts")
 
-
 # update variables used throughout each year
 curr_yr <- '2018-2022'
+acs_yr <- 2020   # used to get census geoid/names from census api
 rc_yr <- '2025'
 rc_schema <- 'v7'
 dwnld_url <- "https://hcai.ca.gov/"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Health Access\\QA_Sheet_Preventable_Hospitalizations.docx"
 
+threshold <- 800   # data for geo+race combos with fewer than threshold # of pop are suppressed
 
 # Get downloaded data and subset
 df_multigeo <- read_excel("W:/Data/Health/OSHPD/2018-2022 HCAI Custom Run/_PQI 92 by Race-Ethnicity, 2018-2022_CS2712_Mulholland Graves.xlsx", 
@@ -87,7 +89,7 @@ Sys.getenv("CENSUS_API_KEY") # confirms value saved to .renviron
 ca <- get_acs(geography = "county", 
               variables = c("B01001_001"), 
               state = "CA", 
-              year = 2020)
+              year = acs_yr)
 
 ca <- ca[,1:2]
 ca$NAME <- gsub(" County, California", "", ca$NAME)
@@ -100,21 +102,21 @@ df_multigeo_wide <- merge(x=ca,y=df_multigeo_wide,by="geoname", all=T)
 df_multigeo_wide$geoname <- ifelse(df_multigeo_wide$geoname == 'Statewide', 'California', df_multigeo_wide$geoname)
 df_multigeo_wide$geoid <- ifelse(df_multigeo_wide$geoname == 'California', '06', df_multigeo_wide$geoid)
 
-#Now screen out racial groups with fewer than 800 people so small numbers did not lead to general conclusions about a racial group in a county or across the state per the methodology https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EbTuOYlkNAxKvtipqwQxTwUBZ3ijcQT5DTu-Xb8uYXl5AQ?e=Qkveug
-df_screened <- df_multigeo_wide %>% mutate(nh_api_raw = ifelse(nh_api_pop < 800, NA, nh_api_raw), 
-                                           nh_api_rate=ifelse(nh_api_pop < 800, NA, nh_api_rate),
-                                           nh_black_raw = ifelse(nh_black_pop < 800, NA, nh_black_raw), 
-                                           nh_black_rate = ifelse(nh_black_pop < 800, NA, nh_black_rate),
-                                           latino_raw  = ifelse(latino_pop < 800, NA, latino_raw), 
-                                           latino_rate = ifelse(latino_pop < 800, NA, latino_rate),
-                                           nh_aian_raw = ifelse(nh_aian_pop < 800, NA, nh_aian_raw), 
-                                           nh_aian_rate = ifelse(nh_aian_pop < 800, NA, nh_aian_rate),
-                                           nh_other_raw = ifelse(nh_other_pop < 800, NA, nh_other_raw), 
-                                           nh_other_rate = ifelse(nh_other_pop < 800, NA, nh_other_rate),
-                                           nh_white_raw = ifelse(nh_white_pop < 800, NA, nh_white_raw), 
-                                           nh_white_rate = ifelse(nh_white_pop < 800, NA, nh_white_rate),
-                                           total_raw = ifelse(total_pop < 800, NA, total_raw),  
-                                           total_rate = ifelse(total_pop < 800, NA, total_rate))
+#Now screen out racial groups with fewer than threshold # of people so small numbers did not lead to general conclusions about a racial group in a county or across the state per the methodology https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EbTuOYlkNAxKvtipqwQxTwUBZ3ijcQT5DTu-Xb8uYXl5AQ?e=Qkveug
+df_screened <- df_multigeo_wide %>% mutate(nh_api_raw = ifelse(nh_api_pop< threshold, NA, nh_api_raw), 
+                                           nh_api_rate=ifelse(nh_api_pop< threshold, NA, nh_api_rate),
+                                           nh_black_raw = ifelse(nh_black_pop< threshold, NA, nh_black_raw), 
+                                           nh_black_rate = ifelse(nh_black_pop< threshold, NA, nh_black_rate),
+                                           latino_raw  = ifelse(latino_pop< threshold, NA, latino_raw), 
+                                           latino_rate = ifelse(latino_pop< threshold, NA, latino_rate),
+                                           nh_aian_raw = ifelse(nh_aian_pop< threshold, NA, nh_aian_raw), 
+                                           nh_aian_rate = ifelse(nh_aian_pop< threshold, NA, nh_aian_rate),
+                                           nh_other_raw = ifelse(nh_other_pop< threshold, NA, nh_other_raw), 
+                                           nh_other_rate = ifelse(nh_other_pop< threshold, NA, nh_other_rate),
+                                           nh_white_raw = ifelse(nh_white_pop< threshold, NA, nh_white_raw), 
+                                           nh_white_rate = ifelse(nh_white_pop< threshold, NA, nh_white_rate),
+                                           total_raw = ifelse(total_pop< threshold, NA, total_raw),  
+                                           total_rate = ifelse(total_pop< threshold, NA, total_rate))
 
 # add geolevel
 d <- df_screened %>% mutate(geolevel = ifelse(geoname == "California", "state", "county")) %>%
@@ -123,8 +125,7 @@ d <- df_screened %>% mutate(geolevel = ifelse(geoname == "California", "state", 
 ############## CALC RACE COUNTS STATS ##############
 
 # set source for RC Functions script
-# source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
-source("W:/Project/RACE COUNTS/2025_v7/RC_Github/CR/Functions/RC_Functions.R")
+source("./Functions/RC_Functions.R")
 
 # Adds asbest value for RC Functions
 d$asbest = "min"   # min bc minimum rate is 'best' rate
@@ -161,7 +162,7 @@ colnames(county_table)[1:2] <- c("county_name", "county_id")
 ### info for postgres tables will auto update ###
 county_table_name <- paste0("arei_hlth_preventable_hospitalizations_county_",rc_yr)      
 state_table_name <- paste0("arei_hlth_preventable_hospitalizations_state_",rc_yr)      
-indicator <- paste0("Created on ", Sys.Date(), ". Preventable Hospitalizations (Rate per 100k)")                         # See most recent Indicator Methodology for indicator description
+indicator <- paste0("Preventable Hospitalizations (Rate per 100k). QA doc: ", qa_filepath)                         # See most recent Indicator Methodology for indicator description
 source <- paste0("California Department of Health Care Access and Information (", curr_yr, ")", dwnld_url)
 
 
