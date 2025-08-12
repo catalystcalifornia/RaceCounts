@@ -360,7 +360,7 @@ city_table_name <- paste0("arei_crim_officer_initiated_stops_city_", rc_yr)
 leg_table_name <- paste0("arei_crim_officer_initiated_stops_leg_", rc_yr)
 
 indicator <- "Officer initiated stops per 1,000 people. Raw is multi-year total number of officer initiated stops. Rate is annual average rate. Note: City data is based only on the largest agency in that city. Leg data is aggregated from city data. In addition, stops are assigned to the geography where the law enforcement agency is located, not where the stop occurred. Population is NOT pop for entire Leg District, it is sum of pop for cities assigned to the district that have stop data. This data is"
-source <- paste0("CADOJ RIPA ",curr_yr, " https://openjustice.doj.ca.gov/data")
+source <- paste0("CADOJ RIPA ",curr_yr, " https://openjustice.doj.ca.gov/data. QA doc: ", qa_filepath)
 
 # #send tables to postgres
 # to_postgres(county_table, state_table)
