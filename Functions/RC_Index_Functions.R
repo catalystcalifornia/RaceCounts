@@ -240,27 +240,35 @@ index_to_postgres <- function(x, y) {
   con <- connect_to_db("racecounts")                    
   
   #INDEX TABLE
-  index_table <- as.data.frame(index_table)
-  
+  index_table <- as.data.frame(x)
+  rc_schema <- y
   # make character vector for field types in postgresql db
-  charvect = rep('numeric', dim(index_table)[2])
-  
+  # charvect = rep('numeric', dim(index_table)[2])
+  charvect <- rep("numeric", ncol(index_table))
   # change data type for first four columns
   charvect[1:4] <- "varchar" # first two are characters for the geoid and names
   
   # add names to the character vector
   names(charvect) <- colnames(index_table)
   
-  dbWriteTable(con, c(rc_schema, index_table_name), index_table,
-               overwrite = FALSE, row.names = FALSE)
+  dbWriteTable(con, Id(schema = rc_schema, table = index_table_name), index_table,
+               overwrite = FALSE)
   
-  comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", index_table_name, " IS '", index, " from ", source, ".';
-                 COMMENT ON COLUMN ",  rc_schema, ".", index_table_name, ".county_id IS 'County fips';")  
+  # Start a transaction
+  dbBegin(con)
   
-  
+  #comment on table and columns
+  comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", index_table_name, "\"", " IS '", index, " from ", source, ".';")
   print(comment)
-  
-  dbSendQuery(con, comment)
+  dbExecute(con, comment)
+  # 
+  # col_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", index_table_name, "\"", ".county_id IS 'County fips';")
+  # print(col_comment)                  
+  # dbExecute(con, col_comment)
+  #
+  # Commit the transaction if everything succeeded
+  dbCommit(con)
+
   dbDisconnect(con)  
   
 }
