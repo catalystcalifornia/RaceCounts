@@ -91,7 +91,7 @@ xwalk_school_assm <- dbGetQuery(con_shared, paste0("SELECT cdscode, ca_assembly_
 # Get rda_shared_data table and do initial RC prep (select cols, filter, apply rc naming)
 df <- dbGetQuery(con_shared, statement = paste0("SELECT * FROM education.cde_multigeo_chronicabs_", curr_yr)) %>%
   #select just fields we need
-  select(cdscode, countyname, districtname, aggregatelevel, charterschool, dass,
+  select(cdscode, countyname, districtname, schoolname, aggregatelevel, charterschool, dass,
          reportingcategory, chronicabsenteeismeligiblecumulativeenrollment, 
          chronicabsenteeismcount, chronicabsenteeismrate) %>%
   # filter for RC races
@@ -138,8 +138,38 @@ df_subset_leg <- df %>%
   filter(last_7_digits != "0000000") %>%
   select(-last_7_digits) 
 
+# Check schools-leg dist matches
+no_leg_id_sen <- df_subset_leg %>% 
+  filter(is.na(senate_geoid)) %>% 
+  filter(reportingcategory=="total" & !is.na(pop))
+length(unique(no_leg_id_sen$cdscode))  # 43
+no_leg_id_assm <- df_subset_leg %>% 
+  filter(is.na(assm_geoid)) %>% 
+  filter(reportingcategory=="total" & !is.na(pop))
+length(unique(no_leg_id_assm$cdscode))  # 43
+
+open_schools <- st_read(con_shared, query = paste0("SELECT cdscode, statustype, geom_3310 FROM education.cde_public_schools_", curr_yr, "_emg"))
+no_leg_id <- open_schools %>% right_join(no_leg_id_sen) %>% relocate(statustype, .before = cdscode) %>% 
+  select(cdscode)
+
+## get Leg Dist shapes, manually join unmatched schools to Leg Dist
+sen_shp <- st_read(con_shared, query = "SELECT * FROM geographies_ca.cb_2023_06_sldu_500k") 
+assm_shp <- st_read(con_shared, query = "SELECT * FROM geographies_ca.cb_2023_06_sldl_500k")
+sch_sen_int <- st_join(no_leg_id, sen_shp) %>% rename(senate_geoid = geoid) %>% 
+  mutate(ca_senate_district = str_sub(senate_geoid, -2), geolevel_senate = 'sldu') %>%
+  select(cdscode, senate_geoid, ca_senate_district, geolevel_senate) %>%
+  st_drop_geometry()
+sch_assm_int <- st_join(no_leg_id, assm_shp) %>% rename(assm_geoid = geoid) %>% 
+  mutate(ca_assembly_district = str_sub(assm_geoid, -2), geolevel_assm = 'sldl') %>%
+  select(cdscode, assm_geoid, ca_assembly_district, geolevel_assm) %>%
+  st_drop_geometry()
+
+## join Leg Dist info back to df_subset_leg before calcs
+df_subset_leg_ <- rows_update(df_subset_leg, sch_sen_int)
+df_subset_leg_ <- rows_update(df_subset_leg_, sch_assm_int)
+
 # split into senate and assembly
-df_subset_senate <- df_subset_leg %>%
+df_subset_senate <- df_subset_leg_ %>%
   filter(!is.na(geolevel_senate)) %>%
   mutate(geolevel="sldu",
          final_geoid=senate_geoid,
@@ -154,7 +184,7 @@ df_subset_senate <- df_subset_leg %>%
   ) %>%
   ungroup()
 
-df_subset_assm <- df %>% 
+df_subset_assm <- df_subset_leg_ %>% 
   filter(!is.na(geolevel_assm)) %>% 
   mutate(geolevel="sldl",
          final_geoid=assm_geoid,
@@ -168,12 +198,6 @@ df_subset_assm <- df %>%
     rate=sum(raw, na.rm=TRUE)/sum(pop, na.rm=TRUE)*100
   ) %>%
   ungroup()
-
-# check schools-leg dist matches
-# no_leg_id_sen <- df_subset_sen %>% filter(is.na(leg_id)) %>% filter(schoolname != 'District Office') %>% filter(schoolname != 'Nonpublic, Nonsectarian Schools')
-#  length(unique(no_leg_id_sen$cdscode))  # 28
-# no_leg_id_assm <- df_subset_assm %>% filter(is.na(leg_id)) %>% filter(schoolname != 'District Office') %>% filter(schoolname != 'Nonpublic, Nonsectarian Schools')
-#  length(unique(no_leg_id_assm$cdscode))  # 28
 
 
 df_subset_leg <- rbind(df_subset_senate, df_subset_assm) %>%
