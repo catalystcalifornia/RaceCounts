@@ -119,9 +119,9 @@ test_id <- "01" # ELA
 df_final_e <- clean_ela_math(caaspp_df, test_id)
 
 # pivot to wide format, ensure correct col names for RC functions
-df_final_e <- df_final_e %>% pivot_wider(names_from = race, names_glue = "{race}_{.value}", values_from = c(pop, raw, rate)) 
-schools_final_e <- df_final_e %>% filter(geolevel == 'school')  # create school-level only df
-df_final_e <- df_final_e %>% filter(geolevel != 'school')       # drop school-level rows, keep sch dist/county/state rows
+df_final_e_ <- df_final_e %>% pivot_wider(names_from = race, names_glue = "{race}_{.value}", values_from = c(pop, raw, rate)) 
+schools_final_e <- df_final_e_ %>% filter(geolevel == 'school')  # create school-level only df
+df_final_e <- df_final_e %>% filter(geolevel != 'school')        # drop school-level rows, keep sch dist/county/state rows
 
 # ####### Legislative Districts Prep From School District Data #######
 # ##Step 1: Prep school district data for Leg Dist calcs
@@ -164,7 +164,7 @@ df_final_e <- df_final_e %>% filter(geolevel != 'school')       # drop school-le
 
 
 ####### Legislative Districts Prep From School Data #######
-##Step 1: Pull xwalks for district level aggregation
+##Step 1: Pull xwalks for district level aggregation & Join to data
 xwalk_school_sen <- dbGetQuery(con, paste0("SELECT cdscode as geoid, ca_senate_district FROM crosswalks.cde_school_leg_districts_2022_23")) %>%
   mutate(leg_id = paste0('060', ca_senate_district),
          geolevel = 'sldu')
@@ -173,18 +173,84 @@ xwalk_school_assm <- dbGetQuery(con, paste0("SELECT cdscode as geoid, ca_assembl
   mutate(leg_id = paste0('060', ca_assembly_district),
          geolevel = 'sldl')
 
+df_subset_leg <- schools_final_e %>% select(-geolevel, -type_id) %>%
+  left_join(xwalk_school_sen, by = c("cdscode"="geoid")) %>% 
+  left_join(xwalk_school_assm, by = c("cdscode"="geoid"))
+colnames(df_subset_leg) <- gsub(".x", "_sen", colnames(df_subset_leg))
+df_subset_leg <- df_subset_leg %>% rename(leg_id_assm = leg_id.y, geolevel_assm = geolevel.y)
+
+# Check schools-leg dist matches, x = sen, y = assm
+no_leg_id_sen <- df_subset_leg %>% 
+  filter(is.na(leg_id_sen)) %>% 
+  filter(!is.na(total_rate))
+length(unique(no_leg_id_sen$cdscode))  # 155
+no_leg_id_assm <- df_subset_leg %>% 
+  filter(is.na(leg_id_assm)) %>% 
+  filter(!is.na(total_rate))
+length(unique(no_leg_id_assm$cdscode))  # 155
+
+con_shared <- connect_to_db("rda_shared_data")
+open_schools <- st_read(con_shared, query = paste0("SELECT cdscode, statustype, geom_3310 FROM education.cde_public_schools_", curr_yr, "_emg"))
+no_leg_id <- open_schools %>% right_join(no_leg_id_sen) %>% relocate(statustype, .before = cdscode) %>% 
+  select(cdscode)
+
+## get Leg Dist shapes, manually join unmatched schools to Leg Dist
+sen_shp <- st_read(con_shared, query = "SELECT * FROM geographies_ca.cb_2023_06_sldu_500k") 
+assm_shp <- st_read(con_shared, query = "SELECT * FROM geographies_ca.cb_2023_06_sldl_500k")
+sch_sen_int <- st_join(no_leg_id, sen_shp) %>% rename(leg_id_sen = geoid) %>% 
+  mutate(ca_senate_district = str_sub(leg_id_sen, -2), geolevel_sen = "sldu") %>%
+  select(cdscode, leg_id_sen, ca_senate_district, geolevel_sen) %>%
+  st_drop_geometry()
+sch_assm_int <- st_join(no_leg_id, assm_shp) %>% rename(leg_id_assm = geoid) %>% 
+  mutate(ca_assembly_district = str_sub(leg_id_assm, -2), geolevel_assm = "sldl") %>%
+  select(cdscode, leg_id_assm, ca_assembly_district, geolevel_assm) %>%
+  st_drop_geometry()
+
+## join Leg Dist info back to df_subset_leg before calcs
+df_subset_leg_e <- rows_update(df_subset_leg, sch_sen_int)
+df_subset_leg_e <- rows_update(df_subset_leg_e, sch_assm_int)
+
 
 ##Step 2: Calc & screen weighted Leg Dist data from school dist data
-sen_df_e_ <- calc_leg_elamath(schools_final_e, xwalk_school_sen, threshold) %>% 
-  mutate(geoname = paste0("State Senate District ", #adding geoname
-                          as.numeric(str_sub(geoid, -2))))
+# split into senate and assembly
+df_subset_senate <- df_subset_leg_e %>%
+  filter(!is.na(geolevel_sen)) %>%
+  rename(geolevel = geolevel_sen, final_geoid = leg_id_sen) %>%
+  mutate(geoname=paste("State Senate District", ca_senate_district))%>%
+# select needed cols
+  select(final_geoid, geoname, geolevel, cdscode, ends_with("_pop"), ends_with("_raw"), ends_with("_rate")) #%>%
 
-assm_df_e_ <- calc_leg_elamath(schools_final_e, xwalk_school_assm, threshold) %>% 
-  mutate(geoname = paste0("State Assembly District ", #adding geoname
-                          as.numeric(str_sub(geoid, -2))))
+df_subset_senate <- calc_leg_elamath(df_subset_senate, threshold)
 
-df_join_e_v2 <- bind_rows(df_final_e, sen_df_e_, assm_df_e_) %>%
-  select(-type_id, -cdscode)
+df_subset_assm <- df_subset_leg_e %>%
+  filter(!is.na(geolevel_assm)) %>%
+  rename(geolevel = geolevel_assm, final_geoid = leg_id_assm) %>%
+  mutate(geoname=paste("State Assembly District", ca_assembly_district))%>%
+  # select needed cols
+  select(final_geoid, geoname, geolevel, cdscode, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"))
+
+df_subset_assm <- calc_leg_elamath(df_subset_assm, threshold)
+
+df_subset_leg_e <- rbind(df_subset_senate, df_subset_assm)
+  # add cdscode and countyname (needed for school districts) - to bind all geos later
+  #mutate(cdscode=NA,
+  #       countyname=NA)
+
+
+####### Combine all geolevels (county, state, school district, leg district) for RC Calcs ##### ---------------------------------------------------------------------
+df_join_e_v2 <- plyr::rbind.fill(df_subset_leg_e, df_final_e) %>%
+  # remove records without fips codes or "No Data"
+  filter(!is.na(geoid) & geoid != "No Data") %>%
+  # apply population threshold
+  mutate(raw = ifelse(raw < threshold, NA, raw),
+         rate = ifelse(raw < threshold, NA, rate)) %>%
+  # pivot to get into RC table format
+  pivot_wider(names_from = race, 
+              values_from = c(raw, pop, rate),
+              names_glue = "{race}_{.value}") %>%
+  relocate(geoid, geoname, cdscode, geolevel) %>%
+  distinct()
+
 
 ####### ELA: CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
@@ -208,7 +274,8 @@ state_table <- d[d$geolevel == 'state', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
-state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
+state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid") %>%
+  select(-cdscode, -type_id)
 View(state_table)
 
 #split COUNTY into separate table
@@ -217,7 +284,8 @@ county_table <- d[d$geolevel == 'county', ]
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
-county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
+county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid") %>%
+  select(-cdscode, -type_id)
 View(county_table)
 
 #split CITY into separate table
@@ -244,7 +312,8 @@ lower_leg_table <- calc_ranks(lower_leg_table)
 lower_leg_table <- lower_leg_table
 #View(lower_leg_table)
 
-leg_table <- rbind(upper_leg_table, lower_leg_table) %>% dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname")
+leg_table <- rbind(upper_leg_table, lower_leg_table) %>% dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname") %>%
+  select(-cdscode, -type_id)
 
 ###update info for postgres tables###
 test <- "ela"
@@ -271,9 +340,9 @@ test_id <- "02" # Math
 df_final_m <- clean_ela_math(caaspp_df, test_id)
 
 # pivot to wide format, ensure correct col names for RC functions
-df_final_m <- df_final_m %>% pivot_wider(names_from = race, names_glue = "{race}_{.value}", values_from = c(pop, raw, rate)) 
-schools_final_m <- df_final_m %>% filter(geolevel == 'school')  # create school-level only df
-df_final_m <- df_final_m %>% filter(geolevel != 'school')       # drop school-level rows, keep sch dist/county/state rows
+df_final_m_ <- df_final_m %>% pivot_wider(names_from = race, names_glue = "{race}_{.value}", values_from = c(pop, raw, rate)) 
+schools_final_m <- df_final_m_ %>% filter(geolevel == 'school')  # create school-level only df
+df_final_m <- df_final_m %>% filter(geolevel != 'school')        # drop school-level rows, keep sch dist/county/state rows
 
 # ####### Legislative Districts Prep From School District Data #######
 # ##Step 1: Prep school district data for Leg Dist calcs
@@ -315,21 +384,52 @@ df_final_m <- df_final_m %>% filter(geolevel != 'school')       # drop school-le
 #   select(-type_id, -test_id, -cdscode)
 
 ####### Legislative Districts Prep From School Data #######
-##Step 1: Pull xwalks for district level aggregation
-# Done for ELA
+##Step 1: Join to xwalks for district level aggregation
+df_subset_leg <- schools_final_m %>% select(-geolevel, -type_id) %>%
+  left_join(xwalk_school_sen, by = c("cdscode"="geoid")) %>% 
+  left_join(xwalk_school_assm, by = c("cdscode"="geoid"))
+colnames(df_subset_leg) <- gsub(".x", "_sen", colnames(df_subset_leg))
+df_subset_leg <- df_subset_leg %>% rename(leg_id_assm = leg_id.y, geolevel_assm = geolevel.y)
+
+## join Leg Dist info back to df_subset_leg before calcs - manual matching done in ELA section
+df_subset_leg_m <- rows_update(df_subset_leg, sch_sen_int)
+df_subset_leg_m <- rows_update(df_subset_leg_m, sch_assm_int)
+
 
 ##Step 2: Calc & screen weighted Leg Dist data from school dist data
-sen_df_m_ <- calc_leg_elamath(schools_final_m, xwalk_school_sen, threshold) %>% 
-  mutate(geoname = paste0("State Senate District ", #adding geoname
-                          as.numeric(str_sub(geoid, -2))))
+df_subset_senate <- df_subset_leg_m %>%
+  filter(!is.na(geolevel_sen)) %>%
+  rename(geolevel = geolevel_sen, final_geoid = leg_id_sen) %>%
+  mutate(geoname=paste("State Senate District", ca_senate_district))%>%
+  # select needed cols
+  select(final_geoid, geoname, geolevel, cdscode, ends_with("_pop"), ends_with("_raw"), ends_with("_rate")) #%>%
 
-assm_df_m_ <- calc_leg_elamath(schools_final_m, xwalk_school_assm, threshold) %>% 
-  mutate(geoname = paste0("State Assembly District ", #adding geoname
-                          as.numeric(str_sub(geoid, -2))))
+df_subset_senate <- calc_leg_elamath(df_subset_senate, threshold)
 
-df_join_m_v2 <- bind_rows(df_final_m, sen_df_m_, assm_df_m_) %>%
-  select(-type_id, -cdscode)
+df_subset_assm <- df_subset_leg_m %>%
+  filter(!is.na(geolevel_assm)) %>%
+  rename(geolevel = geolevel_assm, final_geoid = leg_id_assm) %>%
+  mutate(geoname=paste("State Assembly District", ca_assembly_district))%>%
+  # select needed cols
+  select(final_geoid, geoname, geolevel, cdscode, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"))
 
+df_subset_assm <- calc_leg_elamath(df_subset_assm, threshold)
+
+df_subset_leg_m <- rbind(df_subset_senate, df_subset_assm)
+
+####### Combine all geolevels (county, state, school district, leg district) for RC Calcs ##### ---------------------------------------------------------------------
+df_join_m_v2 <- plyr::rbind.fill(df_subset_leg_m, df_final_m) %>%
+  # remove records without fips codes or "No Data"
+  filter(!is.na(geoid) & geoid != "No Data") %>%
+  # apply population threshold
+  mutate(raw = ifelse(raw < threshold, NA, raw),
+         rate = ifelse(raw < threshold, NA, rate)) %>%
+  # pivot to get into RC table format
+  pivot_wider(names_from = race, 
+              values_from = c(raw, pop, rate),
+              names_glue = "{race}_{.value}") %>%
+  relocate(geoid, geoname, cdscode, geolevel) %>%
+  distinct()
 
 ####### MATH: CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
@@ -353,7 +453,8 @@ state_table <- d[d$geolevel == 'state', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
-state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
+state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid") %>%
+  select(-cdscode, -type_id)
 View(state_table)
 
 #split COUNTY into separate table
@@ -362,7 +463,8 @@ county_table <- d[d$geolevel == 'county', ]
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
-county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
+county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid") %>%
+  select(-cdscode, -type_id)
 View(county_table)
 
 #split CITY into separate table
@@ -389,7 +491,8 @@ lower_leg_table <- calc_ranks(lower_leg_table)
 lower_leg_table <- lower_leg_table
 #View(lower_leg_table)
 
-leg_table <- rbind(upper_leg_table, lower_leg_table) %>% dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname")
+leg_table <- rbind(upper_leg_table, lower_leg_table) %>% dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname") %>%
+  select(-cdscode, -type_id)
 
 ###update info for postgres tables###
 test <- "math"
