@@ -1,4 +1,4 @@
-#### Democracy (z-score) for RC v6 ####
+#### Democracy (z-score) for RC v7 ####
 
 #install packages if not already installed
 packages <- c("tidyverse","RPostgreSQL","sf","here","usethis")  
@@ -28,9 +28,12 @@ source(here("Functions/RC_Index_Functions.R"))
 options(scipen = 100) 
 
 # udpate each yr
-rc_yr <- '2024'
-rc_schema <- 'v6'
-source <- "US Census Bureau (2020), Who Leads Us Campaign (2014, 2016, 2018, 2020 and 2017, 2019, 2020), CPS (Midterm 2010, 2014, 2018, 2022), (Presidential 2012, 2016, 2020), (Registration 2012-2020 even yrs), and American Community Survey (ACS) (2015-19/2016-20) Table DP05"
+rc_yr <- '2025'
+rc_schema <- 'v7'
+source <- "US Census Bureau (2020),  
+CPS (Midterm 2010, 2014, 2018, 2022), (Presidential 2012, 2016, 2020, 2024), (Registration 2012-2024 even yrs), 
+American Community Survey (ACS) (2015-19/2016-20) Table DP05, and 
+California Health Interview Survey 2019-2023"
 
 issue <- 'democracy'
 
@@ -39,21 +42,24 @@ issue <- 'democracy'
 # you MUST update this section if we add or remove any indicators in an issue #
 
 c_1 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_census_participation_county_", rc_yr))
-c_2 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_diversity_of_candidates_county_", rc_yr))
-c_3 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_diversity_of_electeds_county_", rc_yr))
+# c_2 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_diversity_of_candidates_county_", rc_yr))
+# c_3 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_diversity_of_electeds_county_", rc_yr))
 c_4 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_registered_voters_county_", rc_yr))
 c_5 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_voting_midterm_county_", rc_yr))
 c_6 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_voting_presidential_county_", rc_yr))
+c_7 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_demo_voter_engagement_county_", rc_yr))
+
 
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area. 
 varname1 <- 'census'
-varname2 <- 'candidate'
-varname3 <- 'elected'
+# varname2 <- 'candidate'
+# varname3 <- 'elected'
 varname4 <- 'voter'
 varname5 <- 'midterm'
 varname6 <- 'president'
+varname7 <- "engagement"
 
-region_urban_type <- st_read(con, query = paste0("select county_id, region, urban_type from ", rc_schema, ".arei_county_region_urban_type")) # get region, urban_type
+# region_urban_type <- st_read(con, query = paste0("select county_id, region, urban_type from ", rc_schema, ".arei_county_region_urban_type")) # get region, urban_type
 
 
 # Clean data --------
@@ -62,14 +68,13 @@ region_urban_type <- st_read(con, query = paste0("select county_id, region, urba
 # use function to select cols we want, cap z-scores, and rename z-score cols
 c_1 <- clean_data_z(c_1, varname1)
 
-
-### c2
-# use function to select cols we want and cap z-scores
-c_2 <- clean_data_z(c_2, varname2)
-
-### c3
-# use function to select cols we want and cap z-scores
-c_3 <- clean_data_z(c_3, varname3)
+# ### c2
+# # use function to select cols we want and cap z-scores
+# c_2 <- clean_data_z(c_2, varname2)
+# 
+# ### c3
+# # use function to select cols we want and cap z-scores
+# c_3 <- clean_data_z(c_3, varname3)
 
 ## c4
 # use function to select cols we want and cap z-scores
@@ -83,13 +88,17 @@ c_5 <- clean_data_z(c_5, varname5)
 # use function to select cols we want and cap z-scores
 c_6 <- clean_data_z(c_6, varname6)
 
+## c7 
+# use function to select cols we want and cap z-scores
+c_7 <- clean_data_z(c_7, varname7)
 
 # Join Data Together ------------------------------------------------------
-c_index <- full_join(c_1, c_2) 
-c_index <- full_join(c_index, c_3)
-c_index <- full_join(c_index, c_4)
+# c_index <- full_join(c_1, c_2) 
+# c_index <- full_join(c_index, c_3)
+c_index <- full_join(c_1, c_4)
 c_index <- full_join(c_index, c_5)
 c_index <- full_join(c_index, c_6)
+c_index <- full_join(c_index, c_7)
 colnames(c_index) <- gsub("performance", "perf", names(c_index))  # shorten col names
 colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col names
 
@@ -108,7 +117,9 @@ c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("quartile
 c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("quadrant"))
 
 # select/reorder final columns for index table
-index_table <- c_index %>% select(county_id, county_name, region, urban_type, ends_with("_rank"), ends_with("quadrant"), disp_avg, perf_avg, disp_values_count, perf_values_count, ends_with("_disparity_z"), ends_with("performance_z"), ends_with("disparity_z_quartile"), ends_with("performance_z_quartile"), everything())
+index_table <- c_index %>% select(county_id, county_name, 
+                                  # region, urban_type, 
+                                  ends_with("_rank"), ends_with("quadrant"), disp_avg, perf_avg, disp_values_count, perf_values_count, ends_with("_disparity_z"), ends_with("performance_z"), ends_with("disparity_z_quartile"), ends_with("performance_z_quartile"), everything())
 index_table <- index_table[order(index_table[[5]]), ]  # order by disparity rank
 View(index_table)
 
