@@ -185,24 +185,19 @@ return(calcs_wide)
 }
 
 
-calc_leg_elamath <- function(d, xwalk, threshold) {
+calc_leg_elamath <- function(d, threshold) {
   ##Calc Leg Dist stats from school data
-  
-  calcs <- d %>% 
-    select(-geolevel) %>%
-    left_join(xwalk, by = "geoid") %>%
-    select(geoid, cdscode, leg_id, geolevel, ends_with("_pop"), ends_with("_raw")) #%>%
-  
-  pop_long <- calcs %>%
-    select(leg_id, cdscode, geolevel, ends_with("_pop")) %>%
+
+  pop_long <- d %>%
+    select(final_geoid, geoname, cdscode, geolevel, ends_with("_pop")) %>%
     pivot_longer(
       cols = ends_with("_pop"),
       names_to = "race",
       values_to = "pop") %>%
     mutate(race = gsub("_pop", "", race))
   
-  raw_long <- calcs %>%
-    select(leg_id, cdscode, geolevel, ends_with("_raw")) %>%
+  raw_long <- d %>%
+    select(final_geoid, geoname, cdscode, geolevel, ends_with("_raw")) %>%
     pivot_longer(
       cols = ends_with("_raw"),
       names_to = "race",
@@ -210,26 +205,13 @@ calc_leg_elamath <- function(d, xwalk, threshold) {
     mutate(race = gsub("_raw", "", race))
   
   calcs_long <- pop_long %>% 
-    left_join(raw_long, by = c('cdscode', 'leg_id', 'race', 'geolevel')) %>%
+    left_join(raw_long, by = c('cdscode', 'final_geoid', 'geoname', 'race', 'geolevel')) %>%
     mutate(agg_pop = ifelse(!is.na(raw), pop, NA)) %>%  # exclude pop where raw is NA, so we only include pop in denominators where raw is not NA
-    group_by(leg_id, geolevel, race) %>%  
+    group_by(final_geoid, geoname, geolevel, race) %>%  
     summarise(pop = sum(agg_pop, na.rm=TRUE),           # sum agg_pop to calc pop denominator
               raw = sum(raw, na.rm=TRUE)) %>%
     mutate(rate = raw / pop * 100) %>%
-    rename(geoid = leg_id) %>%
-    drop_na()
+    rename(geoid = final_geoid)
   
-  ##Screen Leg Dist data from school data
-  calcs_screened <- calcs_long %>%
-    mutate(raw = ifelse(pop < threshold, NA, raw),
-           rate = ifelse(pop < threshold, NA, rate))
-  
-  calcs_wide <- calcs_screened %>%
-    pivot_wider(
-      names_from = race,
-      names_glue = "{race}_{.value}",
-      values_from = c(pop, raw, rate)
-    )
-  
-  return(calcs_wide)
+  return(calcs_long)
 }
