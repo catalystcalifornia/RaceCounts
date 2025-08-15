@@ -125,7 +125,7 @@ View(index_table)
 
 # Send table to postgres 
 index_table_name <- paste0("arei_demo_index_", rc_yr)
-index <- paste0("Created ", Sys.Date(), ". Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is")
+index <- paste0("QA doc: ", qa_filepath, ". Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is")
 
 index_to_postgres(index_table, rc_schema)
 dbDisconnect(con)
