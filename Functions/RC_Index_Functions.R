@@ -55,7 +55,7 @@ clean_index_data_z <- function(x, y) {
 }
 
 # Calculate and cap ISSUE INDEX ---------------
-calculate_z <- function(x) {
+calculate_z <- function(x, ind_threshold) {
 # count performance z-scores
   rates_performance <- select(x, ends_with("perf_z"))
   rates_performance$perf_values_count <- rowSums(!is.na(rates_performance))
@@ -258,7 +258,7 @@ index_to_postgres <- function(x, y) {
   dbBegin(con)
   
   #comment on table and columns
-  comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", index_table_name, "\"", " IS '", index, " from ", source, ".';")
+  comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", index_table_name, "\"", " IS 'Created on ", Sys.Date(), ". ", index, " from ", source, ".';")
   print(comment)
   dbExecute(con, comment)
   # 
@@ -289,7 +289,11 @@ dist_data_to_city <- function(x) {
                                       mutate(disparity_z_score = disparity_z_score_unweighted * percent_total_enroll,
                                              performance_z_score = performance_z_score_unweighted * percent_total_enroll)
     
-    df_education_city <- df_education_district_weighted %>% group_by(city_id, city_name, indicator) %>% summarize(disp_z = sum(disparity_z_score, na.rm = T), perf_z = sum(performance_z_score, na.rm = T), disp_count = sum(!is.na(disparity_z_score)), perf_count = sum(!is.na(performance_z_score)))    
+    df_education_city <- df_education_district_weighted %>% group_by(city_id, city_name, indicator) %>% 
+      summarize(disp_z = sum(disparity_z_score, na.rm = T), 
+                perf_z = sum(performance_z_score, na.rm = T), 
+                disp_count = sum(!is.na(disparity_z_score)), 
+                perf_count = sum(!is.na(performance_z_score)))    
     df_education_city$disp_z <- ifelse(df_education_city$disp_count == 0, NA, df_education_city$disp_z) # change disp_z back to NA when all disparity_z's are NA
     df_education_city$perf_z <- ifelse(df_education_city$perf_count == 0, NA, df_education_city$perf_z) # change perf_z back to NA when all performance_z's are NA
     
