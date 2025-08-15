@@ -55,7 +55,7 @@ clean_index_data_z <- function(x, y) {
 }
 
 # Calculate and cap ISSUE INDEX ---------------
-calculate_z <- function(x) {
+calculate_z <- function(x, ind_threshold) {
 # count performance z-scores
   rates_performance <- select(x, ends_with("perf_z"))
   rates_performance$perf_values_count <- rowSums(!is.na(rates_performance))
@@ -240,27 +240,35 @@ index_to_postgres <- function(x, y) {
   con <- connect_to_db("racecounts")                    
   
   #INDEX TABLE
-  index_table <- as.data.frame(index_table)
-  
+  index_table <- as.data.frame(x)
+  rc_schema <- y
   # make character vector for field types in postgresql db
-  charvect = rep('numeric', dim(index_table)[2])
-  
+  # charvect = rep('numeric', dim(index_table)[2])
+  charvect <- rep("numeric", ncol(index_table))
   # change data type for first four columns
   charvect[1:4] <- "varchar" # first two are characters for the geoid and names
   
   # add names to the character vector
   names(charvect) <- colnames(index_table)
   
-  dbWriteTable(con, c(rc_schema, index_table_name), index_table,
-               overwrite = FALSE, row.names = FALSE)
+  dbWriteTable(con, Id(schema = rc_schema, table = index_table_name), index_table,
+               overwrite = FALSE)
   
-  comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", index_table_name, " IS '", index, " from ", source, ".';
-                 COMMENT ON COLUMN ",  rc_schema, ".", index_table_name, ".county_id IS 'County fips';")  
+  # Start a transaction
+  dbBegin(con)
   
-  
+  #comment on table and columns
+  comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", index_table_name, "\"", " IS 'Created on ", Sys.Date(), ". ", index, " from ", source, ".';")
   print(comment)
-  
-  dbSendQuery(con, comment)
+  dbExecute(con, comment)
+  # 
+  # col_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", index_table_name, "\"", ".county_id IS 'County fips';")
+  # print(col_comment)                  
+  # dbExecute(con, col_comment)
+  #
+  # Commit the transaction if everything succeeded
+  dbCommit(con)
+
   dbDisconnect(con)  
   
 }
@@ -281,7 +289,11 @@ dist_data_to_city <- function(x) {
                                       mutate(disparity_z_score = disparity_z_score_unweighted * percent_total_enroll,
                                              performance_z_score = performance_z_score_unweighted * percent_total_enroll)
     
-    df_education_city <- df_education_district_weighted %>% group_by(city_id, city_name, indicator) %>% summarize(disp_z = sum(disparity_z_score, na.rm = T), perf_z = sum(performance_z_score, na.rm = T), disp_count = sum(!is.na(disparity_z_score)), perf_count = sum(!is.na(performance_z_score)))    
+    df_education_city <- df_education_district_weighted %>% group_by(city_id, city_name, indicator) %>% 
+      summarize(disp_z = sum(disparity_z_score, na.rm = T), 
+                perf_z = sum(performance_z_score, na.rm = T), 
+                disp_count = sum(!is.na(disparity_z_score)), 
+                perf_count = sum(!is.na(performance_z_score)))    
     df_education_city$disp_z <- ifelse(df_education_city$disp_count == 0, NA, df_education_city$disp_z) # change disp_z back to NA when all disparity_z's are NA
     df_education_city$perf_z <- ifelse(df_education_city$perf_count == 0, NA, df_education_city$perf_z) # change perf_z back to NA when all performance_z's are NA
     

@@ -1,7 +1,7 @@
 #### arei_multigeo_list for RC v7 ####
 
 #install packages if not already installed
-list.of.packages <- c("tidyverse","RPostgreSQL","sf","usethis")
+list.of.packages <- c("tidyverse","RPostgres","sf", "usethis")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
