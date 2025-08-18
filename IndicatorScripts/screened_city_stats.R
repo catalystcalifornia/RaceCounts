@@ -1,7 +1,8 @@
-#### Screened City Indicator Z-Scores, Ranks etc. for RC v6 ####
+#### Screened City Indicator Z-Scores, Ranks etc. for RC v7 ####
+## These tables are used for the website and city index
 
 #install packages if not already installed
-packages <- c("tidyverse","RPostgreSQL","sf","usethis","dplyr","DBI")  
+packages <- c("tidyverse","RPostgres","sf","usethis","dplyr","DBI")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -22,27 +23,16 @@ options(scipen=999) # disable scientific notation
 # Load PostgreSQL driver and databases --------------------------------------------------
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
+source("./Functions/rdashared_functions.R")
 con <- connect_to_db("racecounts")
 
 # update variables each year
-curr_yr <- '2024'
-rc_schema <- "v6"
+curr_yr <- '2025'
+rc_schema <- "v7"
 
 
 # set city population threshold
 pop_threshold <- 10000
-
-# clean place names
-clean_geo_names <- function(x){
-  
-  x$geoname <- str_remove(x$geoname, ", California")
-  x$geoname <- str_remove(x$geoname, " city")
-  x$geoname <- str_remove(x$geoname, " CDP")
-  x$geoname <- str_remove(x$geoname, " town")
-  x$geoname <- gsub(" County)", ")", x$geoname)
-  
-  return(x)
-}
 
 
 # pull in city-district crosswalk and city population data

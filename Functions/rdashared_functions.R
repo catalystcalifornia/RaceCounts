@@ -427,6 +427,19 @@ prep_acs <- function(x, table_code, cv_threshold, pop_threshold) {
   return(df)
 }
 
+##### Clean ACS Place and County Names #####
+clean_geo_names <- function(x){
+  
+  x$geoname <- str_remove(x$geoname, ", California")
+  x$geoname <- str_remove(x$geoname, " city")
+  x$geoname <- str_remove(x$geoname, " CDP")
+  x$geoname <- str_remove(x$geoname, " town")
+  x$geoname <- gsub(" County)", ")", x$geoname)
+  
+  return(x)
+}
+
+
 ### Use this fx to get CDE Public Schools data ####
 get_cde_schools <- function(school_url, school_dwnld_url, school_layout_url, table_source) {
                 # Create rda_shared_data table metadata -----------------------------------
