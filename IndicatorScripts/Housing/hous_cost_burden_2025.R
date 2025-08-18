@@ -1,10 +1,9 @@
 ## Housing Cost Burden for RC v7 ##
 #### Run W:\Project\RACE COUNTS\2025_v7\RC_Github\staging\RaceCounts\Functions\housing_functions.R to prep rda_shared_data tables first.
 
-
 # Install and load packages ------------------------------
-packages <- c("data.table", "stringr", "dplyr", "RPostgreSQL", "dbplyr", 
-                      "srvyr", "tidycensus", "rpostgis",  "tidyr", "readxl", "sf", "here")
+packages <- c("data.table", "stringr", "dplyr", "RPostgres", "dbplyr", 
+              "srvyr", "tidycensus", "rpostgis",  "tidyr", "readxl", "sf")
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
 if(length(install_packages) > 0) { 
@@ -19,6 +18,8 @@ for(pkg in packages){
   library(pkg, character.only = TRUE) 
 } 
 
+options(scipen=999)
+
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
@@ -29,10 +30,16 @@ rc_schema <- "v7"
 rc_yr <- '2025'
 data_yrs <- c("2017", "2018", "2019", "2020", "2021") # all data yrs included in analysis
 metadata_file <- "CHAS-data-dictionary-17-21.xlsx"  # update with name of latest metadata file
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_HousingBurden_Renter_Owners.docx"
 
+assm_xwalk <- "tract_2020_state_assembly_2024"
+assm_geoid <- "sldl24"
+sen_xwalk <- "tract_2020_state_senate_2024"
+sen_geoid <- "sldu24"
+  
 # set screening thresholds: suppress values with high CVs and small populations. generally does not need update.
-cv_threshold <- 35
-pop_threshold <- 100
+cv_threshold <- 35    # data for geo+race combos with CV > threshold are suppressed
+pop_threshold <- 100  # data for geo+race combos with pop < threshold are suppressed
 
 # does not need update
 chas_table <- paste0("housing.hud_chas_cost_burden_multigeo_", data_yrs[[1]], "_", substr(data_yrs[length(data_yrs)],3,4))
@@ -40,7 +47,41 @@ chas_table <- paste0("housing.hud_chas_cost_burden_multigeo_", data_yrs[[1]], "_
 
 ######### Pull in metadata and data ######################
 dict <- read_excel(paste0("W:/Data/Housing/HUD/CHAS/", data_yrs[[1]], "-", data_yrs[length(data_yrs)], "/", metadata_file), sheet = "Table 9")
-chas_data <- dbGetQuery(con, paste0("SELECT * FROM ", chas_table, " WHERE geolevel IN ('city', 'county', 'state')")) 
+chas_data <- dbGetQuery(con, paste0("SELECT * FROM ", chas_table, " WHERE geolevel IN ('census tract', 'city', 'county', 'state')")) 
+
+######## Pull in crosswalks for tract to legislative districts#############
+xwalk_senate <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.", sen_xwalk))
+xwalk_assembly <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.", assm_xwalk))
+
+chas_data_leg_senate <- chas_data %>%
+  filter(geolevel == 'census tract') %>%
+  inner_join(xwalk_senate, by = c("geoid" = "geo_id")) %>%
+  rename(sen_geoid = {{sen_geoid}}) %>%
+  select(sen_geoid, geoid, everything()) %>%
+  mutate(across(starts_with("t9_"), ~ .x * afact, .names = "allocated_{.col}")) %>%  # weight CHAS data by afact
+  group_by(sen_geoid) %>%
+  summarise(across(starts_with("allocated_"), sum, na.rm = TRUE), .groups = "drop") %>% # aggregate weighted data
+  rename_with(~ sub("^allocated_", "", .x), starts_with("allocated_")) %>% 
+  mutate(name = paste0("State Senate District ", as.numeric(str_sub(sen_geoid, -2))),
+         geolevel = 'sldu') %>%
+  rename(geoid = sen_geoid)
+
+chas_data_leg_assm <- chas_data %>%
+  filter(geolevel == 'census tract') %>%
+  inner_join(xwalk_assembly, by = c("geoid" = "geo_id")) %>%
+  rename(assm_geoid = {{assm_geoid}}) %>%
+  select(assm_geoid, geoid, everything()) %>%
+  mutate(across(starts_with("t9_"), ~ .x * afact, .names = "allocated_{.col}")) %>%  # weight CHAS data by afact
+  group_by(assm_geoid) %>%
+  summarise(across(starts_with("allocated_"), sum, na.rm = TRUE), .groups = "drop") %>% # aggregate weighted data
+  rename_with(~ sub("^allocated_", "", .x), starts_with("allocated_")) %>% 
+  mutate(name = paste0("State Assembly District ", as.numeric(str_sub(assm_geoid, -2))),
+         geolevel = 'sldl') %>%
+  rename(geoid = assm_geoid)
+
+chas_data_all <- bind_rows(chas_data, chas_data_leg_senate, chas_data_leg_assm) %>%
+  filter(geolevel != 'census tract')
+  
 
 ######### Clean and reformat raw data ######################
 # data cleaning
@@ -49,13 +90,14 @@ names(dict) <- gsub("/", "_", names(dict))
 names(dict) <- tolower(names(dict))
 dict$column_name <- tolower(dict$column_name)
 
-chas_data <- chas_data %>%
-  mutate(geoname = gsub("^(.*?),.*", "\\1", chas_data$name)) %>% # clean geonames
+chas_data_all <- chas_data_all %>%
+  mutate(geoname = gsub("^(.*?),.*", "\\1", chas_data_all$name)) %>% # clean geonames
   select(geoid, geoname, geolevel, starts_with("t9")) # drop unneeded cols
-# View(chas_data)
+# View(chas_data_all)
+
 
 # pivot long
-chas_data_long <- pivot_longer(chas_data, cols = starts_with("t9"), 
+chas_data_long <- pivot_longer(chas_data_all, cols = starts_with("t9"), 
                                names_to = "variable", 
                                values_to = "housing_units") %>%
                   mutate(variable_generic = as.numeric(gsub("\\D", "", variable))) # add 'generic' variable field where est and moe have the same value
@@ -88,8 +130,8 @@ chas_data_long$cost_burdened <- ifelse(chas_data_long$burden == "0.30", 0, 1)
 
 # save margins of error for later
 moe <- filter(chas_data_long, substring(variable, 4, 6) == "moe") %>% 
-  select(-c(tenure, race, burden, cost_burdened, geolevel)) %>% 
-  left_join(chas_data_long %>% select(geoid, variable_generic, race, tenure, cost_burdened), by =c("geoid", "variable_generic")) %>% # fill in missing race / tenure info
+  select(-c(tenure, race, burden, cost_burdened)) %>% 
+  left_join(chas_data_long %>% select(geoid, variable_generic, race, tenure, cost_burdened, geolevel), by =c("geoid", "variable_generic", "geolevel")) %>% # fill in missing race / tenure info
   filter(!is.na(race)) %>%
   rename(num_moe = housing_units)
 
@@ -114,7 +156,7 @@ costburden_moe <- costburden_race %>%
   
 ## put it all together
 costburden_race_ <- costburden_race %>% 
-  left_join(moe, by = c("geoid", "geoname", "variable_generic", "race", "tenure", "cost_burdened")) %>%
+  left_join(moe, by = c("geoid", "geoname", "variable_generic", "race", "tenure", "cost_burdened", "geolevel")) %>%
   select(-c(variable_generic)) %>%
   group_by(geoid, geoname, geolevel, race, cost_burdened, tenure) %>%
   summarize(raw = sum(raw),
@@ -128,7 +170,7 @@ costburden_race_ <- costburden_race %>%
 
 ## calculate raw counts/moe
 costburden_tot <- chas_data_ %>%
-  left_join(moe %>% select(-c(cost_burdened, variable)), by = c("geoid", "geoname", "variable_generic", "race", "tenure")) %>% 
+  left_join(moe %>% select(-c(cost_burdened, variable)), by = c("geoid", "geoname", "variable_generic", "race", "tenure", "geolevel")) %>% 
   select(c(geoid, geoname, cost_burdened, tenure, geolevel, housing_units, num_moe)) %>%
   group_by(geoid, geoname, cost_burdened, tenure, geolevel) %>%  
   summarize(raw = sum(housing_units),
@@ -136,14 +178,14 @@ costburden_tot <- chas_data_ %>%
 
 ## calculate pop counts/moe
 costburden_moe_tot <- chas_data_ %>%
-  left_join(moe %>% select(c(geoid, geoname, tenure, cost_burdened, race, variable_generic, num_moe)), by = c("geoid", "geoname", "tenure", "cost_burdened", "race", "variable_generic")) %>%
-  group_by(geoid, geoname, tenure) %>%  
+  left_join(moe %>% select(c(geoid, geoname, tenure, cost_burdened, race, variable_generic, num_moe, geolevel)), by = c("geoid", "geoname", "tenure", "cost_burdened", "race", "variable_generic", "geolevel")) %>%
+  group_by(geoid, geoname, tenure, geolevel) %>%  
   summarise(pop = sum(housing_units),
             den_moe = moe_sum(num_moe, housing_units))
 
 ## put it all together
 costburden_tot_ <- costburden_tot %>% 
-  left_join(costburden_moe_tot, by = c("geoid", "geoname", "tenure")) %>%
+  left_join(costburden_moe_tot, by = c("geoid", "geoname", "tenure", "geolevel")) %>%
   mutate(race = "total",
          rate = raw/pop * 100,                                      
          rate_moe = moe_prop(raw, pop, num_moe, den_moe) * 100,   
@@ -207,12 +249,12 @@ owners <- filter(df, tenure == "owner")
 
 # set variables used in RC tables
 hud_yrs <- paste(first(data_yrs), last(data_yrs), sep = "-")
-source <- paste0("HUD CHAS (", hud_yrs, ") for city, county, and state from https://www.huduser.gov/portal/datasets/cp.html")
+source <- paste0("HUD CHAS (", hud_yrs, ") for city, county, state legislative districts and state from https://www.huduser.gov/portal/datasets/cp.html")
 
 
 ########## OWNER: RACE COUNTS STATS ##############
 #set source for RC Functions script
-source(here("Functions", "RC_Functions.R"))
+source(".\\Functions\\RC_Functions.R")
 
 # assign d so that it runs RC calculations with owners data
 d <- owners
@@ -253,16 +295,35 @@ city_table <- calc_ranks(city_table)
 city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") %>% select(-c(geolevel, tenure))
 # View(city_table)
 
+#split LEGISLATIVE DISTRICTS into separate table 
+upper_leg_table <- d[d$geolevel == 'sldu', ]
+lower_leg_table <- d[d$geolevel == 'sldl', ]
+
+#calculate LEGISLATIVE DISTRICTS z-scores and bind
+upper_leg_table <- calc_z(upper_leg_table)
+upper_leg_table <- calc_ranks(upper_leg_table)
+upper_leg_table <- upper_leg_table
+#View(upper_leg_table)
+
+lower_leg_table <- calc_z(lower_leg_table)
+lower_leg_table <- calc_ranks(lower_leg_table)
+lower_leg_table <- lower_leg_table
+#View(lower_leg_table)
+
+leg_table <- rbind(upper_leg_table, lower_leg_table) %>% dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname")
+
 ###update info for postgres tables###
 county_table_name <- paste0("arei_hous_cost_burden_owner_county_", rc_yr)
 state_table_name <- paste0("arei_hous_cost_burden_owner_state_", rc_yr)
 city_table_name <- paste0("arei_hous_cost_burden_owner_city_", rc_yr)
+leg_table_name <- paste0("arei_hous_cost_burden_owner_leg_", rc_yr)
 
-indicator <- paste0("Created on ", Sys.date(), ". The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. This data is")
+indicator <- paste0("The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. QA doc: ", qa_filepath, ". This data is")
 
 # send tables to postgres
 to_postgres(county_table, state_table)
-city_to_postgres()
+city_to_postgres(city_table)
+leg_to_postgres(leg_table) 
 
 #### RC CALCS: RENTERS ################################################################
 #Create a renters dataframe by filtering out owners so that it creates two sets of graphs for the RC_Functions for each owners and renters
@@ -274,7 +335,7 @@ d <- renters
 
 ########## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-source(here("Functions", "RC_Functions.R"))
+source(".\\Functions\\RC_Functions.R")
 
 d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
 
@@ -312,17 +373,35 @@ city_table <- calc_ranks(city_table)
 city_table <- city_table %>% dplyr::rename("city_id" = "geoid", "city_name" = "geoname") %>% select(-c(geolevel, tenure))
 
 # View(city_table)
+#split LEGISLATIVE DISTRICTS into separate table 
+upper_leg_table <- d[d$geolevel == 'sldu', ]
+lower_leg_table <- d[d$geolevel == 'sldl', ]
+
+#calculate LEGISLATIVE DISTRICTS z-scores and bind
+upper_leg_table <- calc_z(upper_leg_table)
+upper_leg_table <- calc_ranks(upper_leg_table)
+upper_leg_table <- upper_leg_table
+#View(upper_leg_table)
+
+lower_leg_table <- calc_z(lower_leg_table)
+lower_leg_table <- calc_ranks(lower_leg_table)
+lower_leg_table <- lower_leg_table
+#View(lower_leg_table)
+
+leg_table <- rbind(upper_leg_table, lower_leg_table) %>% dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname")
 
 ###update info for postgres tables###
 county_table_name <- paste0("arei_hous_cost_burden_renter_county_", rc_yr)
 state_table_name <- paste0("arei_hous_cost_burden_renter_state_", rc_yr)
 city_table_name <- paste0("arei_hous_cost_burden_renter_city_", rc_yr)
+leg_table_name <- paste0("arei_hous_cost_burden_renter_leg_", rc_yr)
 
-indicator <- paste0("Created on ", Sys.Date(), ". The percentage of rented housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Another includes another race and multiracial, and is Latinx-exclusive. This data is")
+indicator <- paste0("The percentage of rented housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Another includes another race and multiracial, and is Latinx-exclusive. QA doc: ", qa_filepath, ". This data is")
 
 # send tables to postgres
 to_postgres(county_table, state_table)
-city_to_postgres()
+city_to_postgres(city_table)
+leg_to_postgres(leg_table) 
 
 
 
