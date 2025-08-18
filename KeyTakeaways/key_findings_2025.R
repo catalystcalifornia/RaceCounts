@@ -2,7 +2,7 @@
 ####### Produces arei_findings_races_multigeo, arei_findings_places_multigeo, and arei_findings_issues tables
 
 # Set up ----------------------------------------------------------------
-packages <- c("tidyverse", "RPostgreSQL", "xfun", "here", "usethis") 
+packages <- c("tidyverse", "RPostgres", "xfun", "usethis") 
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
 if(length(install_packages) > 0) {
@@ -20,13 +20,13 @@ options(scipen=999) # disable scientific notation
 # Load PostgreSQL driver and databases --------------------------------------------------
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
-source(here("KeyTakeaways", "key_findings_functions.R"))
+source("./KeyTakeaways/key_findings_functions.R")
 con <- connect_to_db("racecounts")
 
 
 # MUST UPDATE EACH YEAR -------------------------------------------------
-curr_schema <- 'v6' # update each year, this field populates most table and file names automatically
-curr_yr <- '2024'   # update each year, this field populates most table and file names automatically
+curr_schema <- 'v7' # update each year, this field populates most table and file names automatically
+curr_yr <- '2025'   # update each year, this field populates most table and file names automatically
 
 # Review and update as needed
 wb_rate_threshold <- 5  # Finding 1: suppress Race Page 'worst rate' findings for race+geo combos with data for <= this number indicators
