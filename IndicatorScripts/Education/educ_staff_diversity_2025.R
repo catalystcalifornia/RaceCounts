@@ -1,5 +1,4 @@
 ### Teacher & Staff Diversity RC v7 ### 
-## QA DOC: W:\Project\RACE COUNTS\2025_v7\Education\QA_Sheet_Staff_Diversity.docx
 ## Analyst: Maria Khan
 
 ###### STEP 0: set up -----
@@ -25,9 +24,17 @@ options(scipen = 100) # disable scientific notation
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
+source("./Functions/rdashared_functions.R") #source functions used later
 
-#source functions used later
-source("./Functions/rdashared_functions.R")
+
+# update each year
+curr_yr <- '2023_24' 
+acs_yr <- 2023  # used to get census geonames
+rc_yr <- '2025'
+rc_schema <- 'v7'
+pop_screen <- 100   # geo + race combos with fewer than threshold # of students are suppressed
+
+qa_filepath <-  "W:\\Project\\RACE COUNTS\\2025_v7\\Education\\QA_Sheet_Staff_Diversity.docx"
 
 #Pull in xwalks first for leg dist to use later
 xwalk_school_sen <- dbGetQuery(con, paste0("SELECT cdscode, ca_senate_district FROM crosswalks.cde_school_leg_districts_2022_23")) %>%
@@ -43,7 +50,7 @@ census_api_key(census_key1, install = TRUE, overwrite = TRUE)
 ca <- get_acs(geography = "county",
               variables = c("B01001_001"),
               state = "CA",
-              year = 2021)
+              year = acs_yr)
 
 ca <- ca[,1:2]
 ca$NAME <- gsub(" County, California", "", ca$NAME)
@@ -64,7 +71,7 @@ table_source <- "Downloaded from https://www.cde.ca.gov/ds/ad/filesstre.asp. Hea
 #df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
 
 ## Get staff data for population values
-staff <- st_read(con, query = "select * from education.cde_2023_24_staff_demo")
+staff <- dbGetQuery(con, paste0("select * from education.cde_", curr_yr, "_staff_demo"))
 #View(staff)
 staff <- staff %>% mutate(districtcode = ifelse(!is.na(districtcode),paste0(staff$countycode,staff$districtcode), NA))
 
@@ -129,7 +136,7 @@ table_source <- "Downloaded from https://www.cde.ca.gov/ds/ad/filesenrcum.asp. H
 #df <- get_cde_data(filepath, fieldtype, table_schema, table_name, table_comment_source, table_source) # function to create and export rda_shared_table to postgres db
 
 ## Get student cumulative enrollment data for population values
-enrollment <- st_read(con, query = "select * from education.cde_multigeo_enrollment_2023_24")
+enrollment <- dbGetQuery(con, paste0("select * from education.cde_multigeo_enrollment_", curr_yr))
 #View(enrollment)
 enrollment <- enrollment %>% mutate(districtcode = ifelse(!is.na(districtcode),paste0(enrollment$countycode,
                                                                                       enrollment$districtcode), NA))
@@ -209,7 +216,6 @@ df_enroll_staff_final <- bind_rows(df_enroll_staff %>% filter(geolevel != "S"), 
 
 
 #screen data and set population screen threshold
-pop_screen <- 100
 df_enroll_staff_final <- df_enroll_staff_final %>% mutate(
   total_raw = ifelse(total_pop < pop_screen, NA, total),
   nh_black_raw = ifelse(nh_black_pop < pop_screen, NA, nh_black),
@@ -235,13 +241,24 @@ df_enroll_staff_final <- df_enroll_staff_final %>% mutate(
     "latino", "nh_pacisl", "nh_white", "nh_twoormor"
   )))
     
-# View(df_enroll_staff_final)
+# get school district geoids (NCES District ID) - pull in active district records w/ geoids and names from CDE schools' list
+districts <- dbGetQuery(con, paste0("SELECT cdscode, ncesdist AS geoid FROM education.cde_public_schools_",curr_yr," WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'")) # district,
+
+df_final <- left_join(df_enroll_staff_final, districts, by = c('geoid' = 'cdscode')) %>% 
+  mutate(cdscode = geoid,
+  geoid=ifelse(geolevel == "D", geoid.y, geoid)) %>%
+  select(-c(geoid.y)) %>% 
+  distinct() %>%  # combine distinct county and district geoid matched df's
+  relocate(geoid, geoname, cdscode, geolevel)
+
+df_final <- filter(df_final, !is.na(geoid) & geoid != "No Data") # remove records without fips codes
+# View(df_final)
+
+d <- df_final
 
 ###### STEP 4: Calculate Race Counts Stats -----
 #set source for RC Functions script
 source("./Functions/RC_Functions.R")
-
-d <- df_enroll_staff_final
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
 
@@ -258,7 +275,8 @@ state_table <- d[d$geolevel == 'T', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
-state_table <- state_table %>% dplyr::rename("state_id" = "geoid", "state_name" = "geoname") 
+state_table <- state_table %>% dplyr::rename("state_id" = "geoid", "state_name" = "geoname") %>%
+  select(-cdscode)
 View(state_table)
 
 #remove state from county table
@@ -267,7 +285,8 @@ county_table <- d[d$geolevel == 'C', ]
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
-county_table <- county_table %>% dplyr::rename("county_id" = "geoid", "county_name" = "geoname") 
+county_table <- county_table %>% dplyr::rename("county_id" = "geoid", "county_name" = "geoname") %>%
+  select(-cdscode)
 View(county_table)
 
 #remove county/state from place table 
@@ -294,19 +313,18 @@ lower_leg_table <- calc_ranks(lower_leg_table)
 lower_leg_table <- lower_leg_table
 #View(lower_leg_table)
 
-leg_table <- rbind(upper_leg_table, lower_leg_table) %>% dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname")
+leg_table <- rbind(upper_leg_table, lower_leg_table) %>% dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname") %>%
+  select(-cdscode)
 
 
 ###update info for postgres tables###
-county_table_name <- "arei_educ_staff_diversity_county_2025"
-state_table_name <- "arei_educ_staff_diversity_state_2025"
-city_table_name <- "arei_educ_staff_diversity_district_2025"
-leg_table_name <- "arei_educ_staff_diversity_leg_2025"
+county_table_name <- paste0("arei_educ_staff_diversity_county_", rc_yr)
+state_table_name <- paste0("arei_educ_staff_diversity_state_", rc_yr)
+city_table_name <- paste0("arei_educ_staff_diversity_district_", rc_yr)
+leg_table_name <- paste0("arei_educ_staff_diversity_leg_", rc_yr)
 
-rc_schema <- "v7"
-
-indicator <- paste0(". Staff and Teacher Diversity Count and Rate. This data is")
-source <- "CDE 2023-2024 https://www.cde.ca.gov/ds/ad/fsstre.asp"
+indicator <- "Staff and Teacher Diversity Count and Rate. This data is"
+source <- paste0("CDE ", curr_yr, " from https://www.cde.ca.gov/ds/ad/fsstre.asp. QA doc: ", qa_filepath)
 
 # send tables to postgres
 to_postgres(county_table,state_table)

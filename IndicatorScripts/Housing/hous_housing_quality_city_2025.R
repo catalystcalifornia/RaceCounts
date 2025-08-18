@@ -368,6 +368,7 @@ city_table <- d[d$geolevel == 'place', ] %>% select(-c(geolevel))
 #calculate CITY z-scores
 city_table <- calc_z(city_table)
 city_table <- calc_ranks(city_table)
+city_table <- city_table %>% rename("city_id" = "geoid", "city_name" = "geoname")
 # View(city_table)
 
 # Table metadata will auto update #
