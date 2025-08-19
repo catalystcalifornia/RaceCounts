@@ -1,4 +1,4 @@
-## Incarceration 2020 (City-Level) for RC v7
+## Incarceration 2020 (City & Leg-Level) for RC v7
 
 ## Set up ----------------------------------------------------------------
 packages <- c("DBI", "tidyverse", "RPostgres", "tidycensus", "readxl", "tigris", "sf", "janitor", "stringr", "data.table", "usethis", "rvest", "tigris")  
