@@ -1,7 +1,7 @@
 ## Incarceration 2020 (City-Level) for RC v7
 
 ## Set up ----------------------------------------------------------------
-packages <- c("DBI", "tidyverse","RPostgreSQL","RPostgreSQL", "tidycensus", "readxl", "tigris", "sf", "janitor", "stringr", "data.table", "usethis", "rvest", "tigris")  
+packages <- c("DBI", "tidyverse", "RPostgres", "tidycensus", "readxl", "tigris", "sf", "janitor", "stringr", "data.table", "usethis", "rvest", "tigris")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -19,37 +19,45 @@ for(pkg in packages){
 
 options(scipen=999)
 
+# create connection for rda database
+source("W:\\RDA Team\\R\\credentials_source.R")
+conn <- connect_to_db("rda_shared_data")
+
+#set source for weighted averages fx
+source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
+census_api_key(census_key1)    # reload census API key
+
 # define variables used in several places that must be updated each year
 curr_yr <- 2020  # must keep same format
 acs_yr <- 2020
 rc_yr <- '2025'
 rc_schema <- 'v7'
+pop_threshold = 250               # define population threshold for screening
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Crime and Justice\\QA_Sheet_Incarceration.docx" # update QA doc filepath
 
-# create connection for rda database
-source("W:\\RDA Team\\R\\credentials_source.R")
-conn <- connect_to_db("rda_shared_data")
-
-#set source for weighted averages script
-source("W:/RDA Team/R/Github/RDA Functions/AB/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
+# may need to update each year: variables for state assm and senate calcs ------
+assm_geoid <- 'sldl24'			                    # Define column with Assm geoid
+assm_xwalk <- 'tract_2020_state_assembly_2024'  # Name of tract-Assm xwalk table
+sen_geoid <- 'sldu24'			                      # Define column with senate geoid
+sen_xwalk <- 'tract_2020_state_senate_2024'     # Name of tract-Sen xwalk table
 
 ### Check that P9 variables and RC race names still match each year and update if needed --------
 # Population: All AIAN/PacIsl Latinx incl, NH Alone White/Black/Asian/Other, NH Two+, Latinx of any race
 
-# Load 2020 Decennial Census variables
-vars_2020 <- load_variables(year = 2020, dataset = "dhc", cache = TRUE)
-View(vars_2020)
+# Load Decennial Census variables
+vars_ <- load_variables(year = acs_yr, dataset = "dhc", cache = TRUE)
+View(vars_)
 
 sum_file <- "dhc"   # select specific Census file
-vars_list_p9 <- c('total_' = "P9_001N", # Total:
+vars_list_p9 <- c('total_' = "P9_001N",  # Total:
                 'nh_white_' = "P9_005N", # nh_white: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!White alone
                 'nh_black_' = "P9_006N", # nh_black: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Black or African American alone
-                'aian_' = "P8_005N", # aian: !!Total:!!Population of one race:!!American Indian and Alaska Native alone
+                'aian_' = "P6_004N",     # aian: !!Total:!!Population of one race:!!American Indian and Alaska Native alone or in combo
                 'nh_asian_' = "P9_008N", # nh_asian: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Asian alone
-                'pacisl_' = "P8_007N", # pacisl: !!Total:!!Population of one race:!!Native Hawaiian and Other Pacific Islander alone
+                'pacisl_' = "P6_006N",   # pacisl: !!Total:!!Population of one race:!!Native Hawaiian and Other Pacific Islander alone or in combo
                 'nh_other_' = "P9_010N", # nh_other: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Some Other Race alone
                 'nh_twoormor_' = "P9_011N", # nh_twoormor: !!Total:!!Not Hispanic or Latino:!!Population of two or more races
-                'latino_' = "P9_002N") # latinx: !!Total:!!Hispanic or Latino
+                'latino_' = "P9_002N")      # latinx: !!Total:!!Hispanic or Latino
 
 race_mapping <- data.frame(
   name = unlist(vars_list_p9),
@@ -63,36 +71,30 @@ p9_curr <- load_variables(acs_yr, sum_file, cache = TRUE) %>%
   mutate(rc_races = paste0(race, "pop")) %>%
   select(-race)
 
-vars_list_p9 <- vars_list_p9  # vars used in update_detailed_table_census{}
+#vars_list_p9 <- vars_list_p9  # vars used in update_detailed_table_census{}
 
 # CHECK THIS TABLE TO MAKE SURE THE LABEL AND RC_RACES COLUMNS MATCH UP
-print(p9_curr)
+View(p9_curr)
 
-# may need to update each year: variables for state assm and senate calcs ------
-assm_geoid <- 'sldl24'			                    # Define column with Assm geoid
-assm_xwalk <- 'tract_2020_state_assembly_2024'  # Name of tract-Assm xwalk table
-sen_geoid <- 'sldu24'			                      # Define column with senate geoid
-sen_xwalk <- 'tract_2020_state_senate_2024'     # Name of tract-Sen xwalk table
+
 
 ### GET INDICATOR DATA ###
 #https://stackoverflow.com/questions/68873466/read-html-cannot-read-a-webpage-despite-specifying-different-encodings
-#url <- read_html("https://www.prisonpolicy.org/origin/ca/2020/assembly.html") #CHECK THE TRACT TO SLDL TO THE SLDL COUNTS HERE
-ind_df <- dbGetQuery(conn, paste0("SELECT fips_code_2020 AS sub_id, imprisonment_rate_per_100_000 AS indicator FROM crime_and_justice.prison_policy_incarceration_tract_", curr_yr)) %>% as.data.frame()
+ind_df <- dbGetQuery(conn, paste0("SELECT fips_code_2020 AS sub_id, imprisonment_rate_per_100_000 AS indicator FROM crime_and_justice.prison_policy_incarceration_tract_", curr_yr))# %>% as.data.frame()
 
 ##############  ASSEMBLY DISTRICTS  #############
-
+#url <- read_html("https://www.prisonpolicy.org/origin/ca/2020/assembly.html") # CHECK THE TOTAL RATES HERE AGAINST OUR TOTAL RATES
 ###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
-year <- c(2020)                   # define your data vintage
-subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- c('sldl')      # define your target geolevel: place
-survey <- "census"                # define which Census survey you want
-pop_threshold = 250               # define population threshold for screening
-census_api_key(census_key1)       # reload census API key
+year <- curr_yr                # define your data vintage
+subgeo <- 'tract'              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
+targetgeolevel <- 'sldl'       # define your target geolevel: Assm
+survey <- "census"             # define which Census survey you want
 
 ### Load CT-Assm Crosswalk ### 
-crosswalk <- dbGetQuery(conn, paste0("SELECT geo_id, ", assm_geoid, ", afact FROM crosswalks.", assm_xwalk))
+crosswalk <- dbGetQuery(conn, paste0("SELECT geo_id, ", assm_geoid, ", afact, afact2 FROM crosswalks.", assm_xwalk)) %>%
+  filter(afact >= .25 | afact2 >= .25)  # screen xwalk based on pct of ct pop in dist OR pct of dist pop in ct
 
 ##### GET SUB GEOLEVEL POP DATA ######
 vars_list <- "vars_list_p9"
@@ -100,39 +102,26 @@ pop <- update_detailed_table_census(vars = vars_list_p9, yr = curr_yr, srvy = su
 
 pop_wide <- pop %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = value)
 
-pop_wide <- pop_wide %>% right_join(select(crosswalk, c(geo_id, sldl24, afact)), by = c("GEOID" = "geo_id"))  # join target geoids/names
-pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = sldl24)                               # rename to generic column names for WA functions
+pop_wide <- pop_wide %>% right_join(select(crosswalk, c(geo_id, assm_geoid, afact)), by = c("GEOID" = "geo_id"))  # join target geoids/names
+pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = assm_geoid)                               # rename to generic column names for WA functions
 
 ##### ASSEMBLY WEIGHTED AVG CALCS ###
-# pop_df <- targetgeo_pop(pop_wide_assm) # calc target geolevel pop and number of sub geolevels per target geolevel
-pop_wide <- pop_wide %>% rename_with(~ paste0(.x, "_sub_pop"), ends_with("_"))
-
-# Calc leg dist pop in each targetgeo using afact (pct of leg dist pop in targetgeo)
-pop_wt <- pop_wide %>% 
-  select(c(sub_id, target_id, afact, ends_with("sub_pop"))) %>% 
-  mutate(across(where(is.numeric), ~.x * afact)) %>% #calc wt leg dist pop
-  select(-afact) 
+pop_wide <- pop_wide %>% rename_with(~ paste0(.x, "pop"), ends_with("_"))
 
 # Get Targetgeo Pop
-pop_df <- update_detailed_table_census(vars = vars_list_p9, yr = acs_yr, srvy = survey, subgeo = "State Legislative District (Lower Chamber)", sumfile = sum_file)
-pop_df_ <- as.data.frame(pop_df) %>% select(-NAME)
-pop_df_ <- pop_df_ %>% group_by(GEOID, variable, geolevel) %>% summarise(value_sum=sum(value, na.rm=TRUE))
-pop_wide_ <- pop_df_ %>% pivot_wider(id_cols = c(GEOID, geolevel), names_from = variable, values_from = value_sum)
-pop_wide_ <- pop_wide_ %>% rename(target_id = GEOID)
-pop_wide_ <- pop_wide_ %>% rename_with(~ paste0(.x, "_target_pop"), ends_with("_"))
+pop_wide_ <- targetgeo_pop(pop_wide) 
 
 # Calc % of each targetgeo pop that each leg dist pop
-pop_wt <- pop_wt %>% left_join(pop_wide_, by = "target_id")       #join subpop data to targetpop data to get pct_leg
-n_df <- pop_wt %>% select(target_id, sub_id) %>% group_by(target_id) %>% summarise(n = n()) # count of sub_geos in each target_geo
-pop_wt <- pop_wt %>% left_join(n_df, by = "target_id")
+pop_wide <- pop_wide %>% left_join(pop_wide_, by = c("target_id","sub_id"))       #join subpop data to targetpop data to get pct_leg
+#n_df <- pop_wide %>% select(target_id, sub_id) %>% group_by(target_id) %>% summarise(n = n()) # count of sub_geos in each target_geo
+#pop_wide <- pop_wide %>% left_join(n_df, by = "target_id")
 
-pct_df <- pop_pct_multi(pop_wt)        # NOTE: use this function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
+pct_df <- pop_pct_multi(pop_wide)        # NOTE: use this function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
 
 assm_wa <- wt_avg(pct_df, ind_df)              # calc weighted average and apply reliability screens
 assm_wa <- assm_wa %>% mutate(geolevel = 'sldl')                  # add geolevel
 
 ## Add census geonames
-census_api_key(census_key1, overwrite=TRUE)
 assm_name <- get_acs(geography = "State Legislative District (Lower Chamber)", 
                      variables = c("B01001_001"), 
                      state = "CA", 
@@ -149,19 +138,18 @@ assm_wa <- merge(x=assm_name,y=assm_wa,by="target_id", all=T)
 #View(assm_wa)
 
 ###############  SENATE DISTRICTS ##############
-# url <- read_html("https://www.prisonpolicy.org/origin/ca/2020/senate.html") #CHECK THE TRACT TO SLDU TO THE COUNTS HERE
+# url <- read_html("https://www.prisonpolicy.org/origin/ca/2020/senate.html") # CHECK THE TOTAL RATES HERE AGAINST OUR TOTAL RATES
 ###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
-year <- c(2020)                   # define your data vintage
-subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- c('sldu')      # define your target geolevel: place
+year <- curr_yr                   # define your data vintage
+subgeo <- 'tract'                 # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
+targetgeolevel <- 'sldu'          # define your target geolevel: senate
 survey <- "census"                # define which Census survey you want
-pop_threshold = 250               # define population threshold for screening
-census_api_key(census_key1)       # reload census API key
 
 ### Load CT-sen Crosswalk ### 
-crosswalk <- dbGetQuery(conn, paste0("SELECT geo_id, ", sen_geoid, ", afact FROM crosswalks.", sen_xwalk))
+crosswalk <- dbGetQuery(conn, paste0("SELECT geo_id, ", sen_geoid, ", afact, afact2 FROM crosswalks.", sen_xwalk)) %>%
+  filter(afact >= .25 | afact2 >= .25)  # screen xwalk based on pct of ct pop in dist OR pct of dist pop in ct
 
 ##### GET SUB GEOLEVEL POP DATA ######
 vars_list <- "vars_list_p9"
@@ -169,39 +157,26 @@ pop <- update_detailed_table_census(vars = vars_list_p9, yr = curr_yr, srvy = su
 
 pop_wide <- pop %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = value)
 
-pop_wide <- pop_wide %>% right_join(select(crosswalk, c(geo_id, sldu24, afact)), by = c("GEOID" = "geo_id"))  # join target geoids/names
-pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = sldu24)                               # rename to generic column names for WA functions
+pop_wide <- pop_wide %>% right_join(select(crosswalk, c(geo_id, sen_geoid, afact)), by = c("GEOID" = "geo_id"))  # join target geoids/names
+pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = sen_geoid)                               # rename to generic column names for WA functions
 
 ##### SENATE WEIGHTED AVG CALCS ###
-# pop_df <- targetgeo_pop(pop_wide_sen) # calc target geolevel pop and number of sub geolevels per target geolevel
-pop_wide <- pop_wide %>% rename_with(~ paste0(.x, "_sub_pop"), ends_with("_"))
-
-# Calc leg dist pop in each targetgeo using afact (pct of leg dist pop in targetgeo)
-pop_wt <- pop_wide %>% 
-  select(c(sub_id, target_id, afact, ends_with("sub_pop"))) %>% 
-  mutate(across(where(is.numeric), ~.x * afact)) %>% #calc wt leg dist pop
-  select(-afact) 
+pop_wide <- pop_wide %>% rename_with(~ paste0(.x, "pop"), ends_with("_"))
 
 # Get Targetgeo Pop
-pop_df <- update_detailed_table_census(vars = vars_list_p9, yr = acs_yr, srvy = survey, subgeo = "State Legislative District (Upper Chamber)", sumfile = sum_file)
-pop_df_ <- as.data.frame(pop_df) %>% select(-NAME)
-pop_df_ <- pop_df_ %>% group_by(GEOID, variable, geolevel) %>% summarise(value_sum=sum(value, na.rm=TRUE))
-pop_wide_ <- pop_df_ %>% pivot_wider(id_cols = c(GEOID, geolevel), names_from = variable, values_from = value_sum)
-pop_wide_ <- pop_wide_ %>% rename(target_id = GEOID)
-pop_wide_ <- pop_wide_ %>% rename_with(~ paste0(.x, "_target_pop"), ends_with("_"))
+pop_wide_ <- targetgeo_pop(pop_wide) 
 
 # Calc % of each targetgeo pop that each leg dist pop
-pop_wt <- pop_wt %>% left_join(pop_wide_, by = "target_id")       #join subpop data to targetpop data to get pct_leg
-n_df <- pop_wt %>% select(target_id, sub_id) %>% group_by(target_id) %>% summarise(n = n()) # count of sub_geos in each target_geo
-pop_wt <- pop_wt %>% left_join(n_df, by = "target_id")
+pop_wide <- pop_wide %>% left_join(pop_wide_, by = c("target_id", "sub_id"))       #join subpop data to targetpop data to get pct_leg
+#n_df <- pop_wide %>% select(target_id, sub_id) %>% group_by(target_id) %>% summarise(n = n()) # count of sub_geos in each target_geo
+#pop_wide <- pop_wide %>% left_join(n_df, by = "target_id")
 
-pct_df <- pop_pct_multi(pop_wt)        # NOTE: use this function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
+pct_df <- pop_pct_multi(pop_wide)        # NOTE: use this function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
 
 sen_wa <- wt_avg(pct_df, ind_df)              # calc weighted average and apply reliability screens
 sen_wa <- sen_wa %>% mutate(geolevel = 'sldu')                  # add geolevel
 
 ## Add census geonames
-census_api_key(census_key1, overwrite=TRUE)
 sen_name <- get_acs(geography = "State Legislative District (upper Chamber)", 
                      variables = c("B01001_001"), 
                      state = "CA", 
@@ -253,22 +228,20 @@ sen_wa <- merge(x=sen_name,y=sen_wa,by="target_id", all=T)
 # ind_df <- df %>% rename(sub_id = fips_code_2020, indicator = imprisonment_rate_per_100_000) %>% as.data.frame() 
 # 
 # # pull in ct-city crosswalk ------------------------------------------------------------
-# crosswalk <- dbGetQuery(con2, "SELECT * FROM crosswalks.ct_place_2020")
+# crosswalk <- dbGetQuery(con2, paste0("SELECT * FROM crosswalks.ct_place_", curr_yr))
 # 
 # # pull in place shapes ------------------------------------------------------------
-# places <- places(state = 'CA', year = 2020, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
+# places <- places(state = 'CA', year = curr_yr, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
 # 
 # # Weighted Averages Functions  ------------------------------------------------------------
 # 
 # ##### GET SUB GEOLEVEL POP DATA ######
 # 
 # # set values for weighted average functions - You may need to update these
-# year <- c(2020)                   # define your data vintage
-# subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-# targetgeolevel <- c('place')      # define your target geolevel: place
-# survey <- "census"                # define which Census survey you want
-# pop_threshold = 250               # define population threshold for screening
-# census_api_key(census_key1)       # reload census API key
+# year <- curr_yr              # define your data vintage
+# subgeo <- 'tract'            # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
+# targetgeolevel <- 'place'    # define your target geolevel: place
+# survey <- "census"           # define which Census survey you want
 # 
 # ##### GET SUB GEOLEVEL POP DATA ######
 # vars_list <- "vars_list_p9"
@@ -333,15 +306,14 @@ sen_wa <- merge(x=sen_name,y=sen_wa,by="target_id", all=T)
 #
 
 ###### Join assembly, senate, and city WA tables  ##################
-# wa_all <- union(wa, ca_wa, assm_wa, sen_wa)
 wa_all <- union(assm_wa, sen_wa)
-# wa_all <- union(wa_all, city_wa)
+# wa_all <- union(wa_all, city_wa)  # add city data when there is a data update
 wa_all <- rename(wa_all, geoid = target_id, geoname = target_name)   # rename columns for RC functions
-wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid)# move geoname column
+wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid)        # move geoname column
+names(wa_all) <- gsub("__", "_", names(wa_all)) # the weighted average function has 2 underscores but RC colnames should only have 1
 
 d <- wa_all
 
-names(d) <- gsub("__", "_", names(d)) #the weighted average function has two underscores but the racecounts function will only recognize the names with one underscore so replace it before running the rc functions
 # View(d)
 
 ############## CALC RACE COUNTS STATS ##############
@@ -377,14 +349,14 @@ upper_table <- calc_z(upper_table)
 
 ## Calc SLDU ranks##
 upper_table <- calc_ranks(upper_table)
-View(upper_table)
+#View(upper_table)
 
 #calculate SLDL z-scores
 lower_table <- calc_z(lower_table)
 
 ## Calc SLDL ranks##
 lower_table <- calc_ranks(lower_table)
-View(lower_table)
+#View(lower_table)
 
 ## Bind sldu and sldl tables into one leg_table##
 leg_table <- rbind(upper_table, lower_table)
@@ -398,8 +370,8 @@ leg_table <- rename(leg_table, leg_id = geoid, leg_name = geoname)
 # city_table_name <- paste0("arei_crim_incarceration_city_", rc_yr)
 leg_table_name <- paste0("arei_crim_incarceration_leg_", rc_yr)
 
-indicator <- paste0("Created on ", Sys.Date(), ". Number of people in prison in 2020 - weighted average by race")
-source <- paste0("NOTE: This is a different source than the county/state incarceration indicator. Prison Policy Org https://www.prisonpolicy.org/origin/ca/2020/tract.html. (", curr_yr, "). Pop data from Census", acs_yr, ". QA doc: ", qa_filepath)
+indicator <- paste0("Number of people in prison in ", curr_yr, " - weighted average by race.NOTE: This is a different source than the county/state incarceration indicator.")
+source <- paste0("Prison Policy Org https://www.prisonpolicy.org/origin/ca/2020/tract.html. Leg pop data from Census ", acs_yr, " Table P9. City pop data from Census ", acs_yr, " Tables P2 and DP1. QA doc: ", qa_filepath)
 
 #send to postgres
 #city_to_postgres(city_table)
