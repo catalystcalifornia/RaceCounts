@@ -25,11 +25,13 @@ con <- connect_to_db("rda_shared_data")
 
 #set source for Weighted Average Functions
 source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
+census_api_key(census_key1)       # reload census API key
 
 # update variables used throughout script each year
 curr_yr <- 2020 # yr of Census data release
 rc_yr <- '2025'
 rc_schema <- 'v7'
+pop_threshold = 150               # define household threshold for screening
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Democracy\\QA_Census_Participation.docx"
 
 # Check that variables in vars_list_p16 used in WA fx haven't changed --------
@@ -84,16 +86,15 @@ ind_df <- ind_df %>% select(c(GEO_ID, CRRALL)) %>% rename(sub_id = GEO_ID, indic
 ###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
-subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- c('sldl')       # define your target geolevel: state assembly
-survey <- "census"                # define which Census survey you want
-pop_threshold = 150               # define household threshold for screening
+subgeo <- 'tract'              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
+targetgeolevel <- 'sldl'       # define your target geolevel: state assembly
+survey <- "census"             # define which Census survey you want
 
 ### Load CT-Assm Crosswalk ### 
-crosswalk <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, " AS assm_geoid FROM crosswalks.", assm_xwalk))
+crosswalk <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, ", afact, afact2 FROM crosswalks.", assm_xwalk)) %>%
+  filter(afact >= .25 | afact2 >= .25)  # screen xwalk based on pct of ct pop in dist OR pct of dist pop in ct 
 
 ##### GET SUB GEOLEVEL POP DATA ###
-census_api_key(census_key1)       # reload census API key
 pop <- update_detailed_table_census(vars = vars_list_p16, yr = curr_yr, srvy = survey, subgeo = subgeo, sumfile = sum_file)  # subgeolevel pop
 
 pop_wide <- pop %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = value)
@@ -109,11 +110,10 @@ pop_wide_assm <- dplyr::rename(pop_wide_assm, sub_id = GEOID, target_id = assm_g
 ##### ASSEMBLY WEIGHTED AVG CALCS ###
 pop_df <- targetgeo_pop(pop_wide_assm) # calc target geolevel pop and number of sub geolevels per target geolevel
 pct_df <- pop_pct_multi(pop_df)        # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
-assm_wa <- wt_avg(pct_df)              # calc weighted average and apply reliability screens
+assm_wa <- wt_avg(pct_df, ind_df)      # calc weighted average and apply reliability screens
 assm_wa <- assm_wa %>% mutate(geolevel = 'sldl')                  # add geolevel
 
 ## Add census geonames
-census_api_key(census_key1, overwrite=TRUE)
 assm_name <- get_decennial(geography = "State Legislative District (Lower Chamber)", 
                      variables = c("P16_001N"), 
                      sumfile = "dhc",
@@ -136,16 +136,15 @@ assm_wa <- merge(x=assm_name,y=assm_wa,by="target_id", all=T)
 ###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
-subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- c('sldu')       # define your target geolevel: senate
-survey <- "census"                # define which Census survey you want
-pop_threshold = 150               # define household threshold for screening
+subgeo <- 'tract'              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
+targetgeolevel <- 'sldu'       # define your target geolevel: senate
+survey <- "census"             # define which Census survey you want
 
 ### Load CT-Sen Crosswalk ### 
-crosswalk <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", sen_geoid, " AS sen_geoid FROM crosswalks.", sen_xwalk))
+crosswalk <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", sen_geoid, ", afact, afact2 FROM crosswalks.", sen_xwalk)) %>%
+  filter(afact >= .25 | afact2 >= .25)  # screen xwalk based on pct of ct pop in dist OR pct of dist pop in ct 
 
 ##### GET SUB GEOLEVEL POP DATA ###
-census_api_key(census_key1)       # reload census API key
 pop <- update_detailed_table_census(vars = vars_list_p16, yr = curr_yr, srvy = survey, subgeo = subgeo, sumfile = sum_file)  # subgeolevel pop
 
 pop_wide <- pop %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = value)
@@ -161,11 +160,10 @@ pop_wide_sen <- dplyr::rename(pop_wide_sen, sub_id = GEOID, target_id = sen_geoi
 ##### SENATE WEIGHTED AVG CALCS ###
 pop_df <- targetgeo_pop(pop_wide_sen) # calc target geolevel pop and number of sub geolevels per target geolevel
 pct_df <- pop_pct_multi(pop_df)       # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
-sen_wa <- wt_avg(pct_df)              # calc weighted average and apply reliability screens
+sen_wa <- wt_avg(pct_df, ind_df)      # calc weighted average and apply reliability screens
 sen_wa <- sen_wa %>% mutate(geolevel = 'sldu')                  # add geolevel
 
 ## Add census geonames
-census_api_key(census_key1, overwrite=TRUE)
 sen_name <- get_decennial(geography = "State Legislative District (Upper Chamber)", 
                           variables = c("P16_001N"), 
                           sumfile = "dhc",
@@ -191,14 +189,12 @@ sen_wa <- merge(x=sen_name,y=sen_wa,by="target_id", all=T)
 subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
 targetgeolevel <- c('place')      # define your target geolevel: place
 survey <- "census"                # define which Census survey you want
-pop_threshold = 150               # define household threshold for screening
 
 ### Load CT-Place Crosswalk & Places ### 
 crosswalk <- st_read(con, query = "select * from crosswalks.ct_place_2020")
 places <- dbGetQuery(con, paste0("select geoid, name from geographies_ca.cb_", curr_yr, "_06_place_500k"))
 
 ##### GET SUB GEOLEVEL POP DATA ###
-census_api_key(census_key1)       # reload census API key
 pop <- update_detailed_table_census(vars = vars_list_p16, yr = curr_yr, srvy = survey, subgeo = subgeo, sumfile = sum_file)  # subgeolevel pop
 
 pop_wide <- pop %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = value)
@@ -227,7 +223,6 @@ city_wa <- city_wa %>% rename(target_name = name) %>% mutate(geolevel = 'city') 
 subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
 targetgeolevel <- c('county')     # define your target geolevel: county (state is handled separately)
 survey <- "census"                # define which Census survey you want
-pop_threshold = 150               # define household threshold for screening
 
 ##### CREATE COUNTY GEOID & NAMES TABLE ######  You will NOT need this chunk if your indicator data table has target geolevel names already
 counties <- dbGetQuery(con, paste0("select county_geoid AS target_id, name AS target_name from geographies_ca.cb_", curr_yr, "_06_county_500k"))
@@ -322,14 +317,14 @@ upper_table <- calc_z(upper_table)
 
 ## Calc SLDU ranks##
 upper_table <- calc_ranks(upper_table)
-View(upper_table)
+#View(upper_table)
 
 #calculate SLDL z-scores
 lower_table <- calc_z(lower_table)
 
 ## Calc SLDL ranks##
 lower_table <- calc_ranks(lower_table)
-View(lower_table)
+#View(lower_table)
 
 ## Bind sldu and sldl tables into one leg_table##
 leg_table <- rbind(upper_table, lower_table)
