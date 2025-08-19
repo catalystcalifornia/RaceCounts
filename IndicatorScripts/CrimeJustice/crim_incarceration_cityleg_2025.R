@@ -49,29 +49,29 @@ vars_ <- load_variables(year = acs_yr, dataset = "dhc", cache = TRUE)
 View(vars_)
 
 sum_file <- "dhc"   # select specific Census file
-vars_list_p9 <- c('total_' = "P9_001N",  # Total:
-                'nh_white_' = "P9_005N", # nh_white: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!White alone
-                'nh_black_' = "P9_006N", # nh_black: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Black or African American alone
-                'aian_' = "P6_004N",     # aian: !!Total:!!Population of one race:!!American Indian and Alaska Native alone or in combo
-                'nh_asian_' = "P9_008N", # nh_asian: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Asian alone
-                'pacisl_' = "P6_006N",   # pacisl: !!Total:!!Population of one race:!!Native Hawaiian and Other Pacific Islander alone or in combo
-                'nh_other_' = "P9_010N", # nh_other: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Some Other Race alone
+vars_list_ <- c('total_' = "P9_001N",  # Total:
+                'nh_white_' = "P9_005N",    # nh_white: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!White alone
+                'nh_black_' = "P9_006N",    # nh_black: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Black or African American alone
+                'aian_' = "P6_004N",        # aian: !!Total:!!Population of one race:!!American Indian and Alaska Native alone or in combo
+                'nh_asian_' = "P9_008N",    # nh_asian: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Asian alone
+                'pacisl_' = "P6_006N",      # pacisl: !!Total:!!Population of one race:!!Native Hawaiian and Other Pacific Islander alone or in combo
+                'nh_other_' = "P9_010N",    # nh_other: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Some Other Race alone
                 'nh_twoormor_' = "P9_011N", # nh_twoormor: !!Total:!!Not Hispanic or Latino:!!Population of two or more races
                 'latino_' = "P9_002N")      # latinx: !!Total:!!Hispanic or Latino
 
 race_mapping <- data.frame(
-  name = unlist(vars_list_p9),
-  race = names(vars_list_p9),
+  name = unlist(vars_list_),
+  race = names(vars_list_),
   stringsAsFactors = FALSE
 )
 
 p9_curr <- load_variables(acs_yr, sum_file, cache = TRUE) %>%
-  filter(name %in% vars_list_p9) %>%
+  filter(name %in% vars_list_) %>%
   left_join(race_mapping, by="name") %>%
   mutate(rc_races = paste0(race, "pop")) %>%
   select(-race)
 
-#vars_list_p9 <- vars_list_p9  # vars used in update_detailed_table_census{}
+vars_list_p9 <- p9_curr$name  # vars used in update_detailed_table_census{}
 
 # CHECK THIS TABLE TO MAKE SURE THE LABEL AND RC_RACES COLUMNS MATCH UP
 View(p9_curr)
