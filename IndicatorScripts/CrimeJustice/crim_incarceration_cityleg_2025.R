@@ -370,7 +370,7 @@ leg_table <- rename(leg_table, leg_id = geoid, leg_name = geoname)
 leg_table_name <- paste0("arei_crim_incarceration_leg_", rc_yr)
 
 indicator <- paste0("Number of people in prison in ", curr_yr, " - weighted average by race.NOTE: This is a different source than the county/state incarceration indicator.")
-source <- paste0("Prison Policy Org https://www.prisonpolicy.org/origin/ca/2020/tract.html. Leg pop data from Census ", acs_yr, " Table P9. City pop data from Census ", acs_yr, " Tables P2 and DP1. QA doc: ", qa_filepath)
+source <- paste0("Prison Policy Org https://www.prisonpolicy.org/origin/ca/2020/tract.html. Leg pop data from Census ", acs_yr, " Table P9 and P6. City pop data from Census ", acs_yr, " Tables P2 and DP1. QA doc: ", qa_filepath)
 
 #send to postgres
 #city_to_postgres(city_table)
