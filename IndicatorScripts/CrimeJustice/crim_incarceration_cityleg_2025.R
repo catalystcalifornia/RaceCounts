@@ -49,7 +49,7 @@ vars_ <- load_variables(year = acs_yr, dataset = "dhc", cache = TRUE)
 View(vars_)
 
 sum_file <- "dhc"   # select specific Census file
-vars_list_ <- c('total_' = "P9_001N",  # Total:
+vars_list_ <- c('total_' = "P9_001N",       # Total:
                 'nh_white_' = "P9_005N",    # nh_white: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!White alone
                 'nh_black_' = "P9_006N",    # nh_black: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Black or African American alone
                 'aian_' = "P6_004N",        # aian: !!Total:!!Population of one race:!!American Indian and Alaska Native alone or in combo
@@ -102,20 +102,20 @@ pop <- update_detailed_table_census(vars = vars_list_p9, yr = curr_yr, srvy = su
 
 pop_wide <- pop %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = value)
 
+# rename P9/P6 vars to rc_races
+pop_wide <- pop_wide %>%
+  rename_at(vars(starts_with("P")), 
+            ~ str_replace_all(., setNames(p9_curr$rc_races, p9_curr$name)))
+
 pop_wide <- pop_wide %>% right_join(select(crosswalk, c(geo_id, assm_geoid, afact)), by = c("GEOID" = "geo_id"))  # join target geoids/names
-pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = assm_geoid)                               # rename to generic column names for WA functions
+pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = {{assm_geoid}})            # rename to generic column names for WA functions
 
 ##### ASSEMBLY WEIGHTED AVG CALCS ###
-pop_wide <- pop_wide %>% rename_with(~ paste0(.x, "pop"), ends_with("_"))
-
 # Get Targetgeo Pop
 pop_wide_ <- targetgeo_pop(pop_wide) 
 
 # Calc % of each targetgeo pop that each leg dist pop
 pop_wide <- pop_wide %>% left_join(pop_wide_, by = c("target_id","sub_id"))       #join subpop data to targetpop data to get pct_leg
-#n_df <- pop_wide %>% select(target_id, sub_id) %>% group_by(target_id) %>% summarise(n = n()) # count of sub_geos in each target_geo
-#pop_wide <- pop_wide %>% left_join(n_df, by = "target_id")
-
 pct_df <- pop_pct_multi(pop_wide)        # NOTE: use this function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
 
 assm_wa <- wt_avg(pct_df, ind_df)              # calc weighted average and apply reliability screens
@@ -152,25 +152,24 @@ crosswalk <- dbGetQuery(conn, paste0("SELECT geo_id, ", sen_geoid, ", afact, afa
   filter(afact >= .25 | afact2 >= .25)  # screen xwalk based on pct of ct pop in dist OR pct of dist pop in ct
 
 ##### GET SUB GEOLEVEL POP DATA ######
-vars_list <- "vars_list_p9"
 pop <- update_detailed_table_census(vars = vars_list_p9, yr = curr_yr, srvy = survey, subgeo = subgeo, sumfile = sum_file)  # subgeolevel pop
 
 pop_wide <- pop %>% as.data.frame() %>% pivot_wider(id_cols = c(GEOID, NAME, geolevel), names_from = variable, values_from = value)
 
+# rename P9/P6 vars to rc_races
+pop_wide <- pop_wide %>%
+  rename_at(vars(starts_with("P")), 
+            ~ str_replace_all(., setNames(p9_curr$rc_races, p9_curr$name)))
+
 pop_wide <- pop_wide %>% right_join(select(crosswalk, c(geo_id, sen_geoid, afact)), by = c("GEOID" = "geo_id"))  # join target geoids/names
-pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = sen_geoid)                               # rename to generic column names for WA functions
+pop_wide <- dplyr::rename(pop_wide, sub_id = GEOID, target_id = {{sen_geoid}})            # rename to generic column names for WA functions
 
 ##### SENATE WEIGHTED AVG CALCS ###
-pop_wide <- pop_wide %>% rename_with(~ paste0(.x, "pop"), ends_with("_"))
-
 # Get Targetgeo Pop
 pop_wide_ <- targetgeo_pop(pop_wide) 
 
 # Calc % of each targetgeo pop that each leg dist pop
-pop_wide <- pop_wide %>% left_join(pop_wide_, by = c("target_id", "sub_id"))       #join subpop data to targetpop data to get pct_leg
-#n_df <- pop_wide %>% select(target_id, sub_id) %>% group_by(target_id) %>% summarise(n = n()) # count of sub_geos in each target_geo
-#pop_wide <- pop_wide %>% left_join(n_df, by = "target_id")
-
+pop_wide <- pop_wide %>% left_join(pop_wide_, by = c("target_id","sub_id"))       #join subpop data to targetpop data to get pct_leg
 pct_df <- pop_pct_multi(pop_wide)        # NOTE: use this function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
 
 sen_wa <- wt_avg(pct_df, ind_df)              # calc weighted average and apply reliability screens
