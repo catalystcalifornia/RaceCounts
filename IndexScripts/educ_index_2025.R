@@ -1,7 +1,7 @@
-#### Education Index (z-score) for RC v6 ####
+#### Education Index (z-score) for RC v7 ####
 
 #install packages if not already installed
-packages <- c("tidyverse","RPostgreSQL","sf","here","usethis")  
+packages <- c("tidyverse","RPostgres","sf","usethis")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -22,16 +22,20 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
 
 # Set Source for Index Functions script -----------------------------------
-source(here("Functions/RC_Index_Functions.R"))
+source("./Functions/RC_Index_Functions.R")
 
 # remove exponentiation
 options(scipen = 100) 
 
 # udpate each yr
-rc_yr <- '2024'
-rc_schema <- 'v6'
-source <- "CALIFORNIA DEPARTMENT OF EDUCATION (2022-23) for Suspensions, Chronic Absenteeism, High School Graduation, 3rd Grade English and Math, and (2018-19) for Diversity of Teachers, CALIFORNIA CHILD CARE RESOURCE & REFERRAL NETWORK (2020), AMERICAN INSTITUTES FOR RESEARCH EARLY LEARNING NEEDS ASSESSMENT TOOL (2020)"
-
+rc_yr <- '2025'
+rc_schema <- 'v7'
+source <- "CALIFORNIA DEPARTMENT OF EDUCATION (2023-24) for Suspensions, 
+Chronic Absenteeism, High School Graduation, 3rd Grade English and Math, 
+and for Diversity of Teachers, 
+CALIFORNIA CHILD CARE RESOURCE & REFERRAL NETWORK (2020-2021), 
+AMERICAN INSTITUTES FOR RESEARCH EARLY LEARNING NEEDS ASSESSMENT TOOL (2020)"
+qa_filepath <- 'W:\\Project\\RACE COUNTS\\2025_v7\\Education\\QA_Educ_Index.docx'
 issue <- 'education'
 
 # Add indicators and arei_county_region_urban_type ------------------------------------------------------
@@ -97,7 +101,7 @@ colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col 
 
 # calculate z-scores. Will need to add threshold option to the calculate_z function
 ind_threshold <- 4  # update depending on the number of indicators in the issue area
-c_index <- calculate_z(c_index)
+c_index <- calculate_z(c_index, ind_threshold)
 
 # merge region and urban type from current arei_county_region_urban_type
 c_index <- left_join(c_index, region_urban_type)
@@ -116,7 +120,7 @@ View(index_table)
 
 # Send table to postgres 
 index_table_name <- paste0("arei_educ_index_", rc_yr)
-index <- paste0("Created ", Sys.Date(), ". Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is")
+index <- paste0("QA doc: ", qa_filepath, ". Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is")
 
 index_to_postgres(index_table, rc_schema)
 dbDisconnect(con)
