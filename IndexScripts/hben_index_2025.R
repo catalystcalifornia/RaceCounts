@@ -1,7 +1,7 @@
-#### Healthy Built Environment Index (z-score) for RC v6 ####
+#### Healthy Built Environment Index (z-score) for RC v7 ####
 
 #install packages if not already installed
-packages <- c("tidyverse","RPostgreSQL","RPostgres","sf","here","usethis")  
+packages <- c("tidyverse","RPostgres","sf","here","usethis")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -30,7 +30,7 @@ options(scipen = 100)
 # udpate each yr
 rc_yr <- '2025'
 rc_schema <- 'v7'
-source <- "California Health Interview Survey (CHIS) (Food Access 2011-18) (Asthma 2011-2022), CalEnviroScreen 4.0, National Land Cover Database (NLCD) 2023, and American Community Survey (ACS) 2019-2023 Table DP05"
+source <- "California Health Interview Survey (CHIS) (Food Access 2011-18) (Asthma 2011-2023), CalEnviroScreen 4.0, National Land Cover Database (NLCD) 2023, and American Community Survey (ACS) 2019-2023 Table DP05"
 ind_threshold <- 4  # update depending on the number of indicators in the issue area
 
 # update QA doc filepath
@@ -98,7 +98,6 @@ colnames(c_index) <- gsub("performance", "perf", names(c_index))  # shorten col 
 colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col names
 
 # calculate z-scores. Will need to add threshold option to the calculate_z function
-
 c_index <- calculate_z(c_index, ind_threshold)
 
 # merge region and urban type from current arei_county_region_urban_type
