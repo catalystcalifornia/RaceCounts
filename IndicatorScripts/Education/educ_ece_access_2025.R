@@ -54,27 +54,27 @@ View(vars_)
 
 sum_file <- "dhc"   # select specific Census file
 vars_list_ <- c("male_total_" = "P12_003N",        # male
-                   "male_aian_" = "P12AE_003N",      # latinx-inc aian aoic
-                   "male_nh_aian_" = "P12Y_003N",    # nh aian aioc
-                   "male_pacisl_" = "P12AG_003N",    # latinx-inc pacisl aoic
-                   "male_nh_pacisl_" = "P12AA_003N", # nh pacisl aioc
-                   "male_latino_" = "P12H_003N", 
-                   "male_nh_white_" = "P12I_003N", 
-                   "male_nh_black_" = "P12J_003N", 
-                   "male_nh_asian_" = "P12L_003N", 
-                   "male_nh_other_" = "P12N_003N", 
-                   "male_nh_twoormor_" = "P12O_003N",
+                "male_aian_" = "P12AE_003N",      # latinx-inc aian aoic
+                "male_nh_aian_" = "P12Y_003N",    # nh aian aioc
+                "male_pacisl_" = "P12AG_003N",    # latinx-inc pacisl aoic
+                "male_nh_pacisl_" = "P12AA_003N", # nh pacisl aioc
+                "male_latino_" = "P12H_003N", 
+                "male_nh_white_" = "P12I_003N", 
+                "male_nh_black_" = "P12J_003N", 
+                "male_nh_asian_" = "P12L_003N", 
+                "male_nh_other_" = "P12N_003N", 
+                "male_nh_twoormor_" = "P12O_003N",
                 "female_total_" = "P12_027N",      # female
-                   "female_aian_" = "P12AE_027N",      # latinx-inc aian aoic
-                   "female_nh_aian_" = "P12Y_027N",    # nh aian aioc
-                   "female_pacisl_" = "P12AG_027N",    # latinx-inc pacisl aoic
-                   "female_nh_pacisl_" = "P12AA_027N", # nh pacisl aioc
-                   "female_latino_" = "P12H_027N", 
-                   "female_nh_white_" = "P12I_027N",  
-                   "female_nh_black_" = "P12J_027N", 
-                   "female_nh_asian_" = "P12L_027N", 
-                   "female_nh_other_" = "P12N_027N", 
-                   "female_nh_twoormor_" = "P12O_027N") 
+                "female_aian_" = "P12AE_027N",      # latinx-inc aian aoic
+                "female_nh_aian_" = "P12Y_027N",    # nh aian aioc
+                "female_pacisl_" = "P12AG_027N",    # latinx-inc pacisl aoic
+                "female_nh_pacisl_" = "P12AA_027N", # nh pacisl aioc
+                "female_latino_" = "P12H_027N", 
+                "female_nh_white_" = "P12I_027N",  
+                "female_nh_black_" = "P12J_027N", 
+                "female_nh_asian_" = "P12L_027N", 
+                "female_nh_other_" = "P12N_027N", 
+                "female_nh_twoormor_" = "P12O_027N") 
 
 race_mapping <- data.frame(
   name = unlist(vars_list_),
@@ -98,9 +98,9 @@ View(p12_curr)
 #### AIR TK ENR DATA ####
 ## Add census geonames
 county_name <- get_acs(geography = "county", 
-                     variables = c("B01001_001"), 
-                     state = "CA", 
-                     year = acs_yr)
+                       variables = c("B01001_001"), 
+                       state = "CA", 
+                       year = acs_yr)
 
 county_name <- county_name[,1:2]
 county_name$NAME <- gsub(" County, California", "", county_name$NAME)
@@ -202,7 +202,7 @@ pct_df <- pop_pct_multi(pop_wide_)        # NOTE: use this function for cases wh
 ind_df <- df %>% select(sub_id, enrollment) %>% 
   left_join(pop_wide %>% select(GEOID, total_pop), by = c("sub_id" = "GEOID")) %>%
   unique() %>%     # get unique rows bc zips that are split btwn multiple counties are listed twice
-  mutate(geolevel == 'sldl')
+  mutate(geolevel = 'sldl')
 
 ind_df$indicator <- ind_df$enrollment / ind_df$total_pop * 100     # calc overall enrollment/access rate by zcta
 ind_df$indicator[ind_df$indicator == "Inf"] <- 100                 # assign rate of 100 when there are seats, but no kid pop
@@ -271,7 +271,7 @@ ind_df <- df %>% select(sub_id, enrollment) %>%
   left_join(pop_wide %>% select(GEOID, total_pop), by = c("sub_id" = "GEOID")) %>%
   unique() %>%     # get unique rows bc zips that are split btwn multiple counties are listed twice
   mutate(geolevel = 'sldu')
-  
+
 ind_df$indicator <- ind_df$enrollment / ind_df$total_pop * 100     # calc overall enrollment/access rate by zcta
 ind_df$indicator[ind_df$indicator == "Inf"] <- 100                 # assign rate of 100 when there are seats, but no kid pop
 
@@ -390,51 +390,54 @@ d <- calc_p_var(d) #calculate (row wise) population or sample variance. be sure 
 d <- calc_id(d) #calculate index of disparity
 #View(d)
 
-#split STATE into separate table and format id, name columns
-state_table <- d[d$geoname == 'California', ]
-
-#calculate STATE z-scores
-state_table <- calc_state_z(state_table)
-View(state_table)
-
-#remove state from county table
-county_table <- d[d$geolevel == 'county', ] %>% select(-c(geolevel))
-
-#calculate COUNTY z-scores
-county_table <- calc_z(county_table)
-county_table <- calc_ranks(county_table)
-View(county_table)
-
-#split LEG DISTRICTS into separate tables and format id, name columns
+#split into STATE, COUNTY, CITY, SLDU, SLDL tables 
+# state_table <- d[d$geolevel == 'state', ]
+# county_table <- d[d$geolevel == 'county', ]
 upper_table <- d[d$geolevel == 'sldu', ]
 lower_table <- d[d$geolevel == 'sldl', ]
 
+# #calculate STATE z-scores
+# state_table <- calc_state_z(state_table) %>% dplyr::select(-c(geolevel))
+# View(state_table)
+# 
+# #calculate COUNTY z-scores
+# county_table <- calc_z(county_table) 
+# 
+# ## Calc county ranks##
+# county_table <- calc_ranks(county_table) %>% dplyr::select(-c(geolevel))
+# View(county_table)
+#
 #calculate SLDU z-scores
 upper_table <- calc_z(upper_table)
 
 ## Calc SLDU ranks##
 upper_table <- calc_ranks(upper_table)
-#View(upper_table)
+View(upper_table)
 
 #calculate SLDL z-scores
 lower_table <- calc_z(lower_table)
 
 ## Calc SLDL ranks##
 lower_table <- calc_ranks(lower_table)
-#View(lower_table)
+View(lower_table)
 
 ## Bind sldu and sldl tables into one leg_table##
 leg_table <- rbind(upper_table, lower_table)
 View(leg_table)
 
-#rename geoid to state_id, county_id, city_id, leg_id
-state_table <- rename(state_table, state_id = geoid, state_name = geoname)
-county_table <- rename(county_table, county_id = geoid, county_name = geoname)
+# #rename geoid to state_id, county_id, city_id, leg_id
+# state_table <- rename(state_table, state_id = geoid, state_name = geoname)
+# county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 leg_table <- rename(leg_table, leg_id = geoid, leg_name = geoname)
 
-### update info for postgres tables - automatically updates based on variables at top of script ###
-county_table_name <- paste0("arei_educ_ece_access_county_", rc_yr)
-state_table_name <- paste0("arei_educ_ece_access_state_", rc_yr)
+# #rename geoid to state_id, county_id, city_id
+# colnames(state_table)[1:2] <- c("state_id", "state_name")
+# colnames(county_table)[1:2] <- c("county_id", "county_name")
+colnames(leg_table)[1:2] <- c("leg_id", "leg_name")
+
+# ### update info for postgres tables - automatically updates based on variables at top of script ###
+# county_table_name <- paste0("arei_educ_ece_access_county_", rc_yr)
+# state_table_name <- paste0("arei_educ_ece_access_state_", rc_yr)
 leg_table_name <- paste0("arei_educ_ece_access_leg_", rc_yr)
 
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Education\\QA_Sheet_ECE.docx"
@@ -447,9 +450,3 @@ source <- paste0("CCCRRN https://rrnetwork.org/ and AIR ELNAT https://elneedsass
 
 #disconnect
 dbDisconnect(conn)
-
-
-
-
-
-
