@@ -1,7 +1,7 @@
-#### Housing Index (z-score) for RC v6 ####
+#### Housing Index (z-score) for RC v7 ####
 
 #install packages if not already installed
-packages <- c("tidyverse","RPostgreSQL","sf","here","usethis")  
+packages <- c("tidyverse","RPostgres","sf","usethis")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -22,15 +22,24 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
 
 # Set Source for Index Functions script -----------------------------------
-source(here("Functions/RC_Index_Functions.R"))
+source("./Functions/RC_Index_Functions.R")
 
 # remove exponentiation
 options(scipen = 100) 
 
 # udpate each yr
-rc_yr <- '2024'
-rc_schema <- 'v6'
-source <- "CA Dept of Education (2022-23), US Department of Housing and Urban Development (HUD) Comprehensive Housing Affordability Strategy (CHAS) data (2016-2020), Home Mortgage Disclosure Act (HMDA) (Denied Mortgage 2019-2022) (Subprime Mortgage 2013-2017), The Eviction Lab at Princeton University (2014-2017), DataQuick (2017-2021), and AMERICAN COMMUNITY SURVEY 5-YEAR ESTIMATES, TABLES B25003B-I (2018-2022), B25014B-I, DP05, and PUMS (2018-2022) "
+rc_yr <- '2025'
+rc_schema <- 'v7'
+source <- "CA Dept of Education (2023-24), 
+US Department of Housing and Urban Development (HUD) 
+Comprehensive Housing Affordability Strategy (CHAS) data (2017-2021), 
+Home Mortgage Disclosure Act (HMDA) (Denied Mortgage 2019-2023) (Subprime Mortgage 2013-2017), 
+The Eviction Lab at Princeton University (2014-2017), DataQuick (2017-2021), and 
+AMERICAN COMMUNITY SURVEY 5-YEAR ESTIMATES, TABLES B25003B-I (2019-2023), B25014B-I, DP05, and 
+PUMS (2019-2023) "
+ind_threshold <- 5  # geos with < threshold # of indicator values are excluded from index. depends on the number of indicators in the issue area
+
+qa_filepath <- 'W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Hous_Index.docx'
 
 issue <- 'housing'
 
@@ -38,18 +47,18 @@ issue <- 'housing'
 ####################### ADD COUNTY DATA #####################################
 # you must update this section if we add or remove any indicators in an issue #
 
-c_1 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_cost_burden_owner_county_", rc_yr))
-c_2 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_cost_burden_renter_county_", rc_yr))
-c_3 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_denied_mortgages_county_", rc_yr))
-c_4 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_eviction_filing_rate_county_", rc_yr)) 
-c_5 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_foreclosure_county_", rc_yr))
-c_6 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_homeownership_county_", rc_yr))
-c_7 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_overcrowded_county_", rc_yr))
-c_8 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_housing_quality_county_", rc_yr))
-c_9 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_student_homelessness_county_", rc_yr))
-c_10 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_subprime_county_", rc_yr))
+c_1 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_cost_burden_owner_county_", rc_yr))
+c_2 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_cost_burden_renter_county_", rc_yr))
+c_3 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_denied_mortgages_county_", rc_yr))
+c_4 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_eviction_filing_rate_county_", rc_yr)) 
+c_5 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_foreclosure_county_", rc_yr))
+c_6 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_homeownership_county_", rc_yr))
+c_7 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_overcrowded_county_", rc_yr))
+c_8 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_housing_quality_county_", rc_yr))
+c_9 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_student_homelessness_county_", rc_yr))
+c_10 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_subprime_county_", rc_yr))
 
-## define variable names for clean_data_z function. you MUST UPDATE for each issue area. Copy from v3 index view.
+## define variable names for clean_data_z function. you MUST UPDATE for each issue area. Copy from v6 index view.
 varname1 <- 'burden_own'
 varname2 <- 'burden_rent'
 varname3 <- 'denied'
@@ -62,7 +71,7 @@ varname9 <- 'homeless'
 varname10 <- 'subprime'
 
 
-region_urban_type <- st_read(con, query = paste0("select county_id, region, urban_type from ", rc_schema, ".arei_county_region_urban_type")) # get region, urban_type
+region_urban_type <- dbGetQuery(con, paste0("select county_id, region, urban_type from ", rc_schema, ".arei_county_region_urban_type")) # get region, urban_type
 
 
 # Clean data --------
@@ -113,8 +122,7 @@ colnames(c_index) <- gsub("performance", "perf", names(c_index))  # shorten col 
 colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col names
 
 # calculate z-scores. Will need to add threshold option to the calculate_z function
-ind_threshold <- 5  # update depending on the number of indicators in the issue area
-c_index <- calculate_z(c_index)
+c_index <- calculate_z(c_index, ind_threshold)
 
 # merge region and urban type from current arei_county_region_urban_type
 c_index <- left_join(c_index, region_urban_type)
@@ -133,7 +141,7 @@ View(index_table)
 
 # Send table to postgres 
 index_table_name <- paste0("arei_hous_index_", rc_yr)
-index <- paste0("Created ", Sys.Date(), ". Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is")
+index <- paste0("QA doc: ", qa_filepath, ". Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is")
 
 index_to_postgres(index_table, rc_schema)
 dbDisconnect(con)
