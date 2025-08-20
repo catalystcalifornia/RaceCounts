@@ -31,7 +31,7 @@ options(scipen = 100)
 rc_yr <- '2025'
 rc_schema <- 'v7'
 source <- "California Health Interview Survey (CHIS) (Food Access 2011-18) (Asthma 2011-2023), CalEnviroScreen 4.0, National Land Cover Database (NLCD) 2023, and American Community Survey (ACS) 2019-2023 Table DP05"
-ind_threshold <- 4  # update depending on the number of indicators in the issue area
+ind_threshold <- 4  # geos with < threshold # of indicator values are excluded from index. depends on the number of indicators in the issue area
 
 # update QA doc filepath
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Hben_Index.docx"
