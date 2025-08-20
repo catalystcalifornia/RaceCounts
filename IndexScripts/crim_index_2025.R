@@ -1,4 +1,4 @@
-#### Economic Opportunity (z-score) for RC v7 ####
+#### Crime and Justice (z-score) for RC v7 ####
 
 #install packages if not already installed
 packages <- c("tidyverse","RPostgres","sf","usethis")  
@@ -19,7 +19,7 @@ for(pkg in packages){
 
 # Load PostgreSQL driver and databases --------------------------------------------------
 source("W:\\RDA Team\\R\\credentials_source.R")
-con <- conect_to_db("racecounts")
+con <- connect_to_db("racecounts")
 
 # Set Source for Index Functions script -----------------------------------
 source("./Functions/RC_Index_Functions.R")
@@ -27,87 +27,65 @@ source("./Functions/RC_Index_Functions.R")
 # remove exponentiation
 options(scipen = 100) 
 
-# update each yr
+# udpate each yr
 rc_yr <- '2025'
 rc_schema <- 'v7'
-source <- "American Community Survey (ACS) PUMS 2019-2023, American Community Survey (ACS) 2019-2023 Tables S2301 / S2802 / B19301B-I, and United Ways of California 2025"
-ind_threshold <- 3  # geos with < threshold # of indicator values are excluded from index. depends on the number of indicators in the issue area
+source <- "California Health Interview Survey (CHIS) (2011-2023), Vera Institute of Justice (2020-2024), California Department of Justice Open Justice Data (CADOJ) (2016-2024 Use of Force), (2010-2023 Status Offenses), and (2022-2023 RIPA stops) and American Community Survey (ACS) 5-Year Estimates, Tables B01001B/H/I and DP05 (2019-2023)"
+ind_threshold <- 2  # geos with < threshold # of indicator values are excluded from index. depends on the number of indicators in the issue area
 
 # update QA doc filepath
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Econ_Index.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Crim_Index.docx"
 
-issue <- 'economic_opportunity'
+issue <- 'crime_and_justice'
 
 # Add indicators and arei_county_region_urban_type ------------------------------------------------------
 ####################### ADD COUNTY DATA #####################################
 # you MUST update this section if we add or remove any indicators in an issue #
-
-c_1 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_conected_youth_county_", rc_yr))
-c_2 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_employment_county_", rc_yr))
-c_3 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_internet_county_", rc_yr))
-c_4 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_officials_county_", rc_yr))
-c_5 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_per_capita_income_county_", rc_yr))
-c_6 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_real_cost_measure_county_", rc_yr))
-c_7 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_living_wage_county_", rc_yr))
+c_1 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_crim_incarceration_county_", rc_yr))
+c_2 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_crim_perception_of_safety_county_", rc_yr))
+c_3 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_crim_status_offenses_county_", rc_yr))
+c_4 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_crim_use_of_force_county_", rc_yr))
+c_5 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_crim_officer_initiated_stops_county_", rc_yr))
 
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area.
-varname1 <- 'conected'
-varname2 <- 'employ'
-varname3 <- 'internet'
-varname4 <- 'officials'
-varname5 <- 'percap'
-varname6 <- 'realcost'
-varname7 <- 'livwage'
-
+varname1 <- 'incarceration'
+varname2 <- 'safety'
+varname3 <- 'offenses'
+varname4 <- 'force'
+varname5 <- 'stops'
 
 region_urban_type <- dbGetQuery(con, paste0("select county_id, region, urban_type from ", rc_schema, ".arei_county_region_urban_type")) # get region, urban_type
 
 
 # Clean data --------
+## use function to select cols we want, cap z-scores, and rename z-score cols
 
 ### c1 
-# use function to select cols we want, cap z-scores, and rename z-score cols
 c_1 <- clean_data_z(c_1, varname1)
 
 ### c2
-# use function to select cols we want and cap z-scores
 c_2 <- clean_data_z(c_2, varname2)
 
 ### c3
-# use function to select cols we want and cap z-scores
 c_3 <- clean_data_z(c_3, varname3)
 
 ## c4
-# use function to select cols we want and cap z-scores
 c_4 <- clean_data_z(c_4, varname4)
 
 ## c5
-# use function to select cols we want and cap z-scores
 c_5 <- clean_data_z(c_5, varname5)
-
-## c6 
-# use function to select cols we want and cap z-scores
-c_6 <- clean_data_z(c_6, varname6)
-
-## c7 
-# use function to select cols we want and cap z-scores
-c_7 <- clean_data_z(c_7, varname7)
-
 
 # Join Data Together ------------------------------------------------------
 c_index <- full_join(c_1, c_2) 
 c_index <- full_join(c_index, c_3)
 c_index <- full_join(c_index, c_4)
 c_index <- full_join(c_index, c_5)
-c_index <- full_join(c_index, c_6)
-c_index <- full_join(c_index, c_7)
+
 colnames(c_index) <- gsub("performance", "perf", names(c_index))  # shorten col names
 colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col names
 
-
 # calculate z-scores.
 c_index <- calculate_z(c_index, ind_threshold)
-
 
 # merge region and urban type from current arei_county_region_urban_type
 c_index <- left_join(c_index, region_urban_type)
@@ -125,8 +103,9 @@ index_table <- index_table[order(index_table[[5]]), ]  # order by disparity rank
 View(index_table)
 
 # Send table to postgres 
-index_table_name <- paste0("arei_econ_index_", rc_yr)
+index_table_name <- paste0("arei_crim_index_", rc_yr)
 index <- paste0("QA doc: ", qa_filepath, ". Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is")
 
 index_to_postgres(index_table, rc_schema)
-dbDisconect(con)
+dbDisconnect(con)
+	
