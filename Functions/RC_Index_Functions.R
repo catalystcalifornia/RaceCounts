@@ -144,7 +144,7 @@ calculate_z <- function(x, ind_threshold) {
 }
 
 # Calculate and cap COMPOSITE INDEX  ---------------
-calculate_index_z <- function(x) {
+calculate_index_z <- function(x, ind_threshold) {
   # count performance z-scores
   rates_performance <- select(x, ends_with("perf_z"))
   rates_performance$perf_values_count <- rowSums(!is.na(rates_performance))
