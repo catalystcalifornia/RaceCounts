@@ -29,7 +29,7 @@ con <- connect_to_db("racecounts")
 # update variables each year
 curr_yr <- '2025'
 rc_schema <- "v7"
-qa_filepath <- 'W:\\Project\\RACE COUNTS\\2025_v7\\Composite Index\\QA_api_screened_city.R'
+qa_filepath <- 'W:\\Project\\RACE COUNTS\\2025_v7\\Composite Index\\QA_api_screened_city.docx'
 
 # set city population threshold
 pop_threshold <- 10000
