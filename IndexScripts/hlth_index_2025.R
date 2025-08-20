@@ -1,7 +1,7 @@
 #### Health Care Access Index (z-score) for RC v7 ####
 
 #install packages if not already installed
-packages <- c("tidyverse","RPostgres","sf","here","usethis")  
+packages <- c("tidyverse","RPostgres","sf","usethis")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -96,7 +96,7 @@ c_index <- full_join(c_index, c_6)
 colnames(c_index) <- gsub("performance", "perf", names(c_index))  # shorten col names
 colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col names
 
-# calculate z-scores. Will need to add threshold option to the calculate_z function
+# calculate z-scores.
 c_index <- calculate_z(c_index, ind_threshold)
 
 # merge region and urban type from current arei_county_region_urban_type
