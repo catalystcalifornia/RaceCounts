@@ -30,12 +30,14 @@ qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Sheet_Foreclosure
 
 #set source for RC Functions script
 source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
+census_api_key(census_key1, overwrite=TRUE)
 
 # update each year: variables used throughout script
 acs_yr <- 2021         # last yr of acs 5y span
 curr_yr <- '2017-2021' # acs 5yr span
 rc_schema <- 'v7'
 rc_yr <- '2025'
+# pop thresholds for screening vary and are defined in each section
 
 # may need to update each year: variables for state assm and senate calcs
 assm_geoid <- 'sldl24'			                    # Define column with Assm geoid
@@ -119,7 +121,7 @@ ind_2010 <- left_join(targetgeo_names, foreclosure, by = c("target_name" = "coun
 
 
 # note: Foreclosure uses 2010 tract vintage, population estimates use 2020 tract vintage
-cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
+cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\tract20_tract10\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
   select(GEOID_TRACT_10, NAMELSAD_TRACT_10, AREALAND_TRACT_10, GEOID_TRACT_20, NAMELSAD_TRACT_20, AREALAND_TRACT_20, AREALAND_PART) %>%
   mutate_at(vars(contains("AREALAND")), function(x) as.numeric(x)) %>%
   # calculate overlapping land area of 2010 and 2020 tracts (AREALAND_PART) as a percent of 2020 tract land area (AREALAND_TRACT_20)
@@ -151,15 +153,21 @@ ind_2020 <- ind_2010_2020 %>%
   # calc 5-yr avg foreclosure rate (2017-2021)
   mutate(avg_foreclosure = sum_foreclosure / num_qtrs) 
 
-ind_df <- ind_2020 # rename to ind_df for WA fx
+# pull in pop & join to indicator to calc avg_foreclosure per 10k (total_rate)
+tract_pop20 <- update_detailed_table(vars = vars_list_b25003, yr = acs_yr, srvy = survey)  # subgeolevel pop. NOTE: This indicator uses a custom variable list (vars_list_b25003)
+tract_pop20 <- lapply(tract_pop20, function(x) x %>% rename(e = estimate, m = moe))
+tract_pop20_wide <- to_wide(tract_pop20) %>% select(GEOID, total_e)
+ind_2020 <- ind_2020 %>% left_join(tract_pop20_wide, by = c("sub_id" = "GEOID")) %>%
+  mutate(indicator = (avg_foreclosure / total_e) * 10000)   # quarterly avg foreclosures per 10k owners
 
+ind_df <- ind_2020   # rename to ind_df for WA fx
 
 ############# COUNTY CALCS ##################
 
 ###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
-subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
+subgeo <- 'tract'              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
 targetgeolevel <- c('county')     # define your target geolevel: county (state is handled separately)
 survey <- "acs5"                  # define which Census survey you want
 pop_threshold = 30                # define population threshold for screening
@@ -197,9 +205,6 @@ e <- select(pop_wide, sub_id, target_id, geolevel, ends_with("e"), -NAME)
 names(e) <- gsub("_e", "_sub_pop", colnames(e))
 pop_df <- e %>% left_join(c, by = "target_id")
 
-##### EXTRA STEP: Calc avg quarterly foreclosures per 10k pop by tract bc WA avg should be calc'd using this, not avg # of foreclosures
-ind_df <- ind_2020 %>% left_join(pop_df %>% select(sub_id, total_sub_pop), by = "sub_id") %>% 
-  mutate(indicator = (avg_foreclosure / total_sub_pop) * 10000)
 
 ##### COUNTY WEIGHTED AVG CALCS ###
 pct_df <- pop_pct(pop_df)   # calc pct of target geolevel pop in each sub geolevel
@@ -226,7 +231,7 @@ ca_wa <- ca_wt_avg(ca_pct_df) %>% mutate(geolevel = 'state')   # add geolevel ty
 ###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
-subgeo <- c('tract')              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
+subgeo <- 'tract'              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
 targetgeolevel <- c('place')      # define your target geolevel: place
 survey <- "acs5"                  # define which Census survey you want
 pop_threshold = 30                # define population threshold for screening #its 250 for county and state
@@ -264,13 +269,14 @@ city_wa <- city_wa %>% mutate(geolevel = 'city')  # add geolevel
 ###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
-subgeo <- c('tract')             # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- c('sldl')      # define your target geolevel: state assembly
-survey <- "acs5"                 # define which Census survey you want
-pop_threshold = 250              # define population threshold for screening
+subgeo <- 'tract'             # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
+targetgeolevel <- 'sldl'      # define your target geolevel: state assembly
+survey <- "acs5"              # define which Census survey you want
+pop_threshold = 250           # define population threshold for screening
 
 ### CT-Assm Crosswalk ##
-xwalk_assm <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, " AS assm_geoid FROM crosswalks.", assm_xwalk))
+xwalk_assm <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, " AS assm_geoid, afact, afact2 FROM crosswalks.", assm_xwalk)) %>%
+  filter(afact >= .25 | afact2 >= .25)  # screen xwalk based on pct of ct pop in dist OR pct of dist pop in ct 
 
 ##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table(vars = vars_list_b25003, yr = acs_yr, srvy = survey)  # subgeolevel pop
@@ -288,12 +294,11 @@ pop_df <- targetgeo_pop(pop_wide)
 
 
 ##### ASSM WEIGHTED AVG CALCS ###
-pct_df <- pop_pct_multi(pop_df)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
-assm_wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
+pct_df <- pop_pct_multi(pop_df)      # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
+assm_wa <- wt_avg(pct_df, ind_df)    # calc weighted average and apply reliability screens
 assm_wa <- assm_wa %>% mutate(geolevel = 'sldl')  # add geolevel
 
 ## Add census geonames
-census_api_key(census_key1, overwrite=TRUE)
 assm_name <- get_acs(geography = "State Legislative District (Lower Chamber)", 
                      variables = c("B01001_001"), 
                      state = "CA", 
@@ -314,14 +319,15 @@ assm_wa <- merge(x=assm_name,y=assm_wa,by="target_id", all=T)
 ###### DEFINE VALUES FOR FUNCTIONS ###
 
 # set values for weighted average functions - You may need to update these
-subgeo <- c('tract')             # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- c('sldu')      # define your target geolevel: county (state is handled separately)
-survey <- "acs5"                 # define which Census survey you want
-pop_threshold = 250              # define population threshold for screening
+subgeo <- 'tract'             # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
+targetgeolevel <- 'sldu'      # define your target geolevel: county (state is handled separately)
+survey <- "acs5"              # define which Census survey you want
+pop_threshold = 250           # define population threshold for screening
 
 ### CT-Sen Crosswalk ##
 # Import CT-Sen Crosswalk
-xwalk_sen <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", sen_geoid, " AS sen_geoid FROM crosswalks.", sen_xwalk))
+xwalk_sen <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", sen_geoid, " AS sen_geoid, afact, afact2 FROM crosswalks.", sen_xwalk)) %>%
+  filter(afact >= .25 | afact2 >= .25)  # screen xwalk based on pct of ct pop in dist OR pct of dist pop in ct
 
 ##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table(vars = vars_list_b25003, yr = acs_yr, srvy = survey)  # subgeolevel pop
@@ -339,12 +345,11 @@ pop_df <- targetgeo_pop(pop_wide)
 
 
 ##### SEN WEIGHTED AVG CALCS ###
-pct_df <- pop_pct_multi(pop_df)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
-sen_wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
+pct_df <- pop_pct_multi(pop_df)    # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
+sen_wa <- wt_avg(pct_df, ind_df)   # calc weighted average and apply reliability screens
 sen_wa <- sen_wa %>% mutate(geolevel = 'sldu')  # add geolevel
 
 ## Add census geonames
-census_api_key(census_key1, overwrite=TRUE)
 sen_name <- get_acs(geography = "State Legislative District (Upper Chamber)", 
                      variables = c("B01001_001"), 
                      state = "CA", 
@@ -361,7 +366,8 @@ sen_wa <- merge(x=sen_name,y=sen_wa,by="target_id", all=T)
 #View(sen_wa)
 
 ############ JOIN CITY, ASSM, SEN, COUNTY, & STATE WA TABLES  ##################
-wa_all <- union(wa, ca_wa) %>% union(city_wa) %>% union(assm_wa) %>% union(sen_wa) 
+wa_all <- union(assm_wa, sen_wa)
+#wa_all <- union(wa, ca_wa) %>% union(city_wa) %>% union(assm_wa) %>% union(sen_wa) 
 wa_all <- rename(wa_all, geoid = target_id, geoname = target_name)   # rename columns for RC functions
 wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid)        # move geoname column
 
@@ -417,14 +423,14 @@ upper_table <- calc_z(upper_table)
 
 ## Calc SLDU ranks##
 upper_table <- calc_ranks(upper_table)
-View(upper_table)
+#View(upper_table)
 
 #calculate SLDL z-scores
 lower_table <- calc_z(lower_table)
 
 ## Calc SLDL ranks##
 lower_table <- calc_ranks(lower_table)
-View(lower_table)
+#View(lower_table)
 
 ## Bind sldu and sldl tables into one leg_table##
 leg_table <- rbind(upper_table, lower_table)
