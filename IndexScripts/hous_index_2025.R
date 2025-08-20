@@ -37,6 +37,7 @@ Home Mortgage Disclosure Act (HMDA) (Denied Mortgage 2019-2023) (Subprime Mortga
 The Eviction Lab at Princeton University (2014-2017), DataQuick (2017-2021), and 
 AMERICAN COMMUNITY SURVEY 5-YEAR ESTIMATES, TABLES B25003B-I (2019-2023), B25014B-I, DP05, and 
 PUMS (2019-2023) "
+ind_threshold <- 5  # geos with < threshold # of indicator values are excluded from index. depends on the number of indicators in the issue area
 
 qa_filepath <- 'W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Hous_Index.docx'
 
@@ -46,16 +47,16 @@ issue <- 'housing'
 ####################### ADD COUNTY DATA #####################################
 # you must update this section if we add or remove any indicators in an issue #
 
-c_1 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_cost_burden_owner_county_", rc_yr))
-c_2 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_cost_burden_renter_county_", rc_yr))
-c_3 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_denied_mortgages_county_", rc_yr))
-c_4 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_eviction_filing_rate_county_", rc_yr)) 
-c_5 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_foreclosure_county_", rc_yr))
-c_6 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_homeownership_county_", rc_yr))
-c_7 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_overcrowded_county_", rc_yr))
-c_8 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_housing_quality_county_", rc_yr))
-c_9 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_student_homelessness_county_", rc_yr))
-c_10 <- st_read(con, query = paste0("SELECT * FROM ", rc_schema, ".arei_hous_subprime_county_", rc_yr))
+c_1 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_cost_burden_owner_county_", rc_yr))
+c_2 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_cost_burden_renter_county_", rc_yr))
+c_3 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_denied_mortgages_county_", rc_yr))
+c_4 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_eviction_filing_rate_county_", rc_yr)) 
+c_5 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_foreclosure_county_", rc_yr))
+c_6 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_homeownership_county_", rc_yr))
+c_7 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_overcrowded_county_", rc_yr))
+c_8 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_housing_quality_county_", rc_yr))
+c_9 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_student_homelessness_county_", rc_yr))
+c_10 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hous_subprime_county_", rc_yr))
 
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area. Copy from v6 index view.
 varname1 <- 'burden_own'
@@ -121,7 +122,6 @@ colnames(c_index) <- gsub("performance", "perf", names(c_index))  # shorten col 
 colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col names
 
 # calculate z-scores. Will need to add threshold option to the calculate_z function
-ind_threshold <- 5  # update depending on the number of indicators in the issue area
 c_index <- calculate_z(c_index, ind_threshold)
 
 # merge region and urban type from current arei_county_region_urban_type
