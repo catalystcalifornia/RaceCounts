@@ -20,19 +20,19 @@ con <- connect_to_db("racecounts")
 
 
 # Update each year --------------------------------------------------------
-curr_schema <- 'v6'
-prev_schema <- 'v5'
-rc_yr <- '2024'
+curr_schema <- 'v7'
+prev_schema <- 'v6'
+rc_yr <- '2025'
 
 
 # pull in RC county_ids from previous schema, then race and region/urban type from current schema
-county_ids <- st_read(con, query = paste0("select geoid, county_id from ", prev_schema, ".arei_multigeo_list where geolevel <> 'place'")) # get RC-specific county_id's
-race <- st_read(con, query = paste0("select * from ", curr_schema, ".arei_race_multigeo where geolevel <> 'place'")) # import county & state records only
-region_urban <- st_read(con, query = paste0("select county_id AS geoid, region, urban_type from ", curr_schema, ".arei_county_region_urban_type")) # get region, urban_type
+county_ids <- dbGetQuery(con, paste0("select geoid, county_id from ", prev_schema, ".arei_multigeo_list where geolevel <> 'place'")) # get RC-specific county_id's
+race <- dbGetQuery(con, paste0("select * from ", curr_schema, ".arei_race_multigeo where geolevel <> 'place'")) # import county & state records only
+region_urban <- dbGetQuery(con, paste0("select county_id AS geoid, region, urban_type from ", curr_schema, ".arei_county_region_urban_type")) # get region, urban_type
 
 ## get RC county index tables ##
   # import county index tables
-  table_list <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", curr_schema, "' AND table_name NOT LIKE '%_city_%' AND table_name LIKE '%index%';")
+  table_list <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", curr_schema, "' AND table_name NOT LIKE '%_city_%' AND table_name NOT LIKE '%_leg_%'AND table_name LIKE '%index%';")
   rc_list <- dbGetQuery(con, table_list) %>% rename('table' = 'table_name')
   
   index_list <- rc_list[order(rc_list$table), ] # alphabetize list of index tables which transforms into character from list, needed to format list correctly for next steps
