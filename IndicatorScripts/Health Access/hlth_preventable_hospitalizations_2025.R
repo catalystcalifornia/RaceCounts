@@ -96,7 +96,8 @@ ca$NAME <- gsub(" County, California", "", ca$NAME)
 names(ca) <- c("geoid", "geoname")
 
 #add county geoids
-df_multigeo_wide <- merge(x=ca,y=df_multigeo_wide,by="geoname", all=T)
+df_multigeo_wide <- merge(x=ca,y=df_multigeo_wide,by="geoname", all=T) %>%
+  select(geoid, geoname, everything())
 
 #add state geoid, geoname
 df_multigeo_wide$geoname <- ifelse(df_multigeo_wide$geoname == 'Statewide', 'California', df_multigeo_wide$geoname)
