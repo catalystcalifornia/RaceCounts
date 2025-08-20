@@ -52,9 +52,9 @@ sum_file <- "dhc"   # select specific Census file
 vars_list_ <- c('total_' = "P9_001N",       # Total:
                 'nh_white_' = "P9_005N",    # nh_white: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!White alone
                 'nh_black_' = "P9_006N",    # nh_black: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Black or African American alone
-                'aian_' = "P6_004N",        # aian: !!Total:!!Population of one race:!!American Indian and Alaska Native alone or in combo
+                'aian_' = "P6_004N",        # aian: !!Total races tallied:!!American Indian and Alaska Native alone or in combination with one or more other races
                 'nh_asian_' = "P9_008N",    # nh_asian: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Asian alone
-                'pacisl_' = "P6_006N",      # pacisl: !!Total:!!Population of one race:!!Native Hawaiian and Other Pacific Islander alone or in combo
+                'pacisl_' = "P6_006N",      # pacisl: !!Total races tallied:!!Native Hawaiian and Other Pacific Islander alone or in combination with one or more other races
                 'nh_other_' = "P9_010N",    # nh_other: !!Total:!!Not Hispanic or Latino:!!Population of one race:!!Some Other Race alone
                 'nh_twoormor_' = "P9_011N", # nh_twoormor: !!Total:!!Not Hispanic or Latino:!!Population of two or more races
                 'latino_' = "P9_002N")      # latinx: !!Total:!!Hispanic or Latino
