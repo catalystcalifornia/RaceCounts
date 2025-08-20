@@ -1,7 +1,7 @@
 #### Healthy Built Environment Index (z-score) for RC v7 ####
 
 #install packages if not already installed
-packages <- c("tidyverse","RPostgres","sf","here","usethis")  
+packages <- c("tidyverse","RPostgres","sf","usethis")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
