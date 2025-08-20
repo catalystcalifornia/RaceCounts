@@ -121,7 +121,6 @@ subgeo <- 'tract'             # define your sub geolevel: tract (unless the WA f
 targetgeolevel <- 'sldl'      # define your target geolevel: state assembly
 survey <- "acs5"              # define which Census survey you want
 
-
 ### CT-Assm Crosswalk ### 
 # Import CT-Assm Crosswalk
 xwalk_assm <- dbGetQuery(conn, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, " AS assm_geoid, afact, afact2 FROM crosswalks.", assm_xwalk)) %>%
@@ -445,6 +444,7 @@ city_table_name <- paste0("arei_hben_drinking_water_city_", rc_yr)
 leg_table_name <- paste0("arei_hben_drinking_water_leg_", rc_yr)
 
 start_yr <- acs_yr - 4
+
 indicator <- "Exposure to Contaminated Drinking Water Score"
 source <- paste0("CalEnviroScreen ", ces_v, " (", curr_yr, ") https://oehha.ca.gov/calenviroscreen/report/calenviroscreen-40, ACS DP05 (", start_yr, "-", acs_yr, "). QA doc: ", qa_filepath)
 
