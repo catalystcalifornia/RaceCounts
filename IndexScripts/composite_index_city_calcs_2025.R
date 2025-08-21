@@ -115,17 +115,8 @@ hous <- city_tables_capped %>% select(city_id, city_name, starts_with("hous")) %
 educ <- city_tables_capped %>% select(city_id, city_name, starts_with("educ")) %>% mutate(educ_count = educ_count) 
 
 
-## Set issue thresholds
-crim_threshold <- 1
-demo_threshold <- 1
-econ_threshold <- 2 # could be 3
-educ_threshold <- 2
-hlth_threshold <- 1
-hben_threshold <- 2
-hous_threshold <- 3
-
-
 # Calc issue z-scores (avg of issue's indicator z-scores)
+## thresholds set in the index script: composite_index_city_[year].R
 crim_index <- calculate_city_issue(crim, crim_count, crim_threshold) %>% rename_with(~ paste0('crime_and_justice', "_", .x), ends_with("z"))
 demo_index <- calculate_city_issue(demo, demo_count, demo_threshold) %>% rename_with(~ paste0('democracy', "_", .x), ends_with("z"))
 econ_index <- calculate_city_issue(econ, econ_count, econ_threshold) %>% rename_with(~ paste0('economic_opportunity', "_", .x), ends_with("z"))
@@ -158,19 +149,17 @@ all_index <- crim_index %>% select(city_id, ends_with("z")) %>% left_join(
 print("Issue indexes calculated and joined together.")
 
 # Calc composite index
-issue_area_threshold <- 4 # city must have at least 3 issue perf/disp z-scores or it will be suppressed
-indicator_threshold <- 13 # city must have data for at least 13 indicators or it will be suppressed
-
+# issue_area_threshold and indicator_threshold set in composite_index_city_[year].R
 city_index <- calculate_city_index(all_index, issue_area_threshold, indicator_threshold)
 
 # add county, region data
-region_pop <- dbGetQuery(con, "SELECT  city_id, county_id, county_name, region FROM v5.arei_city_county_district_table")
+region_pop <- dbGetQuery(con, paste0("SELECT  city_id, county_id, county_name, region FROM ", rc_schema, ".arei_city_county_district_table"))
 city_index <- city_index %>% left_join(region_pop, by = 'city_id')
-city_index <- unique(city_index) %>% select(city_id, city_name, all_indicators_disp_count, all_indicators_perf_count, issue_disp_count, issue_perf_count,
+city_index <- unique(city_index) %>% select(city_id, city_name, region, all_indicators_disp_count, all_indicators_perf_count, issue_disp_count, issue_perf_count,
                                     disparity_rank, performance_rank, quadrant, disparity_z, performance_z, crime_and_justice_disp_z, crime_and_justice_perf_z,
                                     democracy_disp_z, democracy_perf_z, economic_opportunity_disp_z, economic_opportunity_perf_z, education_disp_z, education_perf_z,
                                     healthy_built_environment_disp_z, healthy_built_environment_perf_z, health_care_access_disp_z, health_care_access_perf_z, 
-                                    housing_disp_z, housing_perf_z, region, county_id, county_name, total_pop, disparity_z_quartile, performance_z_quartile) %>% arrange(-disparity_z)
+                                    housing_disp_z, housing_perf_z, county_id, county_name, total_pop, disparity_z_quartile, performance_z_quartile) %>% arrange(-disparity_z)
 
 # clean city_name column
 clean_geo_names <- function(x){
