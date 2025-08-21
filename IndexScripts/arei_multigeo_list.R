@@ -27,7 +27,7 @@ rc_yr <- '2025'
 
 # pull in RC county_ids from previous schema, then race and region/urban type from current schema
 county_ids <- dbGetQuery(con, paste0("select geoid, county_id from ", prev_schema, ".arei_multigeo_list where geolevel <> 'place'")) # get RC-specific county_id's
-race <- dbGetQuery(con, paste0("select * from ", curr_schema, ".arei_race_multigeo where geolevel <> 'place'")) # import county & state records only
+race <- dbGetQuery(con, paste0("select * from ", curr_schema, ".arei_race_multigeo where geolevel IN ('county','state')")) # import county & state records only
 region_urban <- dbGetQuery(con, paste0("select county_id AS geoid, region, urban_type from ", curr_schema, ".arei_county_region_urban_type")) # get region, urban_type
 
 ## get RC county index tables ##
@@ -54,8 +54,8 @@ multigeo_list <- left_join(multigeo_list, index_df, by = c("geoid" = "county_id"
 # City Data ---------------------------------------------------------------
 
 # pull in city race and RC city_id tables from curr_schema
-city_race <- st_read(con, query = paste0("select * from ", curr_schema, ".arei_race_multigeo where geolevel = 'place'")) # import city records only
-city_ids <- st_read(con, query = paste0("select city_id AS geoid, region from ", curr_schema, ".arei_city_county_district_table")) %>% unique() # get unique city_ids, regions. postgres table has multiple listings per city depending on how many school dist it has.
+city_race <- dbGetQuery(con, paste0("select * from ", curr_schema, ".arei_race_multigeo where geolevel = 'place'")) # import city records only
+city_ids <- dbGetQuery(con, paste0("select city_id AS geoid, region from ", curr_schema, ".arei_city_county_district_table")) %>% unique() # get unique city_ids, regions. postgres table has multiple listings per city depending on how many school dist it has.
 
 ## get RC city index table ##
 # import city index table
