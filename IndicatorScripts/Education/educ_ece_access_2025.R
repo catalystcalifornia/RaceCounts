@@ -98,9 +98,9 @@ View(p12_curr)
 #### AIR TK ENR DATA ####
 ## Add census geonames
 county_name <- get_acs(geography = "county", 
-                     variables = c("B01001_001"), 
-                     state = "CA", 
-                     year = acs_yr)
+                       variables = c("B01001_001"), 
+                       state = "CA", 
+                       year = acs_yr)
 
 county_name <- county_name[,1:2]
 county_name$NAME <- gsub(" County, California", "", county_name$NAME)
@@ -108,8 +108,8 @@ names(county_name) <- c("target_id", "target_name")
 # View(county_name)
 
 
+#### AIR TK ENR DATA ####
 
-#get tk data
 air_tk <- read_xlsx("W:/Data/Education/American Institute for Research/2020/tk.xlsx", range = "A4:F2566", na = "*") #keep this one don't push to postgres
 # air_tk_meta <- read_xlsx("W:/Data/Education/American Institute for Research/2020/tk.xlsx", range = "A2:F5", na = "*")
 # air_tk_meta <- air_tk_meta[-which(air_tk_meta[1]=='California'),] # check against subset below
@@ -202,7 +202,7 @@ pct_df <- pop_pct_multi(pop_wide_)        # NOTE: use this function for cases wh
 ind_df <- df %>% select(sub_id, enrollment) %>% 
   left_join(pop_wide %>% select(GEOID, total_pop), by = c("sub_id" = "GEOID")) %>%
   unique() %>%     # get unique rows bc zips that are split btwn multiple counties are listed twice
-  mutate(geolevel == 'sldl')
+  mutate(geolevel = 'sldl')
 
 ind_df$indicator <- ind_df$enrollment / ind_df$total_pop * 100     # calc overall enrollment/access rate by zcta
 ind_df$indicator[ind_df$indicator == "Inf"] <- 100                 # assign rate of 100 when there are seats, but no kid pop
