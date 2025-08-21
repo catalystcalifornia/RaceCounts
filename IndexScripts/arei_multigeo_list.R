@@ -108,11 +108,18 @@ charvect[dblprecision_type] <- "double precision" # specify which cols are doubl
 names(charvect) <- colnames(multigeo_list)
 charvect # check col types before exporting table to database
 
-# dbWriteTable(con, c(curr_schema, table_name), final_multigeo_list, overwrite = FALSE, row.names = FALSE, field.types = charvect)
+# dbWriteTable(con,
+#               Id(schema = curr_schema, table = table_name), final_multigeo_list,
+#               overwrite = FALSE, row.names = FALSE, field.types = charvect)
+# 
+# # send table and column comments to database
+# # Start a transaction
+# dbBegin(con)
+# dbExecute(con, table_comment)
+# dbExecute(con, column_comment)
+# 
+# # Commit the transaction if everything succeeded
+# dbCommit(con)
 
-# send table and column comments to database
-# dbSendQuery(conn = con, table_comment)
-# dbSendQuery(conn = con, column_comment)
-
-# dbDisconnect(con)
+dbDisconnect(con)
 
