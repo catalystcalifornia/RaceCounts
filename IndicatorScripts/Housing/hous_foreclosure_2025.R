@@ -168,13 +168,13 @@ ind_df <- ind_2020   # rename to ind_df for WA fx
 
 # set values for weighted average functions - You may need to update these
 subgeo <- 'tract'              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- c('county')     # define your target geolevel: county (state is handled separately)
-survey <- "acs5"                  # define which Census survey you want
-pop_threshold = 30                # define population threshold for screening
+targetgeolevel <- 'county'     # define your target geolevel: county (state is handled separately)
+survey <- "acs5"               # define which Census survey you want
+pop_threshold = 30             # define population threshold for screening
 
 
 ##### CREATE COUNTY GEOID & NAMES TABLE ###  
-targetgeo_names <- county_names(var_list = vars_list_dp05, yr = acs_yr, srvy = survey)
+targetgeo_names <- county_names(var_list = vars_list_b25003, yr = acs_yr, srvy = survey)
 
 ##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table(vars = vars_list_b25003, yr = acs_yr, srvy = survey)  # subgeolevel pop. NOTE: This indicator uses a custom variable list (vars_list_b25003)
@@ -207,9 +207,10 @@ pop_df <- e %>% left_join(c, by = "target_id")
 
 
 ##### COUNTY WEIGHTED AVG CALCS ###
-pct_df <- pop_pct(pop_df)   # calc pct of target geolevel pop in each sub geolevel
-wa <- wt_avg(pct_df)        # calc weighted average and apply reliability screens
-wa <- wa %>% left_join(targetgeo_names, by = "target_id") %>% mutate(geolevel = 'county')     # add in target geolevel names
+pct_df <- pop_pct(pop_df)      # calc pct of target geolevel pop in each sub geolevel
+wa <- wt_avg(pct_df, ind_df)   # calc weighted average and apply reliability screens
+wa <- wa %>% left_join(targetgeo_names, by = "target_id") %>%   # add in target geolevel names
+  mutate(geolevel = 'county')     
 
 ############# STATE CALCS ##################
 ############### CUSTOMIZED VERSION OF CA_POP_WIDE and CA_POP_PCT FUNCTION HERE THAT WORKS WITH OWNER HOUSEHOLD AS POP BASIS ###
@@ -224,7 +225,8 @@ ca_pop_wide <- ca_pop_wide %>% rename("target_id" = "GEOID", "target_name" = "NA
 ca_pct_df <- ca_pop_pct(ca_pop_wide)
 
 # calc state WA
-ca_wa <- ca_wt_avg(ca_pct_df) %>% mutate(geolevel = 'state')   # add geolevel type
+ca_wa <- ca_wt_avg(ca_pct_df, ind_df) %>%
+  mutate(geolevel = 'state')   # add geolevel type
 
 ############# CITY CALCS ##################
 
@@ -232,9 +234,9 @@ ca_wa <- ca_wt_avg(ca_pct_df) %>% mutate(geolevel = 'state')   # add geolevel ty
 
 # set values for weighted average functions - You may need to update these
 subgeo <- 'tract'              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- c('place')      # define your target geolevel: place
-survey <- "acs5"                  # define which Census survey you want
-pop_threshold = 30                # define population threshold for screening #its 250 for county and state
+targetgeolevel <- 'place'      # define your target geolevel: place
+survey <- "acs5"               # define which Census survey you want
+pop_threshold = 30             # define population threshold for screening #its 250 for county and state
 
 # pull in crosswalk
 xwalk_city <- dbGetQuery(con, paste0("SELECT * FROM crosswalks.ct_place_", acs_yr))
@@ -256,7 +258,7 @@ pop_df_city <- targetgeo_pop(pop_wide)
 
 ##### CITY WEIGHTED AVG CALCS ###
 pct_df <- pop_pct_multi(pop_df_city)  # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
-city_wa <- wt_avg(pct_df)             # calc weighted average and apply reliability screens
+city_wa <- wt_avg(pct_df, ind_df)     # calc weighted average and apply reliability screens
 city_wa <- city_wa %>%                # add place names (target names)
   left_join(xwalk_city %>% select(c(place_name, place_geoid)), by = c("target_id" = "place_geoid"), relationship = "many-to-many") %>%
   rename(target_name = place_name) %>%
@@ -351,9 +353,9 @@ sen_wa <- sen_wa %>% mutate(geolevel = 'sldu')  # add geolevel
 
 ## Add census geonames
 sen_name <- get_acs(geography = "State Legislative District (Upper Chamber)", 
-                     variables = c("B01001_001"), 
-                     state = "CA", 
-                     year = acs_yr)
+                    variables = c("B01001_001"), 
+                    state = "CA", 
+                    year = acs_yr)
 
 sen_name <- sen_name[,1:2]
 sen_name$NAME <- str_remove(sen_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
@@ -366,8 +368,7 @@ sen_wa <- merge(x=sen_name,y=sen_wa,by="target_id", all=T)
 #View(sen_wa)
 
 ############ JOIN CITY, ASSM, SEN, COUNTY, & STATE WA TABLES  ##################
-wa_all <- union(assm_wa, sen_wa)
-#wa_all <- union(wa, ca_wa) %>% union(city_wa) %>% union(assm_wa) %>% union(sen_wa) 
+wa_all <- union(wa, ca_wa) %>% union(city_wa) %>% union(assm_wa) %>% union(sen_wa) 
 wa_all <- rename(wa_all, geoid = target_id, geoname = target_name)   # rename columns for RC functions
 wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid)        # move geoname column
 
@@ -455,4 +456,4 @@ source <- paste0("DataQuick (", curr_yr, "), purchased from DQNews and raced via
 # to_postgres(county_table, state_table)
 # city_to_postgres(city_table)
 # leg_to_postgres(leg_table)
-# dbDisconnect(con)
+dbDisconnect(con)

@@ -210,7 +210,7 @@ pop_wide_city <- dplyr::rename(pop_wide_city, sub_id = GEOID, target_id = place_
 ##### CITY WEIGHTED AVG CALCS ###
 pop_df <- targetgeo_pop(pop_wide_city) # calc target geolevel pop and number of sub geolevels per target geolevel
 pct_df <- pop_pct_multi(pop_df)        # NOTE: use function for cases where a subgeo can match to more than 1 targetgeo to calc pct of target geolevel pop in each sub geolevel
-city_wa <- wt_avg(pct_df)              # calc weighted average and apply reliability screens
+city_wa <- wt_avg(pct_df, ind_df)      # calc weighted average and apply reliability screens
 city_wa <- city_wa %>% left_join(select(places, c(geoid, name)), by = c("target_id" = "geoid"))  # add in target geolevel names
 city_wa <- city_wa %>% rename(target_name = name) %>% mutate(geolevel = 'city')                  # change NAME to target_name, add geolevel
 
@@ -241,7 +241,7 @@ pop_wide <- pop_wide %>%
 ##### COUNTY WEIGHTED AVG CALCS ######
 pop_df <- targetgeo_pop(pop_wide)    # calc target geolevel pop and number of sub geolevels per target geolevel
 pct_df <- pop_pct(pop_df)            # calc pct of target geolevel pop in each sub geolevel
-wa <- wt_avg(pct_df)                 # calc weighted average and apply reliability screens
+wa <- wt_avg(pct_df, ind_df)         # calc weighted average and apply reliability screens
 wa <- wa %>% left_join(counties, by = "target_id") %>% mutate(geolevel = 'county')    # add in target geolevel names and geolevel type
 
 
