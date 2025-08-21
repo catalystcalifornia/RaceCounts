@@ -262,15 +262,16 @@ places <- xwalk_city %>%
 pop <- update_detailed_table(vars = vars_list_dp05, yr = acs_yr, srvy = survey)  # subgeolevel pop
 
 # get SWANA pop
-pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = acs_yr, srvy = survey) %>% as.data.frame() %>%
+pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = acs_yr, srvy = survey) %>% 
+  as.data.frame() %>%
   group_by(GEOID, NAME, geolevel) %>% 
   summarise(estimate=sum(estimate),
-            moe=moe_sum(moe,estimate)) %>% mutate(variable = "swana") # subgeolevel pop
+            moe=moe_sum(moe,estimate)) %>% mutate(variable = "swana_") # subgeolevel pop
+
 
 # combine DP05 groups with SWANA tract level estimates 
 pop_ <- rbind(pop, pop_swana %>% filter(geolevel == 'tract')) %>% 
   rename(e = estimate, m = moe)
-
 
 # transform pop data to wide format 
 pop_wide <- to_wide(pop_)
@@ -313,12 +314,14 @@ pop <- update_detailed_table(vars = vars_list_dp05, yr = acs_yr, srvy = survey) 
 # get SWANA pop
 pop_swana <- update_detailed_table(vars = vars_list_acs_swana, yr = acs_yr, srvy = survey) %>% 
   as.data.frame() %>%
-  group_by(GEOID, NAME, geolevel) %>%
+  group_by(GEOID, NAME, geolevel) %>% 
   summarise(estimate=sum(estimate),
-            moe=moe_sum(moe,estimate)) %>% mutate(variable = "swana") # subgeolevel pop
+            moe=moe_sum(moe,estimate)) %>% mutate(variable = "swana_") # subgeolevel pop
 
-# combine DP05 groups with swana estimates 
-pop <- rbind(pop, pop_swana %>% filter(geolevel == 'tract')) %>% rename(e = estimate, m = moe)
+
+# combine DP05 groups with SWANA tract level estimates 
+pop_ <- rbind(pop, pop_swana %>% filter(geolevel == 'tract')) %>% 
+  rename(e = estimate, m = moe)
 
 # transform pop data to wide format 
 pop_wide <- to_wide(pop_)
