@@ -155,8 +155,8 @@ county_table <- calc_ranks(county_table)
 View(county_table)
 
 #rename geoid to state_id, county_id, city_id
-colnames(state_table)[1:2] <- c("state_name", "state_id")
-colnames(county_table)[1:2] <- c("county_name", "county_id")
+state_table <- rename(state_table, state_id = geoid, state_name = geoname)
+county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 
 # ############## SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
 
