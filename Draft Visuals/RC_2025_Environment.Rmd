@@ -1,0 +1,1098 @@
+---
+title: "RACE COUNTS: Healthy Built Environment"
+author: "Authored by: Catalyst California"
+date: "8/25/2025"
+output:
+  html_document:
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+
+subtitle: 'Draft Visuals'
+---
+  
+<style type="text/css">
+  h1{
+  font-family: Rubik;
+  }
+  h2{
+  font-family: Rubik;
+  }
+  h3{
+  font-family: Rubik;
+  }
+  a{
+  font-family: Rubik;
+  }
+  ul{
+  font-family: Rubik;
+  }
+  ol{
+  font-family: Rubik;
+  }
+  body{
+  font-family: Rubik;
+  font-size: 15px;
+}
+p{
+  font-family: Rubik;
+  font-size: 15px;
+}
+body { background-color: #FFFFFF; }
+
+</style>
+
+```{r include = FALSE}
+### install version 1.1.1 of Crosstalk -- LATER VERSIONS OF CROSSTALK WILL NOT WORK ####
+# remotes::install_version("crosstalk", version = "1.1.1", repos = "http://cran.us.r-project.org") 
+# library(crosstalk)
+
+#Set up workspace
+packages <- c("crosstalk", "RPostgres", "sf", "htmltools", "tidyr", "reshape2", "plotly", "tidyverse", "highcharter")  
+
+install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
+
+if(length(install_packages) > 0) { 
+  install.packages(install_packages) 
+  
+} else { 
+  
+  print("All required packages are already installed.") 
+} 
+
+for(pkg in packages){ 
+  library(pkg, character.only = TRUE) 
+} 
+options(scipen=999)
+
+```
+
+
+```{r setup, include = FALSE}
+
+knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
+
+options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
+
+# setwd("W:/Project/RACE COUNTS/2024_v7/Visualizations/") 
+
+source("W:\\RDA Team\\R\\credentials_source.R") 
+con <- connect_to_db("racecounts")
+
+source("W:\\RDA Team\\R\\credentials_source.R") 
+con2 <- connect_to_db("rda_shared_data")
+
+# just a note of reference to inserting text #https://monashbioinformaticsplatform.github.io/2017-11-16-open-science-training/topics/rmarkdown.html
+#https://rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf
+
+```
+
+
+```{r echo=FALSE, include = FALSE}
+
+##Add RC theme##
+rc_theme <- hc_theme(
+    # race counts colors
+  colors = c("orange", "purple", "red", "yellow"),
+  chart = list(
+    backgroundColor = "#FFFFFF",
+    borderColor = "black",
+    style = list(
+          fontFamily = "Rubik") 
+  ),
+  title = list(
+    style = list(
+      color = "#070024",
+      fontFamily = "Rubik")
+  ),
+  subtitle = list(
+    style = list(
+      color = "#8E8C8F", # medium grey
+      fontFamily = "Rubik")
+  ),
+  caption = list(
+    style = list(
+      color = "#8E8C8F",
+      fontFamily = "Rubik")
+  ),
+    axis = list(
+    style = list(
+      color = "#8E8C8F",
+      fontFamily = "Rubik")
+  ),
+  legend = list(
+    itemStyle = list(
+      fontFamily = "Rubik",
+      color = "#070024"),
+    itemHoverStyle = list(
+       fontFamily = "Rubik",
+      color = "#070024")
+  ))
+
+
+lang <- getOption("highcharter.lang")
+lang$thousandsSep <- ","
+options(highcharter.lang = lang)
+
+####################### ADD COUNTY DATA #####################################
+
+c_1 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hben_drinking_water_county_2025"))
+c_2 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hben_food_access_county_2025"))
+c_3 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hben_haz_weighted_avg_county_2025"))
+c_4 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hben_toxic_release_county_2025"))
+c_5 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hben_asthma_county_2025"))
+c_6 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hben_lack_of_greenspace_county_2025"))
+
+
+c_index_z <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hben_index_2025"))
+
+
+####################### POPULATION DATA #####################################
+#Join total population to index view, food access, and asthma data frames
+pop <- dbGetQuery(con2, paste0("SELECT geoid, dp05_0001e FROM demographics.acs_5yr_dp05_multigeo_2023"))
+
+#c_index_pctile <- left_join(x = c_index_pctile, y = pop, by = c("county_id" = "geoid"))
+c_index_z <- left_join(x = c_index_z, y = pop, by = c("county_id" = "geoid"))
+
+c_2 <- left_join(x = c_2, y = pop, by = c("county_id" = "geoid"))
+c_5 <- left_join(x = c_5, y = pop, by = c("county_id" = "geoid"))
+
+
+####################### ADD STATE DATA #####################################
+s_1 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hben_drinking_water_state_2025"))
+s_2 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hben_food_access_state_2025"))
+s_3 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hben_haz_weighted_avg_state_2025"))
+s_4 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hben_toxic_release_state_2025"))
+s_5 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hben_asthma_state_2025"))
+s_6 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hben_lack_of_greenspace_state_2025"))
+
+# merge with urban type
+region_urban_type <- dbGetQuery(con, paste0("SELECT geoid AS county_id, region, urban_type FROM v6.arei_multigeo_list"))  #Leave as v4, no updated table in v7
+c_1 <- left_join(c_1, region_urban_type)
+c_2 <- left_join(c_2, region_urban_type)
+c_3 <- left_join(c_3, region_urban_type)
+c_4 <- left_join(c_4, region_urban_type)
+c_5 <- left_join(c_5, region_urban_type)
+c_6 <- left_join(c_6, region_urban_type)
+
+##Add 2024 v7 Source Data##
+v7_sources <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_indicator_list_cntyst"))
+
+```
+
+<!-- *** -->
+# Introduction
+NOTE: The data and findings below are drafts subject to change and some pieces are still in the QA process.
+
+RACE COUNTS provides a 3D view of racial equity:
+<br>PERFORMANCE: How well people are doing. The higher the circle, the better the performance.
+<br>DISPARITY: How racial groups compare to one another. The further right the circle, the greater the differences by race.
+<br>IMPACT: The total population. The bigger the circle, the larger the population.
+
+<br><span style="color:purple">purple</span> counties: Gains at Risk; 
+<br><span style="color:orange">Orange</span> counties: Prosperity for the Few;
+<br><span style="color:#c9cc14">Yellow</span> counties: Struggling to Prosper;
+<br><span style="color:red">Red</span> counties: Stuck and Unequal.
+
+
+# Race/Ethnicity Notes
+<br>1) "Other" race includes those who identify with a race outside of the specifically named categories, such as Asian, White, etc.
+<br>2) Race labels for bar charts: The "nh_" prefix signifies that a group is non-Latinx (excludes Latinx).
+<br>3) The "twoormor" group represents those who identify as Two or More Races.
+
+# Indicators
+
+## Healthy Built Environment Index - UPDATED
+```{r}
+# Remove counties without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
+ c_index_chart <- c_index_z %>% mutate(
+    disp_z_cap = case_when(
+      healthy_built_environment_disparity_z > 2 ~ 2,
+      healthy_built_environment_disparity_z < -2 ~ -2,
+      TRUE ~ healthy_built_environment_disparity_z)
+    ) %>% mutate (
+    perf_z_cap = case_when(
+      healthy_built_environment_performance_z > 2 ~ 2,
+      healthy_built_environment_performance_z < -2 ~ -2,
+      TRUE ~ healthy_built_environment_performance_z)
+    ) %>% filter(healthy_built_environment_quadrant %in% c("purple", "yellow", "orange", "red"))
+
+ c_index_chart %>% 
+    hchart("scatter", 
+    hcaes(x=disp_z_cap, y=perf_z_cap, size=dp05_0001e, group=healthy_built_environment_quadrant),
+      tooltip = 
+         list(pointFormat = 
+                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.healthy_built_environment_performance_rank} <br><strong>Disparity Rank: </strong>{point.healthy_built_environment_disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f}")) %>%
+  hc_title(text = "Healthy Built Environment Index") %>%
+  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 2, min = -2) %>%     ## this will need to be higher if disp or perf actual max value is (or close to) |2|
+  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 2, min = -2) %>%   ## this will need to be higher if disp or perf actual max value is (or close to) |2|
+  hc_caption(
+    text = "Data source: Various <br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
+    align = "center"
+     ) %>% #hc_size(height=400,width=700) %>% 
+   hc_legend(element_blank) %>% hc_add_theme(rc_theme)
+
+
+```
+* The four counties in the Red Quadrant (Higher Disparity, Lower Performance) with the worst performance measures are all in the San Joaquin Valley.
+* Los Angeles County has the worst performance out of all 46 counties ranked on the healthy built environment index.
+* The Central Coast seems to be the region with the healthiest and least racially disparate built environments in the state. Of the six counties in the region, there are five with better than average performance and five with below average racial disparities.
+
+<!--## Healthy Built Environment Index - UPDATED (Percentile) -->
+
+<!--```{r}
+c_index_pctile %>% 
+  filter(quadrant %in% c("purple", "yellow", "orange", "red")) %>%
+    hchart("scatter", 
+    hcaes(x=healthy_built_environment_disparity_pctile, y=healthy_built_environment_performance_pctile, size=dp05_0001e, group=quadrant),
+      tooltip = 
+         list(pointFormat = 
+                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.healthy_built_environment_performance_rank} <br><strong>Disparity Rank: </strong>{point.healthy_built_environment_disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f}")) %>%
+  hc_title(text = "Healthy Built Environment Index Percentile") %>%
+  hc_xAxis(title = list(text = "Disparity Percentile"), max = 1, min = -0.1) %>% 
+  hc_yAxis(title = list(text = "Performance Percentile"), max = 1.1, min = 0) %>% 
+  hc_caption(
+    text = "Data source: Various <br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
+    align = "center"
+     ) %>% #hc_size(height=400,width=700) %>%
+  hc_legend(element_blank) %>% hc_add_theme(rc_theme)
+
+```-->
+
+
+## Drinking Water Contaminants - UPDATED {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r}
+# Be sure to update title above depending on if indicator has been updated since RC v3
+# Remove counties without quadrant values. Cap indicator perf/disp z-scores at 3.5 and -3.5. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
+c_1_chart <- c_1 %>% mutate(
+    disp_z_cap = case_when(
+      disparity_z > 3.5 ~ 3.5,
+      disparity_z < -3.5 ~ -3.5,
+      TRUE ~ disparity_z)
+    ) %>% mutate (
+    perf_z_cap = case_when(
+      performance_z > 3.5 ~ 3.5,
+      performance_z < -3.5 ~ -3.5,
+      TRUE ~ performance_z)
+    ) %>% filter(quadrant %in% c("purple", "yellow", "orange", "red"))
+
+ c_1_chart %>% 
+    hchart("scatter", 
+    hcaes(x=disp_z_cap, y=perf_z_cap, size=total_pop, group=quadrant),
+      tooltip = 
+         list(pointFormat = 
+                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.total_pop:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.nh_black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.nh_asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Other Rate: </strong>{point.nh_other_rate:.1f} <br><strong>Two or More Races Rate: </strong>{point.nh_twoormor_rate:.1f}")) %>%
+  hc_title(text = "Drinking Water Contaminants") %>%
+  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
+  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
+ hc_caption(
+  text = paste(
+    "Data source:", 
+    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Drinking Water Contaminants"]),
+    "<br>The Drinking Water Contaminants Score is based on drinking water system boundaries",
+    "<br>and contaminant data aggregated to census tracts.",
+    "<br>The higher the score, the more contamination exposure.",
+    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."
+  ),
+  align = "center"
+) %>% #hc_size(height=400,width=700) %>% 
+   hc_legend(element_blank) %>% hc_add_theme(rc_theme)
+
+
+```
+
+* Counties with larger populations tend to have less than average racial disparity, while all of the counties with the most disparity have smaller populations.
+* Four of the Five counties in the Red Quadrant are from the San Joaquin Valley, meaning that region experiences above average levels of both drinking water contaminants and racial disparities in who in exposed to them.
+* Los Angeles County ranks the 4th worst of all 56 California counties measured in overall levels of drinking water contaminants.
+
+### State Barchart
+```{r}
+# Be sure to update title above depending on if indicator has been updated since RC v3
+# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate
+title = "Drinking Water Contaminants Score"
+
+s_1_ <- s_1 %>%
+   select(c(state_name, ends_with('_rate'), -total_rate))
+s_1_long <- melt(s_1_, id.vars=c("state_name"))
+s_1_long <- s_1_long[order(s_1_long$value),]
+s_1_long <- s_1_long %>% mutate_if(is.double, ~round(., 1))
+
+s_1_long %>% 
+  hchart("column", 
+    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
+  hc_yAxis(title = list(text=title),  
+           plotLines = list(
+                list(
+                  value = s_1$total_rate,
+                  color = "black",
+                  width = 2,
+                  zIndex = 20,  # the higher number means will be top/most visible layer
+                  label = list(text = paste0("Total Rate: ",round(s_1$total_rate, 1)), style = list(color = "black", fontSize = 16), align = "left")))) %>%
+  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
+  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
+  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
+
+``` 
+
+* Statewide, Latinx, Southwest Asian or North African, and American Indian or Alaska Native Californians are the three racial groups with more exposure to drinking water contaminants than the overall statewide rate.
+
+### County Barchart
+
+```{r}
+
+c_1_long <- c_1 %>%
+   select(c(2, ends_with('_rate')))
+
+c_1_long <- melt(c_1_long, id.vars=c("county_name"))
+c_1_long <- c_1_long[order(c_1_long$value),]
+# Round 'value' field to 1 decimal
+c_1_long <- c_1_long %>% mutate(value = round(value, 1))
+
+
+# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
+
+# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
+sd1 <- SharedData$new(c_1_long, key = ~ county_name)
+title = "Drinking Water Contaminants Score"
+
+#
+bscols(
+  widths = 7, 
+  
+   filter_select("county_name", ## this is the name of column we want to select. 
+                "County:",  # this is what we want to see in the selection menu
+                sd1,
+                ~ county_name, multiple = FALSE),
+   plot_ly(sd1) %>%
+      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
+                marker = list(line = list(color = "black", width = 1)) ## add order t
+                ) %>%
+     layout(barmode = "stack",
+             xaxis = list(title = 'Race/Ethnicity',
+                          tickangle=-45,
+                          categoryorder = "total ascending"),     # Change to "total ascending" when MIN is best or "total descending" when MAX is best
+            
+          yaxis = list(title = title),
+            
+            
+             width = 600,
+            paper_bgcolor = "#FFFFFF",
+            plot_bgcolor = "#FFFFFF",
+            
+            font = list(
+              family = "Rubik",
+              size = 12,
+              color = '#8E8C8F'
+             ), 
+            hoverlabel = list(bgcolor = "FFFFFF")
+   ) # end layout
+) # end bscols
+
+
+```
+
+
+## Food Access {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r}
+c_2_chart <- c_2 %>% mutate(
+    disp_z_cap = case_when(
+      disparity_z > 3.5 ~ 3.5,
+      disparity_z < -3.5 ~ -3.5,
+      TRUE ~ disparity_z)
+    ) %>% mutate (
+    perf_z_cap = case_when(
+      performance_z > 3.5 ~ 3.5,
+      performance_z < -3.5 ~ -3.5,
+      TRUE ~ performance_z)
+    ) %>% filter(quadrant %in% c("purple", "yellow", "orange", "red"))
+
+c_2_chart %>% 
+    hchart("scatter", 
+    hcaes(x=disp_z_cap, y=perf_z_cap, size=dp05_0001e, group=quadrant),
+      tooltip = 
+         list(pointFormat = 
+                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.nh_black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.nh_asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Two or More Races Rate: </strong>{point.nh_twoormor_rate:.1f}")) %>%
+    hc_title(text = "Access to Fresh Fruits and Vegetables in Neighborhood (%)") %>%
+  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
+  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
+  hc_caption(
+    text = paste(
+    "Data source:", 
+    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Food Access"]),
+    "<br> Percentage who report always or usually being able to find fresh fruits and vegetables in their neighborhood.",
+    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
+    align = "center"
+     ) %>% #hc_size(height=400,width=700) %>% 
+  hc_legend(element_blank) %>% hc_add_theme(rc_theme)
+
+```
+
+* All six counties in the Central Coast region and eight of the nine counties in the Bay Area have better than average overall access to fresh fruits and vegetables. Racial disparities in this access vary across the two regions though, with roughly half the counties in each region in the Purple Quadrant (low disparity) and half in the Orange Quadrant (high disparity).
+* All eight counties in the San Joaquin Valley have below average performance in access to fresh foods, and five of the six counties in the Red Quadrant (low performance, high disparity) are from the region.
+* San Diego and Orange County have uniquely high rates of access to fresh food among Southern California counties, and are the only two counties from the region in the Purple Quadrant (high performance, low disparity).
+
+### State Barchart
+```{r}
+# Be sure to update title above depending on if indicator has been updated since RC v3
+
+title = "Access to Fresh Fruits and Vegetables in Neighborhood (%)"
+s_2_ <- s_2 %>%
+   select(c(state_name, ends_with('_rate'), -total_rate))
+s_2_long <- melt(s_2_, id.vars=c("state_name"))
+s_2_long <- s_2_long[order(-s_2_long$value),]
+s_2_long <- s_2_long %>% mutate_if(is.double, ~round(., 1))
+
+s_2_long %>% 
+  hchart("column", 
+    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
+  hc_yAxis(title = list(text=title),  
+           plotLines = list(
+                list(
+                  value = s_2$total_rate,
+                  color = "black",
+                  width = 2,
+                  zIndex = 20,  # the higher number means will be top/most visible layer
+                  label = list(text = paste0("Total Rate: ",round(s_2$total_rate, 1),"%"), style = list(color = "black", fontSize = 16), align = "right")))) %>%
+  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
+  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
+  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
+
+```
+
+* White and multi-racial Californians are the only racial groups with access to fresh fruits and vegetables at a rate higher than the overall statewide rate.
+* Black and Latinx Californians have the worst access to fresh fruits and vegetables of any racial group in the state, with their respective access rates eight and seven percentage points lower than that of White people.
+
+### County Barchart
+
+```{r}
+c_2_long <- c_2 %>%
+   select(c(1, ends_with('_rate')))
+
+c_2_long <- melt(c_2_long, id.vars=c("county_name"))
+c_2_long <- c_2_long[order(c_2_long$value),]
+# Round 'value' field to 1 decimal
+c_2_long <- c_2_long %>% mutate(value = round(value, 1))
+
+
+# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
+
+# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
+
+sd2 <- SharedData$new(c_2_long, key = ~ county_name)
+title = "Access to Fresh Fruits and Vegetables in Neighborhood (%)"
+
+#
+bscols(
+  widths = 7, 
+  
+   filter_select("county_name",  ## this is the name of column we want to select. 
+                "County:", # this is what we want to see in the selection menu
+                sd2,
+                ~ county_name, multiple = FALSE),
+   plot_ly(sd2) %>%
+      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
+                marker = list(line = list(color = "black", width = 1)) ## add order t
+                ) %>%
+     layout(barmode = "stack",
+             xaxis = list(title = 'Race/Ethnicity',
+                          tickangle=-45,
+                          categoryorder = "total descending"),   # Change to "total ascending" when MIN is best or "total descending" when MAX is best
+            
+            yaxis = list(title = title,
+                         titlefont = list(size = 11)
+                        ),
+            
+            
+             width = 600,
+            paper_bgcolor = "#FFFFFF",
+             plot_bgcolor = "#FFFFFF",
+            
+            font = list(
+              family = "Rubik",
+              size = 12,
+              color = '#8E8C8F'
+             ),
+            hoverlabel = list(bgcolor = "FFFFFF")
+   ) # end layout
+) # end bscols
+
+
+```
+
+
+## Proximity to Hazards - UPDATED {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r}
+c_3_chart <- c_3 %>% mutate(
+    disp_z_cap = case_when(
+      disparity_z > 3.5 ~ 3.5,
+      disparity_z < -3.5 ~ -3.5,
+      TRUE ~ disparity_z)
+    ) %>% mutate (
+    perf_z_cap = case_when(
+      performance_z > 3.5 ~ 3.5,
+      performance_z < -3.5 ~ -3.5,
+      TRUE ~ performance_z)
+    ) %>% filter(quadrant %in% c("purple", "yellow", "orange", "red"))
+
+c_3_chart %>% 
+    hchart("scatter", 
+    hcaes(x=disp_z_cap, y=perf_z_cap, size=total_pop, group=quadrant),
+      tooltip = 
+         list(pointFormat = 
+                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.total_pop:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.nh_black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.nh_asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Other Rate: </strong>{point.nh_other_rate:.1f} <br><strong>Two or More Races Rate: </strong>{point.nh_twoormor_rate:.1f}")) %>%
+    hc_title(text = "Proximity to Hazards Score (Clean Up Sites)") %>%
+  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
+  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
+  hc_caption(
+    text = paste(
+    "Data source:", 
+    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Proximity to Hazards"]), 
+    "<br>Hazardous sites are defined as EnviroStor clean up sites.", 
+    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
+    align = "center"
+     ) %>% #hc_size(height=400,width=700) %>% 
+  hc_legend(element_blank) %>% hc_add_theme(rc_theme)
+
+
+```
+
+* There is a general negative correlation in California between county population size and the racial disparities in proximity to hazardous sites in that county. Meaning that, in general, larger population counties have less racial disparity on this indicator.
+* Nevada and Amador Counties rank as the having the worst and second worst proximity to hazards scores (outcomes) statewide. Their scores are close to or more than double that of the third worst outcome county.
+* In the counties with the four worst racial disparity scores, American Indian and Alaska Native residents live in the greatest proximity to hazardous sites. In two of these counties (Mono and Madera), AIAN folks are 2x more exposure to hazardous sites than the average county resident.
+
+### State Barchart
+
+```{r}
+# Be sure to update title above depending on if indicator has been updated since RC v3
+title = "Proximity to Hazards Score (Clean Up Sites)"
+s_3_ <- s_3 %>%
+   select(c(state_name, ends_with('_rate'), -total_rate))
+s_3_long <- melt(s_3_, id.vars=c("state_name"))
+s_3_long <- s_3_long[order(s_3_long$value),]
+s_3_long <- s_3_long %>% mutate_if(is.double, ~round(., 1))
+
+s_3_long %>% 
+  hchart("column", 
+    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
+   hc_yAxis(title = list(text=title),  
+           plotLines = list(
+                list(
+                  value = s_3$total_rate,
+                  color = "black",
+                  width = 2,
+                  zIndex = 20,  # the higher number means will be top/most visible layer
+                  label = list(text = paste0("Total Rate: ",round(s_3$total_rate, 1)), style = list(color = "black", fontSize = 16), align = "left")))) %>%
+  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
+  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
+  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
+
+``` 
+
+* Latinx and Southwest Asian or North African Californians face nearly 1.5 times more exposure to hazardous clean up sites than Whites, the group with the best rate. Black and Asian Californians also face exposure that is above the statewide rate.
+
+### County Barchart
+
+```{r}
+
+c_3_long <- c_3 %>%
+   select(c(2, ends_with('_rate')))
+
+c_3_long <- melt(c_3_long, id.vars=c("county_name"))
+c_3_long <- c_3_long[order(c_3_long$value),]
+# Round 'value' field to 1 decimal
+c_3_long <- c_3_long %>% mutate(value = round(value, 1))
+
+
+# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
+
+# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
+
+sd3 <- SharedData$new(c_3_long, key = ~ county_name)
+title = "Proximity to Hazards Score (Clean Up Sites)"
+
+#
+bscols(
+  widths = 7, 
+  
+   filter_select("county_name", ## this is the name of column we want to select. 
+                "County:", # this is what we want to see in the selection menu
+                sd3,
+                ~ county_name, multiple = FALSE),
+   plot_ly(sd3) %>%
+      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
+                marker = list(line = list(color = "black", width =1)) ## add order t
+                ) %>%
+     layout(barmode = "stack",
+             xaxis = list(title = 'Race/Ethnicity',
+                          tickangle=-45, 
+                          categoryorder = "total ascending"),     # Change to "total ascending" when MIN is best or "total descending" when MAX is best
+            
+                yaxis = list(title = title),
+            
+            
+             width = 600,
+            paper_bgcolor = "#FFFFFF",
+             plot_bgcolor = "#FFFFFF",
+            
+            font = list(
+              family = "Rubik",
+              size = 12,
+              color = '#8E8C8F'
+             ),
+            hoverlabel = list(bgcolor = "FFFFFF")
+   ) # end layout
+) # end bscols
+
+
+```
+
+
+## Toxic Releases from Facilities - UPDATED {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r}
+c_4_chart <- c_4 %>% mutate(
+    disp_z_cap = case_when(
+      disparity_z > 3.5 ~ 3.5,
+      disparity_z < -3.5 ~ -3.5,
+      TRUE ~ disparity_z)
+    ) %>% mutate (
+    perf_z_cap = case_when(
+      performance_z > 3.5 ~ 3.5,
+      performance_z < -3.5 ~ -3.5,
+      TRUE ~ performance_z)
+    ) %>% filter(quadrant %in% c("purple", "yellow", "orange", "red"))
+
+c_4_chart %>%
+    hchart("scatter", 
+    hcaes(x=disp_z_cap, y=perf_z_cap, size=total_pop, group=quadrant),
+      tooltip = 
+         list(pointFormat = 
+                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.total_pop:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:,.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:,.1f} <br><strong>Black Rate: </strong>{point.nh_black_rate:,.1f} <br><strong>AIAN Rate: </strong>{point.aian_rate:,.1f} <br><strong>NHPI Rate: </strong>{point.pacisl_rate:,.1f} <br><strong>Asian Rate: </strong>{point.nh_asian_rate:,.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:,.1f} <br><strong>Other Rate: </strong>{point.nh_other_rate:,.1f} <br><strong>Two or More Races Rate: </strong>{point.nh_twoormor_rate:,.1f}")) %>%
+    hc_title(text = "Toxic Releases from Facilities Score") %>%
+  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
+  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
+  hc_caption(
+    text = paste(
+    "Data source:", 
+    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Drinking Water Contaminants"]), 
+    "<br> The Toxic Releases from Facilities Score measures weighted concentrations of modeled chemical releases to air from facility emissions and off-site incineration. The higher the score, the more release exposure.", "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
+    align = "center"
+     ) %>% #hc_size(height=400,width=700) %>% 
+  hc_legend(element_blank) %>% hc_add_theme(rc_theme)
+
+
+```
+
+* Los Angeles and Orange Counties have by far the lowest performance (most exposure to toxic releases) among all California counties.
+* The non-urban, northern counties of Mariposa and Siskiyou exhibit by far the highest racial disparities in those exposed to toxic releases from facilities. In Siskiyou County, Latinx residents are exposed to toxic releases at nearly 3x the overall county rate.
+* Six of the eight counties with higher racial disparities are counties with populations around or below 50,000 residents.
+
+### State Barchart
+
+```{r}
+# Be sure to update title above depending on if indicator has been updated since RC v3
+title = "Toxic Releases from Facilities Score"
+s_4_ <- s_4 %>%
+   select(c(state_name, ends_with('_rate'), -total_rate))
+s_4_long <- melt(s_4_, id.vars=c("state_name"))
+s_4_long <- s_4_long[order(s_4_long$value),]
+s_4_long <- s_4_long %>% mutate_if(is.double, ~round(., 1))
+
+s_4_long %>% 
+  hchart("column", 
+    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
+  hc_yAxis(title = list(text=title),  
+           plotLines = list(
+                list(
+                  value = s_4$total_rate,
+                  color = "black",
+                  width = 2,
+                  zIndex = 20,  # the higher number means will be top/most visible layer
+                  label = list(text = paste0("Total Rate: ",round(s_4$total_rate, 1)), style = list(color = "black", fontSize = 16), align = "left")))) %>%
+  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
+  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
+  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
+
+
+```
+
+* Black residents statewide face more than 2.5 times, and Latinx residents two times, as much exposure to toxic releases as White residents do.
+
+### County Barchart
+
+```{r}
+c_4_long <- c_4 %>%
+   select(c(2, ends_with('_rate')))
+
+c_4_long <- melt(c_4_long, id.vars=c("county_name"))
+c_4_long <- c_4_long[order(c_4_long$value),]
+# Round 'value' field to 1 decimal
+c_4_long <- c_4_long %>% mutate(value = round(value, 1))
+
+
+# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
+
+# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
+
+sd4 <- SharedData$new(c_4_long, key = ~ county_name)
+title = "Toxic Releases from Facilities Score"
+
+#
+bscols(
+  widths = 7, 
+  
+   filter_select("county_name",  ## this is the name of column we want to select. 
+                "County:", # this is what we want to see in the selection menu
+                sd4,
+                ~ county_name, multiple = FALSE),
+   plot_ly(sd4) %>%
+      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
+                marker = list(line = list(color = "black", width =1)) ## add order t
+                ) %>%
+     layout(barmode = "stack",
+             xaxis = list(title = 'Race/Ethnicity',
+                          tickangle=-45,
+                          categoryorder = "total ascending"),          # Change to "total ascending" when MIN is best or "total descending" when MAX is best
+            
+           yaxis = list(title = title),
+            
+            
+             width = 600,
+            paper_bgcolor = "#FFFFFF",
+             plot_bgcolor = "#FFFFFF",
+            
+            font = list(
+              family = "Rubik",
+              size = 12,
+              color = '#8E8C8F'
+             ),
+            hoverlabel = list(bgcolor = "FFFFFF")
+   ) # end layout
+) # end bscols
+
+
+```
+
+
+## Asthma - UPDATED {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r}
+c_5_chart <- c_5 %>% mutate(
+    disp_z_cap = case_when(
+      disparity_z > 3.5 ~ 3.5,
+      disparity_z < -3.5 ~ -3.5,
+      TRUE ~ disparity_z)
+    ) %>% mutate (
+    perf_z_cap = case_when(
+      performance_z > 3.5 ~ 3.5,
+      performance_z < -3.5 ~ -3.5,
+      TRUE ~ performance_z)
+    ) %>% filter(quadrant %in% c("purple", "yellow", "orange", "red"))
+
+c_5_chart  %>% 
+    hchart("scatter", 
+    hcaes(x=disp_z_cap, y=perf_z_cap, size=dp05_0001e, group=quadrant),
+      tooltip = 
+         list(pointFormat = 
+                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.nh_black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.nh_asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Two or More Races Rate: </strong>{point.nh_twoormor_rate:.1f}")) %>%
+    hc_title(text = "People Ever Diagnosed with Asthma (%)") %>%
+  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
+  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
+  hc_caption(
+    text = paste(
+    "Data source:", 
+    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Drinking Water Contaminants"]), 
+    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
+    align = "center"
+     ) %>% hc_size(height=400,width=700) %>% hc_legend(element_blank) %>% hc_add_theme(rc_theme)
+
+```
+
+* San Francisco has the second highest disparity rate in the state for asthma diagnoses behind only Mendocino County. American Indian or Alaska Native residents of the county are almost 3x as likely to be diagnosed with asthma than the average county resident.
+* The Central Coast counties particularly stand out in this measure. Five of the six counties in the region are in the Purple Quadrant (high performance, low disparity), with Monterey, Ventura, and Santa Barbara recording three of the four best asthma rates in the state.
+* There is no data on asthma rates for 17 of the 25 counties in the Northern/Sierra region.
+
+### State Barchart
+
+```{r}
+# Be sure to update title above depending on if indicator has been updated since RC v3
+
+title = "People Ever Diagnosed with Asthma (%)"
+s_5_ <- s_5 %>%
+   select(c(state_name, ends_with('_rate'), -total_rate))
+s_5_long <- melt(s_5_, id.vars=c("state_name"))
+s_5_long <- s_5_long[order(s_5_long$value),]
+s_5_long <- s_5_long %>% mutate_if(is.double, ~round(., 1))
+
+s_5_long %>% 
+  hchart("column", 
+    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
+  hc_yAxis(title = list(text=title),  
+           plotLines = list(
+                list(
+                  value = s_5$total_rate,
+                  color = "black",
+                  width = 2,
+                  zIndex = 20,  # the higher number means will be top/most visible layer
+                  label = list(text = paste0("Total Rate: ",round(s_5$total_rate, 1), "%"), style = list(color = "black", fontSize = 16), align = "left")))) %>%
+  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
+  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
+  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
+
+
+```
+
+* All but one of the eight counties in the San Joaquin Valley have higher rates of asthma than average. Counties from the region represent more than half of the counties in the Red Quadrant (low performance, high disparity).
+* Southwest Asian or North African, Asian, and Latinx Californians have the lowest rates of asthma diagnoses in the state.
+* More than one in five Black, American Indian or Alaska Native, Native Hawaiian or Pacific Islander, and Multiracial non-Latinx Californians have been diagnosed with asthma.
+
+### County Barchart
+
+```{r}
+c_5_long <- c_5 %>%
+   select(c(1, ends_with('_rate')))
+
+c_5_long <- melt(c_5_long, id.vars=c("county_name"))
+c_5_long <- c_5_long[order(c_5_long$value),]
+# Round 'value' field to 1 decimal
+c_5_long <- c_5_long %>% mutate(value = round(value, 1))
+
+
+# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
+
+# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
+
+sd5 <- SharedData$new(c_5_long, key = ~ county_name)
+title = "People Ever Diagnosed with Asthma (%)"
+
+#
+bscols(
+  widths = 7, 
+  
+   filter_select("county_name",  ## this is the name of column we want to select. 
+                "County:", # this is what we want to see in the selection menu
+                sd5,
+                ~ county_name, multiple = FALSE),
+   plot_ly(sd5) %>%
+      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
+                marker = list(line = list(color = "black", width =1)) ## add order t
+                ) %>%
+     layout(barmode = "stack",
+             xaxis = list(title = 'Race/Ethnicity',
+                          tickangle=-45,
+                          categoryorder = "total ascending"),     # Change to "total ascending" when MIN is best or "total descending" when MAX is best
+            
+           yaxis = list(title = title),
+            
+            
+             width = 600,
+            paper_bgcolor = "#FFFFFF",
+             plot_bgcolor = "#FFFFFF",
+            
+            font = list(
+              family = "Rubik",
+              size = 12,
+              color = '#8E8C8F'
+             ),
+            hoverlabel = list(bgcolor = "FFFFFF")
+   ) # end layout
+) # end bscols
+
+
+```
+
+
+## Lack of Green Space - UPDATED {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r}
+# Be sure to update title above depending on if indicator has been updated since RC v3
+# Remove counties without quadrant values. Cap indicator perf/disp z-scores at 3.5 and -3.5. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
+c_6_chart <- c_6 %>% mutate(
+    disp_z_cap = case_when(
+      disparity_z > 3.5 ~ 3.5,
+      disparity_z < -3.5 ~ -3.5,
+      TRUE ~ disparity_z)
+    ) %>% mutate (
+    perf_z_cap = case_when(
+      performance_z > 3.5 ~ 3.5,
+      performance_z < -3.5 ~ -3.5,
+      TRUE ~ performance_z)
+    ) %>% filter(quadrant %in% c("purple", "yellow", "orange", "red"))
+
+c_6_chart %>% 
+    hchart("scatter", 
+    hcaes(x=disp_z_cap, y=perf_z_cap, size=total_pop, group=quadrant),
+      tooltip = 
+         list(pointFormat = 
+                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.total_pop:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.nh_black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.nh_asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Other Rate: </strong>{point.nh_other_rate:.1f} <br><strong>Two or More Races Rate: </strong>{point.nh_twoormor_rate:.1f}")) %>%
+  hc_title(text = "Impenetrable Surfaces (Roads, Rooftops, Parking Lots) (%)") %>%
+  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
+  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
+  hc_caption(
+    text = paste(
+    "Data source:", 
+    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Drinking Water Contaminants"]), 
+    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
+    align = "center"
+     ) %>%
+  # hc_colors(c("purple", "orange", "yellow")) %>%   # custom colors added bc there are no bubbles in red quadrant for this indicator in v4 # Commented out becaue all 4 colors are present in v7
+    hc_size(height=400,width=700) %>% hc_legend(element_blank) %>% hc_add_theme(rc_theme)
+       
+      
+
+
+```
+* The 10 counties with the lowest disparity also have worse outcomes (less greenspace).
+* There is a strong negative correlation between greenspace and population size in counties. Only two of the top ten performing counties have more than 100,000 residents, while all counties with more than 300,000 residents had below average performance.
+* Los Angeles County ranks 55 out of 56 counties in greenspace.
+* In Mendocino County, which ranks first for the most racial disparities in access to greenspace, white people have nearly 2x greater access to greenspaces than Latinx residents of the county.
+
+### State Barchart
+
+```{r}
+# Be sure to update title above depending on if indicator has been updated since RC v3
+# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate
+
+title = "Impenetrable Surfaces (Roads, Rooftops, Parking Lots) (%)"
+s_6_ <- s_6 %>%
+   select(c(state_name, ends_with('_rate'), -total_rate))
+s_6_long <- melt(s_6_, id.vars=c("state_name"))
+s_6_long <- s_6_long[order(s_6_long$value),]
+s_6_long <- s_6_long %>% mutate_if(is.double, ~round(., 1))
+
+s_6_long %>% 
+  hchart("column", 
+    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
+   hc_yAxis(title = list(text=title),   
+           plotLines = list(
+                list(
+                  value = s_6$total_rate,
+                  color = "black",
+                  width = 2,
+                  zIndex = 20,  # the higher number means will be top/most visible layer
+                  label = list(text = paste0("Total Rate: ",round(s_6$total_rate, 1), "%"), style = list(color = "black", fontSize = 16), align = "left")))) %>%
+  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
+  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
+  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
+
+
+``` 
+
+* Black people have the least access to greenspaces of any racial group in California, with 54.5% of land in disproportionately Black neighborhoods covered by impenetrable surfaces. This rate is 14 percentage points higher than the rate for white people.
+* Asian, Latinx, and Southwest Asian or North African Californians are also less likely to have access to greenspace than the average Californian.
+
+### County Barchart
+
+```{r}
+c_6_long <- c_6 %>%
+   select(c(2, ends_with('_rate')))
+
+c_6_long <- melt(c_6_long, id.vars=c("county_name"))
+c_6_long <- c_6_long[order(c_6_long$value),]
+# Round 'value' field to 1 decimal
+c_6_long <- c_6_long %>% mutate(value = round(value, 1))
+
+
+# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
+
+# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
+
+
+sd6 <- SharedData$new(c_6_long, key = ~ county_name)
+title = "Impenetrable Surfaces (Roads, Rooftops, Parking Lots) (%)"
+
+#
+bscols(
+  widths = 7, 
+  
+   filter_select("county_name", ## this is the name of column we want to select. 
+                "County:", # this is what we want to see in the selection menu
+                sd6,
+                ~ county_name, multiple = FALSE),
+   plot_ly(sd6) %>%
+      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
+                marker = list(line = list(color = "black", width =1)) ## add order t
+                ) %>%
+     layout(barmode = "stack",
+             xaxis = list(title = 'Race/Ethnicity',
+                          tickangle=-45,
+                          categoryorder = "total ascending"),         # Change to "total ascending" when MIN is best or "total descending" when MAX is best
+            
+    yaxis = list(title = title),
+            
+            
+             width = 600,
+            paper_bgcolor = "#FFFFFF",
+             plot_bgcolor = "#FFFFFF",
+            
+            font = list(
+              family = "Rubik",
+              size = 12,
+              color = '#8E8C8F'
+             ),
+            hoverlabel = list(bgcolor = "FFFFFF")
+   ) # end layout
+) # end bscols
+
+```
+
+```{r echo=FALSE, include = FALSE}
+##Closing database connections##
+dbDisconnect(con)
+dbDisconnect(con2)
+
+```
+
+
+```{r echo=FALSE, include = FALSE}
+# below is a javascript chunk for the county bar-charts. The chunk automatically selects the 'Alameda' county as the first chunk. Without the chunk below, as you can see from the output above, the first bar-chart shown sums the race/ethnicity rates for all of the counties. 
+# Each line that starts with document is for each graph (0-5) for a total of 6 graphs. If another graph is added, then you would simply add another line and label it as [6]. 
+
+# Notice that it isn't an R chunk, it is a JS chunk. :) 
+```
+
+
+```{js}
+function filter_default() {
+    document.getElementsByClassName("selectized") 
+[0].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[1].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[2].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[3].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[4].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[5].selectize.setValue("Alameda", false);
+
+ }
+window.onload = filter_default;
+```
+
+
+
+

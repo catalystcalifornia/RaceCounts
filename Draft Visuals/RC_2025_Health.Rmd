@@ -1,0 +1,1078 @@
+---
+title: "RACE COUNTS: Health Care Access               "
+author: "Authored by: Catalyst California"
+date: "8/25/2025"
+output:
+  html_document:
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+
+subtitle: 'Draft Visuals'
+---
+  
+<style type="text/css">
+  h1{
+  font-family: Rubik;
+  }
+  h2{
+  font-family: Rubik;
+  }
+  h3{
+  font-family: Rubik;
+  }
+  a{
+  font-family: Rubik;
+  }
+  ul{
+  font-family: Rubik;
+  }
+  ol{
+  font-family: Rubik;
+  }
+  body{
+  font-family: Rubik;
+  font-size: 15px;
+}
+p{
+  font-family: Rubik;
+  font-size: 15px;
+}
+body { background-color: #FFFFFF; }
+
+</style>
+
+```{r include = FALSE}
+### install version 1.1.1 of Crosstalk -- LATER VERSIONS OF CROSSTALK WILL NOT WORK ####
+# remotes::install_version("crosstalk", version = "1.1.1", repos = "http://cran.us.r-project.org") 
+# library(crosstalk)
+
+#Set up workspace
+packages <- c("crosstalk", "RPostgres", "sf", "htmltools", "tidyr", "reshape2", "plotly", "tidyverse", "highcharter")  
+
+install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
+
+if(length(install_packages) > 0) { 
+  install.packages(install_packages) 
+  
+} else { 
+  
+  print("All required packages are already installed.") 
+} 
+
+for(pkg in packages){ 
+  library(pkg, character.only = TRUE) 
+} 
+options(scipen=999)
+
+```
+
+
+```{r setup, include = FALSE}
+
+knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
+
+options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
+
+setwd("W:/Project/RACE COUNTS/2025_v7/Visualizations/") 
+
+source("W:\\RDA Team\\R\\credentials_source.R") 
+con <- connect_to_db("racecounts")
+
+source("W:\\RDA Team\\R\\credentials_source.R") 
+con2 <- connect_to_db("rda_shared_data")
+
+
+# just a note of reference to inserting text #https://monashbioinformaticsplatform.github.io/2017-11-16-open-science-training/topics/rmarkdown.html
+#https://rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf
+
+```
+
+
+```{r echo=FALSE, include = FALSE}
+
+##Add RC theme##
+rc_theme <- hc_theme(
+    # race counts colors
+  colors = c("orange", "purple", "red", "yellow"),
+  chart = list(
+    backgroundColor = "#FFFFFF",
+    borderColor = "black",
+    style = list(
+          fontFamily = "Rubik") 
+  ),
+  title = list(
+    style = list(
+      color = "#070024",
+      fontFamily = "Rubik")
+  ),
+  subtitle = list(
+    style = list(
+      color = "#8E8C8F", # medium grey
+      fontFamily = "Rubik")
+  ),
+  caption = list(
+    style = list(
+      color = "#8E8C8F",
+      fontFamily = "Rubik")
+  ),
+    axis = list(
+    style = list(
+      color = "#8E8C8F",
+      fontFamily = "Rubik")
+  ),
+  legend = list(
+    itemStyle = list(
+      fontFamily = "Rubik",
+      color = "#070024"),
+    itemHoverStyle = list(
+       fontFamily = "Rubik",
+      color = "#070024")
+  ))
+
+
+lang <- getOption("highcharter.lang")
+lang$thousandsSep <- ","
+options(highcharter.lang = lang)
+
+####################### ADD COUNTY DATA #####################################
+
+c_1 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hlth_got_help_county_2025"))
+c_2 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hlth_health_insurance_county_2025"))
+c_3 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hlth_life_expectancy_county_2025"))
+c_4 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hlth_low_birthweight_county_2025"))
+c_5 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hlth_usual_source_of_care_county_2025"))
+c_6 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hlth_preventable_hospitalizations_county_2025"))
+
+
+c_index_z <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hlth_index_2025"))
+
+
+####################### POPULATION DATA #####################################
+#Join total population to index view, food access, and asthma data frames
+pop <- dbGetQuery(con2, paste0("SELECT geoid, dp05_0001e FROM demographics.acs_5yr_dp05_multigeo_2023"))
+
+#c_index_pctile <- left_join(x = c_index_pctile, y = pop, by = c("county_id" = "geoid"))
+c_index_z <- left_join(x = c_index_z, y = pop, by = c("county_id" = "geoid"))
+
+c_1 <- left_join(x = c_1, y = pop, by = c("county_id" = "geoid"))
+c_3 <- left_join(x = c_3, y = pop, by = c("county_id" = "geoid"))
+c_4 <- left_join(x = c_4, y = pop, by = c("county_id" = "geoid"))
+c_5 <- left_join(x = c_5, y = pop, by = c("county_id" = "geoid"))
+c_6 <- left_join(x = c_6, y = pop, by = c("county_id" = "geoid"))
+
+
+####################### ADD STATE DATA #####################################
+s_1 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hlth_got_help_state_2025"))
+s_2 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hlth_health_insurance_state_2025"))
+s_3 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hlth_life_expectancy_state_2025"))
+s_4 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hlth_low_birthweight_state_2025"))
+s_5 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hlth_usual_source_of_care_state_2025"))
+s_6 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hlth_preventable_hospitalizations_state_2025"))
+
+##Add 2025 v7 Source Data##
+v7_sources <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_indicator_list_cntyst"))
+
+# merge with urban type
+# region_urban_type <- dbGetQuery(con, paste0("SELECT geo_id AS county_id, region, urban_type FROM v7.arei_multigeo_list")
+# c_1 <- left_join(c_1, region_urban_type)
+# c_2 <- left_join(c_2, region_urban_type)
+# c_3 <- left_join(c_3, region_urban_type)
+# c_4 <- left_join(c_4, region_urban_type)
+# c_5 <- left_join(c_5, region_urban_type)
+# c_6 <- left_join(c_6, region_urban_type)
+```
+
+<!-- *** -->
+# Introduction
+NOTE: The data and findings below are drafts subject to change and some pieces are still in the QA process.
+
+RACE COUNTS provides a 3D view of racial equity:
+<br>PERFORMANCE: How well people are doing. The higher the circle, the better the performance.
+<br>DISPARITY: How racial groups compare to one another. The further right the circle, the greater the differences by race.
+<br>IMPACT: The total population. The bigger the circle, the larger the population.
+
+<br><span style="color:purple">purple</span> counties: Gains at Risk; 
+<br><span style="color:orange">Orange</span> counties: Prosperity for the Few;
+<br><span style="color:#c9cc14">Yellow</span> counties: Struggling to Prosper;
+<br><span style="color:red">Red</span> counties: Stuck and Unequal.
+
+
+# Race/Ethnicity Notes
+<br>1) "Other" race includes those who identify with a race outside of the specifically named categories, such as Asian, White, etc.
+<br>2) Race labels for bar charts: The "nh_" prefix signifies that a group is non-Latinx (excludes Latinx).
+<br>3) The "twoormor" group represents those who identify as Two or More Races.
+
+# Indicators
+
+## Health Care Access Index - UPDATED
+```{r}
+# Remove counties without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
+ c_index_chart <- c_index_z %>% mutate(
+    disp_z_cap = case_when(
+      health_care_access_disparity_z > 2 ~ 2,
+      health_care_access_disparity_z < -2 ~ -2,
+      TRUE ~ health_care_access_disparity_z)
+    ) %>% mutate (
+    perf_z_cap = case_when(
+      health_care_access_performance_z > 2 ~ 2,
+      health_care_access_performance_z < -2 ~ -2,
+      TRUE ~ health_care_access_performance_z)
+    ) %>% filter(health_care_access_quadrant %in% c("purple", "yellow", "orange", "red"))
+
+ c_index_chart %>% 
+    hchart("scatter", 
+    hcaes(x=disp_z_cap, y=perf_z_cap, size=dp05_0001e, group=health_care_access_quadrant),
+      tooltip = 
+         list(pointFormat = 
+                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.health_care_access_performance_rank} <br><strong>Disparity Rank: </strong>{point.health_care_access_disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f}")) %>%
+  hc_title(text = "Health Care Access Index") %>%
+  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 2, min = -2) %>%     ## this will need to be higher if disp or perf actual max value is (or close to) |2|
+  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 2, min = -2) %>%   ## this will need to be higher if disp or perf actual max value is (or close to) |2|
+  hc_caption(
+    text = "Data source: Various <br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
+    align = "center"
+     ) %>% #hc_size(height=400,width=700) %>% 
+   hc_legend(element_blank) %>% hc_add_theme(rc_theme)
+
+
+```
+
+* Marin County has the best overall Health Care access but also ranks as the sixth most disparate county in the state.
+* Looking across indicators, Black Californians fare worse than other groups in 3 out of the 6 indicators for Health Care Access.
+* All eight of the counties in the San Joaquin Valley Region have lower overall performance when it comes to health care access. They are all in the red or yellow quadrants. 
+* All nine Bay Area counties have above average rates of overall health care access, with six out of the nine counties also demonstrating low rates of racial disparity.
+
+## Got Help - UPDATED {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r} 
+# Be sure to update title above depending on if indicator has been updated since RC v3
+# Remove counties without quadrant values. Cap indicator perf/disp z-scores at 3.5 and -3.5. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
+c_1_chart <- c_1 %>% mutate(
+    disp_z_cap = case_when(
+      disparity_z > 3.5 ~ 3.5,
+      disparity_z < -3.5 ~ -3.5,
+      TRUE ~ disparity_z)
+    ) %>% mutate (
+    perf_z_cap = case_when(
+      performance_z > 3.5 ~ 3.5,
+      performance_z < -3.5 ~ -3.5,
+      TRUE ~ performance_z)
+    ) %>% filter(quadrant %in% c("purple", "yellow", "orange", "red"))
+
+ c_1_chart %>% 
+    hchart("scatter", 
+    hcaes(x=disp_z_cap, y=perf_z_cap, size=dp05_0001e, group=quadrant),
+      tooltip = 
+         list(pointFormat = 
+                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.nh_black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.nh_asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Two or More Races Rate: </strong>{point.nh_twoormor_rate:.1f}")) %>%
+  hc_title(text = "Adults Who Got Help for Mental/Emotional or Alcohol/Drug Issues (%)") %>%
+  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
+  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
+  hc_caption(
+    text = paste(
+    "Data source:", 
+    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Got Help"]), 
+    "<br> Percentage of adults seeking and receiving treatment for self-identified mental/emotional or alcohol/drug issues in the past year.", 
+    "<br> A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
+    align = "center"
+     ) %>% #hc_size(height=400,width=700) %>% 
+   hc_legend(element_blank) %>% hc_add_theme(rc_theme)
+
+
+```
+* More populous counties tend to display fairly average measures of both racial disparity and performance for mental health/substance abuse help relative to the rest of the counties in California. None of the top eight most populous counties in the state score outside a +/-1 point threshold on either index.
+* Marin County has the best overall rate for this indicator, but is the second most disparate county in the state. White residents of Marin County are over 2 times more likely to get help for mental health and substance abuse issues than Asian residents.
+* Despite have the least racial disparities of any county, Imperial County displays the worst measures of performance in the state by a significant margin. The overall rate of mental health/substance abuse help in the county is more than 13 percentage points lower than the statewide average.
+
+### State Barchart
+```{r}
+# Be sure to update title above depending on if indicator has been updated since RC v3
+# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate
+title = "Adults Who Got Help for Mental/Emotional or Alcohol/Drug Issues (%)"
+
+s_1_ <- s_1 %>%
+   select(c(state_name, ends_with('_rate'), -total_rate))
+s_1_long <- melt(s_1_, id.vars=c("state_name"))
+s_1_long <- s_1_long[order(-s_1_long$value),]
+s_1_long <- s_1_long %>% mutate_if(is.double, ~round(., 1))
+
+s_1_long %>% 
+  hchart("column", 
+    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
+  hc_yAxis(title = list(text=title),  
+           plotLines = list(
+                list(
+                  value = s_1$total_rate,
+                  color = "black",
+                  width = 2,
+                  zIndex = 20,  # the higher number means will be top/most visible layer
+                  label = list(text = paste0("Total Rate: ",round(s_1$total_rate, 1), "%"), style = list(color = "black", fontSize = 16), align = "right")))) %>%
+  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
+  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
+  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
+
+``` 
+* Non-Latinx Whites are nearly 1.4 times more likely to get help for Mental/Emotional or Alchohol/Drug Issues than Non-Latinx Asians.
+* Native Hawaiian & Pacific Islanders, Non-Latinx Black, Latinx Californians, and Non-Latinx Asians all have rates below the state average.
+
+### County Barchart
+
+```{r}
+
+c_1_long <- c_1 %>%
+   select(c(county_name, ends_with('_rate')))
+
+c_1_long <- melt(c_1_long, id.vars=c("county_name"))
+c_1_long <- c_1_long[order(c_1_long$value),]
+# Round 'value' field to 1 decimal
+c_1_long <- c_1_long %>% mutate(value = round(value, 1))
+
+
+# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
+
+# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
+sd1 <- SharedData$new(c_1_long, key = ~ county_name)
+title = "Adults Who Got Help for Mental/Emotional 
+or Alcohol/Drug Issues (%)"
+
+#
+bscols(
+  widths = 7, 
+  
+   filter_select("county_name", ## this is the name of column we want to select. 
+                "County:",  # this is what we want to see in the selection menu
+                sd1,
+                ~ county_name, multiple = FALSE),
+   plot_ly(sd1) %>%
+      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
+                marker = list(line = list(color = "black", width = 1)) ## add order t
+                ) %>%
+     layout(barmode = "stack",
+             xaxis = list(title = 'Race/Ethnicity',
+                          tickangle=-45,
+                          categoryorder = "total descending"),     # Change to "total ascending" when MIN is best or "total descending" when MAX is best
+            
+          yaxis = list(title = title),
+            
+            
+             width = 600,
+            paper_bgcolor = "#FFFFFF",
+            plot_bgcolor = "#FFFFFF",
+            
+            font = list(
+              family = "Rubik",
+              size = 12,
+              color = '#8E8C8F'
+             ), 
+            hoverlabel = list(bgcolor = "FFFFFF")
+   ) # end layout
+) # end bscols
+
+
+```
+
+
+
+## Lack of Health Insurance - UPDATED {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r}
+c_2_chart <- c_2 %>% mutate(
+    disp_z_cap = case_when(
+      disparity_z > 3.5 ~ 3.5,
+      disparity_z < -3.5 ~ -3.5,
+      TRUE ~ disparity_z)
+    ) %>% mutate (
+    perf_z_cap = case_when(
+      performance_z > 3.5 ~ 3.5,
+      performance_z < -3.5 ~ -3.5,
+      TRUE ~ performance_z)
+    ) %>% filter(quadrant %in% c("purple", "yellow", "orange", "red"))
+
+c_2_chart %>% 
+    hchart("scatter", 
+    hcaes(x=disp_z_cap, y=perf_z_cap, size=total_pop, group=quadrant),
+      tooltip = 
+         list(pointFormat = 
+                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.total_pop:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Other Race Rate: </strong>{point.other_rate:.1f} <br><strong>Two or More Races Rate: </strong>{point.twoormor_rate:.1f}")) %>%
+    hc_title(text = "Uninsured Population (%)") %>%
+  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
+  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
+  hc_caption(
+    text = paste(
+    "Data source:", 
+    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Health Insurance"]), 
+    "<br> Percentage of the civilian noninstitutionalized population without health insurance.", 
+    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
+    align = "center"
+     ) %>% #hc_size(height=400,width=700) %>% 
+  hc_legend(element_blank) %>% hc_add_theme(rc_theme)
+
+```
+* Similar to the mental health/substance abuse help indicator, Marin County has the third highest overall rate of health insurance, but the second highest racial disparity. Latinx residents of the county are 7x more likely to be uninsured rate than White residents.
+* Sierra County has the highest disparity and third-worst performance of any county in the state. Over half of its Latinx population is uninsured -- a rate more than 10x higher than its white population. 
+* Los Angeles County is one of the worst performing counties in the state in terms of health insurance rates among its population. 9% of all its residents are uninsured, including 13.2% of its Latinx residents.
+
+
+### State Barchart
+```{r}
+# Be sure to update title above depending on if indicator has been updated since RC v3
+
+title = "Uninsured Population (%)"
+s_2_ <- s_2 %>%
+   select(c(state_name, ends_with('_rate'), -total_rate))
+s_2_long <- melt(s_2_, id.vars=c("state_name"))
+s_2_long <- s_2_long[order(s_2_long$value),]
+s_2_long <- s_2_long %>% mutate_if(is.double, ~round(., 1))
+
+s_2_long %>% 
+  hchart("column", 
+    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
+  hc_yAxis(title = list(text=title),  
+           plotLines = list(
+                list(
+                  value = s_2$total_rate,
+                  color = "black",
+                  width = 2,
+                  zIndex = 20,  # the higher number means will be top/most visible layer
+                  label = list(text = paste0("Total Rate: ",round(s_2$total_rate, 1),"%"), style = list(color = "black", fontSize = 16), align = "left")))) %>%
+  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
+  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
+  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
+
+```
+* White residents are about 2 times less likely to be uninsured than the average Californian.
+* Latinx and American Indian/Alaska Native Californians are about 3 times more likely to be uninsured than White residents. 
+* Californians who identify with a racial group under the category of "other" are the most likely to be uninsured. Although it is difficult to know what types of individuals are identifying in this group, it likely includes many who are Latinx (as "Other Race" includes Latinx for this indicator) and those with origins in the Middle East and North Africa, among others.
+
+
+### County Barchart
+
+```{r}
+c_2_long <- c_2 %>%
+   select(c(2, ends_with('_rate')))
+
+c_2_long <- melt(c_2_long, id.vars=c("county_name"))
+c_2_long <- c_2_long[order(c_2_long$value),]
+# Round 'value' field to 1 decimal
+c_2_long <- c_2_long %>% mutate(value = round(value, 1))
+
+
+# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
+
+# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
+
+sd2 <- SharedData$new(c_2_long, key = ~ county_name)
+title = "Uninsured Population (%)"
+
+#
+bscols(
+  widths = 7, 
+  
+   filter_select("county_name",  ## this is the name of column we want to select. 
+                "County:", # this is what we want to see in the selection menu
+                sd2,
+                ~ county_name, multiple = FALSE),
+   plot_ly(sd2) %>%
+      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
+                marker = list(line = list(color = "black", width = 1)) ## add order t
+                ) %>%
+     layout(barmode = "stack",
+             xaxis = list(title = 'Race/Ethnicity',
+                          tickangle=-45,
+                          categoryorder = "total ascending"),   # Change to "total ascending" when MIN is best or "total descending" when MAX is best
+            
+            yaxis = list(title = title,
+                         titlefont = list(size = 11)
+                        ),
+            
+            
+             width = 600,
+            paper_bgcolor = "#FFFFFF",
+             plot_bgcolor = "#FFFFFF",
+            
+            font = list(
+              family = "Rubik",
+              size = 12,
+              color = '#8E8C8F'
+             ),
+            hoverlabel = list(bgcolor = "FFFFFF")
+   ) # end layout
+) # end bscols
+
+
+```
+
+
+## Life Expectancy - UPDATED {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r}
+c_3_chart <- c_3 %>% mutate(
+    disp_z_cap = case_when(
+      disparity_z > 3.5 ~ 3.5,
+      disparity_z < -3.5 ~ -3.5,
+      TRUE ~ disparity_z)
+    ) %>% mutate (
+    perf_z_cap = case_when(
+      performance_z > 3.5 ~ 3.5,
+      performance_z < -3.5 ~ -3.5,
+      TRUE ~ performance_z)
+    ) %>% filter(quadrant %in% c("purple", "yellow", "orange", "red"))
+
+c_3_chart %>% 
+    hchart("scatter", 
+    hcaes(x=disp_z_cap, y=perf_z_cap, size=dp05_0001e, group=quadrant),
+      tooltip = 
+         list(pointFormat = 
+                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.aian_rate:.1f} <br><strong>Asian Rate: </strong>{point.asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f}")) %>%
+    hc_title(text = "Life Expectancy (Years)") %>%
+  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
+  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
+  hc_caption(
+    text = paste(
+    "Data source:", 
+    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Life Expectancy"]), 
+    "<br> The number of years a baby can be expected to live if they experience current age-specific mortality rates throughout their life.", 
+    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
+    align = "center"
+     ) %>% #hc_size(height=400,width=700) %>% 
+  hc_legend(element_blank) %>% hc_add_theme(rc_theme)
+
+
+```
+* Five of the six counties in Southern California have greater than average racial disparities in life expectancy. 
+* Every county in the San Joaquin Valley has below average life expectancy rates.
+* Less populous, less urban counties tend to have fewer racial disparities in life expectancy. Of the 15 least disparate counties in this measure, none of them are classified as urban and only one is among the top ten most populous counties in the state.
+* The state's most populous, more urban counties tend to exhibit greater racial disparities in life expectancy. San Francisco, San Bernardino, Santa Clara, Los Angeles, San Diego, and Alameda counties are all among the top 20 for disparity levels in this metric.
+
+### State Barchart
+
+```{r}
+# Be sure to update title above depending on if indicator has been updated since RC v3
+title = "Life Expectancy (Years)"
+s_3_ <- s_3 %>%
+   select(c(state_name, ends_with('_rate'), -total_rate))
+s_3_long <- melt(s_3_, id.vars=c("state_name"))
+s_3_long <- s_3_long[order(-s_3_long$value),]
+s_3_long <- s_3_long %>% mutate_if(is.double, ~round(., 1))
+
+s_3_long %>% 
+  hchart("column", 
+    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
+   hc_yAxis(title = list(text=title),  
+           plotLines = list(
+                list(
+                  value = s_3$total_rate,
+                  color = "black",
+                  width = 2,
+                  zIndex = 20,  # the higher number means will be top/most visible layer
+                  label = list(text = paste0("Total Rate: ",round(s_3$total_rate, 1), " yrs"), style = list(color = "black", fontSize = 16), align = "right")))) %>%
+  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
+  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
+  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
+
+``` 
+* Asians have the highest life expectancy, followed by non-Latinx White Californians. Non-Latinx Blacks have the lowest life expectancy rate in the state, six years lower than the average statewide rate.
+
+### County Barchart
+
+```{r}
+
+c_3_long <- c_3 %>%
+   select(c(2, ends_with('_rate')))
+
+c_3_long <- melt(c_3_long, id.vars=c("county_name"))
+c_3_long <- c_3_long[order(c_3_long$value),]
+# Round 'value' field to 1 decimal
+c_3_long <- c_3_long %>% mutate(value = round(value, 1))
+
+
+# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
+
+# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
+
+sd3 <- SharedData$new(c_3_long, key = ~ county_name)
+title = "Life Expectancy (Years)"
+
+#
+bscols(
+  widths = 7, 
+  
+   filter_select("county_name", ## this is the name of column we want to select. 
+                "County:", # this is what we want to see in the selection menu
+                sd3,
+                ~ county_name, multiple = FALSE),
+   plot_ly(sd3) %>%
+      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
+                marker = list(line = list(color = "black", width =1)) ## add order t
+                ) %>%
+     layout(barmode = "stack",
+             xaxis = list(title = 'Race/Ethnicity',
+                          tickangle=-45, 
+                          categoryorder = "total descending"),     # Change to "total ascending" when MIN is best or "total descending" when MAX is best
+            
+                yaxis = list(title = title),
+            
+            
+             width = 600,
+            paper_bgcolor = "#FFFFFF",
+             plot_bgcolor = "#FFFFFF",
+            
+            font = list(
+              family = "Rubik",
+              size = 12,
+              color = '#8E8C8F'
+             ),
+            hoverlabel = list(bgcolor = "FFFFFF")
+   ) # end layout
+) # end bscols
+
+
+```
+
+
+## Low Birthweight - UPDATED {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r}
+c_4_chart <- c_4 %>% mutate(
+    disp_z_cap = case_when(
+      disparity_z > 3.5 ~ 3.5,
+      disparity_z < -3.5 ~ -3.5,
+      TRUE ~ disparity_z)
+    ) %>% mutate (
+    perf_z_cap = case_when(
+      performance_z > 3.5 ~ 3.5,
+      performance_z < -3.5 ~ -3.5,
+      TRUE ~ performance_z)
+    ) %>% filter(quadrant %in% c("purple", "yellow", "orange", "red"))
+
+c_4_chart %>%
+    hchart("scatter", 
+    hcaes(x=disp_z_cap, y=perf_z_cap, size=dp05_0001e, group=quadrant),
+      tooltip = 
+         list(pointFormat = 
+                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:,.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:,.1f} <br><strong>Black Rate: </strong>{point.nh_black_rate:,.1f} <br><strong>AIAN Rate: </strong>{point.aian_rate:,.1f} <br><strong>NHPI Rate: </strong>{point.pacisl_rate:,.1f} <br><strong>Asian Rate: </strong>{point.nh_asian_rate:,.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:,.1f} <br><strong>Two or More Races Rate: </strong>{point.nh_twoormor_rate:,.1f}")) %>%
+    hc_title(text = "Low Birthweight Births (%)") %>%
+  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
+  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
+  hc_caption(
+    text = paste(
+    "Data source:", 
+    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Low Birthweight"]), 
+    "<br> Percentage of infants born at low birthweight (less than 2,500 grams or about 5 lbs, 8 oz) of all live births, by race/ethnicity of mother.", 
+    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
+    align = "center"
+     ) %>% #hc_size(height=400,width=700) %>% 
+  hc_legend(element_blank) %>% hc_add_theme(rc_theme)
+
+
+```
+* There is no data for 17 of the 20 counties in the Northern/Sierra region for this measure.
+* There is also a moderately strong, negative correlation between population and performance. Higher population counties tend to experience higher rates of infants with low birthweight. The notable exception is Orange County, which is the third most populous county in the state and is firmly in the purple quadrant (higher performance, lower disparity).
+* San Francisco County and Kings County exhibit by far the largest racial disparities in rates of low birthweight, with Black birth outcomes notably on the wrong end of these disparities. In SF and Kings respectively, Black infants are about 3x and 2x more likely to be underweight than white infants.
+* The three counties with the lowest disparity (Imperial, Humboldt, and Napa) do not have data for Black births. Given the stark disparities in Black birth outcomes, this is at least one reason why disparity is so low in those counties.
+
+
+### State Barchart
+
+```{r}
+# Be sure to update title above depending on if indicator has been updated since RC v3
+title = "Low Birthweight Births (%)"
+s_4_ <- s_4 %>%
+   select(c(state_name, ends_with('_rate'), -total_rate))
+s_4_long <- melt(s_4_, id.vars=c("state_name"))
+s_4_long <- s_4_long[order(s_4_long$value),]
+s_4_long <- s_4_long %>% mutate_if(is.double, ~round(., 1))
+
+s_4_long %>% 
+  hchart("column", 
+    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
+  hc_yAxis(title = list(text=title),  
+           plotLines = list(
+                list(
+                  value = s_4$total_rate,
+                  color = "black",
+                  width = 2,
+                  zIndex = 20,  # the higher number means will be top/most visible layer
+                  label = list(text = paste0("Total Rate: ",round(s_4$total_rate, 1), "%"), style = list(color = "black", fontSize = 16), align = "left")))) %>%
+  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
+  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
+  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
+
+
+```
+* Black babies have the significantly highest likelihood of having low birthweight of any racial group in California. They are 50% more likely than the group with the next highest rate (American Indians and Alaska Natives), and more than 2x more likely than the group with the lowest rate (white Californians).
+
+
+### County Barchart
+
+```{r}
+
+c_4_long <- c_4 %>%
+   select(c(2, ends_with('_rate')))
+
+c_4_long <- melt(c_4_long, id.vars=c("county_name"))
+c_4_long <- c_4_long[order(c_4_long$value),]
+# Round 'value' field to 1 decimal
+c_4_long <- c_4_long %>% mutate(value = round(value, 1))
+
+
+# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
+
+# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
+
+sd4 <- SharedData$new(c_4_long, key = ~ county_name)
+title = "Low Birthweight Births (%)"
+
+#
+bscols(
+  widths = 7, 
+  
+   filter_select("county_name",  ## this is the name of column we want to select. 
+                "County:", # this is what we want to see in the selection menu
+                sd4,
+                ~ county_name, multiple = FALSE),
+   plot_ly(sd4) %>%
+      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
+                marker = list(line = list(color = "black", width =1)) ## add order t
+                ) %>%
+     layout(barmode = "stack",
+             xaxis = list(title = 'Race/Ethnicity',
+                          tickangle=-45,
+                          categoryorder = "total ascending"),          # Change to "total ascending" when MIN is best or "total descending" when MAX is best
+            
+           yaxis = list(title = title),
+            
+            
+             width = 600,
+            paper_bgcolor = "#FFFFFF",
+             plot_bgcolor = "#FFFFFF",
+            
+            font = list(
+              family = "Rubik",
+              size = 12,
+              color = '#8E8C8F'
+             ),
+            hoverlabel = list(bgcolor = "FFFFFF")
+   ) # end layout
+) # end bscols
+
+
+```
+
+
+## Usual Source of Care - UPDATED {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r}
+c_5_chart <- c_5 %>% mutate(
+    disp_z_cap = case_when(
+      disparity_z > 3.5 ~ 3.5,
+      disparity_z < -3.5 ~ -3.5,
+      TRUE ~ disparity_z)
+    ) %>% mutate (
+    perf_z_cap = case_when(
+      performance_z > 3.5 ~ 3.5,
+      performance_z < -3.5 ~ -3.5,
+      TRUE ~ performance_z)
+    ) %>% filter(quadrant %in% c("purple", "yellow", "orange", "red"))
+
+c_5_chart  %>% 
+    hchart("scatter", 
+    hcaes(x=disp_z_cap, y=perf_z_cap, size=dp05_0001e, group=quadrant),
+      tooltip = 
+         list(pointFormat = 
+                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.nh_black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.nh_asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Two or More Races Rate: </strong>{point.nh_twoormor_rate:.1f}")) %>%
+    hc_title(text = "Population with Usual Source of Care (%)") %>%
+  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
+  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
+  hc_caption(
+    text = paste(
+    "Data source:", 
+    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Usual Source of Care"]), 
+    "<br> Percentage of Population whose Usual Source of Care is doctor's office, HMO, Kaiser, community or government clinic, or hospital clinic.", 
+    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
+    align = "center"
+     ) %>% #hc_size(height=400,width=700) %>% 
+  hc_legend(element_blank) %>% hc_add_theme(rc_theme)
+
+```
+* All nine Bay Area counties have above average usual source of care rates among their populations and six counties are in the purple Quadrant (Lower Disparity, Higher Performance).
+* Counties with larger populations tend to have lower levels of racial disparity in their usual source of care rates, with none of the 16 counties with 500,000 or more residents appearing in the higher disparity quadrants (Orange and Red).
+
+### State Barchart
+
+```{r}
+# Be sure to update title above depending on if indicator has been updated since RC v3
+
+title = "Population with Usual Source of Care (%)"
+s_5_ <- s_5 %>%
+   select(c(state_name, ends_with('_rate'), -total_rate))
+s_5_long <- melt(s_5_, id.vars=c("state_name"))
+s_5_long <- s_5_long[order(-s_5_long$value),]
+s_5_long <- s_5_long %>% mutate_if(is.double, ~round(., 1))
+
+s_5_long %>% 
+  hchart("column", 
+    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
+  hc_yAxis(title = list(text=title),  
+           plotLines = list(
+                list(
+                  value = s_5$total_rate,
+                  color = "black",
+                  width = 2,
+                  zIndex = 20,  # the higher number means will be top/most visible layer
+                  label = list(text = paste0("Total Rate: ",round(s_5$total_rate, 1), "%"), style = list(color = "black", fontSize = 16), align = "right")))) %>%
+  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
+  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
+  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
+
+
+```
+* Latinx, Pacific Islander, AIAN, and Asian Californians are less likely to have a usual source of care than the average Californian.
+* Latinx Californians are over nine percentage points less likely to have a usual source of care than White Californians.
+
+
+### County Barchart
+
+```{r}
+c_5_long <- c_5 %>%
+   select(c(1, ends_with('_rate')))
+
+c_5_long <- melt(c_5_long, id.vars=c("county_name"))
+c_5_long <- c_5_long[order(c_5_long$value),]
+# Round 'value' field to 1 decimal
+c_5_long <- c_5_long %>% mutate(value = round(value, 1))
+
+
+# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
+
+# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
+
+sd5 <- SharedData$new(c_5_long, key = ~ county_name)
+title = "Population with Usual Source of Care (%)"
+
+#
+bscols(
+  widths = 7, 
+  
+   filter_select("county_name",  ## this is the name of column we want to select. 
+                "County:", # this is what we want to see in the selection menu
+                sd5,
+                ~ county_name, multiple = FALSE),
+   plot_ly(sd5) %>%
+      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
+                marker = list(line = list(color = "black", width =1)) ## add order t
+                ) %>%
+     layout(barmode = "stack",
+             xaxis = list(title = 'Race/Ethnicity',
+                          tickangle=-45,
+                          categoryorder = "total descending"),     # Change to "total ascending" when MIN is best or "total descending" when MAX is best
+            
+           yaxis = list(title = title),
+            
+            
+             width = 600,
+            paper_bgcolor = "#FFFFFF",
+             plot_bgcolor = "#FFFFFF",
+            
+            font = list(
+              family = "Rubik",
+              size = 12,
+              color = '#8E8C8F'
+             ),
+            hoverlabel = list(bgcolor = "FFFFFF")
+   ) # end layout
+) # end bscols
+
+
+```
+
+
+## Preventable Hospitalizations {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r}
+# Be sure to update title above depending on if indicator has been updated since RC v3
+# Remove counties without quadrant values. Cap indicator perf/disp z-scores at 3.5 and -3.5. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
+c_6_chart <- c_6 %>% mutate(
+    disp_z_cap = case_when(
+      disparity_z > 3.5 ~ 3.5,
+      disparity_z < -3.5 ~ -3.5,
+      TRUE ~ disparity_z)
+    ) %>% mutate (
+    perf_z_cap = case_when(
+      performance_z > 3.5 ~ 3.5,
+      performance_z < -3.5 ~ -3.5,
+      TRUE ~ performance_z)
+    ) %>% filter(quadrant %in% c("purple", "yellow", "orange", "red"))
+
+c_6_chart %>% 
+    hchart("scatter", 
+    hcaes(x=disp_z_cap, y=perf_z_cap, size=dp05_0001e, group=quadrant),
+      tooltip = 
+         list(pointFormat = 
+                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.nh_black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.nh_aian_rate:.1f} <br><strong>API Rate: </strong>{point.nh_api_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Other Rate: </strong>{point.nh_other_rate:.1f}")) %>%
+  hc_title(text = "Preventable Hospitalizations per 100k Persons") %>%
+  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
+  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
+  hc_caption(
+    text = paste(
+    "Data source:", 
+    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Preventable Hospitalizations"]), 
+    "<br>Number of preventable hospitalizations per 100,000 people. The chronic composite of preventable hospitalizations (Prevention Quality Indicator #92) includes diabetes short- and long-term complications, chronic obstructive pulmonary disease (COPD), asthma in younger or older adults, hypertension, heart failure, uncontrolled diabetes, and lower-extremity amputations among patients with diabetes.", 
+    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
+    align = "center"
+     ) %>% #hc_size(height=400,width=700) %>% 
+  hc_legend(element_blank) %>% hc_add_theme(rc_theme)
+       
+
+```
+* The four highest levels of racial disparity in the state, in Imperial, Amador, Lassen, and Mariposa counties, all represent extremely values compared to the rest of the state. In the 2nd-4th highest counties, their small population sizes (>40,000) could help inflate these measures.
+* In Imperial County, by far the most racially disparate county in this measure, white residents have by far the worst outcomes in preventable hospitalizations. They are hospitalized at around 5x the rate of Asian residents and nearly twice the rate of Black and Latinx residents in the county.
+* In many counties, some of the highest rates are for Other race, local knowledge will be needed to better understand who makes up this group in each county.
+
+### State Barchart
+
+```{r}
+# Be sure to update title above depending on if indicator has been updated since RC v3
+# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate
+
+title = "Preventable Hospitalizations per 100k Persons"
+s_6_ <- s_6 %>%
+   select(c(state_name, ends_with('_rate'), -total_rate))
+s_6_long <- melt(s_6_, id.vars=c("state_name"))
+s_6_long <- s_6_long[order(s_6_long$value),]
+s_6_long <- s_6_long %>% mutate_if(is.double, ~round(., 1))
+
+s_6_long %>% 
+  hchart("column", 
+    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
+   hc_yAxis(title = list(text=title),   
+           plotLines = list(
+                list(
+                  value = s_6$total_rate,
+                  color = "black",
+                  width = 2,
+                  zIndex = 20,  # the higher number means will be top/most visible layer
+                  label = list(text = paste0("Total Rate: ",round(s_6$total_rate, 1)), style = list(color = "black", fontSize = 16), align = "left")))) %>%
+  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
+  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
+  hc_add_theme(rc_theme)
+
+
+``` 
+* The Black preventable hospitalization rate is nearly 5 times higher than that of the group with the lowest rate, and 2.5 times higher than even the state average.
+* The preventable hospitalization rate for white Californians is about 10% higher than the overall state average and more than 2x higher than the racial group with the lowest rate. This is the only health metric in which white residents experience worse outcomes than the state average.
+
+
+### County Barchart
+
+```{r}
+c_6_long <- c_6 %>%
+   select(c(county_name, ends_with('_rate')))
+
+c_6_long <- melt(c_6_long, id.vars=c("county_name"))
+c_6_long <- c_6_long[order(c_6_long$value),]
+# Round 'value' field to 1 decimal
+c_6_long <- c_6_long %>% mutate(value = round(value, 1))
+
+
+# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
+
+# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
+
+
+sd6 <- SharedData$new(c_6_long, key = ~ county_name)
+title = "Preventable Hospitalizations per 100k Persons"
+
+#
+bscols(
+  widths = 7, 
+  
+   filter_select("county_name", ## this is the name of column we want to select. 
+                "County:", # this is what we want to see in the selection menu
+                sd6,
+                ~ county_name, multiple = FALSE),
+   plot_ly(sd6) %>%
+      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
+                marker = list(line = list(color = "black", width =1)) ## add order t
+                ) %>%
+     layout(barmode = "stack",
+             xaxis = list(title = 'Race/Ethnicity',
+                          tickangle=-45,
+                          categoryorder = "total ascending"),         # Change to "total ascending" when MIN is best or "total descending" when MAX is best
+            
+    yaxis = list(title = title),
+            
+            
+             width = 600,
+            paper_bgcolor = "#FFFFFF",
+             plot_bgcolor = "#FFFFFF",
+            
+            font = list(
+              family = "Rubik",
+              size = 12,
+              color = '#8E8C8F'
+             ),
+            hoverlabel = list(bgcolor = "FFFFFF")
+   ) # end layout
+) # end bscols
+
+```
+
+
+```{r echo=FALSE, include = FALSE}
+# below is a javascript chunk for the county bar-charts. The chunk automatically selects the 'Alameda' county as the first chunk. Without the chunk below, as you can see from the output above, the first bar-chart shown sums the race/ethnicity rates for all of the counties. 
+# Each line that starts with document is for each graph (0-5) for a total of 6 graphs. If another graph is added, then you would simply add another line and label it as [6]. 
+
+# Notice that it isn't an R chunk, it is a JS chunk. :) 
+```
+
+```{r}
+##Closing database connections##
+dbDisconnect(con)
+dbDisconnect(con2)
+
+```
+
+```{js}
+function filter_default() {
+    document.getElementsByClassName("selectized") 
+[0].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[1].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[2].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[3].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[4].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[5].selectize.setValue("Alameda", false);
+
+ }
+window.onload = filter_default;
+```
+
+
+
+
+
