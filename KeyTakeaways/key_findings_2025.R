@@ -29,9 +29,11 @@ curr_schema <- 'v7' # update each year, this field populates most table and file
 curr_yr <- '2025'   # update each year, this field populates most table and file names automatically
 
 # Review and update as needed
-wb_rate_threshold <- 5  # Finding 1: suppress Race Page 'worst rate' findings for race+geo combos with data for <= this number indicators
-min_id_count <- 4       # Finding 2: Suppress Place Page 'most impacted' findings for geos with <= this number of Index of Disparity scores
-n <- 5                  # Finding 3: Suppress Race Page 'most disparate indicator' findings for race+geo combos with rates <= this number # of indicators
+finding1_threshold <- 5       # Finding 1 County/State/Leg: suppress Race Page 'worst.best rate' findings for race+geo combos with data for <= this number indicators
+finding1_threshold_city <- 3  # Finding 1 City: suppress Race Page 'worst/best rate' findings for race+geo combos with data for <= this number indicators
+finding2_threshold <- 4       # Finding 2: Suppress Place Page 'most impacted' findings for geos with <= this number of Index of Disparity scores
+finding3_threshold <- 5       # Finding 3 County/State/Leg: Suppress Race Page 'most disparate indicator' findings for race+geo combos with rates <= this number # of indicators
+finding3_threshold_city <- 3  # Finding 3 City: Suppress Race Page 'most disparate indicator' findings for race+geo combos with rates <= this number # of indicators
 
 # Findings table names
 race_table <- "arei_findings_races_multigeo"
@@ -41,9 +43,8 @@ place_table <- "arei_findings_places_multigeo"
 
 # Load metadata tables ----------------------------------------------------
 # pull in geo level ids with name. I don't do this directly in the data in case names differ and we have issues merging later
-arei_race_multigeo_city <- dbGetQuery(con, paste0("SELECT geoid, name, geolevel FROM ", curr_schema, ".arei_race_multigeo")) %>%
-  filter(geolevel == "place") %>%
-  rename(city_id = geoid, city_name = name) %>% select(-geolevel)
+arei_race_multigeo_city <- dbGetQuery(con, paste0("SELECT city_id, city_name FROM ", curr_schema, ".arei_city_county_district_table")) %>%
+  select(city_id, city_name) %>% unique()
 
 arei_race_multigeo_county <- dbGetQuery(con, paste0("SELECT geoid, name, geolevel FROM ", curr_schema, ".arei_race_multigeo")) %>%
   filter(geolevel == "county") %>%
@@ -118,11 +119,14 @@ df_merged <- disparity %>%
 
 # create issue, indicator, geo_level, race generic columns for issue tables except for education
 df_city <- df_merged %>% 
+  select(-city_name) %>%  # drop uncleaned city_name
   mutate(issue = substring(indicator, 5, 8),
          indicator = substring(indicator, 10),
          indicator = gsub(paste0("_city_",curr_yr), '', indicator),
          geo_level = "city") %>%
-  rename(geoid = city_id, geo_name = city_name)
+  left_join(arei_race_multigeo_city, by = "city_id") %>%  # add clean city_name
+  rename(geoid = city_id, geo_name = city_name) %>%
+  select(geoid, geo_name, everything())
 
 # City (District) Education Tables: must be handled separately bc they are school district not city-level ----------------------------------------
 education_list <- rc_list %>%
@@ -365,8 +369,7 @@ df_leg <- df_merged_leg %>%
          leg_name = gsub("State ", "", leg_name)) %>%             # make leg_names consistent by dropping "State "
   rename(geoid = leg_id, geo_name = leg_name, geo_level = geolevel)
 
-
-# merge city, county, state data (educ tables are excluded) and create race_generic column
+# merge city, county, state data (educ tables are excluded) and create race_generic column --------
 final_df <- bind_rows(df_city, df_county, df_state, df_leg) %>% 
     mutate(race_generic = gsub('nh_', '', race),                        # create 'generic' race name column, drop nh_ prefixes to help generate counts by race later
            race_generic = gsub('swanasa', 'swana', race_generic)) %>%   # recode swanasa as swana to help generate counts by race later
@@ -374,7 +377,8 @@ final_df <- bind_rows(df_city, df_county, df_state, df_leg) %>%
            rate, disparity_z_score, performance_z_score, 
            values_count, geo_level, race_generic) %>%
     university_check() # remove records where city is actually a university, v7: there is 1 place like this (UCSB)
-    
+
+
 
 ######## NOTE: You MUST re-run the whole script and update the RData file if underlying data changes ###########
 ### save df as .RData file, so don't have to re-run each time we update findings text, logic etc.
@@ -456,9 +460,8 @@ worst_table <- df_1 %>%
   group_by(geoid, geo_level, indicator) %>% 
   top_n(1, disparity_z_score) %>% # get worst raced disparity z-score by geo+indicator combo
   rename(worst_rate = race_generic) %>% 
-  filter(values_count > 1) # filter out geo+indicator combos with only 1 raced rate
+  filter(values_count > 1)        # filter out geo+indicator combos with only 1 raced rate
 
-# Flagging this code returns many-to-many warnings, should use "relationship = "many-to-many" to QA clarification
 worst_table2 <- df_1 %>% 
   left_join(
     select(worst_table, geoid, indicator, worst_rate, geo_level), by = c("geoid", "indicator", "geo_level"), relationship = "many-to-many") %>%
@@ -474,11 +477,13 @@ worst_rate_count <- worst_table2 %>%
   mutate(finding_type = 'worst count', 
          findings_pos = 2,
          finding = case_when(  
-           # If rate_count is > wb_rate_threshold, generate 'valid' finding
-           # If not, generate 'data too limited' finding
-           rate_count > wb_rate_threshold ~ paste0(geo_name, "'s ", long_name, " residents have the worst rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), 
-           rate_count <= wb_rate_threshold ~ paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for worst rate count by race analysis."),
-           .default = "There is an error with your data. Please fix and re-run findings code.")) 
+           # If rate_count is > threshold, generate valid finding
+           # If not, generate data too limited finding
+		     geo_level %in% c("county", "state", "sldu", "sldl") & rate_count > finding1_threshold ~ paste0(geo_name, "'s ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), 
+             geo_level %in% c("county", "state", "sldu", "sldl") & rate_count <= finding1_threshold ~ paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for best rate by race analysis."),
+			 geo_level == "city" & rate_count > finding1_threshold_city ~ paste0(geo_name, "'s ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), 
+             rate_count <= finding1_threshold_city ~ paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for best rate by race analysis."),
+             .default = "There is an error with your data. Please fix and re-run findings code.")) 
 
 
 ## Part 2: Calc Best Rates ---------------------------------------------------
@@ -525,35 +530,37 @@ df_12 <- api_split(df_12) # duplicate api rates as asian and pacisl
 
 ### Note: Code differs from Worst rates to account for when min is best and there is raced rate = 0, so we cannot use disparity_z for min asbest indicators ###
 best_table <- df_12 %>% 
-    group_by(geoid, geo_level, indicator) %>% 
-    mutate(
-        # rank based on which race has best outcome for given indicator (i.e., min or max)
-        rk = case_when(asbest == 'min' ~dense_rank(rate),
-                            asbest == 'max' ~dense_rank(-rate),
-                            .default = NA),
-        # identify race with best rate using rk (ties are ok)
-        best_rate = ifelse(rk == 1, race_generic, ""))  
-
-# Flagging this code chunk returns many-to-many warning - should add "relationship="many-to-many"" for QA clarification
+  group_by(geoid, geo_level, indicator) %>% 
+  mutate(
+  # rank based on which race has best outcome for given indicator (i.e., min or max)
+  rk = case_when(asbest == 'min' ~dense_rank(rate),
+                 asbest == 'max' ~dense_rank(-rate),
+                 .default = NA),
+  # identify race with best rate using rk (ties are ok)
+  best_rate = ifelse(rk == 1, race_generic, "")) %>%
+  filter(values_count > 1) %>%        # filter out indicators with only 1 raced rate 
+  filter(rk == 1)
+  
 best_table2 <- df_12 %>%
-    filter(values_count > 1) %>%  # filter out indicators with only 1 raced rate 
-    left_join(
-      select(best_table, geoid, indicator, best_rate, geo_level), by = c("geoid", "indicator", "geo_level"), relationship = "many-to-many") %>%
-    mutate(best = ifelse((race_generic == best_rate), 1, 0)) %>%             
-    group_by(geoid, geo_name, geo_level, race_generic) %>% 
-    summarise(count = sum(best, na.rm = TRUE)) %>%
-    left_join(race_names, by = c("race_generic")) %>%
-    left_join(bestworst_screen, by = c("geoid", "geo_level", "race_generic"))
+  left_join(
+    select(best_table, geoid, indicator, best_rate, geo_level), by = c("geoid", "indicator", "geo_level"), relationship = "many-to-many") %>%
+  mutate(best = ifelse((race_generic == best_rate), 1, 0)) %>%             
+  group_by(geoid, geo_name, geo_level, race_generic) %>% 
+  summarise(count = sum(best, na.rm = TRUE)) %>%
+  left_join(race_names, by = c("race_generic")) %>%
+  left_join(bestworst_screen, by = c("geoid", "geo_level", "race_generic"))
 
 best_rate_count <- best_table2 %>%
     filter(!is.na(rate_count)) %>% 
     mutate(finding_type = 'best count', 
            findings_pos = 1,
            finding =  case_when(  
-             # If rate_count is > wb_rate_threshold, generate 'valid' finding
+             # If rate_count is > threshold, generate 'valid' finding
              # If not, generate 'data too limited' finding
-             rate_count > wb_rate_threshold ~ paste0(geo_name, "'s ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), 
-             rate_count <= wb_rate_threshold ~ paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for best rate by race analysis."),
+             geo_level %in% c("county", "state", "sldu", "sldl") & rate_count > finding1_threshold ~ paste0(geo_name, "'s ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), 
+             geo_level %in% c("county", "state", "sldu", "sldl") & rate_count <= finding1_threshold ~ paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for best rate by race analysis."),
+             geo_level == "city" & rate_count > finding1_threshold_city ~ paste0(geo_name, "'s ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), 
+             rate_count <= finding1_threshold_city ~ paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for best rate by race analysis."),
              .default = "There is an error with your data. Please fix and re-run findings code.")) 
              
              
@@ -574,21 +581,21 @@ worst_best_counts <- rename(worst_best_counts, race = race_generic) %>%
 
 ### Table counting number of indicators with ID's (multiple raced disp_z scores) per geo, used for screening most impacted later ### 
 impact_screen <- df_1 %>% 
-    group_by(geoid, geo_name, indicator) %>% 
+    group_by(geoid, geo_name, geo_level, indicator) %>% 
     summarise(rate_count = sum(!is.na(disparity_z_score))) %>%
     ungroup() %>%
     filter(rate_count > 1) %>% 
-    group_by(geoid, geo_name) %>% 
+    group_by(geoid, geo_name, geo_level) %>% 
     summarise(id_count = n())
 
 impact_table <- worst_table2 %>% 
     select(-rate_count) %>% 
-    group_by(geoid, geo_name) %>% 
+    group_by(geoid, geo_name, geo_level) %>% 
     top_n(1, count) %>% # get race most impacted by racial disparity by geo
     left_join(
-      select(impact_screen, geoid, id_count), by = "geoid", relationship = "many-to-many")
+      select(impact_screen %>% ungroup(), geoid, geo_level, id_count), by = c("geoid", "geo_level"), relationship = "many-to-many")
 
-# Check for geos with ties for group with the most worst rates: Amador, Imperial, San Mateo
+# Check for geos with ties for group with the most worst rates
 ties_worst_rate <- impact_table %>%
     group_by(geoid, geo_name, geo_level, count) %>%
     filter(n() > 1)
@@ -596,7 +603,7 @@ ties_worst_rate <- impact_table %>%
 ## the next few lines concatenate the names of the tied groups to prep for findings
 impact_table2 <- impact_table %>%
     filter(!is.na(id_count)) %>% 
-    group_by(geoid, geo_name, count) %>%
+    group_by(geoid, geo_name, geo_level, count) %>%
     mutate(race_count = n()) %>% # count the number of most impacted groups
     arrange(long_name) %>%       # order long race name alphabetically
     mutate(group_order = paste0("group_", rank(long_name, ties.method = "first"))) %>% # number the most impacted groups grouped by geo
@@ -607,7 +614,7 @@ impact_table2 <- impact_table %>%
 impact_table_wide <- impact_table2 %>% 
     select(geoid, geo_name, geo_level, id_count, race_count, group_order, long_name) %>%      # pivot long table back to wide
     pivot_wider(names_from=group_order, values_from=long_name) %>%
-    group_by(geoid) %>% 
+    group_by(geoid, geo_level) %>% 
     mutate(long_name2 = 
              case_when(
                race_count == 1 ~ group_1,
@@ -619,13 +626,13 @@ impact_table_wide <- impact_table2 %>%
 
 
 # Create most impacted findings
-# Findings depend on whether a geo has more ids than the min_id_count AND on how many groups are tied for most impacted.
+# Findings depend on whether a geo has more ids than the finding2_threshold AND on how many groups are tied for most impacted.
 most_impacted <- impact_table_wide %>% 
     mutate(finding_type = 'most impacted',
            finding = 
              case_when(
-               (id_count > min_id_count & long_name2 != '99999') ~ paste0("Across indicators, ", geo_name, " ", long_name2, " residents are most impacted by racial disparity."), 
-               (id_count > min_id_count & long_name2 == '99999') ~ paste0('There are more than three groups tied for most impacted in ', geo_name, "."), # added finding where 4+ groups tie for 'most impacted' bc finding becomes less meaningful
+               (id_count > finding2_threshold & long_name2 != '99999') ~ paste0("Across indicators, ", geo_name, " ", long_name2, " residents are most impacted by racial disparity."), 
+               (id_count > finding2_threshold & long_name2 == '99999') ~ paste0('There are more than three groups tied for most impacted in ', geo_name, "."), # added finding where 4+ groups tie for 'most impacted' bc finding becomes less meaningful
                .default = paste0("Data for residents of ", geo_name, " is too limited for most impacted race analysis.")), # null finding when geo does not meet ID threshold
            findings_pos = 1) %>%
     select(c(geoid, geo_name, geo_level, finding_type, finding, findings_pos)) 
@@ -643,7 +650,7 @@ most_impacted$geo_name <- gsub(" County", "", most_impacted$geo_name)   # clean 
 df_3 <- bind_rows(final_df, df_education_district_disparate_final)
 
 df_3 <- df_3 %>%
-    filter(race != 'total')    # remove total rates bc all findings in this section are raced
+  filter(race != 'total')    # remove total rates bc all findings in this section are raced
 
 # race_generic == api records are duplicated, then race_generic is renamed as "asian" and "pacisl"
 df_3 <- api_split(df_3) 
@@ -663,22 +670,26 @@ white_ <- most_disp_by_race(x=df_3, y='white')
 
 swana_ <- most_disp_by_race(x=df_3, y='swana')
 
-most_disp <- bind_rows(aian_, asian_, black_, latinx_, pacisl_, white_, swana_) %>%
+most_disp <- plyr::rbind.fill(aian_, asian_, black_, latinx_, pacisl_, white_, swana_) %>%
     select(geoid, geo_name, dist_id, district_name, total_enroll, race, long_name, indicator_count, ends_with("_ind"), everything())
 
 
 # generate findings
 most_disp_final <- most_disp %>% 
     mutate(
-      finding = 
-        case_when(
-          ## Suppress finding if race+geo combo has <= threshold number of rates across indicators
-          indicator_count <= n ~ paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for most disparate indicator by race analysis."),   
-          ## When a race+geo's most disparate indicator is in education include district name in finding
-          (indicator_count > n & arei_issue_area == 'Education' & !is.na(district_name)) ~ paste0("In ", geo_name, " (", district_name, "), ", indicator, " is the most disparate indicator for ", long_name, " residents."),
-          .default = paste0("In ", geo_name, ", ", indicator, " is the most disparate indicator for ", long_name, " residents.")),
+      
+      finding = case_when(
+        # If indicator_count > threshold and most disp indicator is in Education, generate data too limited finding. For cities, 
+        # If not, generate data too limited finding.
+        geo_level %in% c("county", "state", "sldu", "sldl") & indicator_count > finding3_threshold ~ paste0("In ", geo_name, ", ", indicator, " is the most disparate indicator for ", long_name, " residents."),
+        geo_level %in% c("county", "state", "sldu", "sldl") & indicator_count <= finding3_threshold ~ paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for most disparate indicator by race analysis."),   
+        geo_level == 'city' & indicator_count > finding3_threshold_city  & arei_issue_area != 'Education' ~ paste0("In ", geo_name, ", ", indicator, " is the most disparate indicator for ", long_name, " residents."),
+        geo_level == 'city' & (indicator_count > finding3_threshold_city & arei_issue_area == 'Education' & !is.na(district_name)) ~ paste0("In ", geo_name, " (", district_name, "), ", indicator, " is the most disparate indicator for ", long_name, " residents."),
+        geo_level == 'city' & indicator_count <= finding3_threshold_city ~ paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for most disparate indicator by race analysis."),   
+        .default = "There is an error with your data. Please fix and re-run findings code."),
       finding_type = 'most disparate', findings_pos = 3) %>%
-    select(geoid, geo_name, geo_level, dist_id, district_name, total_enroll, long_name, race, indicator, indicator_count, finding_type, findings_pos, finding)
+  select(geoid, geo_name, geo_level, arei_issue_area, dist_id, district_name, total_enroll, long_name, race, indicator, indicator_count, finding_type, findings_pos, finding)
+
 
 # Save most_disp, best_rate_counts, worst_rate_counts as 1 df
 rda_race_findings <- bind_rows(most_disp_final, worst_best_counts)
