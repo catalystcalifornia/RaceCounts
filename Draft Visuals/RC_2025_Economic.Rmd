@@ -171,7 +171,7 @@ s_6 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_econ_real_cost_measure_stat
 s_7 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_econ_connected_youth_state_2025"))
 
 # merge with urban type 
-region_urban_type <- dbGetQuery(con, paste0("SELECT geoid AS county_id, region, urban_type FROM v6.arei_multigeo_list")) # Using v5 data for now, will update later with v7 data once available
+region_urban_type <- dbGetQuery(con, paste0("SELECT geoid AS county_id, region, urban_type FROM v7.arei_multigeo_list")) # Using v5 data for now, will update later with v7 data once available
 
 c_1 <- left_join(c_1, region_urban_type)
 c_2 <- left_join(c_2, region_urban_type)

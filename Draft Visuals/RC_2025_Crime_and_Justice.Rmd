@@ -168,7 +168,7 @@ s_4 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_crim_use_of_force_state_202
 s_5 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_crim_officer_initiated_stops_state_2025")) ##Added for Officer_initiated_stops
 
 # merge with urban type
-region_urban_type <- dbGetQuery(con, paste0("SELECT geoid AS county_id, region, urban_type FROM v6.arei_multigeo_list"))
+region_urban_type <- dbGetQuery(con, paste0("SELECT geoid AS county_id, region, urban_type FROM v7.arei_multigeo_list"))
 
 c_1 <- left_join(c_1, region_urban_type)
 c_2 <- left_join(c_2, region_urban_type)
