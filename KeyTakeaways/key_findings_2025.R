@@ -27,6 +27,8 @@ con <- connect_to_db("racecounts")
 # MUST UPDATE EACH YEAR -------------------------------------------------
 curr_schema <- 'v7' # update each year, this field populates most table and file names automatically
 curr_yr <- '2025'   # update each year, this field populates most table and file names automatically
+qa_filepath <- 'W:\\Project\\RACE COUNTS\\2025_v7\\Findings\\QA_Automated_Findings.docx'
+
 
 # Review and update as needed
 finding1_threshold <- 5       # Finding 1 County/State/Leg: suppress Race Page 'worst.best rate' findings for race+geo combos with data for <= this number indicators
@@ -686,7 +688,8 @@ most_disp_final <- most_disp %>%
       geo_level == 'city' & (indicator_count > finding3_threshold_city & arei_issue_area == 'Education' & !is.na(district_name)) ~ paste0("In ", geo_name, " (", district_name, "), ", indicator, " is the most disparate indicator for ", long_name, " residents."),
       geo_level == 'city' & indicator_count <= finding3_threshold_city ~ paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for most disparate indicator by race analysis."),   
       .default = "There is an error with your data. Please fix and re-run findings code."),
-    finding_type = 'most disparate', findings_pos = 3) %>%
+    finding_type = 'most disparate', 
+    findings_pos = 3) %>%
   select(geoid, geo_name, geo_level, dist_id, district_name, total_enroll, finding_type,finding, findings_pos)
 
 
@@ -699,25 +702,32 @@ rda_race_findings <- rda_race_findings %>%
          race = ifelse(race == 'pacisl', 'nhpi', race))  # rename pacisl to nhpi to feed API - In all other RC tables we use 'pacisl'
 
 ## Export postgres table
-dbWriteTable(con, 
-             Id(schema = curr_schema, table = race_table), 
-             rda_race_findings, overwrite = FALSE, row.names = FALSE)
+# dbBegin(con)
+# dbWriteTable(con, 
+#              Id(schema = curr_schema, table = race_table), 
+#              rda_race_findings, overwrite = FALSE, row.names = FALSE)
+# dbCommit(con)
 
 # comment on table and columns
-dbBegin(con)
-comment <- paste0("COMMENT ON TABLE ", curr_schema, ".", race_table, "
-                         IS ' Created ", Sys.Date(), ". Findings for County/State Race pages (API), and City/Leg findings (not on website) created using W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R.';",
-                  "COMMENT ON COLUMN ", curr_schema, ".", race_table, ".finding_type
-                         IS 'Categorizes findings: count of best and worst rates by race/geo combo, most disparate indicator by race/geo combo';",
-                  "COMMENT ON COLUMN ", curr_schema, ".", race_table, ".src
-                         IS 'Categorizes source of finding as either rda or program area';",
-                  "COMMENT ON COLUMN ", curr_schema, ".", race_table, ".citations
-                         IS 'External ", curr_schema, ".citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
-                  "COMMENT ON COLUMN ", curr_schema, ".", race_table, ".findings_pos
-                        IS 'Used to determine the order a set of findings should appear in on RC.org';")
-#print(comment)
-dbExecute(con, comment)
-dbCommit(con)
+ind <- "NOTE: County/SLDU/SLDL share the same geoids - you must use geoid+geo_level to query. Findings for County/State Race pages (API), and City/Leg findings (not on website)"
+source <- paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R.")
+column_names <- colnames(rda_race_findings)
+column_comments <- c(
+  'FIPS Code. NOTE: County/SLDU/SLDL share the same geoids.',
+  'Geo Names',
+  'Categorizes geo_level: state, county, city, sldu, sldl. NOTE: County/SLDU/SLDL share the same geoids.', 
+  'School district FIPS code',
+  'School district name',
+  'School district total enrollment',
+  'Categorizes findings: count of best and worst rates by race/geo combo, most disparate indicator by race/geo combo', 
+  'Finding for display on RC.org',
+  'Used to determine the order a set of findings should appear in on RC.org',
+  'Racial-ethnic group the finding relates to',
+  'Categorizes source of finding as either rda or program area', 
+  'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations') 
+
+# add_table_comments(con, curr_schema, race_table, ind, source, qa_filepath, column_names, column_comments)
+
 
 # Finding 4: The most disparate and worst outcome indicators - PLACE PAGE (County & City only) ----------
 ## Example:"Student Homelessness is the most disparate indicator in Alameda County." or "Lack of Greenspace has the worst overall outcome in Alameda County."
@@ -848,72 +858,81 @@ print(paste0("There are ", nrow(tie_check), " ties. If there are any ties, you w
 
 # Write Findings using case_when statements
 worst_outc3 <- worst_outc2 %>%
-  mutate(finding_type = 'worst overall outcome', 
-         finding = 
-             case_when(
-               (arei_issue_area == 'Education' & geo_level == "city") ~ paste0(long_perf_indicator, " has the worst overall outcome in ", geo_name, " (", district_name, ")."),
-               .default = paste0(long_perf_indicator, " has the worst overall outcome in ", geo_name, ".")),
-         findings_pos = 5) %>% 
-    select(geoid, geo_name, geo_level, dist_id, district_name, total_enroll, finding_type, finding, findings_pos)
+  mutate(
+    finding_type = 'worst overall outcome', 
+    finding = 
+       case_when(
+         (arei_issue_area == 'Education' & geo_level == "city") ~ paste0(long_perf_indicator, " has the worst overall outcome in ", geo_name, " (", district_name, ")."),
+         .default = paste0(long_perf_indicator, " has the worst overall outcome in ", geo_name, ".")),
+    findings_pos = 5) %>% 
+  select(geoid, geo_name, geo_level, dist_id, district_name, total_enroll, finding_type, finding, findings_pos)
 
 
 # Combine findings into one final df and drop unneeded cols for join later
 worst_disp_outc <- union(worst_disp3, worst_outc3)
 worst_disp_outc_ <- worst_disp_outc %>% 
-    select(-c(dist_id, district_name, total_enroll))
+  select(-c(dist_id, district_name, total_enroll))
 
 # Finding 5: Above/Below Average Disparity/Outcome Findings - PLACE PAGE --------------------------------------
-### Example: "Alameda County's racial disparty across indicators is less than the average for California counties."
+### Example: "Alameda County's racial disparity across indicators is less than the average for California counties."
 ## Pull composite disparity/outcome z-scores for city and county; add urban type = NA for cities.
 ### A geo must have a composite index disp_z and/or perf_z score to get these findings.
 index_county <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_composite_index_", curr_yr)) %>% 
-    select(county_id, county_name, urban_type, disparity_z, performance_z) %>% 
-    rename(geoid = county_id, geo_name = county_name) %>% 
-    mutate(geo_level = "county")
+  select(county_id, county_name, urban_type, disparity_z, performance_z) %>% 
+  rename(geoid = county_id, geo_name = county_name) %>% 
+  mutate(geo_level = "county")
 
 index_city <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_composite_index_city_", curr_yr)) %>% 
-    select(city_id, city_name, disparity_z, performance_z) %>% 
-    rename(geoid = city_id, geo_name = city_name) %>% 
-    mutate(geo_level = "city")
+  select(city_id, city_name, disparity_z, performance_z) %>% 
+  rename(geoid = city_id, geo_name = city_name) %>% 
+  mutate(geo_level = "city")
+
+## LEG INDEXES HAVE NOT BEEN RUN YET
+# index_leg <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_composite_index_leg_", curr_yr)) %>% 
+#   select(leg_id, leg_name, disparity_z, performance_z) %>% 
+#   rename(geoid = leg_id, geo_name = leg_name)
 
 index_county_city <- bind_rows(index_county, index_city) %>%
-    clean_geo_names()
+  clean_geo_names()
 
 index_county_city$geo_name <- ifelse(index_county_city$geo_level == 'county', paste0(index_county_city$geo_name, ' County'), index_county_city$geo_name) # add back 'County'
 
 # Above/Below Avg Disp/Outcome
 avg_statement_df <- index_county_city %>% 
-    mutate(pop_type = ifelse(urban_type == 'Urban', 'more', 'less'), # used for more/less populous finding
-           outc_type = ifelse(performance_z < 0, 'worse than', 'better than'),
-           disp_type = ifelse(disparity_z < 0, 'better than', 'worse than')) 
+  mutate(pop_type = ifelse(urban_type == 'Urban', 'more', 'less'), # used for more/less populous finding
+    outc_type = ifelse(performance_z < 0, 'worse than', 'better than'),
+    disp_type = ifelse(disparity_z < 0, 'better than', 'worse than')) 
 
 disp_avg_statement <- avg_statement_df %>%
-    mutate(finding_type = 'disparity', 
-           finding = ifelse(geo_level == "county",
-                            paste0(geo_name, "'s racial disparity across indicators is ", disp_type, " the average for California counties."), 
-                            paste0(geo_name, "'s racial disparity across indicators is ", disp_type, " the average for California cities.")),
-           finding = ifelse(is.na(disp_type), 
-                            paste0("Data for ", geo_name, " is too limited for disparity level analysis."), 
-                            finding),
-           findings_pos = 2) %>% 
-    select(geoid, geo_name, geo_level, finding_type, finding, findings_pos)
+  mutate(
+    finding_type = 'disparity', 
+    
+    finding = case_when(
+      is.na(disp_type) ~ paste0("Data for ", geo_name, " is too limited for disparity level analysis."),
+      geo_level == 'county' ~ paste0(geo_name, "'s racial disparity across indicators is ", disp_type, " the average for California counties."),
+      geo_level == 'city' ~ paste0(geo_name, "'s racial disparity across indicators is ", disp_type, " the average for California cities."),
+      geo_level == 'sldu' ~ paste0(geo_name, "'s racial disparity across indicators is ", disp_type, " the average for California Senate Districts."),
+      geo_level == 'sldl' ~ paste0(geo_name, "'s racial disparity across indicators is ", disp_type, " the average for California Assembly Districts."),
+      .default = "There is something wrong. Please check your data."),
+    findings_pos = 2) %>% 
+  select(geoid, geo_name, geo_level, finding_type, finding, findings_pos)
 
 outc_avg_statement <- avg_statement_df %>% 
-    mutate(finding_type = 'outcomes', 
-           finding = ifelse(geo_level == "county", 
-                            paste0(geo_name, "'s overall outcomes across indicators are ", outc_type, " the average for California counties."),
-                            paste0(geo_name, "'s overall outcomes across indicators are ", outc_type, " the average for California cities.")),
-           finding = ifelse(is.na(outc_type), 
-                            paste0("Data for ", geo_name, " is too limited for outcome level analysis."), 
-                            finding),
-           findings_pos = 3) %>% 
-    select(geoid, geo_name, geo_level, finding_type, finding, findings_pos) 
+  mutate(
+    finding_type = 'outcomes', 
+    finding = case_when(
+      is.na(outc_type) ~ paste0("Data for ", geo_name, " is too limited for outcome level analysis."),
+      geo_level == 'county' ~ paste0(geo_name, "'s overall outcomes across indicators are ", outc_type, " the average for California counties."),
+      geo_level == 'city' ~ paste0(geo_name, "'s overall outcomes across indicators are ", outc_type, " the average for California cities."),
+      geo_level == 'sldu' ~ paste0(geo_name, "'s overall outcomes across indicators are ", outc_type, " the average for California Senate Districts."),
+      geo_level == 'sldl' ~ paste0(geo_name, "'s overall outcomes across indicators are ", outc_type, " the average for California Assembly Districts."),
+      .default = "There is something wrong. Please check your data."),
+  findings_pos = 3) %>% 
+  select(geoid, geo_name, geo_level, finding_type, finding, findings_pos) 
 
 ## bind everything together
 rda_places_findings <- rbind(most_impacted, disp_avg_statement, outc_avg_statement, worst_disp_outc_) %>%
-    mutate(src = 'rda', citations = '') %>%
-    relocate(geo_level, .after = geo_name)
-
+    mutate(src = 'rda', citations = '')
 
 # Finding 6: State-Level issue area findings (manually generated) - CA PLACE PAGE, ISSUE PAGES --------
 file_name <- paste0("manual_findings_", curr_schema, "_", curr_yr, ".csv")
@@ -921,31 +940,31 @@ file_name
 issue_area_findings <- read.csv(paste0("./KeyTakeaways/",(file_name)), fileEncoding="UTF-8-BOM", check.names = FALSE)
 issue_area_findings_type_dict <- dbGetQuery(con, paste0("SELECT api_name, arei_issue_area AS finding_type FROM ", curr_schema, ".arei_issue_list")) 
 issue_area_findings <- issue_area_findings %>% left_join(issue_area_findings_type_dict, by = c("issue_area" = "api_name")) 
-issue_area_findings$finding_type[issue_area_findings$finding_type=="Crime & Justice"] <- "Crime and Justice"
+issue_area_findings$finding_type[issue_area_findings$finding_type=="Crime & Justice"] <- "Safety and Justice"
 
 issue_area_findings$src <- "rda"
 
 issue_area_findings$citations <- ""
 
-dbWriteTable(con, 
-             Id(schema = curr_schema, table = issue_table),
-             issue_area_findings, overwrite = FALSE, row.names = FALSE)
+# dbBegin(con)
+# dbWriteTable(con, 
+#              Id(schema = curr_schema, table = issue_table),
+#              issue_area_findings, overwrite = FALSE, row.names = FALSE)
+# dbCommit(con)
 
 # comment on table and columns
-dbBegin(con)
-comment <- paste0("COMMENT ON TABLE ", curr_schema, ".", issue_table, " IS 'Created ", Sys.Date(), ". Findings for Issue Area pages (API) created using W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R.';",
-                  "COMMENT ON COLUMN ", curr_schema, ".", issue_table, ".finding_type
-                       IS 'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below avg perf, most disp indicator, worst perf indicator';",
-                  "COMMENT ON COLUMN ", curr_schema, ".", issue_table, ".src
-                       IS 'Categorizes source of finding as either rda or program area';",
-                  "COMMENT ON COLUMN ", curr_schema, ".", issue_table, ".citations
-                       IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
-                  "COMMENT ON COLUMN ", curr_schema, ".", issue_table, ".findings_pos
-                       IS 'Used to determine the order a set of findings should appear in on RC.org';")
-# print(comment)
-dbExecute(con, comment)
-dbCommit(con)
+ind <- paste0("NOTE: County/SLDU/SLDL share the same geoids - you must use geoid+geo_level to query. Findings for Issue Area pages (API) created using W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R.")
+source <- paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R.")
+column_names <- colnames(issue_area_findings)
+column_comments <- c(
+  'RACE COUNTS Issue Area Name',
+  'Finding for display on RC.org',
+  'Used to determine the order a set of findings should appear in on RC.org',
+  'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below avg perf, most disp indicator, worst perf indicator',
+  'Categorizes source of finding as either rda or program area', 
+  'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations') 
 
+# add_table_comments(con, curr_schema, issue_table, ind, source, qa_filepath, column_names, column_comments)
 
 #### Combine manual issue findings table and places_findings_table ###
 # prep issues table for addition to places_findings_table
@@ -964,24 +983,27 @@ findings_places_multigeo <- rbind(rda_places_findings, state_issue_area_findings
 
 
 ## Create postgres table
-dbWriteTable(con, 
-             Id(curr_schema, table = place_table), 
-             findings_places_multigeo, overwrite = FALSE, row.names = FALSE)
+# dbBegin(con)
+# dbWriteTable(con, 
+#              Id(curr_schema, table = place_table), 
+#              findings_places_multigeo, overwrite = FALSE, row.names = FALSE)
+# dbCommit(con)
 
 # comment on table and columns
-dbBegin(con)
-comment <- paste0("COMMENT ON TABLE ", curr_schema, ".", place_table, " IS ' Created ", Sys.Date(), ". Findings for Place pages (API) created using W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R.';",
-                  "COMMENT ON COLUMN ", curr_schema, ".", place_table, ".finding_type
-                        IS 'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below outcome, most disp indicator, worst outcome indicator';",
-                  "COMMENT ON COLUMN ", curr_schema, ".", place_table, ".src
-                        IS 'Categorizes source of finding as either rda or program area';",
-                  "COMMENT ON COLUMN ", curr_schema, ".", place_table, ".citations
-                        IS 'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations';",
-                  "COMMENT ON COLUMN ", curr_schema, ".", place_table, ".findings_pos
-                        IS 'Used to determine the order a set of findings should appear in on RC.org';")
-#print(comment)
-dbExecute(con, comment)
-dbCommit(con)
+ind <- paste0("NOTE: County/SLDU/SLDL share the same geoids - you must use geoid+geo_level to query. Findings for Place pages (API) created using W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R.")
+source <- paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R.")
+column_names <- colnames(findings_places_multigeo)
+column_comments <- c(
+  'FIPS Code. NOTE: County/SLDU/SLDL share the same geoids.',
+  'Geo Names',
+  'Categorizes geo_level: state, county, city, sldu, sldl. NOTE: County/SLDU/SLDL share the same geoids.', 
+  'Categorizes findings: race most impacted by inequities in a geo, above/below avg disp, above/below outcome, most disp indicator, worst outcome indicator',  
+  'Finding for display on RC.org',
+  'Used to determine the order a set of findings should appear in on RC.org',
+  'Categorizes source of finding as either rda or program area', 
+  'External citations for findings are stored here. Null values mean there are no citations, all else are stored as a string with &&& acting as a delimiter between multiple citations') 
 
-dbDisconnect(con)  
+# add_table_comments(con, curr_schema, place_table, ind, source, qa_filepath, column_names, column_comments)
+
+# dbDisconnect(con)  
 
