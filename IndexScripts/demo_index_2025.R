@@ -50,7 +50,6 @@ c_3 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_demo_diversity
 c_4 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_demo_registered_voters_county_", rc_yr))
 c_5 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_demo_voting_midterm_county_", rc_yr))
 c_6 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_demo_voting_presidential_county_", rc_yr))
-c_7 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_demo_voter_engagement_county_", rc_yr))
 
 
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area. 
