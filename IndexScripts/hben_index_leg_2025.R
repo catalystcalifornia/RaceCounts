@@ -1,4 +1,4 @@
-#### Democracy (z-score) for RC v7 ####
+#### Healthy Built Environment Index (z-score) for RC v7 ####
 
 #install packages if not already installed
 packages <- c("tidyverse","RPostgres","sf","usethis")  
@@ -30,35 +30,32 @@ options(scipen = 100)
 # udpate each yr
 rc_yr <- '2025'
 rc_schema <- 'v7'
-source <- "US Census Bureau (2020),  
-CPS (Midterm 2010, 2014, 2018, 2022), (Presidential 2012, 2016, 2020, 2024), (Registration 2012-2024 even yrs), 
-American Community Survey (ACS) (2015-19/2016-20) Table DP05"
-ind_threshold <- 3  # geos with < threshold # of indicator values are excluded from index. depends on the number of indicators in the issue area
+source <- "California Health Interview Survey (CHIS) (Food Access 2011-18) (Asthma 2011-2023), CalEnviroScreen 4.0, National Land Cover Database (NLCD) 2023, and American Community Survey (ACS) 2019-2023 Table DP05"
+ind_threshold <- 4  # geos with < threshold # of indicator values are excluded from index. depends on the number of indicators in the issue area
 
-qa_filepath <- 'W:\\Project\\RACE COUNTS\\2025_v7\\Democracy\\QA_Demo_Index.docx'
+# update QA doc filepath
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Hben_Index.docx"
+issue <- 'healthy_built_environment'
 
-issue <- 'democracy'
-
-# Add indicators and arei_county_region_urban_type ------------------------------------------------------
+# Add HBEN indicators and arei_county_region_urban_type ------------------------------------------------------
 ####################### ADD COUNTY DATA #####################################
 # you MUST update this section if we add or remove any indicators in an issue #
 
-c_1 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_demo_census_participation_county_", rc_yr))
-c_2 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_demo_diversity_of_candidates_county_", rc_yr))
-c_3 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_demo_diversity_of_electeds_county_", rc_yr))
-c_4 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_demo_registered_voters_county_", rc_yr))
-c_5 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_demo_voting_midterm_county_", rc_yr))
-c_6 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_demo_voting_presidential_county_", rc_yr))
+c_1 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hben_drinking_water_county_", rc_yr))
+c_2 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hben_food_access_county_", rc_yr))
+c_3 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hben_haz_weighted_avg_county_", rc_yr))
+c_4 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hben_toxic_release_county_", rc_yr))
+c_5 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hben_asthma_county_", rc_yr))
+c_6 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hben_lack_of_greenspace_county_", rc_yr))
 
+## define variable names for clean_data_z function. you MUST UPDATE for each issue area.
+varname1 <- 'water'
+varname2 <- 'food'
+varname3 <- 'hazard'
+varname4 <- 'toxic'
+varname5 <- 'asthma'
+varname6 <- 'green'
 
-## define variable names for clean_data_z function. you MUST UPDATE for each issue area. 
-varname1 <- 'census'
-varname2 <- 'candidate'
-varname3 <- 'elected'
-varname4 <- 'voter'
-varname5 <- 'midterm'
-varname6 <- 'president'
-varname7 <- "engagement"
 
 region_urban_type <- dbGetQuery(con, paste0("select county_id, region, urban_type from ", rc_schema, ".arei_county_region_urban_type")) # get region, urban_type
 
@@ -72,7 +69,7 @@ c_1 <- clean_data_z(c_1, varname1)
 ### c2
 # use function to select cols we want and cap z-scores
 c_2 <- clean_data_z(c_2, varname2)
- 
+
 ### c3
 # use function to select cols we want and cap z-scores
 c_3 <- clean_data_z(c_3, varname3)
@@ -96,16 +93,17 @@ c_index <- full_join(c_index, c_3)
 c_index <- full_join(c_index, c_4)
 c_index <- full_join(c_index, c_5)
 c_index <- full_join(c_index, c_6)
+
 colnames(c_index) <- gsub("performance", "perf", names(c_index))  # shorten col names
 colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col names
 
-# calculate z-scores. Will need to add threshold option to the calculate_z function
+# calculate z-scores
 c_index <- calculate_z(c_index, ind_threshold)
 
 # merge region and urban type from current arei_county_region_urban_type
-c_index<- left_join(c_index, region_urban_type)
+c_index <- left_join(c_index, region_urban_type)
 
-# rename columns
+# rename columns 
 c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("_rank"))
 c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("performance_z"))
 c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("disparity_z"))
@@ -118,7 +116,7 @@ index_table <- index_table[order(index_table[[5]]), ]  # order by disparity rank
 View(index_table)
 
 # Send table to postgres 
-index_table_name <- paste0("arei_demo_index_", rc_yr)
+index_table_name <- paste0("arei_hben_index_", rc_yr)
 index <- paste0("QA doc: ", qa_filepath, ". Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is")
 
 index_to_postgres(index_table, rc_schema)
