@@ -98,12 +98,23 @@ c_tables <- lapply(c_tables, function(x)
 
 
 ####################### ADD STATE DATA #####################################
-s_1 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hlth_got_help_state_", rc_yr))
-s_2 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hlth_health_insurance_state_", rc_yr))
-s_3 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hlth_life_expectancy_state_", rc_yr))
-s_4 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hlth_low_birthweight_state_", rc_yr))
-s_5 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hlth_usual_source_of_care_state_", rc_yr))
-s_6 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hlth_preventable_hospitalizations_state_", rc_yr))
+state_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%state_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
+
+state_list <- dbGetQuery(con, state_list_query) %>% pull(table_name) 
+
+s_tables <- lapply(setNames(paste0("select * from ", rc_schema, ".", state_list), state_list), DBI::dbGetQuery, conn = con)
+
+# create column with indicator name
+s_tables <- map2(s_tables, names(s_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
+
+# clean up and add columns
+s_tables <- lapply(s_tables, function(x) x %>% 
+  select(-any_of('geolevel'), -ends_with("_pop")) %>%
+  mutate(issue = substring(indicator, 6,9),
+         indicator = substring(indicator, 11),
+         indicator = gsub(paste0('_state_', rc_yr), '', indicator),
+         geolevel = 'state'))
+
 
 ##Add 2025 v7 Source Data##
 v7_sources <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_indicator_list_cntyst"))
@@ -113,6 +124,7 @@ v7_sources <- v7_sources %>% filter(v7_sources$arei_issue_area==issue_name) %>%
 
 ## Join metadata to data
 c_tables <- lapply(c_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
+s_tables <- lapply(s_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
 
 
 ```
