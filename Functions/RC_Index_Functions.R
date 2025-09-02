@@ -396,6 +396,7 @@ calculate_city_issue <- function(x, y, z) {
 
 # Calculate and cap COMPOSITE INDEX Z-scores ---------------------------------------------------
 calculate_city_index <- function(x, y, z) {
+  # x = the dataframe, y = issue_area_threshold, z = indicator_threshold
   
   # count issue area performance z-scores
   rates_performance <- select(x, ends_with("performance_z"))

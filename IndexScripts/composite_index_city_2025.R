@@ -23,6 +23,7 @@ options(scipen = 100)
 # Load PostgreSQL driver and databases & set sources --------------------------------------------------
 source("W:\\RDA Team\\R\\credentials_source.R")
 source("./Functions/RC_Index_Functions.R")
+
 con <- connect_to_db("racecounts")
 
 
@@ -66,10 +67,8 @@ arei_race_multigeo <- dbGetQuery(con, paste0("SELECT geoid, name, geolevel, tota
 
 
 # pull and run calcs from separate script
-# filepath will auto-update each year
-source(paste0("./IndexScripts/composite_index_city_calcs_", rc_yr, ".R"))
+source(paste0("./IndexScripts/composite_index_city_calcs_", rc_yr, ".R"))  # filepath will auto-update each year
 # city_index df is the final result that should be exported to postgres
-
 
 # Export SCREENED index to postgres ------------------------------------------------------
 table_name <- case_when (index_type == 'arei_' ~ paste0("arei_composite_index_city_", rc_yr, "_draft"),
