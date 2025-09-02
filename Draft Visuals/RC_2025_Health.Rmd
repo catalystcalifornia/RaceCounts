@@ -46,7 +46,7 @@ body { background-color: #FFFFFF; }
 
 ```{r setup, include = FALSE}
 #load the libraries via the below source as well as the credentials and set the theme
-source("W:/Project/RACE COUNTS/2025_v7/RC_Github/AB/RaceCounts/Functions/draft_visual_functions.R")
+source("./Functions/draft_visual_functions.R")
 
 knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
 
@@ -54,7 +54,9 @@ options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
 
 ##Add RC theme##
 rc_theme # load from the above draft_visual_functions.R script
-issue <- 'Health Care Access' # 7 options: Crime & Justice, Democracy, Economic Opportunity, Education, Healthy Built Environment, Health Care Access, Housing
+
+##### UPDATE EACH YEAR AND FOR EACH ISSUE AREA ####
+issue <- 'Health Care Access' # Issues: Safety & Justice, Democracy, Economic Opportunity, Education, Healthy Built Environment, Health Care Access, Housing
 rc_schema <- 'v7'
 rc_yr <- '2025'
 acs_yr <- '2023'
@@ -77,7 +79,7 @@ c_index_z <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hlth_ind
 
 ####################### POPULATION DATA #####################################
 #Join total population to index view, food access, and asthma data frames
-pop <- dbGetQuery(con2, paste0("SELECT geoid, dp05_0001e FROM demographics.acs_5yr_dp05_multigeo_", acs_yr)) %>% rename(total_pop = dp05_0001e)
+pop <- dbGetQuery(con, paste0("SELECT geoid, total_pop, geolevel FROM ", rc_schema, ".arei_race_multigeo WHERE geolevel = 'county'"))
 
 #c_index_pctile <- left_join(x = c_index_pctile, y = pop, by = c("county_id" = "geoid"))
 c_index_z <- left_join(x = c_index_z, y = pop, by = c("county_id" = "geoid"))
