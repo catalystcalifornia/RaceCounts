@@ -124,7 +124,7 @@ index_scatterplot <- function(x, threshold){
     hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = threshold, min = -threshold) %>%
     hc_yAxis(title = list(text = "Outcome (Low -> High)"), max = threshold, min = -threshold) %>%
     hc_caption(
-      text = "Data source: Various <br>A Disparity Rank of 1 represents the most disparate. A Outcome Rank of 1 represents the best outcomes.",
+      text = "Data source: Various. <br>A Disparity Rank of 1 represents the most disparate. A Outcome Rank of 1 represents the best outcomes.",
       align = "center"
     ) %>%
     hc_legend(enabled = FALSE) %>%
@@ -174,18 +174,18 @@ county_scatterplot<- function(x) {
                "<strong>County: </strong>{point.county_name} <br>",
                "<strong>Outcome Rank: </strong>{point.performance_rank} <br>",
                "<strong>Disparity Rank: </strong>{point.disparity_rank} <br>",
-               "<strong>Universe: </strong>{point.total_pop:,.0f} <br>",
+               "<strong>Total Population: </strong>{point.total_pop:,.0f} <br>",
                race_tooltip_string
              )
            )
     ) %>%
     hc_title(text = x_chart$bar_chart_header[1]) %>%
     hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
-    hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
+    hc_yAxis(title = list(text = "Outcome (Low -> High)"), max = 4, min = -4) %>% 
     hc_caption(
       text = paste0(
-        "Data source:", 
-        gsub(";", ";<br>", x_chart$arei_indicator[1]), 
+        "Data source: ", 
+        gsub(";", ";<br>", x_chart$data_source[1]), 
         "<br> ", x_chart$description[1], 
         "<br> A Disparity Rank of 1 represents the most disparate. A Outcome Rank of 1 represents the best outcomes."
       ),
