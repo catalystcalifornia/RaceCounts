@@ -30,11 +30,8 @@ options(scipen = 100)
 # update each yr
 rc_yr <- '2025'
 rc_schema <- 'v7'
-source <- "CALIFORNIA DEPARTMENT OF EDUCATION (2023-24) for Suspensions, 
-Chronic Absenteeism, High School Graduation, 3rd Grade English and Math, 
-and for Diversity of Teachers, 
-CALIFORNIA CHILD CARE RESOURCE & REFERRAL NETWORK (2020-2021), 
-AMERICAN INSTITUTES FOR RESEARCH EARLY LEARNING NEEDS ASSESSMENT TOOL (2020)"
+source <- "CALIFORNIA DEPARTMENT OF EDUCATION (2023-24) for Suspensions, Chronic Absenteeism, High School Graduation, 3rd Grade English and Math, and for Diversity of Teachers, 
+CALIFORNIA CHILD CARE RESOURCE & REFERRAL NETWORK (2020-2021) and AMERICAN INSTITUTES FOR RESEARCH EARLY LEARNING NEEDS ASSESSMENT TOOL (2020) with Census 2020 Table P12"
 ind_threshold <- 4  # geos with < threshold # of indicator values are excluded from index. depends on the number of indicators in the issue area
 
 qa_filepath <- 'W:\\Project\\RACE COUNTS\\2025_v7\\Composite Index\\QA_Sheet_Leg_Indexes.docx'
@@ -128,12 +125,12 @@ c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("quartile
 c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("quadrant"))
 
 # select/reorder final columns for index table
-index_table <- c_index %>% select(county_id, county_name, region, urban_type, ends_with("_rank"), ends_with("quadrant"), disp_avg, perf_avg, disp_values_count, perf_values_count, ends_with("_disparity_z"), ends_with("performance_z"), ends_with("disparity_z_quartile"), ends_with("performance_z_quartile"), everything())
+index_table <- c_index %>% select(leg_id, leg_name, geolevel, ends_with("_rank"), ends_with("quadrant"), disp_avg, perf_avg, disp_values_count, perf_values_count, ends_with("_disparity_z"), ends_with("performance_z"), ends_with("disparity_z_quartile"), ends_with("performance_z_quartile"), everything())
 index_table <- index_table[order(index_table[[5]]), ]  # order by disparity rank
 View(index_table)
 
 # Send table to postgres 
-index_table_name <- paste0("arei_educ_index_", rc_yr)
+index_table_name <- paste0("arei_educ_index_leg_", rc_yr)
 index <- paste0("QA doc: ", qa_filepath, ". Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is")
 
 index_to_postgres(index_table, rc_schema)
