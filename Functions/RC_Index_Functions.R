@@ -12,7 +12,7 @@
 clean_data_z <- function(x, y) {
 
   # Cap Indicator z-scores at |3.5| More info: https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=feyI80
-  x <- x %>% select(ends_with("_id"), ends_with("_name"), performance_z, disparity_z) %>%  
+  x <- x %>% select(ends_with("_id"), ends_with("_name"), performance_z, disparity_z, any_of("geolevel")) %>%  
     mutate(
     disparity_z = case_when(
       disparity_z > 3.5 ~ 3.5,

@@ -34,7 +34,7 @@ source <- "American Community Survey (ACS) PUMS 2019-2023, American Community Su
 ind_threshold <- 3  # geos with < threshold # of indicator values are excluded from index. depends on the number of indicators in the issue area
 
 # update QA doc filepath
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Composite Index\\QA_Sheet_Leg_Indexes.docx"
+qa_filepath <- 'W:\\Project\\RACE COUNTS\\2025_v7\\Composite Index\\QA_Sheet_Leg_Indexes.docx'
 
 issue <- 'economic_opportunity'
 
@@ -94,19 +94,15 @@ c_7 <- clean_data_z(c_7, varname7)
 
 
 # Join Data Together ------------------------------------------------------
-c_index <- full_join(c_1, c_2) 
-c_index <- full_join(c_index, c_3)
-c_index <- full_join(c_index, c_4)
-c_index <- full_join(c_index, c_5)
-c_index <- full_join(c_index, c_6)
-c_index <- full_join(c_index, c_7)
+c_index <- mutate(c_1,c_2)
+c_index <- mutate(c_index,c_3)
+c_index <- mutate(c_index,c_4)
+c_index <- mutate(c_index,c_5)
+c_index <- mutate(c_index,c_6)
+c_index <- mutate(c_index,c_7)
 
 colnames(c_index) <- gsub("performance", "perf", names(c_index))  # shorten col names
 colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col names
-
-
-# Add back geolevel ------------------------------------------------------
-c_index$geolevel <- ifelse(grepl("Assembly", c_index$leg_name), 'sldl', 'sldu')
 
 
 # ASSEMBLY CALCS ------------------------------------------------------

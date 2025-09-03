@@ -64,14 +64,11 @@ c_3 <- clean_data_z(c_3, varname3)
 
 
 # Join Data Together ------------------------------------------------------
-c_index <- full_join(c_1, c_2) 
-c_index <- full_join(c_index, c_3)
+c_index <- mutate(c_1,c_2)
+c_index <- mutate(c_index,c_3)
 
 colnames(c_index) <- gsub("performance", "perf", names(c_index))  # shorten col names
 colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col names
-
-# Add back geolevel ------------------------------------------------------
-c_index$geolevel <- ifelse(grepl("Assembly", c_index$leg_name), 'sldl', 'sldu')
 
 
 # ASSEMBLY CALCS ------------------------------------------------------

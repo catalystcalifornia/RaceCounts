@@ -37,21 +37,20 @@ CALIFORNIA CHILD CARE RESOURCE & REFERRAL NETWORK (2020-2021),
 AMERICAN INSTITUTES FOR RESEARCH EARLY LEARNING NEEDS ASSESSMENT TOOL (2020)"
 ind_threshold <- 4  # geos with < threshold # of indicator values are excluded from index. depends on the number of indicators in the issue area
 
-qa_filepath <- 'W:\\Project\\RACE COUNTS\\2025_v7\\Education\\QA_Educ_Index.docx'
+qa_filepath <- 'W:\\Project\\RACE COUNTS\\2025_v7\\Composite Index\\QA_Sheet_Leg_Indexes.docx'
 
 issue <- 'education'
 
-# Add indicators and arei_county_region_urban_type ------------------------------------------------------
-####################### ADD COUNTY DATA #####################################
+####################### ADD DATA #####################################
 # you MUST update this section if we add or remove any indicators in an issue #
 
-c_1 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_educ_chronic_absenteeism_county_", rc_yr))
-c_2 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_educ_hs_grad_county_", rc_yr))
-c_3 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_educ_gr3_ela_scores_county_", rc_yr))
-c_4 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_educ_gr3_math_scores_county_", rc_yr))
-c_5 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_educ_suspension_county_", rc_yr))
-c_6 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_educ_ece_access_county_", rc_yr))
-c_7 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_educ_staff_diversity_county_", rc_yr))
+c_1 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_educ_chronic_absenteeism_leg_", rc_yr))
+c_2 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_educ_hs_grad_leg_", rc_yr))
+c_3 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_educ_gr3_ela_scores_leg_", rc_yr))
+c_4 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_educ_gr3_math_scores_leg_", rc_yr))
+c_5 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_educ_suspension_leg_", rc_yr))
+c_6 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_educ_ece_access_leg_", rc_yr))
+c_7 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_educ_staff_diversity_leg_", rc_yr))
 
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area.
 varname1 <- 'abst'
@@ -92,20 +91,33 @@ c_7 <- clean_data_z(c_7, varname7)
 
 
 # Join Data Together ------------------------------------------------------
-c_index <- full_join(c_1, c_2) 
-c_index <- full_join(c_index, c_3)
-c_index <- full_join(c_index, c_4)
-c_index <- full_join(c_index, c_5)
-c_index <- full_join(c_index, c_6)
-c_index <- full_join(c_index, c_7)
+c_index <- mutate(c_1,c_2)
+c_index <- mutate(c_index,c_3)
+c_index <- mutate(c_index,c_4)
+c_index <- mutate(c_index,c_5)
+c_index <- mutate(c_index,c_6)
+c_index <- mutate(c_index,c_7)
 
 colnames(c_index) <- gsub("performance", "perf", names(c_index))  # shorten col names
 colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col names
 
-# calculate z-scores
-c_index <- calculate_z(c_index, ind_threshold)
 
-# merge region and urban type from current arei_county_region_urban_type
+# ASSEMBLY CALCS ------------------------------------------------------
+assm_index <- filter(c_index, geolevel == 'sldl')
+
+# calculate z-scores.
+assm_index <- calculate_z(assm_index, ind_threshold)
+
+# SENATE CALCS ------------------------------------------------------
+sen_index <- filter(c_index, geolevel == 'sldu')
+
+# calculate z-scores.
+sen_index <- calculate_z(sen_index, ind_threshold)
+
+# JOIN LEG INDEX TOGETHER ------------------------------------------------------
+c_index <- rbind(assm_index, sen_index)
+
+# merge region and urban type from current arei_leg_region_urban_type
 c_index <- left_join(c_index, region_urban_type)
 
 # rename columns
