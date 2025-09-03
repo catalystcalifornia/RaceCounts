@@ -19,7 +19,7 @@ for(pkg in packages){
 
 # Load PostgreSQL driver and databases --------------------------------------------------
 source("W:\\RDA Team\\R\\credentials_source.R")
-con <- conect_to_db("racecounts")
+con <- connect_to_db("racecounts")
 
 # Set Source for Index Functions script -----------------------------------
 source("./Functions/RC_Index_Functions.R")
@@ -34,24 +34,23 @@ source <- "American Community Survey (ACS) PUMS 2019-2023, American Community Su
 ind_threshold <- 3  # geos with < threshold # of indicator values are excluded from index. depends on the number of indicators in the issue area
 
 # update QA doc filepath
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Econ_Index.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Composite Index\\QA_Sheet_Leg_Indexes.docx"
 
 issue <- 'economic_opportunity'
 
-# Add indicators and arei_county_region_urban_type ------------------------------------------------------
-####################### ADD COUNTY DATA #####################################
+####################### ADD DATA #####################################
 # you MUST update this section if we add or remove any indicators in an issue #
 
-c_1 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_conected_youth_county_", rc_yr))
-c_2 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_employment_county_", rc_yr))
-c_3 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_internet_county_", rc_yr))
-c_4 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_officials_county_", rc_yr))
-c_5 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_per_capita_income_county_", rc_yr))
-c_6 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_real_cost_measure_county_", rc_yr))
-c_7 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_living_wage_county_", rc_yr))
+c_1 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_connected_youth_leg_", rc_yr))
+c_2 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_employment_leg_", rc_yr))
+c_3 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_internet_leg_", rc_yr))
+c_4 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_officials_leg_", rc_yr))
+c_5 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_per_capita_income_leg_", rc_yr))
+c_6 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_real_cost_measure_leg_", rc_yr))
+c_7 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_living_wage_leg_", rc_yr))
 
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area.
-varname1 <- 'conected'
+varname1 <- 'connected'
 varname2 <- 'employ'
 varname3 <- 'internet'
 varname4 <- 'officials'
@@ -101,16 +100,29 @@ c_index <- full_join(c_index, c_4)
 c_index <- full_join(c_index, c_5)
 c_index <- full_join(c_index, c_6)
 c_index <- full_join(c_index, c_7)
+
 colnames(c_index) <- gsub("performance", "perf", names(c_index))  # shorten col names
 colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col names
 
 
+# Add back geolevel ------------------------------------------------------
+c_index$geolevel <- ifelse(grepl("Assembly", c_index$leg_name), 'sldl', 'sldu')
+
+
+# ASSEMBLY CALCS ------------------------------------------------------
+assm_index <- filter(c_index, geolevel == 'sldl')
+
 # calculate z-scores.
-c_index <- calculate_z(c_index, ind_threshold)
+assm_index <- calculate_z(assm_index, ind_threshold)
 
+# SENATE CALCS ------------------------------------------------------
+sen_index <- filter(c_index, geolevel == 'sldu')
 
-# merge region and urban type from current arei_county_region_urban_type
-c_index <- left_join(c_index, region_urban_type)
+# calculate z-scores.
+sen_index <- calculate_z(sen_index, ind_threshold)
+
+# JOIN LEG INDEX TOGETHER ------------------------------------------------------
+c_index <- rbind(assm_index, sen_index)
 
 # rename columns
 c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("_rank"))
@@ -120,13 +132,13 @@ c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("quartile
 c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("quadrant"))
 
 # select/reorder final columns for index table
-index_table <- c_index %>% select(county_id, county_name, region, urban_type, ends_with("_rank"), ends_with("quadrant"), disp_avg, perf_avg, disp_values_count, perf_values_count, ends_with("_disparity_z"), ends_with("performance_z"), ends_with("disparity_z_quartile"), ends_with("performance_z_quartile"), everything())
+index_table <- c_index %>% select(leg_id, leg_name, geolevel, ends_with("_rank"), ends_with("quadrant"), disp_avg, perf_avg, disp_values_count, perf_values_count, ends_with("_disparity_z"), ends_with("performance_z"), ends_with("disparity_z_quartile"), ends_with("performance_z_quartile"), everything())
 index_table <- index_table[order(index_table[[5]]), ]  # order by disparity rank
 View(index_table)
 
 # Send table to postgres 
-index_table_name <- paste0("arei_econ_index_", rc_yr)
+index_table_name <- paste0("arei_econ_index_leg_", rc_yr)
 index <- paste0("QA doc: ", qa_filepath, ". Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is")
 
 index_to_postgres(index_table, rc_schema)
-dbDisconect(con)
+dbDisconnect(con)

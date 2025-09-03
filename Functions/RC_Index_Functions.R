@@ -77,7 +77,7 @@ calculate_z <- function(x, ind_threshold) {
   disp_avg <- select(disp_avg, id_col, disp_avg) 
   disp_avg$disp_avg[is.nan(disp_avg$disp_avg)] <- NA
   
-  x <- x %>% left_join(disp_avg, by=id_col)   
+  x <- x %>% left_join(disp_avg, by=id_col, relationship = "many-to-many")   
   
   # calculate average performance z scores
   perf_avg <- select(x, id_col, grep("perf_z", colnames(x)))                         
@@ -85,7 +85,7 @@ calculate_z <- function(x, ind_threshold) {
   perf_avg <- select(perf_avg, id_col, perf_avg)                    
   perf_avg$perf_avg[is.nan(perf_avg$perf_avg)] <- NA
   
-  x <- x %>% left_join(perf_avg, by=id_col) 
+  x <- x %>% left_join(perf_avg, by=id_col, relationship = "many-to-many") 
   
   
   # FOR COUNTIES WHERE # OF INDICATOR VALUES >= THRESHOLD, GET INDEX DISP_Z AND PERF_Z: threshold will change across issue areas. Users manually update threshold in index script.
