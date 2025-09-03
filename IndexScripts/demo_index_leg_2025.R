@@ -31,9 +31,7 @@ options(scipen = 100)
 rc_yr <- '2025'
 rc_schema <- 'v7'
 source <- "US Census Bureau (2020),  
-CPS (Midterm 2010, 2014, 2018, 2022), (Presidential 2012, 2016, 2020, 2024), (Registration 2012-2024 even yrs), 
-American Community Survey (ACS) (2015-19/2016-20) Table DP05, and 
-California Health Interview Survey 2019-2023"
+American Community Survey (ACS) (2015-19/2016-20) Table DP05"
 ind_threshold <- 3  # geos with < threshold # of indicator values are excluded from index. depends on the number of indicators in the issue area
 
 qa_filepath <- 'W:\\Project\\RACE COUNTS\\2025_v7\\Democracy\\QA_Demo_Index.docx'
@@ -50,8 +48,6 @@ c_3 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_demo_diversity
 c_4 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_demo_registered_voters_county_", rc_yr))
 c_5 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_demo_voting_midterm_county_", rc_yr))
 c_6 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_demo_voting_presidential_county_", rc_yr))
-c_7 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_demo_voter_engagement_county_", rc_yr))
-
 
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area. 
 varname1 <- 'census'
@@ -91,17 +87,13 @@ c_5 <- clean_data_z(c_5, varname5)
 # use function to select cols we want and cap z-scores
 c_6 <- clean_data_z(c_6, varname6)
 
-## c7 
-# use function to select cols we want and cap z-scores
-c_7 <- clean_data_z(c_7, varname7)
-
 # Join Data Together ------------------------------------------------------
 c_index <- full_join(c_1, c_2) 
 c_index <- full_join(c_index, c_3)
 c_index <- full_join(c_index, c_4)
 c_index <- full_join(c_index, c_5)
 c_index <- full_join(c_index, c_6)
-c_index <- full_join(c_index, c_7)
+
 colnames(c_index) <- gsub("performance", "perf", names(c_index))  # shorten col names
 colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col names
 

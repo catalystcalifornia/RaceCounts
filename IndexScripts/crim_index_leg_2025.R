@@ -30,7 +30,7 @@ options(scipen = 100)
 # udpate each yr
 rc_yr <- '2025'
 rc_schema <- 'v7'
-source <- "California Health Interview Survey (CHIS) (2011-2023), Vera Institute of Justice (2020-2024), California Department of Justice Open Justice Data (CADOJ) (2016-2024 Use of Force), (2010-2023 Status Offenses), and (2022-2023 RIPA stops) and American Community Survey (ACS) 5-Year Estimates, Tables B01001B/H/I and DP05 (2019-2023)"
+source <- "Prison Policy Initiative (2020), California Department of Justice Open Justice Data (CADOJ) (2016-2024 Use of Force) and (2022-2023 RIPA stops) and American Community Survey (ACS) 5-Year Estimates, Table DP05 (2019-2023)"
 ind_threshold <- 2  # geos with < threshold # of indicator values are excluded from index. depends on the number of indicators in the issue area
 
 # update QA doc filepath
@@ -41,11 +41,9 @@ issue <- 'crime_and_justice'
 # Add indicators and arei_county_region_urban_type ------------------------------------------------------
 ####################### ADD COUNTY DATA #####################################
 # you MUST update this section if we add or remove any indicators in an issue #
-c_1 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_crim_incarceration_county_", rc_yr))
-c_2 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_crim_perception_of_safety_county_", rc_yr))
-c_3 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_crim_status_offenses_county_", rc_yr))
-c_4 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_crim_use_of_force_county_", rc_yr))
-c_5 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_crim_officer_initiated_stops_county_", rc_yr))
+c_1 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_crim_incarceration_leg_", rc_yr))
+c_4 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_crim_use_of_force_leg_", rc_yr))
+c_5 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_crim_officer_initiated_stops_leg_", rc_yr))
 
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area.
 varname1 <- 'incarceration'
