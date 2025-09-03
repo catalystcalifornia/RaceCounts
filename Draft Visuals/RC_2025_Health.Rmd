@@ -1,7 +1,7 @@
 ---
 title: "RACE COUNTS: Health Care Access               "
 author: "Authored by: Catalyst California"
-date: "8/25/", rc_yr
+date: "8/25/2025"
 output:
   html_document:
     number_sections: no
@@ -45,10 +45,10 @@ body { background-color: #FFFFFF; }
 </style>
 
 ```{r setup, include = FALSE}
+knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
+
 #load the libraries via the below source as well as the credentials and set the theme
 source("W:/Project/RACE COUNTS/2025_v7/RC_Github/AB/RaceCounts/Functions/draft_visual_functions.R")
-
-knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
 
 options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
 
@@ -134,7 +134,7 @@ RACE COUNTS provides a 3D view of racial equity:
 # Indicators
 
 ## Health Care Access Index - UPDATED
-```{r}
+```{r, echo=FALSE}
 # Remove counties without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
   c_index_z <- c_index_z %>% mutate(arei_issue_area=v7_sources$arei_issue_area[1])
   c_index_chart <- index_scatterplot(c_index_z, 2)
@@ -142,40 +142,40 @@ RACE COUNTS provides a 3D view of racial equity:
   c_index_chart
 ```
 
-* Marin County has the best overall Health Care access but also ranks as the sixth most disparate county in the state.
-* Looking across indicators, Black Californians fare worse than other groups in 3 out of the 6 indicators for Health Care Access.
-* All eight of the counties in the San Joaquin Valley Region have lower overall performance when it comes to health care access. They are all in the red or yellow quadrants. 
-* All nine Bay Area counties have above average rates of overall health care access, with six out of the nine counties also demonstrating low rates of racial disparity.
+* 
+* 
+* 
+* 
 
 ## Got Help - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
-```{r} 
+```{r, echo=FALSE} 
 
 c_1 <- c_1 %>% mutate(arei_indicator=v7_sources$arei_indicator[2], bar_chart_header=v7_sources$bar_chart_header[2], description = v7_sources$methodology[2])
 c_1_chart <- county_scatterplot(c_1)
 c_1_chart
 
 ```
-* More populous counties tend to display fairly average measures of both racial disparity and performance for mental health/substance abuse help relative to the rest of the counties in California. None of the top eight most populous counties in the state score outside a +/-1 point threshold on either index.
-* Marin County has the best overall rate for this indicator, but is the second most disparate county in the state. White residents of Marin County are over 2 times more likely to get help for mental health and substance abuse issues than Asian residents.
-* Despite have the least racial disparities of any county, Imperial County displays the worst measures of performance in the state by a significant margin. The overall rate of mental health/substance abuse help in the county is more than 13 percentage points lower than the statewide average.
+* 
+* 
+* 
 
 ### State Barchart
-```{r}
+```{r, echo=FALSE}
 
   title = v7_sources$bar_chart_header[2]
   s_1_ <- state_barchart(s_1, title)
   s_1_
 
 ``` 
-* Non-Latinx Whites are nearly 1.4 times more likely to get help for Mental/Emotional or Alchohol/Drug Issues than Non-Latinx Asians.
-* Native Hawaiian & Pacific Islanders, Non-Latinx Black, Latinx Californians, and Non-Latinx Asians all have rates below the state average.
+* 
+* 
 
 ### County Barchart
 
-```{r}
+```{r, echo=FALSE}
 c_1_long <- county_barchart(c_1, title) 
 c_1_long
 ```
@@ -186,7 +186,7 @@ c_1_long
 
 ### Scatterplot
 
-```{r}
+```{r, echo=FALSE}
 c_2 <- c_2 %>% mutate(arei_indicator=v7_sources$arei_indicator[1], bar_chart_header=v7_sources$bar_chart_header[1], description = v7_sources$methodology[1])
 c_2_chart <- county_scatterplot(c_2)
 c_2_chart
@@ -198,7 +198,7 @@ c_2_chart
 
 
 ### State Barchart
-```{r}
+```{r, echo=FALSE}
   title = v7_sources$bar_chart_header[1]
   s_2_ <- state_barchart(s_2, title)
   s_2_
@@ -211,7 +211,7 @@ c_2_chart
 
 ### County Barchart
 
-```{r}
+```{r, echo=FALSE}
 c_2_long <- county_barchart(c_2, title) 
 c_2_long
 ```
@@ -221,7 +221,7 @@ c_2_long
 
 ### Scatterplot
 
-```{r}
+```{r, echo=FALSE}
 c_3 <- c_3 %>% mutate(arei_indicator=v7_sources$arei_indicator[5], bar_chart_header=v7_sources$bar_chart_header[5], description = v7_sources$methodology[5])
 c_3_chart <- county_scatterplot(c_3)
 c_3_chart
@@ -233,7 +233,7 @@ c_3_chart
 
 ### State Barchart
 
-```{r}
+```{r, echo=FALSE}
 
   title = v7_sources$bar_chart_header[5]
   s_3_ <- state_barchart(s_3, title)
@@ -244,7 +244,7 @@ c_3_chart
 
 ### County Barchart
 
-```{r}
+```{r, echo=FALSE}
 c_3_long <- county_barchart(c_3, title) 
 c_3_long
 ```
@@ -254,7 +254,7 @@ c_3_long
 
 ### Scatterplot
 
-```{r}
+```{r, echo=FALSE}
 c_4 <- c_4 %>% mutate(arei_indicator=v7_sources$arei_indicator[4], bar_chart_header=v7_sources$bar_chart_header[4], description = v7_sources$methodology[4])
 c_4_chart <- county_scatterplot(c_4)
 c_4_chart
@@ -267,7 +267,7 @@ c_4_chart
 
 ### State Barchart
 
-```{r}
+```{r, echo=FALSE}
 
   title = v7_sources$bar_chart_header[4]
   s_4_ <- state_barchart(s_4, title)
@@ -279,7 +279,7 @@ c_4_chart
 
 ### County Barchart
 
-```{r}
+```{r, echo=FALSE}
 c_4_long <- county_barchart(c_4, title) 
 c_4_long
 ```
@@ -289,7 +289,7 @@ c_4_long
 
 ### Scatterplot
 
-```{r}
+```{r, echo=FALSE}
 c_5 <- c_5 %>% mutate(arei_indicator=v7_sources$arei_indicator[3], bar_chart_header=v7_sources$bar_chart_header[3], description = v7_sources$methodology[3])
 c_5_chart <- county_scatterplot(c_5)
 c_5_chart
@@ -300,7 +300,7 @@ c_5_chart
 
 ### State Barchart
 
-```{r}
+```{r, echo=FALSE}
 
   title = v7_sources$bar_chart_header[3]
   s_5_ <- state_barchart(s_5, title)
@@ -313,9 +313,11 @@ c_5_chart
 
 ### County Barchart
 
-```{r}
+```{r, echo=FALSE}
+
 c_5_long <- county_barchart(c_5, title) 
 c_5_long
+
 ```
 
 
@@ -323,7 +325,7 @@ c_5_long
 
 ### Scatterplot
 
-```{r}
+```{r, echo=FALSE}
 c_6 <- c_6 %>% mutate(arei_indicator=v7_sources$arei_indicator[6], bar_chart_header=v7_sources$bar_chart_header[6], description = v7_sources$methodology[6])
 c_6_chart <- county_scatterplot(c_6)
 c_6_chart
@@ -335,7 +337,7 @@ c_6_chart
 
 ### State Barchart
 
-```{r}
+```{r, echo=FALSE}
 
   title = v7_sources$bar_chart_header[6]
   s_6_ <- state_barchart(s_6, title)
@@ -348,9 +350,11 @@ c_6_chart
 
 ### County Barchart
 
-```{r}
+```{r, echo=FALSE}
+
 c_6_long <- county_barchart(c_6, title) 
 c_6_long
+
 ```
 
 
@@ -361,7 +365,7 @@ c_6_long
 # Notice that it isn't an R chunk, it is a JS chunk. :) 
 ```
 
-```{r}
+```{r, echo=FALSE}
 ##Closing database connections##
 dbDisconnect(con)
 dbDisconnect(con2)
