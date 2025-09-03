@@ -35,8 +35,9 @@ return(x)
 clean_index_data_z <- function(x, y) {
   
   # Cap Issue z-scores at |2| More info: https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=feyI80
-  clean <- x %>% select(county_id, county_name, ends_with("performance_z"), ends_with("disparity_z"))   
-  clean <- clean %>% mutate(performance_z = clean[, c(3)], disparity_z = clean[, c(4)]) %>%   
+  clean <- x %>% select(ends_with("_id"), ends_with("_name"), ends_with("performance_z"), ends_with("disparity_z"),any_of("geolevel"))   
+  colnames(clean) <- gsub(paste0(y, "_"), "", colnames(clean))  # standardize column names
+  clean <- clean %>%
     mutate(
       disparity_z = case_when(
         disparity_z > 2 ~ 2,
@@ -49,7 +50,7 @@ clean_index_data_z <- function(x, y) {
         performance_z < -2 ~ -2,
         TRUE ~ performance_z))
   
-  x <- clean %>% rename_with(~ paste0(y, "_", .x), ends_with("_z")) %>% select(-c(3,4))
+  x <- clean %>% rename_with(~ paste0(y, "_", .x), ends_with("_z"))
   
   return(x)
 }
@@ -148,7 +149,9 @@ calculate_z <- function(x, ind_threshold) {
 
 # Calculate and cap COMPOSITE INDEX  ---------------
 calculate_index_z <- function(x, ind_threshold) {
-  # count performance z-scores
+  id_col <- colnames(x) 
+  id_col <- id_col %>% str_subset(pattern = "_id$")  # select geoid column: county_id or leg_id
+
   rates_performance <- select(x, ends_with("perf_z"))
   rates_performance$perf_values_count <- rowSums(!is.na(rates_performance))
   
@@ -159,22 +162,22 @@ calculate_index_z <- function(x, ind_threshold) {
   rates_disparity$values_count <- rowSums(!is.na(rates_disparity))
   
   x$disp_values_count <- rates_disparity$values_count
-  
+                       
   # calculate avg disparity z-scores
-  disp_avg <- select(x, county_id, grep("disp_z", colnames(x)))
+  disp_avg <- select(x, id_col, grep("disp_z", colnames(x)))
   disp_avg$disp_avg <- rowMeans(disp_avg[,-1], na.rm = TRUE)
-  disp_avg <- select(disp_avg, county_id, disp_avg) 
+  disp_avg <- select(disp_avg, id_col, disp_avg) 
   disp_avg$disp_avg[is.nan(disp_avg$disp_avg)] <- NA
   
-  x <- x %>% left_join(disp_avg, by="county_id")   
+  x <- x %>% left_join(disp_avg, by=id_col)   
   
   # calculate average performance z scores
-  perf_avg <- select(x, county_id, grep("perf_z", colnames(x)))                         
+  perf_avg <- select(x, id_col, grep("perf_z", colnames(x)))                         
   perf_avg$perf_avg <- rowMeans(perf_avg[,-1], na.rm = TRUE)                           
-  perf_avg <- select(perf_avg, county_id, perf_avg)                    
+  perf_avg <- select(perf_avg, id_col, perf_avg)                    
   perf_avg$perf_avg[is.nan(perf_avg$perf_avg)] <- NA
   
-  x <- x %>% left_join(perf_avg, by="county_id") 
+  x <- x %>% left_join(perf_avg, by=id_col) 
   
   
   # FOR COUNTIES WHERE # OF ISSUE INDEX VALUES >= THRESHOLD, GET INDEX DISP_Z AND PERF_Z. Users manually update threshold in index script.
