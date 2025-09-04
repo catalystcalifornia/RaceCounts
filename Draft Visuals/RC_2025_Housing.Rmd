@@ -44,145 +44,88 @@ body { background-color: #FFFFFF; }
 
 </style>
 
-```{r include = FALSE}
-### install version 1.1.1 of Crosstalk -- LATER VERSIONS OF CROSSTALK WILL NOT WORK ####
-# remotes::install_version("crosstalk", version = "1.1.1", repos = "http://cran.us.r-project.org") 
-# library(crosstalk)
-
-#Set up workspace
-packages <- c("crosstalk", "RPostgres", "sf", "htmltools", "tidyr", "reshape2", "plotly", "tidyverse", "highcharter")  
-
-install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
-
-if(length(install_packages) > 0) { 
-  install.packages(install_packages) 
-  
-} else { 
-  
-  print("All required packages are already installed.") 
-} 
-
-for(pkg in packages){ 
-  library(pkg, character.only = TRUE) 
-} 
-options(scipen=999)
-
-```
-
-
 ```{r setup, include = FALSE}
-
 knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
+
+#load the libraries via the below source as well as the credentials and set the theme
+source("draft_visual_functions.R")
 
 options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
 
-#setwd("W:/Project/RACE COUNTS/2025_v7/Visualizations")
+##Add RC theme##
+rc_theme # load from the above draft_visual_functions.R script
 
-# data setup
-source("W:\\RDA Team\\R\\credentials_source.R")
-con <- connect_to_db("racecounts")
-
-source("W:\\RDA Team\\R\\credentials_source.R")
-con2 <- connect_to_db("rda_shared_data")
-
-
-# just a note of reference to inserting text #https://monashbioinformaticsplatform.github.io/2017-11-16-open-science-training/topics/rmarkdown.html
-#https://rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf
-
+##### UPDATE EACH YEAR AND FOR EACH ISSUE AREA ####
+issue_name <- 'Housing' # Issue names: Safety & Justice, Democracy, Economic Opportunity, Education, Healthy Built Environment, Health Care Access, Housing
+issue <- 'hous' #Issue: crim, demo, educ, econ, hben, hlth, hous
+rc_schema <- 'v7'
+rc_yr <- '2025'
+acs_yr <- '2023'
 
 ```
 
-
 ```{r echo=FALSE, include = FALSE}
 
-##Add RC theme##
-rc_theme <- hc_theme(
-    # race counts colors
-  colors = c("orange", "purple", "red", "yellow"),
-  chart = list(
-    backgroundColor = "#FFFFFF",
-    borderColor = "black",
-    style = list(
-          fontFamily = "Rubik") 
-  ),
-  title = list(
-    style = list(
-      color = "#070024",
-      fontFamily = "Rubik")
-  ),
-  subtitle = list(
-    style = list(
-      color = "#8E8C8F", # medium grey
-      fontFamily = "Rubik")
-  ),
-  caption = list(
-    style = list(
-      color = "#8E8C8F",
-      fontFamily = "Rubik")
-  ),
-    axis = list(
-    style = list(
-      color = "#8E8C8F",
-      fontFamily = "Rubik")
-  ),
-  legend = list(
-    itemStyle = list(
-      fontFamily = "Rubik",
-      color = "#070024"),
-    itemHoverStyle = list(
-       fontFamily = "Rubik",
-      color = "#070024")
-  ))
+####################### GET TABLE NAMES #####################################
+county_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%county_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
 
+county_list <- dbGetQuery(con, county_list_query) %>% pull(table_name) 
 
-lang <- getOption("highcharter.lang")
-lang$thousandsSep <- ","
-options(highcharter.lang = lang)
+c_tables <- lapply(setNames(paste0("select * from ", rc_schema, ".", county_list), county_list), DBI::dbGetQuery, conn = con)
 
-####################### ADD COUNTY DATA #####################################
+# create column with indicator name
+c_tables <- map2(c_tables, names(c_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
 
-c_1 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_cost_burden_owner_county_2025"))
-c_2 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_cost_burden_renter_county_2025"))
-c_3 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_denied_mortgages_county_2025"))
-c_4 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_eviction_filing_rate_county_2025"))
-c_5 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_foreclosure_county_2025"))
-c_6 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_homeownership_county_2025"))
-c_7 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_overcrowded_county_2025"))
-c_8 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_housing_quality_county_2025"))
-c_9 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_student_homelessness_county_2025"))
-c_10 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_subprime_county_2025"))
+# clean up and add columns
+c_tables <- lapply(c_tables, function(x) x %>% 
+  select(-any_of('geolevel'), -ends_with("_pop")) %>%
+  mutate(issue = substring(indicator, 6,9),
+         indicator = substring(indicator, 11),
+         indicator = gsub(paste0('_county_', rc_yr), '', indicator),
+         geolevel = 'county'))
 
-c_index_z <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_index_2025"))
-
+# Get issue index
+c_index_z <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_", issue, "_index_", rc_yr))
 
 ####################### POPULATION DATA #####################################
-#Join total population to index view, housing cost burden for renters, and foreclosure data frames
-pop <- dbGetQuery(con2, paste0("SELECT geoid, dp05_0001e FROM demographics.acs_5yr_dp05_multigeo_2023"))
+#Get total population
+pop <- dbGetQuery(con, paste0("SELECT geoid, total_pop, geolevel FROM ", rc_schema, ".arei_race_multigeo WHERE geolevel = 'county'")) %>% select(-geolevel)
 
-c_index_z <- left_join(x = c_index_z, y = pop, by = c("county_id" = "geoid"))
+c_index_z <- left_join(c_index_z, pop, by = c("county_id" = "geoid"))
 
-c_1 <- left_join(x = c_1, y = pop, by = c("county_id" = "geoid")) # owners
-c_2 <- left_join(x = c_2, y = pop, by = c("county_id" = "geoid")) # renters
-c_3 <- left_join(x = c_3, y = pop, by = c("county_id" = "geoid")) # denied
-c_5 <- left_join(x = c_5, y = pop, by = c("county_id" = "geoid")) # foreclosure
-c_8 <- left_join(x = c_8, y = pop, by = c("county_id" = "geoid")) # quality
-c_10 <- left_join(x = c_10, y = pop, by = c("county_id" = "geoid")) # subprime
+c_tables <- lapply(c_tables, function(x) 
+  x %>% left_join(pop, by = c("county_id" = "geoid")))
 
 
 ####################### ADD STATE DATA #####################################
-s_1 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_cost_burden_owner_state_2025"))
-s_2 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_cost_burden_renter_state_2025"))
-s_3 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_denied_mortgages_state_2025"))
-s_4 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_eviction_filing_rate_state_2025"))
-s_5 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_foreclosure_state_2025"))
-s_6 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_homeownership_state_2025"))
-s_7 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_overcrowded_state_2025"))
-s_8 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_housing_quality_state_2025"))
-s_9 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_student_homelessness_state_2025"))
-s_10 <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_hous_subprime_state_2025"))
+state_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%state_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
+
+state_list <- dbGetQuery(con, state_list_query) %>% pull(table_name) 
+
+s_tables <- lapply(setNames(paste0("select * from ", rc_schema, ".", state_list), state_list), DBI::dbGetQuery, conn = con)
+
+# create column with indicator name
+s_tables <- map2(s_tables, names(s_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
+
+# clean up and add columns
+s_tables <- lapply(s_tables, function(x) x %>% 
+  select(-any_of('geolevel'), -ends_with("_pop")) %>%
+  mutate(issue = substring(indicator, 6,9),
+         indicator = substring(indicator, 11),
+         indicator = gsub(paste0('_state_', rc_yr), '', indicator),
+         geolevel = 'state'))
+
 
 ##Add 2025 v7 Source Data##
-v7_sources <- dbGetQuery(con, paste0("SELECT * FROM v7.arei_indicator_list_cntyst"))
+v7_sources <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_indicator_list_cntyst"))
+v7_sources <- v7_sources %>% filter(v7_sources$arei_issue_area==issue_name) %>%
+  select(arei_indicator, rate_descriptor, bar_chart_header, rate_rounding, methodology, data_source, api_name)
+
+
+## Join metadata to data
+c_tables <- lapply(c_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
+s_tables <- lapply(s_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
+
 
 ```
 
@@ -210,36 +153,12 @@ RACE COUNTS provides a 3D view of racial equity:
 # Indicators
 
 ## Housing Index
-```{r}
+```{r, echo=FALSE}
 # Remove counties without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
- c_index_chart <- c_index_z %>% mutate(
-    disp_z_cap = case_when(
-      housing_disparity_z > 2 ~ 2,
-      housing_disparity_z < -2 ~ -2,
-      TRUE ~ housing_disparity_z)
-    ) %>% mutate (
-    perf_z_cap = case_when(
-      housing_performance_z > 2 ~ 2,
-      housing_performance_z < -2 ~ -2,
-      TRUE ~ housing_performance_z)
-    ) %>% filter(housing_quadrant %in% c("yellow", "orange", "red", "purple"))
+  c_index_z <- c_index_z %>% mutate(arei_issue_area=issue_name)
+  c_index_chart <- index_scatterplot(c_index_z, 2)
 
- c_index_chart %>% 
-    hchart("scatter", 
-    hcaes(x=disp_z_cap, y=perf_z_cap, size=dp05_0001e, group=housing_quadrant, ),
-      tooltip = 
-         list(pointFormat = 
-                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.housing_performance_rank} <br><strong>Disparity Rank: </strong>{point.housing_disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f}")) %>%
-  hc_title(text = "Housing Index") %>%
-  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 2, min = -2) %>%     ## this will need to be higher if disp or perf actual max value is (or close to) |2|
-  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 2, min = -2) %>%   ## this will need to be higher if disp or perf actual max value is (or close to) |2|
-  hc_caption(
-    text = "Data source: Various <br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
-    align = "center"
-     ) %>% #hc_size(height=400,width=700) %>% 
-   hc_legend(element_blank) %>% hc_add_theme(rc_theme)
-
-
+  c_index_chart
 ```
 * All but one of the Bay Area county have above average outcomes. Disparity levels vary, with San Mateo, Marin, Alameda, Napa, and San Francisco among the top ten most disparate counties in the state.
 * All six Southern California counties have below average performance, although 4 out 6, including Los Angeles and San Diego counties, also have below average disparities.
@@ -250,43 +169,9 @@ RACE COUNTS provides a 3D view of racial equity:
 
 ### Scatterplot
 
-```{r}
-# Be sure to update title above depending on if indicator has been updated since RC v3
-# Remove counties without quadrant values. Cap indicator perf/disp z-scores at 3.5 and -3.5. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
-c_1_chart <- c_1 %>% mutate(
-    disp_z_cap = case_when(
-      disparity_z > 3.5 ~ 3.5,
-      disparity_z < -3.5 ~ -3.5,
-      TRUE ~ disparity_z)
-    ) %>% mutate (
-    perf_z_cap = case_when(
-      performance_z > 3.5 ~ 3.5,
-      performance_z < -3.5 ~ -3.5,
-      TRUE ~ performance_z)
-    ) %>% filter(quadrant %in% c("yellow", "orange", "red", "purple"))
-
- c_1_chart %>% 
-    hchart("scatter", 
-    hcaes(x=disp_z_cap, y=perf_z_cap, size=dp05_0001e, group=quadrant),
-      tooltip = 
-         list(pointFormat = 
-                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.nh_black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.nh_aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.nh_pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.nh_asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Other Rate: </strong>{point.nh_other_rate:.1f}")) %>%
-  hc_title(text = "Households Experiencing Cost Burden (Owner) (%)") %>%
-  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
-  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
-  hc_caption(
-    text = paste(
-    "Data source:", 
-    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Housing Cost Burden (Owner)"]), 
-    "<br>Comprehensive Housing Affordability Strategy (CHAS) data (2014-2018).", 
-    "<br>Number of owner-occupied housing units where occupant spends more than 30% of income",
-    "<br> on housing and related costs, out of all owner-occupied housing units.", 
-    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
-    align = "center"
-     ) %>% #hc_size(height=400,width=700) %>% 
-   hc_legend(element_blank) %>% hc_add_theme(rc_theme)
-
-
+```{r, echo=FALSE}
+c_1_chart <- county_scatterplot(c_tables[[1]])
+c_1_chart
 ```
 * Counties with larger populations tend to have lower racial disparity and lower performance.
 
@@ -295,33 +180,9 @@ c_1_chart <- c_1 %>% mutate(
 * Seven out of eight counties in the San Joaquin Valley region have above average performance on homeowner cost burden rate.
 
 ### State Barchart
-```{r}
-# View(s_1)
-# Be sure to update title above depending on if indicator has been updated since RC v3
-# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate
-title = "Households Experiencing Cost Burden (Owner) (%)"
-s_1_ <- s_1 %>%
-     select(c(state_name, ends_with('_rate'), -total_rate)) 
-s_1_long <- melt(s_1_, id.vars=c("state_name"))
-s_1_long <- s_1_long[order(s_1_long$value),]
-s_1_long <- s_1_long %>% mutate_if(is.double, ~round(., 1))
-
-s_1_long %>% 
-  hchart("column", 
-    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
-  hc_yAxis(title = list(text=title),  
-           plotLines = list(
-                list(
-                  value = s_1$total_rate,
-                  color = "black",
-                  width = 2,
-                  zIndex = 20,  # the higher number means will be top/most visible layer
-                  label = list(text = paste0("Total Rate: ",round(s_1$total_rate, 1)), style = list(color = "black", fontSize = 16), align = "left")))) %>%
-  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
-  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
-  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
-
-
+```{r, echo=FALSE}
+  s_1_ <- state_barchart(s_tables[[1]])
+  s_1_
 ``` 
 * Nearly one in three California homeowners is housing cost burdened, spending 30% or more of income on housing.
 * Statewide, Latinx and Black homeowners have the highest housing cost burden rate, at 3% and 7% above the statewide rate respectively.
@@ -329,58 +190,9 @@ s_1_long %>%
 
 ### County Barchart
 
-```{r}
-
-c_1_long <- c_1 %>%
-   select(c(2, ends_with('_rate')))
-
-c_1_long <- melt(c_1_long, id.vars=c("county_name"))
-c_1_long <- c_1_long[order(c_1_long$value),]
-# Round 'value' field to 1 decimal
-c_1_long <- c_1_long %>% mutate(value = round(value, 1))
-
-
-# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
-
-# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
-sd1 <- SharedData$new(c_1_long, key = ~ county_name)
-title = "Households Experiencing Cost Burden (Owner) (%)"
-
-#
-bscols(
-  widths = 7, 
-  
-   filter_select("county_name", ## this is the name of column we want to select. 
-                "County:",  # this is what we want to see in the selection menu
-                sd1,
-                ~ county_name, multiple = FALSE),
-   plot_ly(sd1) %>%
-      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
-                marker = list(line = list(color = "black", width = 1)) ## add order t
-                ) %>%
-     layout(barmode = "stack",
-             xaxis = list(title = 'Race/Ethnicity',
-                          tickangle=-45,
-                          categoryorder = "total ascending"),     # Change to "total ascending" when MIN is best or "total descending" when MAX is best
-            
-          yaxis = list(title = title),
-            
-            
-             width = 600,
-            paper_bgcolor = "#FFFFFF",
-            plot_bgcolor = "#FFFFFF",
-            
-            font = list(
-              family = "Rubik",
-              size = 12,
-              color = '#8E8C8F'
-             ), 
-            hoverlabel = list(bgcolor = "FFFFFF")
-   ) # end layout
-) # end bscols
-
-
-
+```{r, echo=FALSE}
+c_1_long <- county_barchart(c_tables[[1]]) 
+c_1_long
 ```
 
 
@@ -388,125 +200,30 @@ bscols(
 
 ### Scatterplot
 
-```{r}
-c_2_chart <- c_2 %>% mutate(
-    disp_z_cap = case_when(
-      disparity_z > 3.5 ~ 3.5,
-      disparity_z < -3.5 ~ -3.5,
-      TRUE ~ disparity_z)
-    ) %>% mutate (
-    perf_z_cap = case_when(
-      performance_z > 3.5 ~ 3.5,
-      performance_z < -3.5 ~ -3.5,
-      TRUE ~ performance_z)
-    ) %>% filter(quadrant %in% c("yellow", "orange", "red", "purple"))
-
-c_2_chart %>% 
-    hchart("scatter", 
-    hcaes(x=disp_z_cap, y=perf_z_cap, size=dp05_0001e, group=quadrant),
-      tooltip = 
-         list(pointFormat = 
-                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.nh_black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.nh_aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.nh_pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.nh_asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Other Rate: </strong>{point.nh_other_rate:.1f}")) %>%
-    hc_title(text = "Households Experiencing Cost Burden (Renter) (%)") %>%
-  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
-  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
-  hc_caption(
-    text = paste(
-    "Data source:", 
-    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Housing Cost Burden (Renter)"]), 
-    "<br>Percentage of renter-occupied housing units where renter spends more than 30% of income", 
-    "<br>on housing and related costs, out of all renter-occupied housing units.", 
-    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
-    align = "center"
-     ) %>% #hc_size(height=400,width=700) %>% 
-  hc_legend(element_blank) %>% hc_add_theme(rc_theme)
-
+```{r, echo=FALSE}
+c_2_chart <- county_scatterplot(c_tables[[2]])
+c_2_chart
 ```
 * Orange, San Francisco, and Frenso Counties are the only three of the state's 10 most populous counties to have higher than average racial disparities in rent burden rates.
 * Nine out of 10 of the worst performing counties in terms of rent burden are in the Northern / Sierra or Southern California regions.
 
 
 ### State Barchart
-```{r}
-# Be sure to update title above depending on if indicator has been updated since RC v3
-# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate
-title = "Households Experiencing Cost Burden (Renter) (%)"
-s_2_ <- s_2 %>%
-     select(c(state_name, ends_with('_rate'), -total_rate)) 
-s_2_long <- melt(s_2_, id.vars=c("state_name"))
-s_2_long <- s_2_long[order(s_2_long$value),]
-s_2_long <- s_2_long %>% mutate_if(is.double, ~round(., 1))
 
-s_2_long %>% 
-  hchart("column", 
-    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
-  hc_yAxis(title = list(text=title),  
-           plotLines = list(
-                list(
-                  value = s_2$total_rate,
-                  color = "black",
-                  width = 2,
-                  zIndex = 20,  # the higher number means will be top/most visible layer
-                  label = list(text = paste0("Total Rate: ",round(s_2$total_rate, 1)), style = list(color = "black", fontSize = 16), align = "left")))) %>%
-  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
-  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
-  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
+```{r, echo=FALSE}
+  s_2_ <- state_barchart(s_tables[[2]])
+  s_2_
+  
 ```
+  
 * Over half of all renters in California are burdened by housing costs
 * Black and Latinx Californians are the only racial groups where over half of renters are housing cost burdened
 
 ### County Barchart
 
-```{r}
-
-c_2_long <- c_2 %>%
-   select(c(2, ends_with('_rate')))
-
-c_2_long <- melt(c_2_long, id.vars=c("county_name"))
-c_2_long <- c_2_long[order(c_2_long$value),]
-# Round 'value' field to 1 decimal
-c_2_long <- c_2_long %>% mutate(value = round(value, 1))
-
-
-# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
-
-# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
-sd1 <- SharedData$new(c_2_long, key = ~ county_name)
-title = 'Households Experiencing Cost Burden<br>(Renter) (%)'
-
-#
-bscols(
-  widths = 7, 
-  
-   filter_select("county_name", ## this is the name of column we want to select. 
-                "County:",  # this is what we want to see in the selection menu
-                sd1,
-                ~ county_name, multiple = FALSE),
-   plot_ly(sd1) %>%
-      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
-                marker = list(line = list(color = "black", width = 1)) ## add order t
-                ) %>%
-     layout(barmode = "stack",
-             xaxis = list(title = 'Race/Ethnicity',
-                          tickangle=-45,
-                          categoryorder = "total ascending"),     # Change to "total ascending" when MIN is best or "total descending" when MAX is best
-            
-          yaxis = list(title = title),
-            
-            
-             width = 600,
-            paper_bgcolor = "#FFFFFF",
-            plot_bgcolor = "#FFFFFF",
-            
-            font = list(
-              family = "Rubik",
-              size = 12,
-              color = '#8E8C8F'
-             ), 
-            hoverlabel = list(bgcolor = "FFFFFF")
-   ) # end layout
-) # end bscols
-
+```{r, echo=FALSE}
+c_2_long <- county_barchart(c_tables[[2]]) 
+c_2_long
 ```
 
 
@@ -514,40 +231,9 @@ bscols(
 
 ### Scatterplot
 
-```{r}
-
-c_3_chart <- c_3 %>% mutate(
-    disp_z_cap = case_when(
-      disparity_z > 3.5 ~ 3.5,
-      disparity_z < -3.5 ~ -3.5,
-      TRUE ~ disparity_z)
-    ) %>% mutate (
-    perf_z_cap = case_when(
-      performance_z > 3.5 ~ 3.5,
-      performance_z < -3.5 ~ -3.5,
-      TRUE ~ performance_z)
-    ) %>% filter(quadrant %in% c("yellow", "orange", "red", "purple"))
-
-c_3_chart %>%
-    hchart("scatter",
-    hcaes(x=disp_z_cap, y=perf_z_cap, size=dp05_0001e, group=quadrant), #total_originated
-      tooltip =
-         list(pointFormat =
-                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.nh_black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.nh_asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Two or More Races Rate: </strong>{point.nh_twoormor_rate:.1f}")) %>%
-    hc_title(text = "Denied Mortgage Applications (%)") %>%
-  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>%
-  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>%
-  hc_caption(
-    text = paste(
-    "Data source:", 
-    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Denied Mortgage Applications"]), 
-    "<br>Mortgage applications were for purchases of one-to-four family dwellings.", 
-    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
-    align = "center"
-     ) %>% #hc_size(height=400,width=700) %>%
-  hc_legend(element_blank) %>% hc_add_theme(rc_theme)
-
-
+```{r, echo=FALSE}
+c_3_chart <- county_scatterplot(c_tables[[3]])
+c_3_chart
 ```
 * Counties with larger populations tend to have lower disparity and above average performance in denied mortgage applications.
 * Eight out of the ten worst performing counties in mortgage denial rates also have above average racial disparities in application denials.
@@ -556,33 +242,9 @@ c_3_chart %>%
 
 ### State Barchart
 
-```{r}
-# Be sure to update title above depending on if indicator has been updated since RC v3
-# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate
-title = "Denied Mortgage Applications (%)"
-
-s_3_ <- s_3 %>%
-   select(c(state_name, ends_with('_rate'), -total_rate))
-s_3_long <- melt(s_3_, id.vars=c("state_name"))
-# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate. Add a "-" in front of s_3_long$value when MAX is best.
-s_3_long <- s_3_long[order(s_3_long$value),]
-# Round 'value' field to 1 decimal
-s_3_long <- s_3_long %>% mutate_if(is.double, ~round(., 1))
-
-s_3_long %>% 
-  hchart("column", 
-    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
-  hc_yAxis(title = list(text=title),  
-           plotLines = list(
-                list(
-                  value = s_3$total_rate,
-                  color = "black",
-                  width = 2,
-                  zIndex = 20,  # the higher number means will be top/most visible layer
-                  label = list(text = paste0("Total Rate: ",round(s_3$total_rate, 1)), style = list(color = "black", fontSize = 16), align = "left")))) %>%
-  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
-  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
-  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
+```{r, echo=FALSE}
+  s_3_ <- state_barchart(s_tables[[3]])
+  s_3_
 ``` 
 * Statewide, American Indian and Alaska Native Californians have the worst mortgage application rate of any racial group and are denied on over 30% of mortgage applications. This is almost double the overall denial rate in the state.
 * Black, Pacific Islander, and Latinx Californians are also all over 5 percentage points more likely to have a mortgage application denied than the average Californian.
@@ -590,56 +252,9 @@ s_3_long %>%
 
 ### County Barchart
 
-```{r}
-c_3_long <- c_3 %>%
-   select(c(2, ends_with('_rate')))
-
-c_3_long <- melt(c_3_long, id.vars=c("county_name"))
-c_3_long <- c_3_long[order(c_3_long$value),]
-# Round 'value' field to 1 decimal
-c_3_long <- c_3_long %>% mutate(value = round(value, 1))
-
-
-# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
-
-# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
-sd1 <- SharedData$new(c_3_long, key = ~ county_name)
-title = 'Denied Mortgage Applications (%)'
-
-#
-bscols(
-  widths = 7, 
-  
-   filter_select("county_name", ## this is the name of column we want to select. 
-                "County:",  # this is what we want to see in the selection menu
-                sd1,
-                ~ county_name, multiple = FALSE),
-   plot_ly(sd1) %>%
-      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
-                marker = list(line = list(color = "black", width = 1)) ## add order t
-                ) %>%
-     layout(barmode = "stack",
-             xaxis = list(title = 'Race/Ethnicity',
-                          tickangle=-45,
-                          categoryorder = "total ascending"),     # Change to "total ascending" when MIN is best or "total descending" when MAX is best
-            
-          yaxis = list(title = title),
-            
-            
-             width = 600,
-            paper_bgcolor = "#FFFFFF",
-            plot_bgcolor = "#FFFFFF",
-            
-            font = list(
-              family = "Rubik",
-              size = 12,
-              color = '#8E8C8F'
-             ), 
-            hoverlabel = list(bgcolor = "FFFFFF")
-   ) # end layout
-) # end bscols
-
-
+```{r, echo=FALSE}
+c_3_long <- county_barchart(c_tables[[3]]) 
+c_3_long
 ```
 
 
@@ -647,38 +262,9 @@ bscols(
 
 ### Scatterplot
 
-```{r}
-c_4_chart <- c_4 %>% mutate(
-    disp_z_cap = case_when(
-      disparity_z > 3.5 ~ 3.5,
-      disparity_z < -3.5 ~ -3.5,
-      TRUE ~ disparity_z)
-    ) %>% mutate (
-    perf_z_cap = case_when(
-      performance_z > 3.5 ~ 3.5,
-      performance_z < -3.5 ~ -3.5,
-      TRUE ~ performance_z)
-    ) %>% filter(quadrant %in% c("yellow", "orange", "red", "purple"))
-
-c_4_chart %>%
-    hchart("scatter", 
-    hcaes(x=disp_z_cap, y=perf_z_cap, size=total_pop, group=quadrant),
-      tooltip = 
-         list(pointFormat = 
-                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.total_pop:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Other Rate: </strong>{point.other_rate:.1f} <br><strong>Two or More Races Rate: </strong>{point.twoormor_rate:.1f}")) %>%
-  hc_title(text = "Eviction Filing Rate per 100 Renter Households") %>%
-  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
-  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
-  hc_caption(
-    text = paste(
-    "Data source:", 
-    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Evictions"]), 
-    "<br>Rate of eviction filings per 100 renter households in relation to racial population residing in the area.", 
-    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
-    align = "center"
-     ) %>% #hc_size(height=400,width=700) %>% 
-  hc_legend(element_blank) %>% hc_add_theme(rc_theme)
-
+```{r, echo=FALSE}
+c_4_chart <- county_scatterplot(c_tables[[4]])
+c_4_chart
 
 ```
 * San Bernardino County has the highest overall eviction filing rate (worst performance), with higher rates for all groups (lower disparity).
@@ -686,34 +272,9 @@ c_4_chart %>%
 
 ### State Barchart
 
-```{r}
-# Be sure to update title above depending on if indicator has been updated since RC v3
-# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate
-title = "Eviction Filing Rate per 100 Renter Households"
-
-s_4_ <- s_4 %>%
-   select(c(state_name, ends_with('_rate'), -total_rate))
-s_4_long <- melt(s_4_, id.vars=c("state_name"))
-# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate. Add a "-" in front of s_4_long$value when MAX is best.
-s_4_long <- s_4_long[order(s_4_long$value),]
-# Round 'value' field to 1 decimal
-s_4_long <- s_4_long %>% mutate_if(is.double, ~round(., 1))
-
-s_4_long %>% 
-  hchart("column", 
-    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
-  hc_yAxis(title = list(text=title),  
-           plotLines = list(
-                list(
-                  value = s_4$total_rate,
-                  color = "black",
-                  width = 2,
-                  zIndex = 20,  # the higher number means will be top/most visible layer
-                  label = list(text = paste0("Total Rate: ",round(s_4$total_rate, 1)), style = list(color = "black", fontSize = 16), align = "left")))) %>%
-  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
-  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
-  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
-
+```{r, echo=FALSE}
+  s_4_ <- state_barchart(s_tables[[4]])
+  s_4_
 ```
 * Black households are nearly twice as likely to face eviction statewide as White or Asian households.
 * Only Asian and non-Latinx White households have eviction filing rates better than the statewide average.
@@ -721,55 +282,9 @@ s_4_long %>%
 
 ### County Barchart
 
-```{r}
-c_4_long <- c_4 %>%
-   select(c(2, ends_with('_rate')))
-
-c_4_long <- melt(c_4_long, id.vars=c("county_name"))
-c_4_long <- c_4_long[order(c_4_long$value),]
-# Round 'value' field to 1 decimal
-c_4_long <- c_4_long %>% mutate(value = round(value, 1))
-
-
-# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
-
-# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
-sd1 <- SharedData$new(c_4_long, key = ~ county_name)
-title = 'Eviction Filing Rate per 100 Renter Households'
-
-#
-bscols(
-  widths = 7, 
-  
-   filter_select("county_name", ## this is the name of column we want to select. 
-                "County:",  # this is what we want to see in the selection menu
-                sd1,
-                ~ county_name, multiple = FALSE),
-   plot_ly(sd1) %>%
-      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
-                marker = list(line = list(color = "black", width = 1)) ## add order t
-                ) %>%
-     layout(barmode = "stack",
-             xaxis = list(title = 'Race/Ethnicity',
-                          tickangle=-45,
-                          categoryorder = "total ascending"),     # Change to "total ascending" when MIN is best or "total descending" when MAX is best
-            
-          yaxis = list(title = title),
-            
-            
-             width = 600,
-            paper_bgcolor = "#FFFFFF",
-            plot_bgcolor = "#FFFFFF",
-            
-            font = list(
-              family = "Rubik",
-              size = 12,
-              color = '#8E8C8F'
-             ), 
-            hoverlabel = list(bgcolor = "FFFFFF")
-   ) # end layout
-) # end bscols
-
+```{r, echo=FALSE}
+c_4_long <- county_barchart(c_tables[[4]]) 
+c_4_long
 
 ```
 
@@ -778,38 +293,9 @@ bscols(
 
 ### Scatterplot
 
-```{r}
-c_5_chart <- c_5 %>% mutate(
-    disp_z_cap = case_when(
-      disparity_z > 3.5 ~ 3.5,
-      disparity_z < -3.5 ~ -3.5,
-      TRUE ~ disparity_z)
-    ) %>% mutate (
-    perf_z_cap = case_when(
-      performance_z > 3.5 ~ 3.5,
-      performance_z < -3.5 ~ -3.5,
-      TRUE ~ performance_z)
-    ) %>% filter(quadrant %in% c("yellow", "orange", "red", "purple"))
-
-c_5_chart  %>% 
-    hchart("scatter", 
-    hcaes(x=disp_z_cap, y=perf_z_cap, size=dp05_0001e, group=quadrant),
-      tooltip = 
-         list(pointFormat = 
-                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Other Rate: </strong>{point.other_rate:.1f} <br><strong>Two or More Races Rate: </strong>{point.twoormor_rate:.1f}")) %>%
-    hc_title(text = "Foreclosure Rate per 10k Owner-Occupied Housing Units") %>%
-  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
-  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
-  hc_caption(
-    text = paste(
-    "Data source:", 
-    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Foreclosure"]), 
-    "<br>Rate per 10,000 of Foreclosed Real Estate Owned Properties (REO) in relation to racial population residing in the area.", 
-    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
-    align = "center"
-     ) %>% #hc_size(height=400,width=700) %>% 
-  hc_legend(element_blank) %>% hc_add_theme(rc_theme)
-
+```{r, echo=FALSE}
+c_5_chart <- county_scatterplot(c_tables[[5]])
+c_5_chart
 ```
 
 * Six out of the nine Bay Area counties are in the Purple Quadrant (High performance, Low disparity).
@@ -818,34 +304,9 @@ c_5_chart  %>%
 
 ### State Barchart
 
-```{r}
-# Be sure to update title above depending on if indicator has been updated since RC v3
-# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate
-title = "Foreclosure Rate per 10k Owner-Occupied Housing Units"
-
-s_5_ <- s_5 %>%
-   select(c(state_name, ends_with('_rate'), -total_rate))
-s_5_long <- melt(s_5_, id.vars=c("state_name"))
-# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate. Add a "-" in front of s_5_long$value when MAX is best.
-s_5_long <- s_5_long[order(s_5_long$value),]
-# Round 'value' field to 1 decimal
-s_5_long <- s_5_long %>% mutate_if(is.double, ~round(., 1))
-
-s_5_long %>% 
-  hchart("column", 
-    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
-  hc_yAxis(title = list(text=title),  
-           plotLines = list(
-                list(
-                  value = s_5$total_rate,
-                  color = "black",
-                  width = 2,
-                  zIndex = 20,  # the higher number means will be top/most visible layer
-                  label = list(text = paste0("Total Rate: ",round(s_5$total_rate, 1)), style = list(color = "black", fontSize = 16), align = "left")))) %>%
-  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
-  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
-  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
- 
+```{r, echo=FALSE}
+  s_5_ <- state_barchart(s_tables[[5]])
+  s_5_ 
 
 ```
 * Black and AIAN foreclosure rates are over two times higher than the the group with the best (lowest) rate.
@@ -853,55 +314,9 @@ s_5_long %>%
 
 ### County Barchart
 
-```{r}
-c_5_long <- c_5 %>%
-   select(c(2, ends_with('_rate')))
-
-c_5_long <- melt(c_5_long, id.vars=c("county_name"))
-c_5_long <- c_5_long[order(c_5_long$value),]
-# Round 'value' field to 1 decimal
-c_5_long <- c_5_long %>% mutate(value = round(value, 1))
-
-
-# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
-
-# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
-sd1 <- SharedData$new(c_5_long, key = ~ county_name)
-title = 'Foreclosure Rate per 10k Owner-Occupied Housing Units'
-
-#
-bscols(
-  widths = 7, 
-  
-   filter_select("county_name", ## this is the name of column we want to select. 
-                "County:",  # this is what we want to see in the selection menu
-                sd1,
-                ~ county_name, multiple = FALSE),
-   plot_ly(sd1) %>%
-      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
-                marker = list(line = list(color = "black", width = 1)) ## add order t
-                ) %>%
-     layout(barmode = "stack",
-             xaxis = list(title = 'Race/Ethnicity',
-                          tickangle=-45,
-                          categoryorder = "total ascending"),     # Change to "total ascending" when MIN is best or "total descending" when MAX is best
-            
-          yaxis = list(title = title),
-            
-            
-             width = 600,
-            paper_bgcolor = "#FFFFFF",
-            plot_bgcolor = "#FFFFFF",
-            
-            font = list(
-              family = "Rubik",
-              size = 12,
-              color = '#8E8C8F'
-             ), 
-            hoverlabel = list(bgcolor = "FFFFFF")
-   ) # end layout
-) # end bscols
-
+```{r, echo=FALSE}
+c_5_long <- county_barchart(c_tables[[5]]) 
+c_5_long
 
 ```
 
@@ -910,42 +325,9 @@ bscols(
 
 ### Scatterplot
 
-```{r}
-# Be sure to update title above depending on if indicator has been updated since RC v3
-# Remove counties without quadrant values. Cap indicator perf/disp z-scores at 3.5 and -3.5. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
-c_6_chart <- c_6 %>% mutate(
-    disp_z_cap = case_when(
-      disparity_z > 3.5 ~ 3.5,
-      disparity_z < -3.5 ~ -3.5,
-      TRUE ~ disparity_z)
-    ) %>% mutate (
-    perf_z_cap = case_when(
-      performance_z > 3.5 ~ 3.5,
-      performance_z < -3.5 ~ -3.5,
-      TRUE ~ performance_z)
-    ) %>% filter(quadrant %in% c("yellow", "orange", "red", "purple"))
-
-c_6_chart %>% 
-    hchart("scatter", 
-    hcaes(x=disp_z_cap, y=perf_z_cap, size=total_pop, group=quadrant),
-      tooltip = 
-         list(pointFormat = 
-                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.total_pop:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Other Rate: </strong>{point.other_rate:.1f} <br><strong>Two or More Races Rate: </strong>{point.twoormor_rate:.1f}")) %>%
-  hc_title(text = "Homeownership (%)") %>%
-  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
-  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
-  hc_caption(
-    text = paste(
-    "Data source:", 
-    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Homeownership"]), 
-    "<br>Percentage of owner-occupied housing units out of all occupied units.", 
-    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
-    align = "center"
-     ) %>% #hc_size(height=400,width=700) %>% 
-  hc_legend(element_blank) %>% hc_add_theme(rc_theme)
-       
-      
-
+```{r, echo=FALSE}
+c_6_chart <- county_scatterplot(c_tables[[6]])
+c_6_chart
 
 ```
 * Homeownership is more prevalent in counties with smaller populations, which makes sense as we would generally expect lower house prices in those counties.
@@ -955,31 +337,9 @@ c_6_chart %>%
 
 ### State Barchart
 
-```{r}
-# Be sure to update title above depending on if indicator has been updated since RC v3
-# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate
-title = "Homeownership (%)"
-s_6_ <- s_6 %>%
-   select(c(state_name, ends_with('_rate'), -total_rate))
-s_6_long <- melt(s_6_, id.vars=c("state_name"))
-s_6_long <- s_6_long[order(-s_6_long$value),]
-s_6_long <- s_6_long %>% mutate_if(is.double, ~round(., 1))
-
-s_6_long %>% 
-  hchart("column", 
-    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
-  hc_yAxis(title = list(text=title),  
-           plotLines = list(
-                list(
-                  value = s_6$total_rate,
-                  color = "black",
-                  width = 2,
-                  zIndex = 20,  # the higher number means will be top/most visible layer
-                  label = list(text = paste0("Total Rate: ",round(s_6$total_rate, 1),"%"), style = list(color = "black", fontSize = 16), align = "right")))) %>%
-  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
-  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
-  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
-
+```{r, echo=FALSE}
+  s_6_ <- state_barchart(s_tables[[6]])
+  s_6_
 ``` 
 * White Californians are nearly twice as likely to own their home as Black Californians. Slightly more than one-third of Black households own their home.
 * Statewide, less than half of American Indian or Alaska Native, Pacific Islander, Latinx, Black, or households identifying with a racial group under "other" own a home.
@@ -987,104 +347,18 @@ s_6_long %>%
 
 ### County Barchart
 
-```{r}
-c_6_long <- c_6 %>%
-   select(c(2, ends_with('_rate')))
-
-c_6_long <- melt(c_6_long, id.vars=c("county_name"))
-# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate. Add a "-" in front of c_6_long$value when MAX is best.
-c_6_long <- c_6_long[order(c_6_long$value),]
-# Round 'value' field to 1 decimal
-c_6_long <- c_6_long %>% mutate(value = round(value, 1))
-
-
-# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
-
-# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
-
-sd2 <- SharedData$new(c_6_long, key = ~ county_name)
-title = 'Homeownership (%)'
-
-#
-bscols(
-  widths = 7, 
-  
-   filter_select("county_name",  ## this is the name of column we want to select. 
-                "County:", # this is what we want to see in the selection menu
-                sd2,
-                ~ county_name, multiple = FALSE),
-   plot_ly(sd2) %>%
-      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
-                marker = list(line = list(color = "black", width = 1)) ## add order t
-                ) %>%
-     layout(barmode = "stack",
-             xaxis = list(title = 'Race/Ethnicity',
-                          tickangle=-45,
-                          categoryorder = "total descending"),   # Change to "total ascending" when MIN is best or "total descending" when MAX is best
-            
-            yaxis = list(title = title,
-                         titlefont = list(size = 11)
-                        ),
-            
-            
-             width = 600,
-            paper_bgcolor = "#FFFFFF",
-             plot_bgcolor = "#FFFFFF",
-            
-            font = list(
-              family = "Rubik",
-              size = 12,
-              color = '#8E8C8F'
-             ),
-            hoverlabel = list(bgcolor = "FFFFFF")
-   ) # end layout
-) # end bscols
-
-
-
+```{r, echo=FALSE}
+c_6_long <- county_barchart(c_tables[[6]]) 
+c_6_long
 ```
 
 ## Overcrowded Housing {.tabset .tabset-fade}
 
 ### Scatterplot
 
-```{r}
-# Be sure to update title above depending on if indicator has been updated since RC v3
-# Remove counties without quadrant values. Cap indicator perf/disp z-scores at 3.5 and -3.5. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
-c_7_chart <- c_7 %>% mutate(
-    disp_z_cap = case_when(
-      disparity_z > 3.5 ~ 3.5,
-      disparity_z < -3.5 ~ -3.5,
-      TRUE ~ disparity_z)
-    ) %>% mutate (
-    perf_z_cap = case_when(
-      performance_z > 3.5 ~ 3.5,
-      performance_z < -3.5 ~ -3.5,
-      TRUE ~ performance_z)
-    ) %>% filter(quadrant %in% c("yellow", "orange", "red", "purple"))
-
-c_7_chart %>% 
-    hchart("scatter", 
-    hcaes(x=disp_z_cap, y=perf_z_cap, size=total_pop, group=quadrant),
-      tooltip = 
-         list(pointFormat = 
-                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.total_pop:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Other Rate: </strong>{point.other_rate:.1f} <br><strong>Two or More Races Rate: </strong>{point.twoormor_rate:.1f}")) %>%
-  hc_title(text = "Overcrowded Housing Units (%)") %>%
-  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
-  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
-  hc_caption(
-    text = paste(
-    "Data source:", 
-    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Overcrowded Housing"]), 
-    "<br>Percentage of housing units with more than one person per room.", 
-    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
-    align = "center"
-     ) %>% #hc_size(height=400,width=700) %>% 
-  hc_legend(element_blank) %>% hc_add_theme(rc_theme)
-       
-      
-
-
+```{r, echo=FALSE}
+c_7_chart <- county_scatterplot(c_tables[[7]])
+c_7_chart
 ```
 * Los Angeles ranks second in worst (performance) in Overcrowded Housing. All of the ten counties with the worst performance are in Southern California, Central Valley, or the Central Coast regions.
 * Four of the ten counties with the worst disparity are in the Bay Area region, with  Marin County having by far the worst disparity in the state.
@@ -1093,93 +367,19 @@ c_7_chart %>%
 
 ### State Barchart
 
-```{r}
-
-# Be sure to update title above depending on if indicator has been updated since RC v3
-# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate
-title = "Overcrowded Housing Units (%)"
-
-s_7_ <- s_7 %>%
-   select(c(state_name, ends_with('_rate'), -total_rate))
-s_7_long <- melt(s_7_, id.vars=c("state_name"))
-# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate. Add a "-" in front of s_7_long$value when MAX is best.
-s_7_long <- s_7_long[order(s_7_long$value),]
-# Round 'value' field to 1 decimal
-s_7_long <- s_7_long %>% mutate_if(is.double, ~round(., 1))
-
-s_7_long %>% 
-  hchart("column", 
-    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
-  hc_yAxis(title = list(text=title),  
-           plotLines = list(
-                list(
-                  value = s_7$total_rate,
-                  color = "black",
-                  width = 2,
-                  zIndex = 20,  # the higher number means will be top/most visible layer
-                  label = list(text = paste0("Total Rate: ",round(s_7$total_rate, 1)), style = list(color = "black", fontSize = 16), align = "left")))) %>%
-  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
-  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
-  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
- 
-
-
+```{r, echo=FALSE}
+  s_7_ <- state_barchart(s_tables[[7]])
+  s_7_
 ``` 
 * Statewide, Black households have the second best rate of overcrowded housing and are about 33% less likely to live in overcrowded housing than the average Californian.
-* The Latinx overcrowded housing rate is almost 16 percentage points higher than that of Non-Latinx White households.
+* The Latinx overcrowded housing rate is almost 17 percentage points higher than that of Non-Latinx White households.
 
 
 ### County Barchart
 
-```{r}
-c_7_long <- c_7 %>%
-   select(c(2, ends_with('_rate')))
-
-c_7_long <- melt(c_7_long, id.vars=c("county_name"))
-# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate. Add a "-" in front of c_7_long$value when MAX is best.
-c_7_long <- c_7_long[order(c_7_long$value),]
-# Round 'value' field to 1 decimal
-c_7_long <- c_7_long %>% mutate(value = round(value, 1))
-
-
-# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
-
-# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
-sd1 <- SharedData$new(c_7_long, key = ~ county_name)
-title = 'Overcrowded Housing Units (%)'
-
-#
-bscols(
-  widths = 7, 
-  
-   filter_select("county_name", ## this is the name of column we want to select. 
-                "County:",  # this is what we want to see in the selection menu
-                sd1,
-                ~ county_name, multiple = FALSE),
-   plot_ly(sd1) %>%
-      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
-                marker = list(line = list(color = "black", width = 1)) ## add order t
-                ) %>%
-     layout(barmode = "stack",
-             xaxis = list(title = 'Race/Ethnicity',
-                          tickangle=-45,
-                          categoryorder = "total ascending"),     # Change to "total ascending" when MIN is best or "total descending" when MAX is best
-            
-          yaxis = list(title = title),
-            
-            
-             width = 600,
-            paper_bgcolor = "#FFFFFF",
-            plot_bgcolor = "#FFFFFF",
-            
-            font = list(
-              family = "Rubik",
-              size = 12,
-              color = '#8E8C8F'
-             ), 
-            hoverlabel = list(bgcolor = "FFFFFF")
-   ) # end layout
-) # end bscols
+```{r, echo=FALSE}
+c_7_long <- county_barchart(c_tables[[7]]) 
+c_7_long
 
 ```
 
@@ -1188,41 +388,9 @@ bscols(
 
 ### Scatterplot
 
-```{r}
-# Be sure to update title above depending on if indicator has been updated since RC v3
-# Remove counties without quadrant values. Cap indicator perf/disp z-scores at 3.5 and -3.5. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
-c_8_chart <- c_8 %>% mutate(
-    disp_z_cap = case_when(
-      disparity_z > 3.5 ~ 3.5,
-      disparity_z < -3.5 ~ -3.5,
-      TRUE ~ disparity_z)
-    ) %>% mutate (
-    perf_z_cap = case_when(
-      performance_z > 3.5 ~ 3.5,
-      performance_z < -3.5 ~ -3.5,
-      TRUE ~ performance_z)
-    ) %>% filter(quadrant %in% c("yellow", "orange", "red", "purple"))
-
-c_8_chart %>% 
-    hchart("scatter", 
-    hcaes(x=disp_z_cap, y=perf_z_cap, size=dp05_0001e, group=quadrant),
-      tooltip = 
-         list(pointFormat = 
-                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.nh_black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.nh_asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Other Rate: </strong>{point.nh_other_rate:.1f} <br><strong>Two or More Races Rate: </strong>{point.nh_twoormor_rate:.1f}")) %>%
-  hc_title(text = "Low Quality Housing (%)<br>(Lack of Available Kitchen, Plumbing, or Heat)") %>%
-  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
-  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
-  hc_caption(
-    text = paste(
-    "Data source:", 
-    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Housing Quality"]), 
-    "<br>Percentage of housing units that lack kitchen, plumbing, or heat out of all housing units.", 
-    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
-    align = "center"
-     ) %>% #hc_size(height=400,width=700) %>% 
-  hc_legend(element_blank) %>% hc_add_theme(rc_theme)
-
-
+```{r, echo=FALSE}
+c_8_chart <- county_scatterplot(c_tables[[8]])
+c_8_chart
 ```
 * San Francisco County has the worst performance (highest overall rate) of people living in low quality housing. Only non-Latinx White and Asian residents are less likely to have low quality housing rates below the average.
 * Los Angeles County has the second worst performance and seventh worst disparity rankings on this measure. Latinx households face the worst racial disparities on this measure by far among all groups, with 12% living in low quality housing.
@@ -1230,37 +398,9 @@ c_8_chart %>%
 
 ### State Barchart
 
-```{r}
-
-# Be sure to update title above depending on if indicator has been updated since RC v3
-# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate
-title = "Low Quality Housing (%)<br>(Lack of Available Kitchen, Plumbing, or Heat)"
-
-s_8_ <- s_8 %>%
-   select(c(state_name, ends_with('_rate'), -total_rate))
-s_8_long <- melt(s_8_, id.vars=c("state_name"))
-# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate. Add a "-" in front of s_8_long$value when MAX is best.
-s_8_long <- s_8_long[order(s_8_long$value),]
-# Round 'value' field to 1 decimal
-s_8_long <- s_8_long %>% mutate_if(is.double, ~round(., 1))
-
-s_8_long %>% 
-  hchart("column", 
-    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
-  hc_yAxis(title = list(text=title),  
-           plotLines = list(
-                list(
-                  value = s_8$total_rate,
-                  color = "black",
-                  width = 2,
-                  zIndex = 20,  # the higher number means will be top/most visible layer
-                  label = list(text = paste0("Total Rate: ",round(s_8$total_rate, 1)), style = list(color = "black", fontSize = 16), align = "left")))) %>%
-  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
-  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
-  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
- 
-
-
+```{r, echo=FALSE}
+  s_8_ <- state_barchart(s_tables[[8]])
+  s_8_
 ``` 
 * Latinx Californians are over 2.5 times more likely to live in low quality housing as non-Latinx White Californians.
 * American Indians and Alaskan Natives, Pacific Islanders and Californians identifying with the racial category "other"  the other three other racial groups with low quality housing rates that are worse than the state average.
@@ -1268,54 +408,9 @@ s_8_long %>%
 
 ### County Barchart
 
-```{r}
-c_8_long <- c_8 %>%
-   select(c(2, ends_with('_rate')))
-
-c_8_long <- melt(c_8_long, id.vars=c("county_name"))
-c_8_long <- c_8_long[order(c_8_long$value),]
-# Round 'value' field to 1 decimal
-c_8_long <- c_8_long %>% mutate(value = round(value, 1))
-
-
-# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
-
-# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
-sd1 <- SharedData$new(c_8_long, key = ~ county_name)
-title = 'Low Quality Housing (%)<br>(Lack of Available Kitchen, Plumbing, or Heat)'
-
-#
-bscols(
-  widths = 7, 
-  
-   filter_select("county_name", ## this is the name of column we want to select. 
-                "County:",  # this is what we want to see in the selection menu
-                sd1,
-                ~ county_name, multiple = FALSE),
-   plot_ly(sd1) %>%
-      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
-                marker = list(line = list(color = "black", width = 1)) ## add order t
-                ) %>%
-     layout(barmode = "stack",
-             xaxis = list(title = 'Race/Ethnicity',
-                          tickangle=-45,
-                          categoryorder = "total ascending"),     # Change to "total ascending" when MIN is best or "total descending" when MAX is best
-            
-          yaxis = list(title = title),
-            
-            
-             width = 600,
-            paper_bgcolor = "#FFFFFF",
-            plot_bgcolor = "#FFFFFF",
-            
-            font = list(
-              family = "Rubik",
-              size = 12,
-              color = '#8E8C8F'
-             ), 
-            hoverlabel = list(bgcolor = "FFFFFF")
-   ) # end layout
-) # end bscols
+```{r, echo=FALSE}
+c_8_long <- county_barchart(c_tables[[8]]) 
+c_8_long
 
 ```
 
@@ -1324,42 +419,9 @@ bscols(
 
 ### Scatterplot
 
-```{r}
-# Be sure to update title above depending on if indicator has been updated since RC v3
-# Remove counties without quadrant values. Cap indicator perf/disp z-scores at 3.5 and -3.5. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
-c_9_chart <- c_9 %>% mutate(
-    disp_z_cap = case_when(
-      disparity_z > 3.5 ~ 3.5,
-      disparity_z < -3.5 ~ -3.5,
-      TRUE ~ disparity_z)
-    ) %>% mutate (
-    perf_z_cap = case_when(
-      performance_z > 3.5 ~ 3.5,
-      performance_z < -3.5 ~ -3.5,
-      TRUE ~ performance_z)
-    ) %>% filter(quadrant %in% c("yellow", "orange", "red", "purple"))
-
-c_9_chart %>% 
-    hchart("scatter", 
-    hcaes(x=disp_z_cap, y=perf_z_cap, size=total_pop, group=quadrant),
-      tooltip = 
-         list(pointFormat = 
-                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.total_pop:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.nh_black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.nh_aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.nh_pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.nh_asian_rate:.1f} <br><strong>Filipinx Rate: </strong>{point.nh_filipino_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f} <br><strong>Two or More Races Rate: </strong>{point.nh_twoormor_rate:.1f}")) %>%
-  hc_title(text = "Students Experiencing Homelessness (%)") %>%
-  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
-  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
-  hc_caption(
-    text = paste(
-    "Data source:", 
-    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Student Homelessness"]), 
-    "<br>Percentage of students experiencing homelessness out of all enrolled students.", 
-    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
-    align = "center"
-     ) %>% #hc_size(height=400,width=700) %>% 
-  hc_legend(element_blank) %>% hc_add_theme(rc_theme)
-      
-
-
+```{r, echo=FALSE}
+c_9_chart <- county_scatterplot(c_tables[[9]])
+c_9_chart
 ```
 * Four of the Five most racially disparate counties on this measure are in the Bay Area. Alameda, Santa Cruz, and San Mateo Counties in particular have by far the highest rates of racial disparity in student homelessness in the state.
 * Three of the four counties that are struggling the worst with overall student homelessness rate are semi-urban counties in the Central Coast -- Santa Barbara, Monterey, and San Luis Obispo.
@@ -1367,34 +429,9 @@ c_9_chart %>%
 
 ### State Barchart
 
-```{r}
-
-title = "Students Experiencing Homelessness (%)"
-
-s_9_ <- s_9 %>%
-   select(c(state_name, ends_with('_rate'), -total_rate))
-s_9_long <- melt(s_9_, id.vars=c("state_name"))
-# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate. Add a "-" in front of s_9_long$value when MAX is best.
-s_9_long <- s_9_long[order(s_9_long$value),]
-# Round 'value' field to 1 decimal
-s_9_long <- s_9_long %>% mutate_if(is.double, ~round(., 1))
-
-s_9_long %>% 
-  hchart("column", 
-    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
-  hc_yAxis(title = list(text=title),  
-           plotLines = list(
-                list(
-                  value = s_9$total_rate,
-                  color = "black",
-                  width = 2,
-                  zIndex = 20,  # the higher number means will be top/most visible layer
-                  label = list(text = paste0("Total Rate: ",round(s_9$total_rate, 1)), style = list(color = "black", fontSize = 16), align = "left")))) %>%
-  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
-  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
-  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
-
-
+```{r, echo=FALSE}
+  s_9_ <- state_barchart(s_tables[[9]])
+  s_9_
 ``` 
 * American Indian and Alaska Native Californians have the highest student homelessness rate in the state at 7.1%, which is a 75% increase over the statewide rate.
 * Black, Latinx, and Pacific Islander students are all significantly above the statewide rate as well.
@@ -1402,54 +439,9 @@ s_9_long %>%
 
 ### County Barchart
 
-```{r}
-c_9_long <- c_9 %>%
-   select(c(county_name, ends_with('_rate')))
-
-c_9_long <- melt(c_9_long, id.vars=c("county_name"))
-c_9_long <- c_9_long[order(c_9_long$value),]
-# Round 'value' field to 1 decimal
-c_9_long <- c_9_long %>% mutate(value = round(value, 1))
-
-
-# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
-
-# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
-sd1 <- SharedData$new(c_9_long, key = ~ county_name)
-title = 'Students Experiencing Homelessness (%)'
-
-#
-bscols(
-  widths = 7, 
-  
-   filter_select("county_name", ## this is the name of column we want to select. 
-                "County:",  # this is what we want to see in the selection menu
-                sd1,
-                ~ county_name, multiple = FALSE),
-   plot_ly(sd1) %>%
-      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
-                marker = list(line = list(color = "black", width = 1)) ## add order t
-                ) %>%
-     layout(barmode = "stack",
-             xaxis = list(title = 'Race/Ethnicity',
-                          tickangle=-45,
-                          categoryorder = "total ascending"),     # Change to "total ascending" when MIN is best or "total descending" when MAX is best
-            
-          yaxis = list(title = title),
-            
-            
-             width = 600,
-            paper_bgcolor = "#FFFFFF",
-            plot_bgcolor = "#FFFFFF",
-            
-            font = list(
-              family = "Rubik",
-              size = 12,
-              color = '#8E8C8F'
-             ), 
-            hoverlabel = list(bgcolor = "FFFFFF")
-   ) # end layout
-) # end bscols
+```{r, echo=FALSE}
+c_9_long <- county_barchart(c_tables[[9]]) 
+c_9_long
 
 ```
 
@@ -1458,39 +450,9 @@ bscols(
 
 ### Scatterplot
 
-```{r}
-# Remove counties without quadrant values. Cap indicator perf/disp z-scores at 3.5 and -3.5. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
-c_10_chart <- c_10 %>% mutate(
-    disp_z_cap = case_when(
-      disparity_z > 3.5 ~ 3.5,
-      disparity_z < -3.5 ~ -3.5,
-      TRUE ~ disparity_z)
-    ) %>% mutate (
-    perf_z_cap = case_when(
-      performance_z > 3.5 ~ 3.5,
-      performance_z < -3.5 ~ -3.5,
-      TRUE ~ performance_z)
-    ) %>% filter(quadrant %in% c("yellow", "orange", "red", "purple"))
-
-c_10_chart %>% 
-    hchart("scatter", 
-    hcaes(x=disp_z_cap, y=perf_z_cap, size=dp05_0001e, group=quadrant), #total_pop
-      tooltip = 
-         list(pointFormat = 
-                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f} <br><strong>Total Rate: </strong>{point.total_rate:.1f} <br><strong>Latinx Rate: </strong>{point.latino_rate:.1f} <br><strong>Black Rate: </strong>{point.nh_black_rate:.1f} <br><strong>AIAN Rate: </strong>{point.nh_aian_rate:.1f} <br><strong>NHPI Rate: </strong>{point.nh_pacisl_rate:.1f} <br><strong>Asian Rate: </strong>{point.nh_asian_rate:.1f} <br><strong>White Rate: </strong>{point.nh_white_rate:.1f}  <br><strong>Two or More Races Rate: </strong>{point.nh_twoormor_rate:.1f}")) %>%
-  hc_title(text = "Subprime (Higher-priced) Loans per 1k Mortgage Loan Applicants") %>%
-  hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = 4, min = -4) %>% 
-  hc_yAxis(title = list(text = "Performance (Low -> High)"), max = 4, min = -4) %>% 
-  hc_caption(
-    text = paste(
-    "Data source:", 
-    gsub(";", ";<br>", v7_sources$data_source[v7_sources$arei_indicator == "Subprime Mortgage Loans"]), "<br>Number of higher-priced loans per 1,000 mortgage applications.", 
-    "<br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes."),
-    align = "center"
-     ) %>% #hc_size(height=400,width=700) %>% 
-  hc_legend(element_blank) %>% hc_add_theme(rc_theme) 
-
-
+```{r, echo=FALSE}
+c_10_chart <- county_scatterplot(c_tables[[10]])
+c_10_chart
 ```
 * Six out of the eight San Joaquin Valley counties are in the Yellow Quadrant (Lower Disparity, Lower Performance) meaning they have subprime loan rates and lower racial disparities.
 * Seven out of the nine Bay Area counties are in the Orange Quadrant (Higher Disparity, Better Outcomes).
@@ -1498,90 +460,18 @@ c_10_chart %>%
 
 ### State Barchart
 
-```{r}
-
-# Be sure to update title above depending on if indicator has been updated since RC v3
-# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate
-title = "Subprime (Higher-priced) Loans per 1k Mortgage Loan Applicants"
-
-s_10_ <- s_10 %>%
-   select(c(state_name, ends_with('_rate'), -total_rate))
-s_10_long <- melt(s_10_, id.vars=c("state_name"))
-# Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate. Add a "-" in front of s_10_long$value when MAX is best.
-s_10_long <- s_10_long[order(s_10_long$value),]
-# Round 'value' field to 1 decimal
-s_10_long <- s_10_long %>% mutate_if(is.double, ~round(., 1))
-
-s_10_long %>% 
-  hchart("column", 
-    hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
-  hc_yAxis(title = list(text=title),  
-           plotLines = list(
-                list(
-                  value = s_10$total_rate,
-                  color = "black",
-                  width = 2,
-                  zIndex = 20,  # the higher number means will be top/most visible layer
-                  label = list(text = paste0("Total Rate: ",round(s_10$total_rate, 1)), style = list(color = "black", fontSize = 16), align = "left")))) %>%
-  hc_tooltip(followPointer = TRUE) %>%  # extra line so that tooltip isn't hidden behind total_rate line
-  hc_xAxis(title = list(text="Race/Ethnicity"), labels = (list(rotation = -45))) %>%
-  hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
- 
-
+```{r, echo=FALSE}
+  s_10_ <- state_barchart(s_tables[[10]])
+  s_10_
 ``` 
 * Lenders are more than four times as likely to give Latinx applicants a subprime mortgage than the group with the best (lowest) rate. 
 
 
 ### County Barchart
 
-```{r}
-c_10_long <- c_10 %>%
-   select(c(2, ends_with('_rate')))
-
-c_10_long <- melt(c_10_long, id.vars=c("county_name"))
-c_10_long <- c_10_long[order(c_10_long$value),]
-# Round 'value' field to 1 decimal
-c_10_long <- c_10_long %>% mutate(value = round(value, 1))
-
-
-# drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
-
-# create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
-sd1 <- SharedData$new(c_10_long, key = ~ county_name)
-title = 'Subprime (Higher-priced) Loans per 1k Mortgage Loan Applicants'
-
-#
-bscols(
-  widths = 7, 
-  
-   filter_select("county_name", ## this is the name of column we want to select. 
-                "County:",  # this is what we want to see in the selection menu
-                sd1,
-                ~ county_name, multiple = FALSE),
-   plot_ly(sd1) %>%
-      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
-                marker = list(line = list(color = "black", width = 1)) ## add order t
-                ) %>%
-     layout(barmode = "stack",
-             xaxis = list(title = 'Race/Ethnicity',
-                          tickangle=-45,
-                          categoryorder = "total ascending"),     # Change to "total ascending" when MIN is best or "total descending" when MAX is best
-            
-          yaxis = list(title = title),
-            
-            
-             width = 600,
-            paper_bgcolor = "#FFFFFF",
-            plot_bgcolor = "#FFFFFF",
-            
-            font = list(
-              family = "Rubik",
-              size = 12,
-              color = '#8E8C8F'
-             ), 
-            hoverlabel = list(bgcolor = "FFFFFF")
-   ) # end layout
-) # end bscols
+```{r, echo=FALSE}
+c_10_long <- county_barchart(c_tables[[10]]) 
+c_10_long
 
 ```
 

@@ -56,8 +56,8 @@ options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
 rc_theme # load from the above draft_visual_functions.R script
 
 ##### UPDATE EACH YEAR AND FOR EACH ISSUE AREA ####
-issue_name <- 'Health Care Access' # Issues: Safety & Justice, Democracy, Economic Opportunity, Education, Healthy Built Environment, Health Care Access, Housing
-issue <- 'hlth'
+issue_name <- 'Health Care Access' # Issue names: Safety & Justice, Democracy, Economic Opportunity, Education, Healthy Built Environment, Health Care Access, Housing
+issue <- 'hlth' #Issue: crim, demo, educ, econ, hben, hlth, hous
 rc_schema <- 'v7'
 rc_yr <- '2025'
 acs_yr <- '2023'
@@ -85,7 +85,7 @@ c_tables <- lapply(c_tables, function(x) x %>%
          geolevel = 'county'))
 
 # Get issue index
-c_index_z <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_hlth_index_", rc_yr))
+c_index_z <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_", issue, "_index_", rc_yr))
 
 ####################### POPULATION DATA #####################################
 #Get total population
@@ -170,8 +170,6 @@ RACE COUNTS provides a 3D view of racial equity:
 ### Scatterplot
 
 ```{r, echo=FALSE} 
-
-# mutate(arei_indicator=v7_sources$arei_indicator[2], bar_chart_header=v7_sources$bar_chart_header[2], description = v7_sources$methodology[2])
 c_1_chart <- county_scatterplot(c_tables[[1]])
 c_1_chart
 
@@ -311,10 +309,8 @@ c_5_chart
 ### State Barchart
 
 ```{r, echo=FALSE}
-
   s_5_ <- state_barchart(s_tables[[5]])
   s_5_
-
 ```
 * Latinx, Pacific Islander, AIAN, and Asian Californians are less likely to have a usual source of care than the average Californian.
 * Latinx Californians are over nine percentage points less likely to have a usual source of care than White Californians.

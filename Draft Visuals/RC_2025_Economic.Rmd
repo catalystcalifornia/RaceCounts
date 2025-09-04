@@ -48,65 +48,79 @@ body { background-color: #FFFFFF; }
 knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
 
 #load the libraries via the below source as well as the credentials and set the theme
-source("W:/Project/RACE COUNTS/2025_v7/RC_Github/AB/RaceCounts/Functions/draft_visual_functions.R")
-
-
+source("draft_visual_functions.R")
 
 options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
 
 ##Add RC theme##
 rc_theme # load from the above draft_visual_functions.R script
-issue <- 'Economic Opportunity' # 7 options: Crime & Justice, Democracy, Economic Opportunity, Education, Healthy Built Environment, Health Care Access, Housing
+issue_name <- 'Economic Opportunity' # Issue names: Safety & Justice, Democracy, Economic Opportunity, Education, Healthy Built Environment, Health Care Access, Housing
+issue <- 'econ' #Issue: crim, demo, educ, econ, hben, hlth, hous
 rc_schema <- 'v7'
 rc_yr <- '2025'
 acs_yr <- '2023'
+```
 
+```{r include = FALSE}
+####################### GET TABLE NAMES #####################################
+county_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%county_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
 
-####################### ADDED v7 COUNTY DATA #####################################
+county_list <- dbGetQuery(con, county_list_query) %>% pull(table_name) 
 
-c_1 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_living_wage_county_", rc_yr))  %>% rename(total_pop=pop_total)
-c_2 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_employment_county_", rc_yr))
-c_3 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_internet_county_", rc_yr))
-c_4 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_per_capita_income_county_", rc_yr))
-c_5 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_officials_county_", rc_yr)) %>% rename(total_pop=pop_total)
-c_6 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_real_cost_measure_county_", rc_yr))
-c_7 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_connected_youth_county_", rc_yr))%>% rename(total_pop=pop_total)
+c_tables <- lapply(setNames(paste0("select * from ", rc_schema, ".", county_list), county_list), DBI::dbGetQuery, conn = con)
 
-c_index_z <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_index_", rc_yr))
+# create column with indicator name
+c_tables <- map2(c_tables, names(c_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
 
+# clean up and add columns
+c_tables <- lapply(c_tables, function(x) x %>% 
+  select(-any_of('geolevel'), -ends_with("_pop")) %>%
+  mutate(issue = substring(indicator, 6,9),
+         indicator = substring(indicator, 11),
+         indicator = gsub(paste0('_county_', rc_yr), '', indicator),
+         geolevel = 'county'))
+
+# Get issue index
+c_index_z <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_", issue, "_index_", rc_yr))
 
 ####################### POPULATION DATA #####################################
-#Join total population 
-pop <- dbGetQuery(con2, paste0("SELECT geoid, dp05_0001e FROM demographics.acs_5yr_dp05_multigeo_", acs_yr)) %>% rename(total_pop = dp05_0001e)
+#Get total population
+pop <- dbGetQuery(con, paste0("SELECT geoid, total_pop, geolevel FROM ", rc_schema, ".arei_race_multigeo WHERE geolevel = 'county'")) %>% select(-geolevel)
 
-c_index_z <- left_join(x = c_index_z, y = pop, by = c("county_id" = "geoid"))
+c_index_z <- left_join(c_index_z, pop, by = c("county_id" = "geoid"))
 
-c_4 <- left_join(x = c_4, y = pop, by = c("county_id" = "geoid"))
+c_tables <- lapply(c_tables, function(x) 
+  x %>% left_join(pop, by = c("county_id" = "geoid")))
 
 
 ####################### ADD STATE DATA #####################################
-s_1 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_living_wage_state_", rc_yr))  
-s_2 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_employment_state_", rc_yr))
-s_3 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_internet_state_", rc_yr))
-s_4 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_per_capita_income_state_", rc_yr))
-s_5 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_officials_state_", rc_yr))
-s_6 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_real_cost_measure_state_", rc_yr))
-s_7 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_connected_youth_state_", rc_yr))
+state_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%state_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
 
-# # merge with urban type 
-# region_urban_type <- dbGetQuery(con, paste0("SELECT geoid AS county_id, region, urban_type FROM ", rc_schema, ".arei_multigeo_list")) 
-# 
-# c_1 <- left_join(c_1, region_urban_type)
-# c_2 <- left_join(c_2, region_urban_type)
-# c_3 <- left_join(c_3, region_urban_type)
-# c_4 <- left_join(c_4, region_urban_type)
-# c_5 <- left_join(c_5, region_urban_type)
-# c_6 <- left_join(c_6, region_urban_type)
-# c_7 <- left_join(c_7, region_urban_type)
+state_list <- dbGetQuery(con, state_list_query) %>% pull(table_name) 
 
-##Add 2024 v7 Source Data##
+s_tables <- lapply(setNames(paste0("select * from ", rc_schema, ".", state_list), state_list), DBI::dbGetQuery, conn = con)
+
+# create column with indicator name
+s_tables <- map2(s_tables, names(s_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
+
+# clean up and add columns
+s_tables <- lapply(s_tables, function(x) x %>% 
+  select(-any_of('geolevel'), -ends_with("_pop")) %>%
+  mutate(issue = substring(indicator, 6,9),
+         indicator = substring(indicator, 11),
+         indicator = gsub(paste0('_state_', rc_yr), '', indicator),
+         geolevel = 'state'))
+
+
+##Add 2025 v7 Source Data##
 v7_sources <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_indicator_list_cntyst"))
-v7_sources <- v7_sources %>% filter(v7_sources$arei_issue_area==issue)
+v7_sources <- v7_sources %>% filter(v7_sources$arei_issue_area==issue_name) %>%
+  select(arei_indicator, rate_descriptor, bar_chart_header, rate_rounding, methodology, data_source, api_name)
+
+
+## Join metadata to data
+c_tables <- lapply(c_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
+s_tables <- lapply(s_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
 ```
 
 <!-- *** -->
@@ -145,7 +159,7 @@ RACE COUNTS provides a 3D view of racial equity:
 ## Economic Opportunity Index {.tabset .tabset-fade}
 ```{r, echo=FALSE}
 # Remove counties without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
-  c_index_z <- c_index_z %>% mutate(arei_issue_area=v7_sources$arei_issue_area[1])
+  c_index_z <- c_index_z %>% mutate(arei_issue_area=issue_name)
   c_index_chart <- index_scatterplot(c_index_z, 2)
 
   c_index_chart
@@ -161,9 +175,7 @@ RACE COUNTS provides a 3D view of racial equity:
 ### Scatterplot
 
 ```{r, echo=FALSE} 
-
-c_1 <- c_1 %>% mutate(arei_indicator=v7_sources$arei_indicator[5], bar_chart_header=v7_sources$bar_chart_header[5], description = v7_sources$methodology[5])
-c_1_chart <- county_scatterplot(c_1)
+c_1_chart <- county_scatterplot(c_tables[[1]])
 c_1_chart
 
 ```
@@ -173,9 +185,7 @@ c_1_chart
 
 ### State Barchart
 ```{r, echo=FALSE}
-
-  title = v7_sources$bar_chart_header[5]
-  s_1_ <- state_barchart(s_1, title)
+  s_1_ <- state_barchart(s_tables[[1]])
   s_1_
 
 ``` 
@@ -185,7 +195,7 @@ c_1_chart
 ### County Barchart
 
 ```{r, echo=FALSE}
-c_1_long <- county_barchart(c_1, title) 
+c_1_long <- county_barchart(c_tables[[1]]) 
 c_1_long
 ```
 
@@ -195,9 +205,7 @@ c_1_long
 ### Scatterplot
 
 ```{r, echo=FALSE} 
-
-c_2 <- c_2 %>% mutate(arei_indicator=v7_sources$arei_indicator[2], bar_chart_header=v7_sources$bar_chart_header[2], description = v7_sources$methodology[2])
-c_2_chart <- county_scatterplot(c_2)
+c_2_chart <- county_scatterplot(c_tables[[2]])
 c_2_chart
 
 ```
@@ -207,9 +215,7 @@ c_2_chart
 
 ### State Barchart
 ```{r, echo=FALSE}
-
-  title = v7_sources$bar_chart_header[2]
-  s_2_ <- state_barchart(s_2, title)
+  s_2_ <- state_barchart(s_tables[[2]])
   s_2_
 
 ``` 
@@ -219,7 +225,7 @@ c_2_chart
 ### County Barchart
 
 ```{r, echo=FALSE}
-c_2_long <- county_barchart(c_2, title) 
+c_2_long <- county_barchart(c_tables[[2]]) 
 c_2_long
 ```
 
@@ -230,11 +236,8 @@ c_2_long
 ### Scatterplot
 
 ```{r, echo=FALSE} 
-
-c_3 <- c_3 %>% mutate(arei_indicator=v7_sources$arei_indicator[6], bar_chart_header=v7_sources$bar_chart_header[6], description = v7_sources$methodology[6])
-c_3_chart <- county_scatterplot(c_3)
+c_3_chart <- county_scatterplot(c_tables[[3]])
 c_3_chart
-
 ```
 * 
 * 
@@ -242,9 +245,7 @@ c_3_chart
 
 ### State Barchart
 ```{r, echo=FALSE}
-
-  title = v7_sources$bar_chart_header[6]
-  s_3_ <- state_barchart(s_3, title)
+  s_3_ <- state_barchart(s_tables[[3]])
   s_3_
 
 ``` 
@@ -254,7 +255,7 @@ c_3_chart
 ### County Barchart
 
 ```{r, echo=FALSE}
-c_3_long <- county_barchart(c_3, title) 
+c_3_long <- county_barchart(c_tables[[3]]) 
 c_3_long
 ```
 
@@ -265,9 +266,7 @@ c_3_long
 ### Scatterplot
 
 ```{r, echo=FALSE} 
-
-c_4 <- c_4 %>% mutate(arei_indicator=v7_sources$arei_indicator[1], bar_chart_header=v7_sources$bar_chart_header[1], description = v7_sources$methodology[1])
-c_4_chart <- county_scatterplot(c_4)
+c_4_chart <- county_scatterplot(c_tables[[4]])
 c_4_chart
 
 ```
@@ -277,9 +276,7 @@ c_4_chart
 
 ### State Barchart
 ```{r, echo=FALSE}
-
-  title = v7_sources$bar_chart_header[1]
-  s_4_ <- state_barchart(s_4, title)
+  s_4_ <- state_barchart(s_tables[[4]])
   s_4_
 
 ``` 
@@ -289,7 +286,7 @@ c_4_chart
 ### County Barchart
 
 ```{r, echo=FALSE}
-c_4_long <- county_barchart(c_4, title) 
+c_4_long <- county_barchart(c_tables[[4]]) 
 c_4_long
 ```
 
@@ -299,9 +296,7 @@ c_4_long
 ### Scatterplot
 
 ```{r, echo=FALSE} 
-
-c_5 <- c_5 %>% mutate(arei_indicator=v7_sources$arei_indicator[4], bar_chart_header=v7_sources$bar_chart_header[4], description = v7_sources$methodology[4])
-c_5_chart <- county_scatterplot(c_5)
+c_5_chart <- county_scatterplot(c_tables[[5]])
 c_5_chart
 
 ```
@@ -311,9 +306,7 @@ c_5_chart
 
 ### State Barchart
 ```{r, echo=FALSE}
-
-  title = v7_sources$bar_chart_header[4]
-  s_5_ <- state_barchart(s_5, title)
+  s_5_ <- state_barchart(s_tables[[5]])
   s_5_
 
 ``` 
@@ -323,7 +316,7 @@ c_5_chart
 ### County Barchart
 
 ```{r, echo=FALSE}
-c_5_long <- county_barchart(c_5, title) 
+c_5_long <- county_barchart(c_tables[[5]]) 
 c_5_long
 ```
 
@@ -335,8 +328,7 @@ c_5_long
 
 ```{r, echo=FALSE} 
 
-c_6 <- c_6 %>% mutate(arei_indicator=v7_sources$arei_indicator[7], bar_chart_header=v7_sources$bar_chart_header[7], description = v7_sources$methodology[7])
-c_6_chart <- county_scatterplot(c_6)
+c_6_chart <- county_scatterplot(c_tables[[6]])
 c_6_chart
 
 ```
@@ -346,9 +338,7 @@ c_6_chart
 
 ### State Barchart
 ```{r, echo=FALSE}
-
-  title = v7_sources$bar_chart_header[7]
-  s_6_ <- state_barchart(s_6, title)
+  s_6_ <- state_barchart(s_tables[[6]])
   s_6_
 
 ``` 
@@ -358,7 +348,7 @@ c_6_chart
 ### County Barchart
 
 ```{r, echo=FALSE}
-c_6_long <- county_barchart(c_6, title) 
+c_6_long <- county_barchart(c_tables[[6]]) 
 c_6_long
 ```
 
@@ -370,8 +360,8 @@ c_6_long
 
 ```{r, echo=FALSE} 
 
-c_7 <- c_7 %>% mutate(arei_indicator=v7_sources$arei_indicator[3], bar_chart_header=v7_sources$bar_chart_header[3], description = v7_sources$methodology[3])
-c_7_chart <- county_scatterplot(c_7)
+
+c_7_chart <- county_scatterplot(c_tables[[7]])
 c_7_chart
 
 ```
@@ -381,9 +371,7 @@ c_7_chart
 
 ### State Barchart
 ```{r, echo=FALSE}
-
-  title = v7_sources$bar_chart_header[3]
-  s_7_ <- state_barchart(s_7, title)
+  s_7_ <- state_barchart(s_tables[[7]])
   s_7_
 
 ``` 
@@ -393,7 +381,7 @@ c_7_chart
 ### County Barchart
 
 ```{r, echo=FALSE}
-c_7_long <- county_barchart(c_7, title) 
+c_7_long <- county_barchart(c_tables[[7]]) 
 c_7_long
 ```
 
