@@ -183,8 +183,7 @@ c_1_chart
 ### State Barchart
 ```{r, echo=FALSE}
 
-  title = v7_sources$bar_chart_header[2]
-  s_1_ <- state_barchart(s_1, title)
+  s_1_ <- state_barchart(s_tables[[1]])
   s_1_
 
 ``` 
@@ -194,7 +193,7 @@ c_1_chart
 ### County Barchart
 
 ```{r, echo=FALSE}
-c_1_long <- county_barchart(c_1, title) 
+c_1_long <- county_barchart(c_tables[[1]]) 
 c_1_long
 ```
 
@@ -205,8 +204,7 @@ c_1_long
 ### Scatterplot
 
 ```{r, echo=FALSE}
-c_2 <- c_2 %>% mutate(arei_indicator=v7_sources$arei_indicator[1], bar_chart_header=v7_sources$bar_chart_header[1], description = v7_sources$methodology[1])
-c_2_chart <- county_scatterplot(c_2)
+c_2_chart <- county_scatterplot(c_tables[[2]])
 c_2_chart
 
 ```
@@ -217,8 +215,7 @@ c_2_chart
 
 ### State Barchart
 ```{r, echo=FALSE}
-  title = v7_sources$bar_chart_header[1]
-  s_2_ <- state_barchart(s_2, title)
+  s_2_ <- state_barchart(s_tables[[2]])
   s_2_
 
 ```
@@ -230,7 +227,7 @@ c_2_chart
 ### County Barchart
 
 ```{r, echo=FALSE}
-c_2_long <- county_barchart(c_2, title) 
+c_2_long <- county_barchart(c_tables[[2]]) 
 c_2_long
 ```
 
@@ -240,8 +237,7 @@ c_2_long
 ### Scatterplot
 
 ```{r, echo=FALSE}
-c_3 <- c_3 %>% mutate(arei_indicator=v7_sources$arei_indicator[5], bar_chart_header=v7_sources$bar_chart_header[5], description = v7_sources$methodology[5])
-c_3_chart <- county_scatterplot(c_3)
+c_3_chart <- county_scatterplot(c_tables[[3]])
 c_3_chart
 ```
 * Five of the six counties in Southern California have greater than average racial disparities in life expectancy. 
@@ -253,8 +249,7 @@ c_3_chart
 
 ```{r, echo=FALSE}
 
-  title = v7_sources$bar_chart_header[5]
-  s_3_ <- state_barchart(s_3, title)
+  s_3_ <- state_barchart(s_tables[[3]])
   s_3_
 
 ``` 
@@ -263,7 +258,7 @@ c_3_chart
 ### County Barchart
 
 ```{r, echo=FALSE}
-c_3_long <- county_barchart(c_3, title) 
+c_3_long <- county_barchart(c_tables[[3]]) 
 c_3_long
 ```
 
@@ -273,8 +268,7 @@ c_3_long
 ### Scatterplot
 
 ```{r, echo=FALSE}
-c_4 <- c_4 %>% mutate(arei_indicator=v7_sources$arei_indicator[4], bar_chart_header=v7_sources$bar_chart_header[4], description = v7_sources$methodology[4])
-c_4_chart <- county_scatterplot(c_4)
+c_4_chart <- county_scatterplot(c_tables[[4]])
 c_4_chart
 ```
 * There is no data for 17 of the 20 counties in the Northern/Sierra region for this measure.
@@ -287,8 +281,7 @@ c_4_chart
 
 ```{r, echo=FALSE}
 
-  title = v7_sources$bar_chart_header[4]
-  s_4_ <- state_barchart(s_4, title)
+  s_4_ <- state_barchart(s_tables[[4]])
   s_4_
 
 ```
@@ -298,7 +291,7 @@ c_4_chart
 ### County Barchart
 
 ```{r, echo=FALSE}
-c_4_long <- county_barchart(c_4, title) 
+c_4_long <- county_barchart(c_tables[[4]]) 
 c_4_long
 ```
 
@@ -308,8 +301,7 @@ c_4_long
 ### Scatterplot
 
 ```{r, echo=FALSE}
-c_5 <- c_5 %>% mutate(arei_indicator=v7_sources$arei_indicator[3], bar_chart_header=v7_sources$bar_chart_header[3], description = v7_sources$methodology[3])
-c_5_chart <- county_scatterplot(c_5)
+c_5_chart <- county_scatterplot(c_tables[[5]])
 c_5_chart
 
 ```
@@ -320,8 +312,7 @@ c_5_chart
 
 ```{r, echo=FALSE}
 
-  title = v7_sources$bar_chart_header[3]
-  s_5_ <- state_barchart(s_5, title)
+  s_5_ <- state_barchart(s_tables[[5]])
   s_5_
 
 ```
@@ -333,7 +324,7 @@ c_5_chart
 
 ```{r, echo=FALSE}
 
-c_5_long <- county_barchart(c_5, title) 
+c_5_long <- county_barchart(c_tables[[5]]) 
 c_5_long
 
 ```
@@ -344,8 +335,7 @@ c_5_long
 ### Scatterplot
 
 ```{r, echo=FALSE}
-c_6 <- c_6 %>% mutate(arei_indicator=v7_sources$arei_indicator[6], bar_chart_header=v7_sources$bar_chart_header[6], description = v7_sources$methodology[6])
-c_6_chart <- county_scatterplot(c_6)
+c_6_chart <- county_scatterplot(c_tables[[6]])
 c_6_chart
 
 ```
@@ -356,9 +346,7 @@ c_6_chart
 ### State Barchart
 
 ```{r, echo=FALSE}
-
-  title = v7_sources$bar_chart_header[6]
-  s_6_ <- state_barchart(s_6, title)
+  s_6_ <- state_barchart(s_tables[[6]])
   s_6_
 
 ``` 
@@ -370,7 +358,7 @@ c_6_chart
 
 ```{r, echo=FALSE}
 
-c_6_long <- county_barchart(c_6, title) 
+c_6_long <- county_barchart(c_tables[[6]]) 
 c_6_long
 
 ```

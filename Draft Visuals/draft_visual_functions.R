@@ -195,10 +195,11 @@ county_scatterplot<- function(x) {
     hc_add_theme(rc_theme)
 }
 
-state_barchart <- function(x, title) {
+state_barchart <- function(x) {
   # Be sure to update title above depending on if indicator has been updated since RC v3
   # Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate
-x_ <- x %>%
+title = list(text=x$bar_chart_header[1])
+  x_ <- x %>%
   select(c(state_name, ends_with('_rate'), -total_rate))
 x_long <- melt(x_, id.vars=c("state_name"))
 x_long <- x_long[order(-x_long$value),]
@@ -207,7 +208,7 @@ x_long <- x_long %>% mutate_if(is.double, ~round(., 1))
 x_long %>% 
   hchart("column", 
          hcaes(x='variable', y='value'), color = "yellow", borderColor = "black") %>%
-  hc_yAxis(title = list(text=title),  
+  hc_yAxis(title = title,  
            plotLines = list(
              list(
                value = x$total_rate,
@@ -220,7 +221,7 @@ x_long %>%
   hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
 }
 
-county_barchart <- function(x, title) {
+county_barchart <- function(x) {
   x_long <- x %>%
     select(c(county_name, ends_with('_rate')))
   
@@ -235,7 +236,7 @@ county_barchart <- function(x, title) {
   # create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
   
   sd2 <- SharedData$new(x_long, key = ~ county_name)
-  title = list(text=title)
+  title = list(text=x$bar_chart_header[1])
   
   #
   bscols(
