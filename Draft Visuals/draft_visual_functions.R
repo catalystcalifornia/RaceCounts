@@ -78,8 +78,8 @@ rc_theme <- hc_theme(
 # different caps for the scatterplot, take out the cas then have it be user-defined
 #composite inex needs the same naming comvention ex: performance_z as opposed to perf_z
 index_scatterplot <- function(x, threshold){
-  # Remove counties without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
-      
+  # Remove geos without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
+  
   # Dynamically find relevant column names
   disp_col <- names(select(x, ends_with("_disparity_z")))
   perf_col <- names(select(x, ends_with("_performance_z")))
@@ -114,7 +114,7 @@ index_scatterplot <- function(x, threshold){
            ),
            tooltip = list(
              pointFormat = paste0(
-               "<strong>County: </strong>{point.county_name} <br>",
+               "<strong>Name: </strong>{point.geo_name} <br>",
                "<strong>Outcome Rank: </strong>{point.", rank_perf_col, "} <br>",
                "<strong>Disparity Rank: </strong>{point.", rank_disp_col, "} <br>",
                "<strong>Universe: </strong>{point.total_pop:,.0f}"
@@ -171,7 +171,7 @@ county_scatterplot<- function(x) {
            hcaes(x = disp_z_cap, y = perf_z_cap, size = total_pop, group = quadrant),
            tooltip = list(
              pointFormat = paste0(
-               "<strong>County: </strong>{point.county_name} <br>",
+               "<strong>Name: </strong>{point.geo_name} <br>",
                "<strong>Outcome Rank: </strong>{point.performance_rank} <br>",
                "<strong>Disparity Rank: </strong>{point.disparity_rank} <br>",
                "<strong>Total Population: </strong>{point.total_pop:,.0f} <br>",
@@ -223,9 +223,9 @@ x_long %>%
 
 county_barchart <- function(x) {
   x_long <- x %>%
-    select(c(county_name, ends_with('_rate')))
+    select(c(geo_name, ends_with('_rate')))
   
-  x_long <- melt(x_long, id.vars=c("county_name"))
+  x_long <- melt(x_long, id.vars=c("geo_name"))
   x_long <- x_long[order(x_long$value),]
   # Round 'value' field to 1 decimal
   x_long <- x_long %>% mutate(value = round(value, 1))
@@ -233,19 +233,19 @@ county_barchart <- function(x) {
   
   # drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
   
-  # create a shared data object from the df and assign a key for the unique observation. County is fine since each race/group has one unique county. from now on, we will be using the shareddata object and not the df_long
+  # create a shared data object from the df and assign a key for the unique observation. County/Assm/Sen is fine since each race/group has one unique geo. from now on, we will be using the shareddata object and not the df_long
   
-  sd2 <- SharedData$new(x_long, key = ~ county_name)
+  sd2 <- SharedData$new(x_long, key = ~ geo_name)
   title = list(text=x$bar_chart_header[1])
   
   #
   bscols(
     widths = 7, 
     
-    filter_select("county_name",  ## this is the name of column we want to select. 
-                  "County:", # this is what we want to see in the selection menu
+    filter_select("geo_name",  ## this is the name of column we want to select. 
+                  "Name:", # this is what we want to see in the selection menu
                   sd2,
-                  ~ county_name, multiple = FALSE),
+                  ~ geo_name, multiple = FALSE),
     plot_ly(sd2) %>%
       add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
                 marker = list(line = list(color = "black", width = 1)) ## add order t

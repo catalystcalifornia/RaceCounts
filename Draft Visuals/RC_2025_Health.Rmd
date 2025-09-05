@@ -1,7 +1,7 @@
 ---
 title: "RACE COUNTS: Health Care Access               "
 author: "Authored by: Catalyst California"
-date: "8/25/2025"
+date: "9/4/2025"
 output:
   html_document:
     number_sections: no
@@ -66,7 +66,7 @@ acs_yr <- '2023'
 
 ```{r echo=FALSE, include = FALSE}
 
-####################### GET TABLE NAMES #####################################
+####################### GET COUNTY DATA #####################################
 county_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%county_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
 
 county_list <- dbGetQuery(con, county_list_query) %>% pull(table_name) 
@@ -85,7 +85,8 @@ c_tables <- lapply(c_tables, function(x) x %>%
          geolevel = 'county'))
 
 # Get issue index
-c_index_z <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_", issue, "_index_", rc_yr))
+c_index_z <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_", issue, "_index_", rc_yr)) %>%
+  rename(geo_name = county_name)  # make 'name' col generic
 
 ####################### POPULATION DATA #####################################
 #Get total population
@@ -96,8 +97,11 @@ c_index_z <- left_join(c_index_z, pop, by = c("county_id" = "geoid"))
 c_tables <- lapply(c_tables, function(x) 
   x %>% left_join(pop, by = c("county_id" = "geoid")))
 
+## Make 'name' col generic
+c_tables <- lapply(c_tables, function(x)
+  x %>% rename(geo_name = county_name))
 
-####################### ADD STATE DATA #####################################
+####################### GET STATE DATA #####################################
 state_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%state_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
 
 state_list <- dbGetQuery(con, state_list_query) %>% pull(table_name) 
@@ -119,14 +123,15 @@ s_tables <- lapply(s_tables, function(x) x %>%
 ##Add 2025 v7 Source Data##
 v7_sources <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_indicator_list_cntyst"))
 v7_sources <- v7_sources %>% filter(v7_sources$arei_issue_area==issue_name) %>%
-  select(arei_indicator, rate_descriptor, bar_chart_header, rate_rounding, methodology, data_source, api_name)
+  select(arei_indicator, arei_issue_area, rate_descriptor, bar_chart_header, rate_rounding, methodology, data_source, api_name)
 
 
 ## Join metadata to data
 c_tables <- lapply(c_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
 s_tables <- lapply(s_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
 
-
+names(c_tables)
+names(s_tables)
 ```
 
 <!-- *** -->
@@ -134,11 +139,11 @@ s_tables <- lapply(s_tables, function(x) x %>% left_join(v7_sources, by = c("ind
 NOTE: The data and findings below are drafts subject to change and some pieces are still in the QA process.
 
 RACE COUNTS provides a 3D view of racial equity:
-<br>PERFORMANCE: How well people are doing. The higher the circle, the better the performance.
+<br>PERFORMANCE: How well people are doing. The higher the circle, the better the outcome
 <br>DISPARITY: How racial groups compare to one another. The further right the circle, the greater the differences by race.
 <br>IMPACT: The total population. The bigger the circle, the larger the population.
 
-<br><span style="color:purple">purple</span> counties: Gains at Risk; 
+<br><span style="color:purple">Purple</span> counties: Gains at Risk; 
 <br><span style="color:orange">Orange</span> counties: Prosperity for the Few;
 <br><span style="color:#c9cc14">Yellow</span> counties: Struggling to Prosper;
 <br><span style="color:red">Red</span> counties: Stuck and Unequal.
@@ -159,13 +164,12 @@ RACE COUNTS provides a 3D view of racial equity:
 
   c_index_chart
 ```
+* Marin County has the best overall Health Care access but also ranks as the sixth most disparate county in the state.
+* Looking across indicators, Black Californians fare worse than other groups in 3 out of the 6 indicators for Health Care Access.
+* All eight of the counties in the San Joaquin Valley Region have lower than average outcomes when it comes to health care access. They are all in the red or yellow quadrants.
+* All nine Bay Area counties have above average health care access outcomes, with five out of the nine counties also having lower than average rates of racial disparity.
 
-* 
-* 
-* 
-* 
-
-## Got Help - UPDATED {.tabset .tabset-fade}
+## Low Birthweight - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -174,9 +178,8 @@ c_1_chart <- county_scatterplot(c_tables[[1]])
 c_1_chart
 
 ```
-* 
-* 
-* 
+* There is also a moderately strong, negative correlation between population and outcome. Higher population counties tend to experience higher (worse) rates of infants with low birthweight. The notable exception is Orange County, which is the third most populous county in the state and is in the purple quadrant (higher outcome, lower disparity).
+* Sacramento and Kern counties exhibit the largest racial disparities in low birthweight rates, with Black birth outcomes notably on the wrong end of these disparities. In Sacramento and Kern, Black infants are more than 2x more likely to be underweight than White infants.
 
 ### State Barchart
 ```{r, echo=FALSE}
@@ -185,8 +188,7 @@ c_1_chart
   s_1_
 
 ``` 
-* 
-* 
+* Black babies have the significantly highest likelihood of having low birthweight of any racial group in California. They are 1.5x more likely than the group with the next highest rate (American Indian/Alaska Native), and more than 2x more likely than the group with the lowest rate (White).
 
 ### County Barchart
 
@@ -206,9 +208,9 @@ c_2_chart <- county_scatterplot(c_tables[[2]])
 c_2_chart
 
 ```
-* Similar to the mental health/substance abuse help indicator, Marin County has the third highest overall rate of health insurance, but the second highest racial disparity. Latinx residents of the county are 7x more likely to be uninsured rate than White residents.
-* Sierra County has the highest disparity and third-worst performance of any county in the state. Over half of its Latinx population is uninsured -- a rate more than 10x higher than its white population. 
-* Los Angeles County is one of the worst performing counties in the state in terms of health insurance rates among its population. 9% of all its residents are uninsured, including 13.2% of its Latinx residents.
+* Similar to the mental health/substance abuse help indicator, Marin County has the third highest overall rate of health insurance, but the third worst racial disparity. Latinx residents of the county are nearly 7x more likely to be uninsured rate than White residents.
+* Sierra County has the highest disparity and is tied for worst outcome among counties. Over half of its Latinx population is uninsured -- a rate 7.5x higher than its White population. 
+* Los Angeles County is one of the worst outcome counties. Almost 9% of LAC residents are uninsured, including 12.9% of its Latinx residents.
 
 
 ### State Barchart
@@ -217,9 +219,9 @@ c_2_chart
   s_2_
 
 ```
-* White residents are about 2 times less likely to be uninsured than the average Californian.
-* Latinx and American Indian/Alaska Native Californians are about 3 times more likely to be uninsured than White residents. 
-* Californians who identify with a racial group under the category of "other" are the most likely to be uninsured. Although it is difficult to know what types of individuals are identifying in this group, it likely includes many who are Latinx (as "Another Race" includes Latinx for this indicator) and those with origins in the Middle East and North Africa, among others.
+* White residents are half as likely to be uninsured as the average Californian.
+* Latinx and American Indian/Alaska Native Californians are about 3x more likely to be uninsured than White residents. 
+* Californians who identify with a "another race" are the most likely to be uninsured. Although it is difficult to know which individuals identify with this group, it likely includes many who are Latinx (as "Another Race" includes Latinx for this indicator) and those with origins in Southwest Asia and North Africa, among others.
 
 
 ### County Barchart
@@ -230,7 +232,7 @@ c_2_long
 ```
 
 
-## Life Expectancy - UPDATED {.tabset .tabset-fade}
+## Preventable Hospitalizations - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -238,10 +240,8 @@ c_2_long
 c_3_chart <- county_scatterplot(c_tables[[3]])
 c_3_chart
 ```
-* Five of the six counties in Southern California have greater than average racial disparities in life expectancy. 
-* Every county in the San Joaquin Valley has below average life expectancy rates.
-* Less populous, less urban counties tend to have fewer racial disparities in life expectancy. Of the 15 least disparate counties in this measure, none of them are classified as urban and only one is among the top ten most populous counties in the state.
-* The state's most populous, more urban counties tend to exhibit greater racial disparities in life expectancy. San Francisco, San Bernardino, Santa Clara, Los Angeles, San Diego, and Alameda counties are all among the top 20 for disparity levels in this metric.
+* Notably, in San Mateo which has the least disparity and the fourth best outcomes, Black residents are twice as likely to be hospitalized as the average resident.
+* In many counties, some of the highest rates are for Another Race, local knowledge will be needed to better understand who makes up this group in each county.
 
 ### State Barchart
 
@@ -251,7 +251,9 @@ c_3_chart
   s_3_
 
 ``` 
-* Asians have the highest life expectancy, followed by non-Latinx White Californians. Non-Latinx Blacks have the lowest life expectancy rate in the state, six years lower than the average statewide rate.
+* The Black preventable hospitalization rate is nearly 5x higher than that of the group with the lowest rate, and 2.5x higher than even the state average.
+* The preventable hospitalization rate for White Californians is about 8% higher than the state average and more than 2x higher than the rate of group with the lowest rate. This is the only health metric in which White residents experience worse outcomes than the state average.
+
 
 ### County Barchart
 
@@ -261,7 +263,7 @@ c_3_long
 ```
 
 
-## Low Birthweight - UPDATED {.tabset .tabset-fade}
+## Got Help - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -269,11 +271,8 @@ c_3_long
 c_4_chart <- county_scatterplot(c_tables[[4]])
 c_4_chart
 ```
-* There is no data for 17 of the 20 counties in the Northern/Sierra region for this measure.
-* There is also a moderately strong, negative correlation between population and performance. Higher population counties tend to experience higher rates of infants with low birthweight. The notable exception is Orange County, which is the third most populous county in the state and is firmly in the purple quadrant (higher performance, lower disparity).
-* San Francisco County and Kings County exhibit by far the largest racial disparities in rates of low birthweight, with Black birth outcomes notably on the wrong end of these disparities. In SF and Kings respectively, Black infants are about 3x and 2x more likely to be underweight than white infants.
-* The three counties with the lowest disparity (Imperial, Humboldt, and Napa) do not have data for Black births. Given the stark disparities in Black birth outcomes, this is at least one reason why disparity is so low in those counties.
-
+* Marin County has both the worst disparities and the best outcomes on this indicator. A very low Asian rate (31.4%) and a low AIAN rate (47.8) are behind the disparity. On average, 66.9% of Marin residents get help for these issues compared to the state average of 57.4%.
+*
 
 ### State Barchart
 
@@ -283,7 +282,7 @@ c_4_chart
   s_4_
 
 ```
-* Black babies have the significantly highest likelihood of having low birthweight of any racial group in California. They are 50% more likely than the group with the next highest rate (American Indians and Alaska Natives), and more than 2x more likely than the group with the lowest rate (white Californians).
+* Statewide, Asian residents are the least likely to get help, followed by Latinx and Pacific Islanders.
 
 
 ### County Barchart
@@ -294,7 +293,7 @@ c_4_long
 ```
 
 
-## Usual Source of Care - UPDATED {.tabset .tabset-fade}
+## Life Expectancy - NOT UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -303,8 +302,10 @@ c_5_chart <- county_scatterplot(c_tables[[5]])
 c_5_chart
 
 ```
-* All nine Bay Area counties have above average usual source of care rates among their populations and six counties are in the purple Quadrant (Lower Disparity, Higher Performance).
-* Counties with larger populations tend to have lower levels of racial disparity in their usual source of care rates, with none of the 16 counties with 500,000 or more residents appearing in the higher disparity quadrants (Orange and Red).
+* Five of the six counties in Southern California have greater than average racial disparities in life expectancy. 
+* Every county in the San Joaquin Valley has below average life expectancy rates.
+* Less populous, less urban counties tend to have fewer racial disparities in life expectancy. Of the 15 least disparate counties in this measure, none of them are classified as urban and only one is among the top ten most populous counties in the state.
+* The state's most populous, more urban counties tend to exhibit greater racial disparities in life expectancy. San Francisco, San Bernardino, Santa Clara, Los Angeles, San Diego, and Alameda counties are all among the top 20 for disparity levels in this metric.
 
 ### State Barchart
 
@@ -312,9 +313,7 @@ c_5_chart
   s_5_ <- state_barchart(s_tables[[5]])
   s_5_
 ```
-* Latinx, Pacific Islander, AIAN, and Asian Californians are less likely to have a usual source of care than the average Californian.
-* Latinx Californians are over nine percentage points less likely to have a usual source of care than White Californians.
-
+* Asians have the highest life expectancy, followed by non-Latinx White Californians. Non-Latinx Blacks have the lowest life expectancy rate in the state, six years lower than the average statewide rate.
 
 ### County Barchart
 
@@ -326,7 +325,7 @@ c_5_long
 ```
 
 
-## Preventable Hospitalizations {.tabset .tabset-fade}
+## Usual Source of Care - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -335,9 +334,8 @@ c_6_chart <- county_scatterplot(c_tables[[6]])
 c_6_chart
 
 ```
-* The four highest levels of racial disparity in the state, in Imperial, Amador, Lassen, and Mariposa counties, all represent extremely values compared to the rest of the state. In the 2nd-4th highest counties, their small population sizes (>40,000) could help inflate these measures.
-* In Imperial County, by far the most racially disparate county in this measure, white residents have by far the worst outcomes in preventable hospitalizations. They are hospitalized at around 5x the rate of Asian residents and nearly twice the rate of Black and Latinx residents in the county.
-* In many counties, some of the highest rates are for Another Race, local knowledge will be needed to better understand who makes up this group in each county.
+* All nine Bay Area counties have above average usual source of care rates among their populations and eight counties are in the purple Quadrant (Lower Disparity, Higher Outcome).
+* Counties with larger populations tend to have lower levels of racial disparity in their usual source of care rates, with only two of the 16 counties with 500,000 or more residents appearing in the higher disparity quadrants (Orange and Red).
 
 ### State Barchart
 
@@ -346,8 +344,8 @@ c_6_chart
   s_6_
 
 ``` 
-* The Black preventable hospitalization rate is nearly 5 times higher than that of the group with the lowest rate, and 2.5 times higher than even the state average.
-* The preventable hospitalization rate for white Californians is about 10% higher than the overall state average and more than 2x higher than the racial group with the lowest rate. This is the only health metric in which white residents experience worse outcomes than the state average.
+* Latinx, Pacific Islander, AIAN, SWANA, and Asian Californians are less likely to have a usual source of care than the average Californian.
+* The Latinx and Pacific Islander usual source of care rates (78.5) are over nine percentage points lower the White rate (87.7).
 
 
 ### County Barchart
