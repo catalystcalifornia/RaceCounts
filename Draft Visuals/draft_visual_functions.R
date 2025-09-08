@@ -133,7 +133,7 @@ index_scatterplot <- function(x, threshold){
 
 county_scatterplot<- function(x) {
   # Be sure to update title above depending on if indicator has been updated since RC v3
-  # Remove counties without quadrant values. Cap indicator perf/disp z-scores at 3.5 and -3.5. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
+  # Remove geos without quadrant values. Cap indicator perf/disp z-scores at 3.5 and -3.5. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
   # Find all columns ending in "_rate"
   race_rate_cols <- names(select(x, ends_with("_rate")))
   
