@@ -1,7 +1,7 @@
 ---
 title: "Composite City Index"
 author: "Authored by: Catalyst California"
-date: "8/25/2025"
+date: "9/9/2025"
 output:
   html_document:
     number_sections: no
@@ -50,7 +50,7 @@ p{
 
 ### RC 2025: City Index Table
 
-```{r, echo=FALSE, include=FALSE, cache=TRUE}
+```{r city data, echo=FALSE, cache=TRUE, include=FALSE}
 knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
 
 # set up workspace
@@ -96,6 +96,10 @@ city_index_table <- city_index %>% mutate(disp_z_rnd = round(disparity_z, 2), pe
   select(-disparity_z, performance_z) %>%
   relocate(disp_z_rnd, .after = disparity_rank) %>%
   relocate(perf_z_rnd, .after = performance_rank)
+```
+
+
+```{r city data table, echo=FALSE, cache=TRUE}
 
 ## table ##
 datatable(city_index_table,
@@ -145,7 +149,7 @@ htmltools::strong('Z-scores range from -1 to 1. Disparity rank of 1 means most r
 
 ```
 
-```{r, echo=FALSE, cache=TRUE}
+```{r rc theme, echo=FALSE, cache=TRUE, include=FALSE}
 ## NOTE: Data viz below based on: W:\Project\RACE COUNTS\2022_v4\Visualizations\RC_2022_Indexes.RMD ###
 
 knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
@@ -170,6 +174,35 @@ for(pkg in packages){
 
 options(scipen=999)
 options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
+
+
+
+# Add commas to long numbers
+lang <- getOption("highcharter.lang")
+lang$thousandsSep <- ","
+options(highcharter.lang = lang)
+
+```
+
+
+```{r plot fx, echo=FALSE, cache=TRUE, include=FALSE}
+
+####################### CITY INDEX SCATTERPLOT FX #####################################
+city_index_scatter <- function(x, t) {
+# x = index data, t = theme
+c_chart_index <- x %>%
+    hchart("scatter", 
+    hcaes(x=disparity_z, y=performance_z, size=total_pop, group=quadrant),
+      tooltip = 
+         list(pointFormat = 
+                "<strong>City: </strong>{point.geo_name} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Outcome Rank: </strong>{point.performance_rank} <br><strong>Population: </strong>{point.total_pop:,.0f}")) %>%
+  #hc_title(text = paste0("City Composite Index: ", r)) %>%
+  hc_xAxis(title = list(text = "Disparity Z-Score"), max = 1.2, min = -1.2, tickInterval = .5) %>% 
+  hc_yAxis(title = list(text = "Outcome Z-Score"), max = 1.2, min = -1.2, tickInterval = .5) %>% 
+  hc_caption(
+    text = "Data source: Various",
+    align = "center"
+     ) %>% hc_size(height=700,width=700) 
 
 
 ####################### ADD RC THEME #####################################
@@ -210,31 +243,10 @@ rc_theme <- hc_theme(
       color = "#070024")
   ))
 
-# Add commas to long numbers
-lang <- getOption("highcharter.lang")
-lang$thousandsSep <- ","
-options(highcharter.lang = lang)
-
-
-####################### CITY INDEX SCATTERPLOT FX #####################################
-city_index_scatter <- function(x, t) {
-# x = index data, t = theme
-c_chart_index <- x %>%
-    hchart("scatter", 
-    hcaes(x=disparity_z, y=performance_z, size=total_pop, group=quadrant),
-      tooltip = 
-         list(pointFormat = 
-                "<strong>City: </strong>{point.geo_name} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Outcome Rank: </strong>{point.performance_rank} <br><strong>Population: </strong>{point.total_pop:,.0f}")) %>%
-  #hc_title(text = paste0("City Composite Index: ", r)) %>%
-  hc_xAxis(title = list(text = "Disparity Z-Score"), max = 1.2, min = -1.2, tickInterval = .5) %>% 
-  hc_yAxis(title = list(text = "Outcome Z-Score"), max = 1.2, min = -1.2, tickInterval = .5) %>% 
-  hc_caption(
-    text = "Data source: Various",
-    align = "center"
-     ) %>% hc_size(height=700,width=700)
 
   hc_add_theme(c_chart_index, rc_theme) 
-  
+
+return(c_chart_index)
 }
 
 ```
@@ -242,16 +254,16 @@ c_chart_index <- x %>%
 
 ## Composite Index - UPDATED
 
-```{r}
-city_index_scatter(city_index_ba, rc_theme) %>% 
-  hc_title(text = "City Composite Index")
+```{r comp index}
+comp_scatter <- city_index_scatter(city_index, rc_theme)
+comp_scatter <- comp_scatter %>% hc_title(text = "City Composite Index")
 
 ```
 
 
-## Composite Index - Bay Area
+### Bay Area Cities
 
-```{r}
+```{r bay area}
 # Filter for specified region 
 city_index_ba <- city_index %>% filter(region == 'Bay Area Counties')
 city_index_scatter(city_index_ba, rc_theme) %>% 
@@ -261,9 +273,9 @@ city_index_scatter(city_index_ba, rc_theme) %>%
 ```
 
 
-## Composite Index - Southern California
+### Southern California Cities
 
-```{r}
+```{r socal}
 # Filter for specified region
 city_index_sc <- city_index %>% filter(region == 'Southern California')
 city_index_scatter(city_index_sc, rc_theme) %>% 
@@ -272,9 +284,9 @@ city_index_scatter(city_index_sc, rc_theme) %>%
 ```
 
 
-## Composite Index - San Joaquin Valley
+### San Joaquin Valley Cities
 
-```{r}
+```{r sjv}
 # Filter for specified region
 city_index_sjv <- city_index %>% filter(region == 'San Joaquin Valley')
 city_index_scatter(city_index_sjv, rc_theme) %>% 
@@ -283,9 +295,9 @@ city_index_scatter(city_index_sjv, rc_theme) %>%
 ```
 
 
-## Composite Index - Central Coast
+### Central Coast Cities
 
-```{r}
+```{r central coast}
 # Filter for specified region
 city_index_cc <- city_index %>% filter(region == 'Central Coast Counties')
 city_index_scatter(city_index_cc, rc_theme) %>% 
@@ -294,9 +306,9 @@ city_index_scatter(city_index_cc, rc_theme) %>%
 ```
 
 
-## Composite Index - Sacramento Area
+### Sacramento Area Cities
 
-```{r}
+```{r sacto}
 # Filter for specified region
 city_index_sac <- city_index %>% filter(region == 'Sacramento Area')
 city_index_scatter(city_index_sac, rc_theme) %>% 
@@ -305,9 +317,9 @@ city_index_scatter(city_index_sac, rc_theme) %>%
 ```
 
 
-## Composite Index - Northern / Sierra Counties
+### Northern / Sierra County Cities
 
-```{r}
+```{r northern sierra}
 # Filter for specified region
 city_index_ns <- city_index %>% filter(region == 'Northern / Sierra Counties')
 city_index_scatter(city_index_ns, rc_theme) %>% 
