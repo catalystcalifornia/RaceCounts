@@ -54,10 +54,6 @@ varname5 <- 'healthy_built_environment'
 varname6 <- 'health_care_access'
 varname7 <- 'housing'
 
-
-region_urban_type <- dbGetQuery(con, paste0("SELECT county_id, region, urban_type FROM ", rc_schema, ".arei_county_region_urban_type"))
-
-
 # Clean data --------
 # use function to select cols we want, cap z-scores, and rename z-score cols
 
