@@ -114,9 +114,6 @@ sen_index <- calculate_z(sen_index, ind_threshold)
 # JOIN LEG INDEX TOGETHER ------------------------------------------------------
 c_index <- rbind(assm_index, sen_index)
 
-# merge region and urban type from current arei_leg_region_urban_type
-c_index <- left_join(c_index, region_urban_type)
-
 # rename columns
 c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("_rank"))
 c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("performance_z"))
