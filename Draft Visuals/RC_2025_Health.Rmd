@@ -60,7 +60,6 @@ issue_name <- 'Health Care Access' # Issue names: Safety & Justice, Democracy, E
 issue <- 'hlth' #Issue: crim, demo, educ, econ, hben, hlth, hous
 rc_schema <- 'v7'
 rc_yr <- '2025'
-acs_yr <- '2023'
 
 ```
 

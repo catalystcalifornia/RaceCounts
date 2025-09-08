@@ -1,5 +1,5 @@
 ---
-title: "RC v7 City Index"
+title: "Composite City Index"
 author: "Authored by: Catalyst California"
 date: "8/25/2025"
 output:
@@ -73,6 +73,10 @@ for(pkg in packages){
 # load PostgreSQL driver
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
+
+##### UPDATE EACH YEAR ####
+rc_schema <- 'v7'
+rc_yr <- '2025'
 
 # setwd("W:/Project/RACE COUNTS/2025_v7/Visualizations/") 
 
