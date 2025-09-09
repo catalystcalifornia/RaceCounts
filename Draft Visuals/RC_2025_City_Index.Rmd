@@ -93,7 +93,7 @@ city_index <- city_index_ %>% select(geo_name, region, ends_with("pop"), dispari
 city_index <- arrange(city_index, -desc(disparity_rank))
 city_index <- city_index %>% select(geo_name, region, disparity_rank, disparity_z, performance_rank, performance_z, quadrant, everything())
 city_index_table <- city_index %>% mutate(disp_z_rnd = round(disparity_z, 2), perf_z_rnd = round(performance_z, 2)) %>%
-  select(-disparity_z, performance_z) %>%
+  select(-disparity_z, -performance_z) %>%
   relocate(disp_z_rnd, .after = disparity_rank) %>%
   relocate(perf_z_rnd, .after = performance_rank)
 ```
@@ -149,7 +149,7 @@ htmltools::strong('Z-scores range from -1 to 1. Disparity rank of 1 means most r
 
 ```
 
-```{r rc theme, echo=FALSE, cache=TRUE, include=FALSE}
+```{r scatter fx, echo=FALSE, cache=TRUE, include=FALSE}
 ## NOTE: Data viz below based on: W:\Project\RACE COUNTS\2022_v4\Visualizations\RC_2022_Indexes.RMD ###
 
 knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
@@ -176,18 +176,7 @@ options(scipen=999)
 options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
 
 
-
-# Add commas to long numbers
-lang <- getOption("highcharter.lang")
-lang$thousandsSep <- ","
-options(highcharter.lang = lang)
-
-```
-
-
-```{r plot fx, echo=FALSE, cache=TRUE, include=FALSE}
-
-####################### CITY INDEX SCATTERPLOT FX #####################################
+### CITY INDEX SCATTERPLOT FX ###
 city_index_scatter <- function(x, t) {
 # x = index data, t = theme
 c_chart_index <- x %>%
@@ -205,7 +194,7 @@ c_chart_index <- x %>%
      ) %>% hc_size(height=700,width=700) 
 
 
-####################### ADD RC THEME #####################################
+### ADD RC THEME ###
 rc_theme <- hc_theme(
     # race counts colors
   colors = c("orange", "#800080", "red", "yellow"),
@@ -244,87 +233,100 @@ rc_theme <- hc_theme(
   ))
 
 
-  hc_add_theme(c_chart_index, rc_theme) 
+c_chart_index <-  hc_add_theme(c_chart_index, rc_theme) 
 
 return(c_chart_index)
 }
+
+
+
+# Add commas to long numbers
+lang <- getOption("highcharter.lang")
+lang$thousandsSep <- ","
+options(highcharter.lang = lang)
 
 ```
 
 
 ## Composite Index - UPDATED
 
-```{r comp index}
+```{r comp index, echo=FALSE, cache=TRUE}
 comp_scatter <- city_index_scatter(city_index, rc_theme)
 comp_scatter <- comp_scatter %>% hc_title(text = "City Composite Index")
 
+comp_scatter
 ```
 
 
 ### Bay Area Cities
 
-```{r bay area}
+```{r bay area, echo=FALSE, cache=TRUE}
 # Filter for specified region 
 city_index_ba <- city_index %>% filter(region == 'Bay Area Counties')
-city_index_scatter(city_index_ba, rc_theme) %>% 
+ba_scatter <- city_index_scatter(city_index_ba, rc_theme) %>% 
   hc_title(text = paste0("City Composite Index: ", min(city_index_ba$region)))
 
-
+ba_scatter
 ```
 
 
 ### Southern California Cities
 
-```{r socal}
+```{r socal, echo=FALSE, cache=TRUE}
 # Filter for specified region
 city_index_sc <- city_index %>% filter(region == 'Southern California')
-city_index_scatter(city_index_sc, rc_theme) %>% 
+socal_scatter <- city_index_scatter(city_index_sc, rc_theme) %>% 
   hc_title(text = paste0("City Composite Index: ", min(city_index_sc$region)))
 
+socal_scatter
 ```
 
 
 ### San Joaquin Valley Cities
 
-```{r sjv}
+```{r sjv, echo=FALSE, cache=TRUE}
 # Filter for specified region
 city_index_sjv <- city_index %>% filter(region == 'San Joaquin Valley')
-city_index_scatter(city_index_sjv, rc_theme) %>% 
+sjv_scatter <- city_index_scatter(city_index_sjv, rc_theme) %>% 
   hc_title(text = paste0("City Composite Index: ", min(city_index_sjv$region)))
 
+sjv_scatter
 ```
 
 
 ### Central Coast Cities
 
-```{r central coast}
+```{r central coast, echo=FALSE, cache=TRUE}
 # Filter for specified region
 city_index_cc <- city_index %>% filter(region == 'Central Coast Counties')
-city_index_scatter(city_index_cc, rc_theme) %>% 
+cc_scatter <- city_index_scatter(city_index_cc, rc_theme) %>% 
   hc_title(text = paste0("City Composite Index: ", min(city_index_cc$region)))
 
+cc_scatter
 ```
 
 
 ### Sacramento Area Cities
 
-```{r sacto}
+```{r sacto, echo=FALSE, cache=TRUE}
 # Filter for specified region
 city_index_sac <- city_index %>% filter(region == 'Sacramento Area')
-city_index_scatter(city_index_sac, rc_theme) %>% 
+sacto_scatter <- city_index_scatter(city_index_sac, rc_theme) %>% 
   hc_title(text = paste0("City Composite Index: ", min(city_index_sac$region)))
 
+sacto_scatter
 ```
 
 
 ### Northern / Sierra County Cities
 
-```{r northern sierra}
+```{r northern sierra, echo=FALSE, cache=TRUE}
 # Filter for specified region
 city_index_ns <- city_index %>% filter(region == 'Northern / Sierra Counties')
-city_index_scatter(city_index_ns, rc_theme) %>% 
+ns_scatter <- city_index_scatter(city_index_ns, rc_theme) %>% 
   hc_title(text = paste0("City Composite Index: ", min(city_index_ns$region)))
 
+ns_scatter
 ```
 
 
