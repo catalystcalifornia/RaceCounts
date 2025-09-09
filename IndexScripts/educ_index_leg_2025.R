@@ -58,10 +58,6 @@ varname5 <- 'susp'
 varname6 <- 'ece'
 varname7 <- 'diver'
 
-
-region_urban_type <- dbGetQuery(con, paste0("select county_id, region, urban_type from ", rc_schema, ".arei_county_region_urban_type")) # get region, urban_type
-
-
 # Clean data --------
 # use function to select cols we want, cap z-scores, and rename z-score cols
 
@@ -111,11 +107,9 @@ sen_index <- filter(c_index, geolevel == 'sldu')
 # calculate z-scores.
 sen_index <- calculate_z(sen_index, ind_threshold)
 
+
 # JOIN LEG INDEX TOGETHER ------------------------------------------------------
 c_index <- rbind(assm_index, sen_index)
-
-# merge region and urban type from current arei_leg_region_urban_type
-c_index <- left_join(c_index, region_urban_type)
 
 # rename columns
 c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("_rank"))

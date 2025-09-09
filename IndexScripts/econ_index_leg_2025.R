@@ -59,9 +59,6 @@ varname6 <- 'realcost'
 varname7 <- 'livwage'
 
 
-region_urban_type <- dbGetQuery(con, paste0("select county_id, region, urban_type from ", rc_schema, ".arei_county_region_urban_type")) # get region, urban_type
-
-
 # Clean data --------
 
 ### c1 
