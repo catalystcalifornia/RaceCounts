@@ -66,7 +66,7 @@ acs_yr <- '2023'
 
 ```{r echo=FALSE, include = FALSE}
 
-####################### GET TABLE NAMES #####################################
+####################### GET COUNTY DATA #####################################
 county_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%county_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
 
 county_list <- dbGetQuery(con, county_list_query) %>% pull(table_name) 
@@ -85,7 +85,8 @@ c_tables <- lapply(c_tables, function(x) x %>%
          geolevel = 'county'))
 
 # Get issue index
-c_index_z <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_", issue, "_index_", rc_yr))
+c_index_z <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_", issue, "_index_", rc_yr)) %>%
+  rename(geo_name = county_name)  # make 'name' col generic
 
 ####################### POPULATION DATA #####################################
 #Get total population
@@ -96,8 +97,11 @@ c_index_z <- left_join(c_index_z, pop, by = c("county_id" = "geoid"))
 c_tables <- lapply(c_tables, function(x) 
   x %>% left_join(pop, by = c("county_id" = "geoid")))
 
+## Make 'name' col generic
+c_tables <- lapply(c_tables, function(x)
+  x %>% rename(geo_name = county_name))
 
-####################### ADD STATE DATA #####################################
+####################### GET STATE DATA #####################################
 state_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%state_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
 
 state_list <- dbGetQuery(con, state_list_query) %>% pull(table_name) 
@@ -119,14 +123,15 @@ s_tables <- lapply(s_tables, function(x) x %>%
 ##Add 2025 v7 Source Data##
 v7_sources <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_indicator_list_cntyst"))
 v7_sources <- v7_sources %>% filter(v7_sources$arei_issue_area==issue_name) %>%
-  select(arei_indicator, rate_descriptor, bar_chart_header, rate_rounding, methodology, data_source, api_name)
+  select(arei_indicator, arei_issue_area, rate_descriptor, bar_chart_header, rate_rounding, methodology, data_source, api_name)
 
 
 ## Join metadata to data
 c_tables <- lapply(c_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
 s_tables <- lapply(s_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
 
-
+names(c_tables)
+names(s_tables)
 ```
 
 <!-- *** -->
@@ -134,11 +139,11 @@ s_tables <- lapply(s_tables, function(x) x %>% left_join(v7_sources, by = c("ind
 NOTE: The data and findings below are drafts subject to change and some pieces are still in the QA process.
 
 RACE COUNTS provides a 3D view of racial equity:
-<br>PERFORMANCE: How well people are doing. The higher the circle, the better the performance.
+<br>OUTCOME: How well people are doing. The higher the circle, the better the outcome.
 <br>DISPARITY: How racial groups compare to one another. The further right the circle, the greater the differences by race.
 <br>IMPACT: The total population. The bigger the circle, the larger the population.
 
-<br><span style="color:purple">purple</span> counties: Gains at Risk; 
+<br><span style="color:purple">Purple</span> counties: Gains at Risk; 
 <br><span style="color:orange">Orange</span> counties: Prosperity for the Few;
 <br><span style="color:#c9cc14">Yellow</span> counties: Struggling to Prosper;
 <br><span style="color:red">Red</span> counties: Stuck and Unequal.
@@ -159,9 +164,9 @@ RACE COUNTS provides a 3D view of racial equity:
 
   c_index_chart
 ```
-* The four counties in the Red Quadrant (Higher Disparity, Lower Performance) with the worst performance measures are all in the San Joaquin Valley.
-* Los Angeles County has the worst performance out of all 46 counties ranked on the healthy built environment index.
-* The Central Coast seems to be the region with the healthiest and least racially disparate built environments in the state. Of the six counties in the region, there are five with better than average performance and five with below average racial disparities.
+* The four counties in the Red Quadrant (Higher Disparity, Lower Outcome) with the worst outcome measures are all in the San Joaquin Valley.
+* Los Angeles County has the worst outcome out of all 46 counties ranked on the healthy built environment index.
+* The Central Coast seems to be the region with the healthiest and least racially disparate built environments in the state. Of the six counties in the region, there are five with better than average outcome and five with below average racial disparities.
 
 <!--## Healthy Built Environment Index - UPDATED (Percentile) -->
 
@@ -225,8 +230,8 @@ c_2_chart
 ```
 
 * All six counties in the Central Coast region and eight of the nine counties in the Bay Area have better than average overall access to fresh fruits and vegetables. Racial disparities in this access vary across the two regions though, with roughly half the counties in each region in the Purple Quadrant (low disparity) and half in the Orange Quadrant (high disparity).
-* All eight counties in the San Joaquin Valley have below average performance in access to fresh foods, and five of the six counties in the Red Quadrant (low performance, high disparity) are from the region.
-* San Diego and Orange County have uniquely high rates of access to fresh food among Southern California counties, and are the only two counties from the region in the Purple Quadrant (high performance, low disparity).
+* All eight counties in the San Joaquin Valley have below average outcome in access to fresh foods, and five of the six counties in the Red Quadrant (low outcome, high disparity) are from the region.
+* San Diego and Orange County have uniquely high rates of access to fresh food among Southern California counties, and are the only two counties from the region in the Purple Quadrant (high outcome, low disparity).
 
 ### State Barchart
 ```{r, echo=FALSE}
@@ -285,7 +290,7 @@ c_4_chart <- county_scatterplot(c_tables[[4]])
 c_4_chart
 ```
 
-* Los Angeles and Orange Counties have by far the lowest performance (most exposure to toxic releases) among all California counties.
+* Los Angeles and Orange Counties have by far the lowest outcome (most exposure to toxic releases) among all California counties.
 * The non-urban, northern counties of Mariposa and Siskiyou exhibit by far the highest racial disparities in those exposed to toxic releases from facilities. In Siskiyou County, Latinx residents are exposed to toxic releases at nearly 3x the overall county rate.
 * Six of the eight counties with higher racial disparities are counties with populations around or below 50,000 residents.
 
@@ -316,7 +321,7 @@ c_5_chart
 ```
 
 * San Francisco has the second highest disparity rate in the state for asthma diagnoses behind only Mendocino County. American Indian or Alaska Native residents of the county are almost 3x as likely to be diagnosed with asthma than the average county resident.
-* The Central Coast counties particularly stand out in this measure. Five of the six counties in the region are in the Purple Quadrant (high performance, low disparity), with Monterey, Ventura, and Santa Barbara recording three of the four best asthma rates in the state.
+* The Central Coast counties particularly stand out in this measure. Five of the six counties in the region are in the Purple Quadrant (high outcome, low disparity), with Monterey, Ventura, and Santa Barbara recording three of the four best asthma rates in the state.
 * There is no data on asthma rates for 17 of the 25 counties in the Northern/Sierra region.
 
 ### State Barchart
@@ -326,7 +331,7 @@ c_5_chart
   s_5_
 ```
 
-* All but one of the eight counties in the San Joaquin Valley have higher rates of asthma than average. Counties from the region represent more than half of the counties in the Red Quadrant (low performance, high disparity).
+* All but one of the eight counties in the San Joaquin Valley have higher rates of asthma than average. Counties from the region represent more than half of the counties in the Red Quadrant (low outcome, high disparity).
 * Southwest Asian or North African, Asian, and Latinx Californians have the lowest rates of asthma diagnoses in the state.
 * More than one in five Black, American Indian or Alaska Native, Native Hawaiian or Pacific Islander, and Multiracial non-Latinx Californians have been diagnosed with asthma.
 
@@ -347,7 +352,7 @@ c_6_chart <- county_scatterplot(c_tables[[6]])
 c_6_chart
 ```
 * The 10 counties with the lowest disparity also have worse outcomes (less greenspace).
-* There is a strong negative correlation between greenspace and population size in counties. Only two of the top ten performing counties have more than 100,000 residents, while all counties with more than 300,000 residents had below average performance.
+* There is a strong negative correlation between greenspace and population size in counties. Only two of the top ten performing counties have more than 100,000 residents, while all counties with more than 300,000 residents had below average outcome.
 * Los Angeles County ranks 55 out of 56 counties in greenspace.
 * In Mendocino County, which ranks first for the most racial disparities in access to greenspace, white people have nearly 2x greater access to greenspaces than Latinx residents of the county.
 
