@@ -64,8 +64,9 @@ c_3 <- clean_data_z(c_3, varname3)
 
 
 # Join Data Together ------------------------------------------------------
-c_index <- mutate(c_1,c_2)
-c_index <- mutate(c_index,c_3)
+index_list <- list(c_1, c_2, c_3)
+
+c_index <- index_list %>% reduce(full_join, by=c('leg_id', 'leg_name', 'geolevel'))
 
 colnames(c_index) <- gsub("performance", "perf", names(c_index))  # shorten col names
 colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col names
