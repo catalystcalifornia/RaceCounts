@@ -70,7 +70,7 @@ c_1 <- clean_data_z(c_1, varname1)
 ### c2
 # use function to select cols we want and cap z-scores
 c_2 <- clean_data_z(c_2, varname2)
- 
+
 ### c3
 # use function to select cols we want and cap z-scores
 c_3 <- clean_data_z(c_3, varname3)
@@ -121,5 +121,3 @@ index <- paste0("QA doc: ", qa_filepath, ". Includes all issue indicators. Issue
 
 index_to_postgres(index_table, rc_schema)
 dbDisconnect(con)
-
-

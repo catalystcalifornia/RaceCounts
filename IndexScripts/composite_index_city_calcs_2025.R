@@ -52,14 +52,14 @@ city_tables <- map2(city_tables, names(city_tables), ~ mutate(.x, indicator = .y
 city_tables_short <- lapply(city_tables, function(x) x %>% select(city_id, city_name, disparity_z, performance_z, indicator))
 
 city_tables_updated <-
-                      lapply(names(city_tables_short), function(i){
-                        x <- city_tables_short[[ i ]]
-                        # set new name for 2nd column
-                        names(x)[3] <- paste0(i, "_disp_z")
-                        names(x)[4] <- paste0(i, "_perf_z")
-                        # return
-                        x
-                      })
+  lapply(names(city_tables_short), function(i){
+    x <- city_tables_short[[ i ]]
+    # set new name for 2nd column
+    names(x)[3] <- paste0(i, "_disp_z")
+    names(x)[4] <- paste0(i, "_perf_z")
+    # return
+    x
+  })
 
 # only select columns we want
 city_tables_updated <- lapply(city_tables_updated, function(x) x %>% select(city_id, ends_with("disp_z"), ends_with("perf_z")))
@@ -86,11 +86,11 @@ city_tables_capped <- clean_city_indicator_data_z(city_tables_df)
 # Count the number of valid disp_z and perf_z per city. We will use this later
 all_indicators_perf_count <- city_tables_df %>% select(city_id, ends_with("perf_z")) 
 all_indicators_perf_count <- all_indicators_perf_count %>% mutate(all_indicators_perf_count = rowSums(!is.na(all_indicators_perf_count[,c(-1)]))) %>%
-                                    select(city_id, all_indicators_perf_count)
+  select(city_id, all_indicators_perf_count)
 
 all_indicators_disp_count <- city_tables_df %>% select(city_id, ends_with("disp_z"))
 all_indicators_disp_count <- all_indicators_disp_count %>% mutate(all_indicators_disp_count = rowSums(!is.na(all_indicators_disp_count[,c(-1)]))) %>% 
-                                    select(city_id, all_indicators_disp_count)
+  select(city_id, all_indicators_disp_count)
 
 # Count number of indicators per issue area
 indicators <- names(city_tables) %>% as.data.frame()
@@ -186,5 +186,3 @@ clean_geo_names <- function(x){
 city_index <- clean_geo_names(city_index)
 
 print("Composite index calculated.")
-
-

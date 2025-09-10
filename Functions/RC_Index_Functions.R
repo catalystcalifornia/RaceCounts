@@ -12,7 +12,7 @@
 clean_data_z <- function(x, y) {
 
   # Cap Indicator z-scores at |3.5| More info: https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=feyI80
-  x <- x %>% select(ends_with("_id"), ends_with("_name"), performance_z, disparity_z) %>%  
+  x <- x %>% select(ends_with("_id"), ends_with("_name"), performance_z, disparity_z, any_of("geolevel")) %>%  
     mutate(
     disparity_z = case_when(
       disparity_z > 3.5 ~ 3.5,
@@ -77,7 +77,7 @@ calculate_z <- function(x, ind_threshold) {
   disp_avg <- select(disp_avg, id_col, disp_avg) 
   disp_avg$disp_avg[is.nan(disp_avg$disp_avg)] <- NA
   
-  x <- x %>% left_join(disp_avg, by=id_col)   
+  x <- x %>% left_join(disp_avg, by=id_col, relationship = "many-to-many")   
   
   # calculate average performance z scores
   perf_avg <- select(x, id_col, grep("perf_z", colnames(x)))                         
@@ -85,7 +85,7 @@ calculate_z <- function(x, ind_threshold) {
   perf_avg <- select(perf_avg, id_col, perf_avg)                    
   perf_avg$perf_avg[is.nan(perf_avg$perf_avg)] <- NA
   
-  x <- x %>% left_join(perf_avg, by=id_col) 
+  x <- x %>% left_join(perf_avg, by=id_col, relationship = "many-to-many") 
   
   
   # FOR COUNTIES WHERE # OF INDICATOR VALUES >= THRESHOLD, GET INDEX DISP_Z AND PERF_Z: threshold will change across issue areas. Users manually update threshold in index script.
@@ -264,7 +264,11 @@ index_to_postgres <- function(x, y) {
   comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", index_table_name, "\"", " IS 'Created on ", Sys.Date(), ". ", index, " from ", source, ".';")
   print(comment)
   dbExecute(con, comment)
-
+  # 
+  # col_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", index_table_name, "\"", ".county_id IS 'County fips';")
+  # print(col_comment)                  
+  # dbExecute(con, col_comment)
+  #
   # Commit the transaction if everything succeeded
   dbCommit(con)
 
@@ -399,7 +403,6 @@ calculate_city_issue <- function(x, y, z) {
 
 # Calculate and cap COMPOSITE INDEX Z-scores ---------------------------------------------------
 calculate_city_index <- function(x, y, z) {
-  # x = the dataframe, y = issue_area_threshold, z = indicator_threshold
   
   # count issue area performance z-scores
   rates_performance <- select(x, ends_with("performance_z"))
@@ -490,37 +493,25 @@ return(x)
 
 # Export city index -------------------------------------------------------
 city_index_to_postgres <- function(x) {
-      # create connection for rda database
-      source("W:\\RDA Team\\R\\credentials_source.R")
-      con <- connect_to_db("racecounts")            
-  
       table_schema <- rc_schema
       # make character vector for field types in postgresql db
-      #charvect = rep('numeric', dim(x)[2])
-      charvect <- rep("numeric", ncol(x))
+      charvect = rep('numeric', dim(x)[2])
       
       # change data type for columns
-      charvect[c(1:3,10,27:28,30:31)] <- "varchar" # Define which cols are character for the geoid and names etc
+      charvect[c(1:2,9,26:28,30:31)] <- "varchar" # Define which cols are character for the geoid and names etc
       
       # add names to the character vector
       names(charvect) <- colnames(x)
       
       # write table to postgres
-      dbWriteTable(con, Id(schema = table_schema, table = table_name), x,
-                   overwrite = FALSE)
-      
-      # Start a transaction
-      dbBegin(con)
+      dbWriteTable(con, c(table_schema, table_name), x, overwrite = FALSE, row.names = FALSE, field.types = charvect)
       
       # write comment to table, and the first three fields that won't change.
-      table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS 'Created on ", Sys.Date(), ". ", table_comment_source, ".", "';")
-      dbExecute(con, table_comment)
+      table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ".", "';")
       
-      # Commit the transaction if everything succeeded
-      dbCommit(con)     
-      
-      dbDisconnect(con)  
-      
+      ## send table comment to database
+      dbSendQuery(conn = con, table_comment)     
+
 }
 
 
