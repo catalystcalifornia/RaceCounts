@@ -1,7 +1,7 @@
 ## City-School District Xwalk, Add in City, District, County Pop for v7 ##
 
 #install packages if not already installed
-packages <- c("readr", "dplyr","data.table","sf","tigris","readr","tidyr","DBI","RPostgreSQL","tidycensus", "rvest", "tidyverse", "stringr", "jsonlite")  
+packages <- c("readr", "dplyr","data.table","sf","tigris","readr","tidyr","DBI","RPostgres","tidycensus", "rvest", "tidyverse", "stringr", "jsonlite")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -38,6 +38,7 @@ acs_yr <- '2019-2023' # acs pop data vintage
 curr_yr <- '2023' # census geography vintage
 rc_yr <- '2025'
 rc_schema <- 'v7'
+qa_filepath <- 'W:\\Project\\RACE COUNTS\\2025_v7\\API\\QA_Sheet_arei_city_county_district.docx'
 
 # may or may not need to be updated
 threshold <- .30   # districts with > threshold % of area within a city are assigned to that city, cities with > threshold % of area within a district are assigned to that district
@@ -45,10 +46,10 @@ threshold <- .30   # districts with > threshold % of area within a city are assi
 
 ### Prep district_place_[year] Crosswalk ### ---------------------------------------------------------------------
 ## pull in CBF Places and Districts ##
-places <- places(state = 'CA', year = curr_yr, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
-unified <- school_districts(state = 'CA', type = "unified", year = curr_yr, cb = TRUE) %>% select(-c(STATEFP, UNSDLEA, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
-elementary <- school_districts(state = 'CA', type = "elementary", year = curr_yr, cb = TRUE) %>% select(-c(STATEFP, ELSDLEA, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
-secondary <- school_districts(state = 'CA', type = "secondary", year = curr_yr, cb = TRUE) %>% select(-c(STATEFP, SCSDLEA, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
+places <- places(state = 'CA', year = curr_yr, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
+unified <- school_districts(state = 'CA', type = "unified", year = curr_yr, cb = TRUE) %>% select(-c(STATEFP, UNSDLEA, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
+elementary <- school_districts(state = 'CA', type = "elementary", year = curr_yr, cb = TRUE) %>% select(-c(STATEFP, ELSDLEA, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
+secondary <- school_districts(state = 'CA', type = "secondary", year = curr_yr, cb = TRUE) %>% select(-c(STATEFP, SCSDLEA, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
 
 crosswalk <- function(x, y, threshold) {
   
@@ -96,17 +97,18 @@ secondary_places <- crosswalk(secondary, places, threshold) %>% mutate(district_
 xwalk_filter <- rbind(unified_places, elementary_places, secondary_places) %>% relocate(district_type, .before = area)
 
 # pull in cds codes
-cds <- st_read(con, query = paste0("SELECT cdscode, ncesdist AS district_geoid FROM education.cde_public_schools_", cde_yr, " WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'"))
+cds <- dbGetQuery(con, paste0("SELECT cdscode, ncesdist AS district_geoid FROM education.cde_public_schools_", cde_yr, " WHERE ncesdist <> '' AND right(cdscode,7) = '0000000' AND statustype = 'Active'"))
 
 xwalk_filter <- xwalk_filter %>% left_join(cds, by = "district_geoid") %>% relocate(cdscode, .before = place_geoid)
+xwalk_filter <- xwalk_filter %>% mutate(area = as.numeric(area), place_area = as.numeric(place_area), intersect_area = as.numeric(intersect_area))
 
 # export xwalk table 
 
 table_name <- paste0("district_place_", curr_yr)
 table_schema <- "crosswalks"
-table_comment_source <- paste0("Created with W:\\Project\\RACE COUNTS\\", rc_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\Functions\\arei_city_county_district_table.R and based on ", curr_yr, " ACS TIGER CBF shapefiles.
+table_comment_source <- paste0("Created on ", Sys.Date(), " with W:\\Project\\RACE COUNTS\\", rc_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\Functions\\arei_city_county_district_table.R and based on ", curr_yr, " ACS TIGER CBF shapefiles.
     Districts with ", threshold * 100, "% or more of their area within a city or that cover ", threshold * 100, "% or more of a city''s area are assigned to those cities.
-    As a result, a district can be assigned to more than one city")
+    As a result, a district can be assigned to more than one city. QA doc: ", qa_filepath)
 
 # make character vector for field types in postgresql db
 charvect = rep('numeric', dim(xwalk_filter)[2])
@@ -117,24 +119,25 @@ charvect[1:8] <- "varchar" # Cols 1-7 are character for the geoid and names etc
 # add names to the character vector
 names(charvect) <- colnames(xwalk_filter)
 
-# dbWriteTable(con, c(table_schema, table_name), xwalk_filter,
-#             overwrite = FALSE, row.names = FALSE,
-#             field.types = charvect)
+# dbWriteTable(con, 
+#              Id(schema = table_schema, table = table_name), 
+#              xwalk_filter, overwrite = FALSE, row.names = FALSE,
+#              field.types = charvect)
 
 # write comment to table, and the first three fields that won't change.
 table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ".", "';")
 
 # send table comment to database
-#dbSendQuery(conn = con, table_comment)      		
-
-
+# dbBegin(con)
+# dbExecute(con, table_comment)
+# dbCommit(con)
 
 # Prep arei_city_county_district_table for export -------------------------------
 # Add counties, enrollment, pop, and region data
-counties <- st_read(con, query = paste0("SELECT place_geoid, county_geoid, county_name FROM crosswalks.county_place_", curr_yr))
-city_pop <- st_read(con2, query = paste0("SELECT geoid AS place_geoid, total_pop AS city_pop FROM ", rc_schema, ".arei_race_multigeo WHERE geolevel = 'place'"))
-county_pop <- st_read(con2, query = paste0("SELECT geoid AS county_geoid, total_pop AS county_pop FROM ", rc_schema, ".arei_race_multigeo WHERE geolevel = 'county'"))
-regions <- st_read(con2, query = paste0("SELECT county_id AS county_geoid, region FROM ", rc_schema, ".arei_county_region_urban_type"))
+counties <- dbGetQuery(con, paste0("SELECT place_geoid, county_geoid, county_name FROM crosswalks.county_place_", curr_yr))
+city_pop <- dbGetQuery(con2, paste0("SELECT geoid AS place_geoid, total_pop AS city_pop FROM ", rc_schema, ".arei_race_multigeo WHERE geolevel = 'place'"))
+county_pop <- dbGetQuery(con2, paste0("SELECT geoid AS county_geoid, total_pop AS county_pop FROM ", rc_schema, ".arei_race_multigeo WHERE geolevel = 'county'"))
+regions <- dbGetQuery(con2, paste0("SELECT county_id AS county_geoid, region FROM ", rc_schema, ".arei_county_region_urban_type"))
 
 
 # get cde_yr census enr by district
@@ -170,9 +173,9 @@ rc_table <- rc_table %>% rename(
 
 # Export to postgres
 table_name <- "arei_city_county_district_table"
-table_comment_source <- paste0("Created with W:\\Project\\RACE COUNTS\\", rc_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\RaceCounts\\Functions\\arei_city_county_district_table.R and based on ", curr_yr, " ACS TIGER CBF shapefiles and CDE data, ", acs_yr, " ACS pop data and ", cde_yr, " enrollment data.
-    Districts with ", threshold * 100, "% or more of their area within a city or that cover ", threshold * 100, "% or more of a city''s area are assigned to those cities. 
-    As a result, a district can be assigned to more than one city")
+table_comment_source <- paste0("Created on ", Sys.Date(), " with W:\\Project\\RACE COUNTS\\", rc_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\RaceCounts\\Functions\\arei_city_county_district_table.R and based on ", curr_yr, " ACS TIGER CBF shapefiles and CDE data, ", acs_yr, " ACS pop data and ", cde_yr, " enrollment data.
+    Districts with ", threshold * 100, "% or more of their area within a city or that cover ", threshold * 100, "% or more of a city''s area are assigned to those cities.
+    As a result, a district can be assigned to more than one city. QA doc: ", qa_filepath)
 
 # make character vector for field types in postgresql db
 charvect = rep('numeric', dim(rc_table)[2])
@@ -183,16 +186,18 @@ charvect[c(1:3,5:7,9:12)] <- "varchar" # Define which cols are character for the
 # add names to the character vector
 names(charvect) <- colnames(rc_table)
 
-# dbWriteTable(con2, c(rc_schema, table_name), rc_table,
-#             overwrite = FALSE, row.names = FALSE,
-#             field.types = charvect)
+# dbWriteTable(con2,
+#              Id(schema = rc_schema, table = table_name),
+#              rc_table, overwrite = FALSE, row.names = FALSE,
+#              field.types = charvect)
 
 # write comment to table, and the first three fields that won't change.
 table_comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", table_name, " IS '", table_comment_source, ".", "';")
 
 # send table comment to database
-#dbSendQuery(conn = con2, table_comment)      		
-
+# dbBegin(con2)
+# dbExecute(con2, table_comment)
+# dbCommit(con2)
 
 
 #dbDisconnect(con, con2)

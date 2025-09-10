@@ -1,7 +1,7 @@
 #### Economic Opportunity (z-score) for RC v7 ####
 
 #install packages if not already installed
-packages <- c("tidyverse","RPostgreSQL","sf","here","usethis")  
+packages <- c("tidyverse","RPostgres","sf","usethis")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -19,7 +19,7 @@ for(pkg in packages){
 
 # Load PostgreSQL driver and databases --------------------------------------------------
 source("W:\\RDA Team\\R\\credentials_source.R")
-conn <- connect_to_db("racecounts")
+con <- conect_to_db("racecounts")
 
 # Set Source for Index Functions script -----------------------------------
 source("./Functions/RC_Index_Functions.R")
@@ -30,7 +30,6 @@ options(scipen = 100)
 # update each yr
 rc_yr <- '2025'
 rc_schema <- 'v7'
-rc_schema_alt <- 'v6'
 source <- "American Community Survey (ACS) PUMS 2019-2023, American Community Survey (ACS) 2019-2023 Tables S2301 / S2802 / B19301B-I, and United Ways of California 2025"
 ind_threshold <- 3  # geos with < threshold # of indicator values are excluded from index. depends on the number of indicators in the issue area
 
@@ -43,16 +42,16 @@ issue <- 'economic_opportunity'
 ####################### ADD COUNTY DATA #####################################
 # you MUST update this section if we add or remove any indicators in an issue #
 
-c_1 <- dbGetQuery(conn, paste0("SELECT * FROM ", rc_schema, ".arei_econ_connected_youth_county_", rc_yr))
-c_2 <- dbGetQuery(conn, paste0("SELECT * FROM ", rc_schema, ".arei_econ_employment_county_", rc_yr))
-c_3 <- dbGetQuery(conn, paste0("SELECT * FROM ", rc_schema, ".arei_econ_internet_county_", rc_yr))
-c_4 <- dbGetQuery(conn, paste0("SELECT * FROM ", rc_schema, ".arei_econ_officials_county_", rc_yr))
-c_5 <- dbGetQuery(conn, paste0("SELECT * FROM ", rc_schema, ".arei_econ_per_capita_income_county_", rc_yr))
-c_6 <- dbGetQuery(conn, paste0("SELECT * FROM ", rc_schema, ".arei_econ_real_cost_measure_county_", rc_yr))
-c_7 <- dbGetQuery(conn, paste0("SELECT * FROM ", rc_schema, ".arei_econ_living_wage_county_", rc_yr))
+c_1 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_conected_youth_county_", rc_yr))
+c_2 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_employment_county_", rc_yr))
+c_3 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_internet_county_", rc_yr))
+c_4 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_officials_county_", rc_yr))
+c_5 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_per_capita_income_county_", rc_yr))
+c_6 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_real_cost_measure_county_", rc_yr))
+c_7 <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_econ_living_wage_county_", rc_yr))
 
 ## define variable names for clean_data_z function. you MUST UPDATE for each issue area.
-varname1 <- 'connected'
+varname1 <- 'conected'
 varname2 <- 'employ'
 varname3 <- 'internet'
 varname4 <- 'officials'
@@ -61,7 +60,7 @@ varname6 <- 'realcost'
 varname7 <- 'livwage'
 
 
-region_urban_type <- dbGetQuery(conn, paste0("select county_id, region, urban_type from ", rc_schema, ".arei_county_region_urban_type")) # get region, urban_type
+region_urban_type <- dbGetQuery(con, paste0("select county_id, region, urban_type from ", rc_schema, ".arei_county_region_urban_type")) # get region, urban_type
 
 
 # Clean data --------
@@ -130,4 +129,4 @@ index_table_name <- paste0("arei_econ_index_", rc_yr)
 index <- paste0("QA doc: ", qa_filepath, ". Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is")
 
 index_to_postgres(index_table, rc_schema)
-dbDisconnect(conn)
+dbDisconect(con)
