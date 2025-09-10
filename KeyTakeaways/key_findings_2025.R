@@ -314,6 +314,7 @@ df_state <- df_merged_state %>%
 # filter for only leg level indicator tables, drop all others
 leg_list <- rc_list %>%
   filter(grepl(paste0("^arei_.*_leg_", curr_yr, "$"), table_name)) %>%
+  filter(!grepl(paste0("^arei_.*index_leg_", curr_yr, "$"), table_name)) %>%  # filter out index tables
   arrange(table_name) %>%   # alphabetize
   pull(table_name)          # converts from df object to list; important for next steps using lapply
 
@@ -630,16 +631,15 @@ impact_table_wide <- impact_table2 %>%
 # Create most impacted findings
 # Findings depend on whether a geo has more ids than the finding2_threshold AND on how many groups are tied for most impacted.
 most_impacted <- impact_table_wide %>% 
-    mutate(finding_type = 'most impacted',
-           finding = 
-             case_when(
-               (id_count > finding2_threshold & long_name2 != '99999') ~ paste0("Across indicators, ", geo_name, " ", long_name2, " residents are most impacted by racial disparity."), 
-               (id_count > finding2_threshold & long_name2 == '99999') ~ paste0('There are more than three groups tied for most impacted in ', geo_name, "."), # added finding where 4+ groups tie for 'most impacted' bc finding becomes less meaningful
-               .default = paste0("Data for residents of ", geo_name, " is too limited for most impacted race analysis.")), # null finding when geo does not meet ID threshold
-           findings_pos = 1) %>%
-    select(c(geoid, geo_name, geo_level, finding_type, finding, findings_pos)) 
-
-most_impacted$geo_name <- gsub(" County", "", most_impacted$geo_name)   # clean county names
+  mutate(finding_type = 'most impacted',
+         finding = 
+           case_when(
+             (geo_level  == "county" & id_count > finding2_threshold & long_name2 != '99999') ~ paste0("Across indicators, ", geo_name, " County ", long_name2, " residents are most impacted by racial disparity."), 
+             (geo_level  %in% c("city", "state", "sldu", "sldl") & id_count > finding2_threshold & long_name2 != '99999') ~ paste0("Across indicators, ", geo_name, " ", long_name2, " residents are most impacted by racial disparity."), 
+             (id_count > finding2_threshold & long_name2 == '99999') ~ paste0('There are more than three groups tied for most impacted in ', geo_name, "."), # added finding where 4+ groups tie for 'most impacted' bc finding becomes less meaningful
+             .default = paste0("Data for residents of ", geo_name, " is too limited for most impacted race analysis.")), # null finding when geo does not meet ID threshold
+         findings_pos = 1) %>%
+  select(c(geoid, geo_name, geo_level, finding_type, finding, findings_pos)) 
 
 
 # Finding 3: Most disparate indicator by race & place - RACE PAGE ---------------------
@@ -703,14 +703,14 @@ rda_race_findings <- rda_race_findings %>%
 
 ## Export postgres table
 # dbBegin(con)
-# dbWriteTable(con, 
-#              Id(schema = curr_schema, table = race_table), 
+# dbWriteTable(con,
+#              Id(schema = curr_schema, table = race_table),
 #              rda_race_findings, overwrite = FALSE, row.names = FALSE)
 # dbCommit(con)
 
 # comment on table and columns
 ind <- "NOTE: County/SLDU/SLDL share the same geoids - you must use geoid+geo_level to query. Findings for County/State Race pages (API), and City/Leg findings (not on website)"
-source <- paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R.")
+source <- paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R")
 column_names <- colnames(rda_race_findings)
 column_comments <- c(
   'FIPS Code. NOTE: County/SLDU/SLDL share the same geoids.',
@@ -887,26 +887,28 @@ index_city <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_compo
   rename(geoid = city_id, geo_name = city_name) %>% 
   mutate(geo_level = "city")
 
-## LEG INDEXES HAVE NOT BEEN RUN YET
-# index_leg <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_composite_index_leg_", curr_yr)) %>% 
-#   select(leg_id, leg_name, disparity_z, performance_z) %>% 
-#   rename(geoid = leg_id, geo_name = leg_name)
+index_leg <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_composite_index_leg_", curr_yr)) %>%
+  select(leg_id, leg_name, geolevel, disparity_z, performance_z) %>%
+  rename(geoid = leg_id, geo_name = leg_name, geo_level = geolevel) %>%
+  mutate(geo_name = gsub("State ", "", geo_name))
 
-index_county_city <- bind_rows(index_county, index_city) %>%
+index_all_geos <- bind_rows(index_county, index_city, index_leg) %>%
   clean_geo_names()
 
-index_county_city$geo_name <- ifelse(index_county_city$geo_level == 'county', paste0(index_county_city$geo_name, ' County'), index_county_city$geo_name) # add back 'County'
+index_all_geos$geo_name <- ifelse(index_all_geos$geo_level == 'county', paste0(index_all_geos$geo_name, ' County'), index_all_geos$geo_name) # add back 'County'
 
 # Above/Below Avg Disp/Outcome
-avg_statement_df <- index_county_city %>% 
-  mutate(pop_type = ifelse(urban_type == 'Urban', 'more', 'less'), # used for more/less populous finding
+avg_statement_df <- index_all_geos %>% 
+  mutate(
+    pop_type = case_when(urban_type == 'Urban' ~ 'more',        # used for more/less populous finding
+                         urban_type == 'Non-Urban' | urban_type == 'Semi-Urban' ~ 'less',
+                         FALSE ~ ''),
     outc_type = ifelse(performance_z < 0, 'worse than', 'better than'),
     disp_type = ifelse(disparity_z < 0, 'better than', 'worse than')) 
 
 disp_avg_statement <- avg_statement_df %>%
   mutate(
     finding_type = 'disparity', 
-    
     finding = case_when(
       is.na(disp_type) ~ paste0("Data for ", geo_name, " is too limited for disparity level analysis."),
       geo_level == 'county' ~ paste0(geo_name, "'s racial disparity across indicators is ", disp_type, " the average for California counties."),
@@ -947,14 +949,14 @@ issue_area_findings$src <- "rda"
 issue_area_findings$citations <- ""
 
 # dbBegin(con)
-# dbWriteTable(con, 
+# dbWriteTable(con,
 #              Id(schema = curr_schema, table = issue_table),
 #              issue_area_findings, overwrite = FALSE, row.names = FALSE)
 # dbCommit(con)
 
 # comment on table and columns
 ind <- paste0("NOTE: County/SLDU/SLDL share the same geoids - you must use geoid+geo_level to query. Findings for Issue Area pages (API) created using W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R.")
-source <- paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R.")
+source <- paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R")
 column_names <- colnames(issue_area_findings)
 column_comments <- c(
   'RACE COUNTS Issue Area Name',
@@ -984,14 +986,14 @@ findings_places_multigeo <- rbind(rda_places_findings, state_issue_area_findings
 
 ## Create postgres table
 # dbBegin(con)
-# dbWriteTable(con, 
-#              Id(curr_schema, table = place_table), 
+# dbWriteTable(con,
+#              Id(curr_schema, table = place_table),
 #              findings_places_multigeo, overwrite = FALSE, row.names = FALSE)
 # dbCommit(con)
 
 # comment on table and columns
 ind <- paste0("NOTE: County/SLDU/SLDL share the same geoids - you must use geoid+geo_level to query. Findings for Place pages (API) created using W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R.")
-source <- paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R.")
+source <- paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\KeyTakeaways\\key_findings_", curr_yr, ".R")
 column_names <- colnames(findings_places_multigeo)
 column_comments <- c(
   'FIPS Code. NOTE: County/SLDU/SLDL share the same geoids.',
