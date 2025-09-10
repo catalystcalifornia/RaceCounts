@@ -1,7 +1,7 @@
 ---
 title: "RACE COUNTS: Democracy"
 author: "Authored by: Catalyst California"
-date: "8/25/2025"
+date: "9/4/2025"
 output:
   html_document:
     number_sections: no
@@ -64,7 +64,7 @@ acs_yr <- '2023'
 
 
 ```{r echo=FALSE, include = FALSE}
-####################### GET TABLE NAMES #####################################
+####################### GET COUNTY DATA #####################################
 county_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%county_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
 
 county_list <- dbGetQuery(con, county_list_query) %>% pull(table_name) 
@@ -83,7 +83,8 @@ c_tables <- lapply(c_tables, function(x) x %>%
          geolevel = 'county'))
 
 # Get issue index
-c_index_z <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_", issue, "_index_", rc_yr))
+c_index_z <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_", issue, "_index_", rc_yr)) %>%
+  rename(geo_name = county_name)  # make 'name' col generic
 
 ####################### POPULATION DATA #####################################
 #Get total population
@@ -94,8 +95,11 @@ c_index_z <- left_join(c_index_z, pop, by = c("county_id" = "geoid"))
 c_tables <- lapply(c_tables, function(x) 
   x %>% left_join(pop, by = c("county_id" = "geoid")))
 
+## Make 'name' col generic
+c_tables <- lapply(c_tables, function(x)
+  x %>% rename(geo_name = county_name))
 
-####################### ADD STATE DATA #####################################
+####################### GET STATE DATA #####################################
 state_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%state_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
 
 state_list <- dbGetQuery(con, state_list_query) %>% pull(table_name) 
@@ -117,12 +121,15 @@ s_tables <- lapply(s_tables, function(x) x %>%
 ##Add 2025 v7 Source Data##
 v7_sources <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_indicator_list_cntyst"))
 v7_sources <- v7_sources %>% filter(v7_sources$arei_issue_area==issue_name) %>%
-  select(arei_indicator, rate_descriptor, bar_chart_header, rate_rounding, methodology, data_source, api_name)
+  select(arei_indicator, arei_issue_area, rate_descriptor, bar_chart_header, rate_rounding, methodology, data_source, api_name)
 
 
 ## Join metadata to data
 c_tables <- lapply(c_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
 s_tables <- lapply(s_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
+
+names(c_tables)
+names(s_tables)
 ```
 
 <!-- *** -->
@@ -130,11 +137,11 @@ s_tables <- lapply(s_tables, function(x) x %>% left_join(v7_sources, by = c("ind
 NOTE: The data and findings below are drafts subject to change and some pieces are still in the QA process.
 
 RACE COUNTS provides a 3D view of racial equity:
-<br>PERFORMANCE: How well people are doing. The higher the circle, the better the performance.
+<br>OUTCOME: How well people are doing. The higher the circle, the better the outcome.
 <br>DISPARITY: How racial groups compare to one another. The further right the circle, the greater the differences by race.
 <br>IMPACT: The total population. The bigger the circle, the larger the population.
 
-<br><span style="color:purple">purple</span> counties: Gains at Risk; 
+<br><span style="color:purple">Purple</span> counties: Gains at Risk; 
 <br><span style="color:orange">Orange</span> counties: Prosperity for the Few;
 <br><span style="color:#c9cc14">Yellow</span> counties: Struggling to Prosper;
 <br><span style="color:red">Red</span> counties: Stuck and Unequal.
@@ -156,9 +163,9 @@ RACE COUNTS provides a 3D view of racial equity:
   c_index_chart
 ```
 
-* There seems to be a correlation between higher performance and lower disparity.
+* There seems to be a correlation between higher outcome and lower disparity.
 * Generally, larger population counties have below average racial disparity while smaller population counties have higher than average disparity.
-* All of the counties in the San Joaquin Valley besides Merced have below average performance in the Democracy Index.
+* All of the counties in the San Joaquin Valley besides Merced have below average outcome in the Democracy Index.
 * Nine of the 12 counties with the highest racial disparities in Democracy Index were in the Northern Sierra region.
 
 
@@ -174,8 +181,8 @@ c_1_chart
 ```
 
 * In general, larger population counties have higher overall Census participation rates than smaller population counties.
-* 8 out of 9 Bay Area counties and 5 out of 6 Central Coast counties are in the purple Quadrant (Lower Disparity, Higher Performance). 
-* The bottom 15 counties in census participation performance are all rural counties from the Northern Sierra region.
+* 8 out of 9 Bay Area counties and 5 out of 6 Central Coast counties are in the purple Quadrant (Lower Disparity, Higher Outcome). 
+* The bottom 15 counties in census participation outcome are all rural counties from the Northern Sierra region.
 
 ### State Barchart
 ```{r, echo=FALSE}
@@ -197,7 +204,7 @@ c_1_long
 ```
 
 
-## Diversity of Candidates - UPDATED {.tabset .tabset-fade}
+## Registered Voters - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -208,10 +215,8 @@ c_2_chart
 
 ```
 
-* All five counties in the purple Quadrant are in the Northern Sierra region.
-* The fact that there is very little variance between counties in overall performance in this measure reflects that there is relatively equal proportional representation for each county across the various levels of government in California.
-* Los Angeles County, which has the largest population, has the fourth lowest racial disparities among its body of candidates for public office.
-* 7 of the 11 counties with the largest racial disparities in their elected representation are in the Bay Area.
+* There appears to be a relationship between higher outcome and lower disparity, meaning as registration goes up, disparity decreases.
+* All but one of the San Joaquin Valley counties have lower than average voter registration rates. In fact, five of the eight counties with the lowest registration rates are in that region.
 
 ### State Barchart
 ```{r, echo=FALSE}
@@ -220,9 +225,9 @@ c_2_chart
 
 ```
 
-* White Californians have by far the highest rate of representation among candidates for office, with 1.4 candidates per 100,000 residents. They are the only racial group in the entire state that have better representation than the overall statewide average.
-* American Indian and Alaska Native Californians have the worst rate of representation among candidates for office of any racial group at just 0.2 officials per 100,000 people. They have 7x less representation than White Californians.
-* Latinx Californians have nearly 3x less representation in the statewide candidate pool than White Californians.
+* White voters have the best registration rate in the state, with 72% of eligible White Californians registered to vote.
+* Latinx and Asian Californians have the worst rate of voter registration in the state at 55%, a rate 17 percentage points lower than the White rate (71%).
+* Black Californians are registered to vote at a rate (63%) on par with the overall statewide rate (63.6%).
 
 
 ### County Barchart
@@ -233,7 +238,7 @@ c_2_long
 ```
 
 
-## Diversity of Elected Officials - UPDATED {.tabset .tabset-fade}
+## Diversity of Candidates - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -242,9 +247,10 @@ c_3_chart <- county_scatterplot(c_tables[[3]])
 c_3_chart
 ```
 
-* The fact that there is very little variance between counties in overall performance in this measure reflects that there is relatively equal proportional representation for each county across the various levels of government in California.
-* Many of the counties with larger populations, such as Sacramento, San Diego, Orange, Fresno, and Los Angeles, rank towards the lower end of racial disparities among their elected officials
-* The 12 counties with the highest racial disparities in elected representation are all non-urban counties in the Northern Sierra region.
+* All five counties in the purple Quadrant are in the Northern Sierra region.
+* The fact that there is very little variance between counties in overall outcome in this measure reflects that there is relatively equal proportional representation for each county across the various levels of government in California.
+* Los Angeles County, which has the largest population, has the fourth lowest racial disparities among its body of candidates for public office.
+* 7 of the 11 counties with the largest racial disparities in their elected representation are in the Bay Area.
 
 ### State Barchart
 
@@ -255,7 +261,9 @@ c_3_chart
 
 ``` 
 
-* The disparity between White representation and the representation of all other racial groups in California is even wider in the statewide pool of elected than it is in the pool of candidates for office. This means White candidates are not just more likely to run, but more likely to win.
+* White Californians have by far the highest rate of representation among candidates for office, with 1.4 candidates per 100,000 residents. They are the only racial group in the entire state that have better representation than the overall statewide average.
+* American Indian and Alaska Native Californians have the worst rate of representation among candidates for office of any racial group at just 0.2 officials per 100,000 people. They have 7x less representation than White Californians.
+* Latinx Californians have nearly 3x less representation in the statewide candidate pool than White Californians.
 
 
 ### County Barchart
@@ -266,7 +274,7 @@ c_3_long
 ```
 
 
-## Registered Voters - UPDATED {.tabset .tabset-fade}
+## Diversity of Elected Officials - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -275,8 +283,9 @@ c_4_chart <- county_scatterplot(c_tables[[4]])
 c_4_chart
 ```
 
-* There appears to be a relationship between higher performance and lower disparity, meaning as registration goes up, disparity decreases.
-* All but one of the San Joaquin Valley counties have lower than average voter registration rates. In fact, five of the eight counties with the lowest registration rates are in that region.
+* The fact that there is very little variance between counties in overall outcome in this measure reflects that there is relatively equal proportional representation for each county across the various levels of government in California.
+* Many of the counties with larger populations, such as Sacramento, San Diego, Orange, Fresno, and Los Angeles, rank towards the lower end of racial disparities among their elected officials
+* The 12 counties with the highest racial disparities in elected representation are all non-urban counties in the Northern Sierra region.
 
 ### State Barchart
 
@@ -287,9 +296,7 @@ c_4_chart
 
 ```
 
-* White voters have the best registration rate in the state, with 72% of eligible White Californians registered to vote.
-* Latinx and Asian Californians have the worst rate of voter registration in the state at 55%, a rate 17 percentage points lower than the White rate (71%).
-* Black Californians are registered to vote at a rate (63%) on par with the overall statewide rate (63.6%).
+*The disparity between White representation and the representation of all other racial groups in California is even wider in the statewide pool of elected than it is in the pool of candidates for office. This means White candidates are not just more likely to run, but more likely to win.
 
 ### County Barchart
 
@@ -309,7 +316,7 @@ c_5_chart
 
 ```
 
-* Five of the six counties in the Red Quadrant (Higher Disparity, Lower Performance) are in the San Joaquin Valley.
+* Five of the six counties in the Red Quadrant (Higher Disparity, Lower Outcome) are in the San Joaquin Valley.
 * Sonoma County has both the highest rates of voting in midterm elections in the state and the second lowest racial disparities in its midterm election voting pool.
 * There is a general correlation between lower racial disparities and better overall voter turnout for midterm elections, with relatively few counties firmly in the yellow or orange quadrants. 
 
@@ -348,8 +355,8 @@ c_6_chart
 
 ```
 
-* Data is relatively sparse for this indicator, as both the performance and disparity measures can only be reported for 26 of the 54 counties in the state.
-* There appears to be a negative relationship between performance and disparity, meaning as disparity increases, voter turnout decreases.
+* Data is relatively sparse for this indicator, as both the outcome and disparity measures can only be reported for 26 of the 54 counties in the state.
+* There appears to be a negative relationship between outcome and disparity, meaning as disparity increases, voter turnout decreases.
 * The three most disparate counties, Stanislaus, Kings, and Imperial, have large gaps between White and Latinx voter turnout.
 * Six of the eight counties with the worst voter turnout rates are in the San Joaquin Valley.
 

@@ -60,8 +60,7 @@ acs_yr <- '2023'
 ```
 
 ```{r echo=FALSE, include = FALSE}
-
-####################### GET TABLE NAMES #####################################
+####################### GET COUNTY DATA #####################################
 county_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%county_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
 
 county_list <- dbGetQuery(con, county_list_query) %>% pull(table_name) 
@@ -80,7 +79,8 @@ c_tables <- lapply(c_tables, function(x) x %>%
          geolevel = 'county'))
 
 # Get issue index
-c_index_z <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_", issue, "_index_", rc_yr))
+c_index_z <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_", issue, "_index_", rc_yr)) %>%
+  rename(geo_name = county_name)  # make 'name' col generic
 
 ####################### POPULATION DATA #####################################
 #Get total population
@@ -91,8 +91,11 @@ c_index_z <- left_join(c_index_z, pop, by = c("county_id" = "geoid"))
 c_tables <- lapply(c_tables, function(x) 
   x %>% left_join(pop, by = c("county_id" = "geoid")))
 
+## Make 'name' col generic
+c_tables <- lapply(c_tables, function(x)
+  x %>% rename(geo_name = county_name))
 
-####################### ADD STATE DATA #####################################
+####################### GET STATE DATA #####################################
 state_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%state_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
 
 state_list <- dbGetQuery(con, state_list_query) %>% pull(table_name) 
@@ -113,13 +116,16 @@ s_tables <- lapply(s_tables, function(x) x %>%
 
 ##Add 2025 v7 Source Data##
 v7_sources <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_indicator_list_cntyst"))
-v7_sources <- v7_sources %>% filter(v7_sources$arei_issue_area==issue_name) %>%
-  select(arei_indicator, rate_descriptor, bar_chart_header, rate_rounding, methodology, data_source, api_name)
+v7_sources <- v7_sources %>% filter(v7_sources$arei_issue_area=="Crime & Justice") %>%
+  select(arei_indicator, arei_issue_area, rate_descriptor, bar_chart_header, rate_rounding, methodology, data_source, api_name)
 
 
 ## Join metadata to data
 c_tables <- lapply(c_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
 s_tables <- lapply(s_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
+
+names(c_tables)
+names(s_tables)
 ```
 
 <!-- *** -->
@@ -127,7 +133,7 @@ s_tables <- lapply(s_tables, function(x) x %>% left_join(v7_sources, by = c("ind
 NOTE: The data and findings below are drafts subject to change and some pieces are still in the QA process.
 
 RACE COUNTS provides a 3D view of racial equity:
-<br>PERFORMANCE: How well people are doing. The higher the circle, the better the performance.
+<br>OUTCOME: How well people are doing. The higher the circle, the better the outcome.
 <br>DISPARITY: How racial groups compare to one another. The further right the circle, the greater the differences by race.
 <br>IMPACT: The total population. The bigger the circle, the larger the population.
 
@@ -161,7 +167,7 @@ RACE COUNTS provides a 3D view of racial equity:
 
 ```
 
-* Four out of six Southern California counties are in the Purple Quadrant (Higher Performance, Lower Disparity). San Bernardino County experiences lower performance and lower racial disparity rates, while Los Angeles County experiences lower performance and higher racial disparity rates.
+* Four out of six Southern California counties are in the Purple Quadrant (Higher Outcome, Lower Disparity). San Bernardino County experiences lower outcome and lower racial disparity rates, while Los Angeles County experiences lower outcome and higher racial disparity rates.
 
 
 ## Incarceration - NOT UPDATED {.tabset .tabset-fade}
@@ -174,8 +180,8 @@ c_1_chart
 
 
 ```
-* Los Angeles ranks among the counties with the most racial disparity (rank of 3) but has higher performance - meaning a lower overall incarceration rate - (rank of 10).
-* Sutter is the only county in the Red Quadrant (Higher Disparity, Lower Performance). Black Californians are 153 times more likely to be incarcerated as the group with the lowest rate, leading to Sutter being the second most disparate county in the state on this measure.
+* Los Angeles ranks among the counties with the most racial disparity (rank of 3) but has higher outcome - meaning a lower overall incarceration rate - (rank of 10).
+* Sutter is the only county in the Red Quadrant (Higher Disparity, Lower Outcome). Black Californians are 153 times more likely to be incarcerated as the group with the lowest rate, leading to Sutter being the second most disparate county in the state on this measure.
 * In Yolo County, with the worst racial disparities for incarceration, Black residents are 355 times more likely to be incarcerated as the group with the lowest rate.
 
 
@@ -195,7 +201,7 @@ c_1_long
 ```
 
 
-## Perception of Safety - UPDATED {.tabset .tabset-fade}
+## Use of Force - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -203,9 +209,7 @@ c_1_long
 c_2_chart <- county_scatterplot(c_tables[[2]])
 c_2_chart
 ```
-* El Dorado County is the most racially disparate on this measure, with 56.1% of its Black residents having a much lower perception of safety than other groups within the county.
 
-* Placer County has the highest perception of safety, but its NHPI residents report a much lower perception of safety compared to other groups within the county.
 
 
 ### State Barchart
@@ -226,7 +230,7 @@ c_2_long
 ```
 
 
-## Arrests for Status Offenses - UPDATED {.tabset .tabset-fade}
+## Officer-Initiated Stops - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -234,7 +238,9 @@ c_2_long
 c_3_chart <- county_scatterplot(c_tables[[3]])
 c_3_chart
 ```
-* Nevada County is ranked the most disparate and among the lowest performing counties in the state for Youth Status Offense Arrests. 
+* Most counties are near average when it comes to outcome for this measure.
+
+* Alpine County is the most racially disparate for this measure and is also among the lowest performing because of its high rates of Officer-Initiated Stops for its Latinx and White residents.
 
 
 ### State Barchart
@@ -244,7 +250,7 @@ c_3_chart
   s_3_
 
 ``` 
-* Black Youth face by far the most racial disparity on this measure. They are 2.6 times more likely to be arrested for status offenses than White Youth. 
+* Pacific Islanders experience officer-initiated stops 2.3 times more than the state average and 6.1 times more than the group with the lowest rate. 
 
 
 ### County Barchart
@@ -255,7 +261,7 @@ c_3_long
 ```
 
 
-## Use of Force - UPDATED {.tabset .tabset-fade}
+## Perception of Safety - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -264,7 +270,10 @@ c_4_chart <- county_scatterplot(c_tables[[4]])
 c_4_chart
 
 ```
-* 9 out the 12 counties in the Red Quadrant (Higher Disparity, Lower Performance) are in the Northern/Sierra region. Note that we do expect to see somewhat more extreme higher and lower estimates in counties, like these, with smaller populations.
+* El Dorado County is the most racially disparate on this measure, with 56.1% of its Black residents having a much lower perception of safety than other groups within the county.
+
+* Placer County has the highest perception of safety, but its NHPI residents report a much lower perception of safety compared to other groups within the county.
+
 
 
 
@@ -284,7 +293,7 @@ c_4_long <- county_barchart(c_tables[[4]])
 c_4_long
 ```
 
-## Officer-Initiated Stops - UPDATED {.tabset .tabset-fade}
+## Arrests for Status Offenses - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -293,9 +302,7 @@ c_4_long
 c_5_chart <- county_scatterplot(c_tables[[5]])
 c_5_chart
 ```
-* Most counties are near average when it comes to performance for this measure.
-
-* Alpine County is the most racially disparate for this measure and is also among the lowest performing because of its high rates of Officer-Initiated Stops for its Latinx and White residents.
+* Nevada County is ranked the most disparate and among the lowest performing counties in the state for Youth Status Offense Arrests.
 
 
 
@@ -305,7 +312,7 @@ c_5_chart
   s_5_ <- state_barchart(s_tables[[5]])
   s_5_
 ```
- * Pacific Islanders experience officer-initiated stops 2.3 times more than the state average and 6.1 times more than the group with the lowest rate. 
+ * Black Youth face by far the most racial disparity on this measure. They are 2.6 times more likely to be arrested for status offenses than White Youth. 
  
 
 ### County Barchart
