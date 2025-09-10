@@ -176,7 +176,7 @@ RACE COUNTS provides a 3D view of racial equity:
 
 * All Bay Area counties have higher than average outcome with low levels of disparity on the Economic Opportunity Index. However, Marin, Napa, and San Francisco also have higher than average levels of disparity.
 
-## Living Wage {.tabset .tabset-fade}
+## Per Capita Income {.tabset .tabset-fade}
 
 
 ### Scatterplot
@@ -207,7 +207,7 @@ c_1_long
 ```
 
 
-## Employment Status  {.tabset .tabset-fade}
+## Internet Access  {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -237,7 +237,7 @@ c_2_long
 ```
 
 
-## Internet Access {.tabset .tabset-fade}
+## Living Wage {.tabset .tabset-fade}
 
 
 ### Scatterplot
@@ -267,7 +267,7 @@ c_3_long
 ```
 
 
-## Per Capita Income {.tabset .tabset-fade}
+## Connected Youth {.tabset .tabset-fade}
 
 
 ### Scatterplot
@@ -329,7 +329,7 @@ c_5_long
 
 
 
-## Real Cost Measure {.tabset .tabset-fade}
+## Employment {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -361,7 +361,7 @@ c_6_long
 
 
 
-## Connected Youth {.tabset .tabset-fade}
+## Real Cost Measure {.tabset .tabset-fade}
 
 ### Scatterplot
 
