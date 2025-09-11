@@ -59,7 +59,7 @@ city_ids <- dbGetQuery(con, paste0("select city_id AS geoid, region from ", curr
 
 ## get RC city index table ##
 # import city index table
-city_index <- dbGetQuery(con, paste0("SELECT city_id, disparity_z, disparity_rank, performance_z, performance_rank FROM ", curr_schema, ".arei_composite_index_city_", rc_yr))
+city_index <- dbGetQuery(con, paste0("SELECT city_id, disparity_z, disparity_rank, performance_z, performance_rank, disparity_z_quartile, performance_z_quartile, quadrant FROM ", curr_schema, ".arei_composite_index_city_", rc_yr))
 
 # join city tables together
 city_multigeo_list <- left_join(city_race, city_ids) %>% rename(geo_name = name)

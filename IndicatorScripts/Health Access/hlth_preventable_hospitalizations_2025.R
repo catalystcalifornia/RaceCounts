@@ -66,8 +66,8 @@ df_multigeo <- rename_raceeth(df_multigeo)
 # calc county totals
 total_df <- df_multigeo %>% group_by(geoname) %>% 
   filter(geoname!='Statewide') %>% 
-  summarize(total_raw=sum(raw), 
-            total_pop = sum(pop), 
+  summarize(total_raw=sum(raw, na.rm=TRUE), 
+            total_pop = sum(pop, na.rm=TRUE), 
             total_rate=(total_raw/total_pop)*100000)
 
 
@@ -154,9 +154,9 @@ county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table) 
 View(county_table)
 
-#rename geoid to state_id, county_id, city_id
-colnames(state_table)[1:2] <- c("state_name", "state_id")
-colnames(county_table)[1:2] <- c("county_name", "county_id")
+#rename geoid to state_id, county_id
+state_table <- rename(state_table, state_id = geoid, state_name = geoname)
+county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 
 # ############## SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
 

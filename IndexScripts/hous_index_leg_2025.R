@@ -65,9 +65,6 @@ varname7 <- 'quality'
 varname8 <- 'subprime'
 
 
-region_urban_type <- dbGetQuery(con, paste0("select county_id, region, urban_type from ", rc_schema, ".arei_county_region_urban_type")) # get region, urban_type
-
-
 # Clean data --------
 # use function to select cols we want, cap z-scores, and rename z-score cols
 
@@ -97,13 +94,10 @@ c_8 <- clean_data_z(c_8, varname8)
 
 
 # Join Data Together ------------------------------------------------------
-c_index <- mutate(c_1,c_2)
-c_index <- mutate(c_index,c_3)
-c_index <- mutate(c_index,c_4)
-c_index <- mutate(c_index,c_5)
-c_index <- mutate(c_index,c_6)
-c_index <- mutate(c_index,c_7)
-c_index <- mutate(c_index,c_8)
+index_list <- list(c_1, c_2, c_3, c_4, c_5, c_6, c_7, c_8)
+
+c_index <- index_list %>% reduce(full_join, by=c('leg_id', 'leg_name', 'geolevel'))
+
 
 colnames(c_index) <- gsub("performance", "perf", names(c_index))  # shorten col names
 colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col names
