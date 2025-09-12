@@ -65,6 +65,7 @@ c_3 <- clean_data_z(c_3, varname3)
 
 # Join Data Together ------------------------------------------------------
 index_list <- list(c_1, c_2, c_3)
+index_list <- lapply(index_list, function(x) x %>% mutate(leg_name = gsub("State ", "", leg_name)))
 
 c_index <- index_list %>% reduce(full_join, by=c('leg_id', 'leg_name', 'geolevel'))
 
@@ -87,6 +88,7 @@ sen_index <- calculate_z(sen_index, ind_threshold)
 
 # JOIN LEG INDEX TOGETHER ------------------------------------------------------
 c_index <- rbind(assm_index, sen_index)
+
 
 # rename columns
 c_index <- c_index %>% rename_with(~ paste0(issue, "_", .x), ends_with("_rank"))

@@ -95,6 +95,7 @@ c_8 <- clean_data_z(c_8, varname8)
 
 # Join Data Together ------------------------------------------------------
 index_list <- list(c_1, c_2, c_3, c_4, c_5, c_6, c_7, c_8)
+index_list <- lapply(index_list, function(x) x %>% mutate(leg_name = gsub("State ", "", leg_name)))
 
 c_index <- index_list %>% reduce(full_join, by=c('leg_id', 'leg_name', 'geolevel'))
 
