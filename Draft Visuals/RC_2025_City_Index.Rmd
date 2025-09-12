@@ -1,0 +1,423 @@
+---
+title: "Composite City Index"
+author: "Authored by: Catalyst California"
+date: "9/9/2025"
+output:
+  html_document:
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+subtitle: 'Draft Visuals'
+---
+
+```{r setup, echo=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+<style type="text/css">
+  h1{
+  font-family: Rubik;
+  }
+  h2{
+  font-family: Rubik;
+  }
+  h3{
+  font-family: Rubik;
+  }
+  a{
+  font-family: Rubik;
+  }
+  ul{
+  font-family: Rubik;
+  }
+  ol{
+  font-family: Rubik;
+  }
+  body{
+  font-family: Rubik;
+  font-size: 15px;
+}
+p{
+  font-family: Rubik;
+  font-size: 15px;
+}
+
+</style>
+
+
+
+### RC 2025: City Index Table
+
+```{r city data, echo=FALSE, cache=TRUE, include=FALSE}
+knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
+
+# set up workspace
+packages <- c("DT", "RPostgres", "formattable", "knitr", "dplyr", "htmltools", "tidyr", "stringr", "scales", "colorspace", "sf")  
+
+install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
+
+if(length(install_packages) > 0) { 
+  install.packages(install_packages) 
+  
+} else { 
+  
+  print("All required packages are already installed.") 
+} 
+
+for(pkg in packages){ 
+  library(pkg, character.only = TRUE) 
+} 
+
+# load PostgreSQL driver
+source("W:\\RDA Team\\R\\credentials_source.R")
+con <- connect_to_db("racecounts")
+
+##### UPDATE EACH YEAR ####
+rc_schema <- 'v7'
+rc_yr <- '2025'
+
+# setwd("W:/Project/RACE COUNTS/2025_v7/Visualizations/") 
+
+#### Data Prep Steps ####
+
+### Load index data ###
+city_index_ <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_multigeo_list WHERE geolevel = 'place'")) 
+
+# drop unneeded cols and cities w/o index scores
+city_index <- city_index_ %>% select(geo_name, region, ends_with("pop"), disparity_z, disparity_rank, performance_z, performance_rank, quadrant, 
+                                     -nh_other_pop, -nh_twoormor_pop, -swanasa_pop, -starts_with("pct_"))
+
+# order table by disparity_rank and reorder cols
+city_index <- arrange(city_index, -desc(disparity_rank))
+city_index <- city_index %>% select(geo_name, region, disparity_rank, disparity_z, performance_rank, performance_z, quadrant, everything())
+city_index_table <- city_index %>% mutate(disp_z_rnd = round(disparity_z, 2), perf_z_rnd = round(performance_z, 2)) %>%
+  select(-disparity_z, -performance_z) %>%
+  relocate(disp_z_rnd, .after = disparity_rank) %>%
+  relocate(perf_z_rnd, .after = performance_rank)
+```
+
+
+```{r city data table, echo=FALSE, cache=TRUE}
+
+## table ##
+datatable(city_index_table,
+class = 'cell-border stripe',
+colnames=c(
+'City'= 'geo_name',
+'Disparity Rank' = 'disparity_rank',
+'Disparity Z-Score' = 'disp_z_rnd',
+'Outcome Rank' = 'performance_rank',
+'Outcome Z-Score' = 'perf_z_rnd',
+'Category' = 'quadrant', 
+'Population' = 'total_pop',
+'Region' = 'region',
+'AIAN Population' = 'aian_pop',
+'Asian Population' = 'nh_asian_pop',
+'Black Population' = 'nh_black_pop',
+'Latinx Population'= 'latino_pop',
+'NHPI Population' = 'pacisl_pop',
+'SWANA Population' = 'swana_pop',
+'White Population' = 'nh_white_pop'
+ ),
+style ='default',
+rownames = FALSE,
+filter ='top',
+extensions = c(
+  # 'Scroller',
+  # 'FixedHeader',
+               'Buttons',
+               'KeyTable', 'FixedColumns'),
+
+options = list(
+  dom = 'Bfrtip',
+  buttons = c('csv','excel'),
+pageLength = 15,
+autoWidth = TRUE,
+scrollX = T,
+scroller = TRUE
+  # columnDefs = list(list(width = '200px', targets = c(1,23))),
+#, searchHighlight = TRUE
+)
+,
+caption = htmltools::tags$caption(
+style = 'caption-side: bottom; text-align: left;',
+htmltools::strong('Z-scores range from -1 to 1. Disparity rank of 1 means most racially disparate. An outcome rank of 1 means best overall outcomes.'))
+)
+
+
+```
+
+```{r scatter fx, echo=FALSE, cache=TRUE, include=FALSE}
+## NOTE: Data viz below based on: W:\Project\RACE COUNTS\2022_v4\Visualizations\RC_2022_Indexes.RMD ###
+
+knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
+
+#Set up workspace
+packages <- c("DT", "RPostgres", "formattable","knitr","dplyr","htmltools","tidyr","stringr","scales","colorspace","sf", "leaflet",
+"rgdal","rpostgis","RColorBrewer","ggplot2","scales","highcharter","here","htmltools","devtools","broom","kableExtra","reshape2")  
+
+install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
+
+if(length(install_packages) > 0) { 
+  install.packages(install_packages) 
+  
+} else { 
+  
+  print("All required packages are already installed.") 
+} 
+
+for(pkg in packages){ 
+  library(pkg, character.only = TRUE) 
+} 
+
+options(scipen=999)
+options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
+
+
+### CITY INDEX SCATTERPLOT FX ###
+city_index_scatter <- function(x, t) {
+# x = index data, t = theme
+c_chart_index <- x %>%
+    hchart("scatter", 
+    hcaes(x=disparity_z, y=performance_z, size=total_pop, group=quadrant),
+      tooltip = 
+         list(pointFormat = 
+                "<strong>City: </strong>{point.geo_name} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Outcome Rank: </strong>{point.performance_rank} <br><strong>Population: </strong>{point.total_pop:,.0f}")) %>%
+  #hc_title(text = paste0("City Composite Index: ", r)) %>%
+  hc_xAxis(title = list(text = "Disparity Z-Score"), max = 1.2, min = -1.2, tickInterval = .5) %>% 
+  hc_yAxis(title = list(text = "Outcome Z-Score"), max = 1.2, min = -1.2, tickInterval = .5) %>% 
+  hc_caption(
+    text = "Data source: Various",
+    align = "center"
+     ) %>% hc_size(height=700,width=700) 
+
+
+### ADD RC THEME ###
+rc_theme <- hc_theme(
+    # race counts colors
+  colors = c("orange", "#800080", "red", "yellow"),
+  chart = list(
+    backgroundColor = "#F7F7F7", # RC white
+    style = list(
+          fontFamily = "Rubik") 
+  ),
+  title = list(
+    style = list(
+      color = "#070024",
+      fontFamily = "Rubik")
+  ),
+  subtitle = list(
+    style = list(
+      color = "#8E8C8F", # medium grey
+      fontFamily = "Rubik")
+  ),
+  caption = list(
+    style = list(
+      color = "#8E8C8F",
+      fontFamily = "Rubik")
+  ),
+    axis = list(
+    style = list(
+      color = "#8E8C8F",
+      fontFamily = "Rubik")
+  ),
+  legend = list(
+    itemStyle = list(
+      fontFamily = "Rubik",
+      color = "#070024"),
+    itemHoverStyle = list(
+       fontFamily = "Rubik",
+      color = "#070024")
+  ))
+
+
+c_chart_index <-  hc_add_theme(c_chart_index, rc_theme) 
+
+return(c_chart_index)
+}
+
+
+
+# Add commas to long numbers
+lang <- getOption("highcharter.lang")
+lang$thousandsSep <- ","
+options(highcharter.lang = lang)
+
+```
+
+
+## Composite Index - UPDATED
+
+```{r comp index, echo=FALSE, cache=TRUE}
+comp_scatter <- city_index_scatter(city_index, rc_theme)
+comp_scatter <- comp_scatter %>% hc_title(text = "City Composite Index")
+
+comp_scatter
+```
+
+
+### Bay Area Cities
+
+```{r bay area, echo=FALSE, cache=TRUE}
+# Filter for specified region 
+city_index_ba <- city_index %>% filter(region == 'Bay Area Counties')
+ba_scatter <- city_index_scatter(city_index_ba, rc_theme) %>% 
+  hc_title(text = paste0("City Composite Index: ", min(city_index_ba$region)))
+
+ba_scatter
+```
+
+
+### Southern California Cities
+
+```{r socal, echo=FALSE, cache=TRUE}
+# Filter for specified region
+city_index_sc <- city_index %>% filter(region == 'Southern California')
+socal_scatter <- city_index_scatter(city_index_sc, rc_theme) %>% 
+  hc_title(text = paste0("City Composite Index: ", min(city_index_sc$region)))
+
+socal_scatter
+```
+
+
+### San Joaquin Valley Cities
+
+```{r sjv, echo=FALSE, cache=TRUE}
+# Filter for specified region
+city_index_sjv <- city_index %>% filter(region == 'San Joaquin Valley')
+sjv_scatter <- city_index_scatter(city_index_sjv, rc_theme) %>% 
+  hc_title(text = paste0("City Composite Index: ", min(city_index_sjv$region)))
+
+sjv_scatter
+```
+
+
+### Central Coast Cities
+
+```{r central coast, echo=FALSE, cache=TRUE}
+# Filter for specified region
+city_index_cc <- city_index %>% filter(region == 'Central Coast Counties')
+cc_scatter <- city_index_scatter(city_index_cc, rc_theme) %>% 
+  hc_title(text = paste0("City Composite Index: ", min(city_index_cc$region)))
+
+cc_scatter
+```
+
+
+### Sacramento Area Cities
+
+```{r sacto, echo=FALSE, cache=TRUE}
+# Filter for specified region
+city_index_sac <- city_index %>% filter(region == 'Sacramento Area')
+sacto_scatter <- city_index_scatter(city_index_sac, rc_theme) %>% 
+  hc_title(text = paste0("City Composite Index: ", min(city_index_sac$region)))
+
+sacto_scatter
+```
+
+
+### Northern / Sierra County Cities
+
+```{r northern sierra, echo=FALSE, cache=TRUE}
+# Filter for specified region
+city_index_ns <- city_index %>% filter(region == 'Northern / Sierra Counties')
+ns_scatter <- city_index_scatter(city_index_ns, rc_theme) %>% 
+  hc_title(text = paste0("City Composite Index: ", min(city_index_ns$region)))
+
+ns_scatter
+```
+
+
+<!--```{r, cache=TRUE}
+
+##### City Index Map ####
+# set up workspace
+library(DT)
+library(RPostgres)
+library(formattable)
+library(knitr)
+library(dplyr)
+library(sf)
+library(leaflet)
+library("leaflet.extras")
+library(htmltools)
+library(tidyr)
+library(stringr)
+library(rgdal)
+library(rpostgis)
+library(stringr)
+library(scales)
+library(colorspace)
+library(geojsonsf)
+library(rmapshaper)
+library(tigris)
+
+#### Prep Steps ####
+
+### Load GIS data ###
+# get census places
+## pull in CBF Places ##
+  places <- places(state = 'CA', year = 2023, cb = TRUE) %>% select(-c(STATEFP, PLACEFP, PLACENS, AFFGEOID, STUSPS, STATE_NAME, LSAD, ALAND, AWATER))
+  city_index2 <- city_index_ %>% select(geoid, geo_name) %>% left_join(city_index, by = "geo_name")
+  city_gis <- places %>% right_join(city_index2, by = c("GEOID" = "geoid"))
+  
+# transform for leaflet projection
+city_gis <- st_transform(city_gis, CRS("+proj=longlat +datum=WGS84 +no_defs"))
+
+
+### map ###
+#orange for JENI 2021
+#pal_impact <- #colorBin(palette = c("#800080", "orange", "red", "yellow"), domain = city_gis$quadrant, bins = 4, reverse = FALSE, pretty = FALSE)
+
+#create popup
+popup <- paste("<div class='leaflet-popup-scrolled' style='max-width:800px;max-height:200px'> City: <span style='font-size: 16px; font-weight: bold;'>", city_gis$geo_name, "</span></br>Region: ", city_gis$region, 
+ "</br> Disparity Rank*: <span style='font-size: 15px; font-weight: bold;'>", city_gis$disparity_rank," | </span><span style='font-size: 14px; font-weight: bold;'>",
+ city_gis$disparity_z, " (z-score)</span></br>",
+ "</br> Outcome Rank*: <span style='font-size: 15px; font-weight: bold;'>", city_gis$performance_rank," | </span><span style='font-size: 14px; font-weight: bold;'>",
+ city_gis$performance_z, " (z-score)</span></br>",
+ "Region: ", city_gis$sd_number, " | ", city_gis$region, "</br>",
+"Population: ", city_gis$total_pop, "</br>",
+"</br>",
+"<span style='font-size: 10px; font-style: italic;'>*Z-scores range from 0-1. A higher disparity rank means a higher level of disparity. A higher outcome rank means better overall outcomes.</span>","</br>","</div>")
+
+# build map
+leaflet(city_gis, width = "100%", height = "600px") %>%
+
+# add base map
+addProviderTiles("CartoDB.PositronNoLabels")%>%
+addProviderTiles("CartoDB.PositronOnlyLabels", options = providerTileOptions(pane = "markerPane")) %>%
+
+# add map panes
+addMapPane("index_pane", zIndex = 400) %>%
+addMapPane("jesi_2021", zIndex = 415) %>%
+
+# set view and layer control
+setView(-118.6368454, 34.2324274, zoom = 8.5) %>%
+
+# # add boundaries for SPAs and SDs
+# addPolygons(data = sds, fillOpacity=0, color = "black", weight = 2.2, label=~distname, group = "Supervisorial Districts", options = pathOptions(pane = "sds_pane", interactive = FALSE), highlight = highlightOptions(color = "white", weight = 3, bringToFront = TRUE)) %>%
+#   addPolygons(data = spas, fillOpacity=0, color = "black", weight = 2.2, label=~spa_2012, group = "Service Planning Areas", options = pathOptions(pane = "spas_pane", interactive = FALSE), highlight = highlightOptions(color = "white", weight = 3, bringToFront = TRUE))%>%
+
+
+   #  #add combined legend
+   # addLegend(position = "bottomleft",
+   #          title="JENI Need Level",
+   #          labels = c("Lowest (0-19th Percentile)", "Low (20-39th Percentile)",
+   #                     "Moderate (40-59th Percentile)", "High (60-79th Percentile)","Highest (80-100th Percentile)", "JENI Not Available"),
+   #          colors= c( "#ffff00","#f2bf00", "#e68000", "#d94000","#cc0000", "#808080"), opacity=.9)%>%
+
+  # layers control
+  
+    htmlwidgets::onRender("function(el, x) {
+        L.control.zoom({ position: 'topright' }).addTo(this)
+    }")
+
+  hc_add_theme(city_, rc_theme) 
+
+
+
+``` -->
+
+

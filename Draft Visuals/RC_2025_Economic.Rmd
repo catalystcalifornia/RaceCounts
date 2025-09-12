@@ -1,0 +1,440 @@
+---
+title: "RACE COUNTS: Economic Opportunity"
+author: "Authored by: Catalyst California"
+date: "8/25/2025"
+output:
+  html_document:
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+
+subtitle: 'Draft Visuals'
+---
+  
+<style type="text/css">
+  h1{
+  font-family: Rubik;
+  }
+  h2{
+  font-family: Rubik;
+  }
+  h3{
+  font-family: Rubik;
+  }
+  a{
+  font-family: Rubik;
+  }
+  ul{
+  font-family: Rubik;
+  }
+  ol{
+  font-family: Rubik;
+  }
+  body{
+  font-family: Rubik;
+  font-size: 15px;
+}
+p{
+  font-family: Rubik;
+  font-size: 15px;
+}
+body { background-color: #FFFFFF; }
+
+</style>
+
+```{r include = FALSE}
+knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
+
+#load the libraries via the below source as well as the credentials and set the theme
+source("draft_visual_functions.R")
+
+options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
+
+##Add RC theme##
+rc_theme # load from the above draft_visual_functions.R script
+issue_name <- 'Economic Opportunity' # Issue names: Safety & Justice, Democracy, Economic Opportunity, Education, Healthy Built Environment, Health Care Access, Housing
+issue <- 'econ' #Issue: crim, demo, educ, econ, hben, hlth, hous
+rc_schema <- 'v7'
+rc_yr <- '2025'
+acs_yr <- '2023'
+```
+
+```{r include = FALSE}
+####################### GET COUNTY DATA #####################################
+county_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%county_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
+
+county_list <- dbGetQuery(con, county_list_query) %>% pull(table_name) 
+
+c_tables <- lapply(setNames(paste0("select * from ", rc_schema, ".", county_list), county_list), DBI::dbGetQuery, conn = con)
+
+# create column with indicator name
+c_tables <- map2(c_tables, names(c_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
+
+# clean up and add columns
+c_tables <- lapply(c_tables, function(x) x %>% 
+  select(-any_of('geolevel'), -ends_with("_pop")) %>%
+  mutate(issue = substring(indicator, 6,9),
+         indicator = substring(indicator, 11),
+         indicator = gsub(paste0('_county_', rc_yr), '', indicator),
+         geolevel = 'county'))
+
+# Get issue index
+c_index_z <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_", issue, "_index_", rc_yr)) %>%
+  rename(geo_name = county_name)  # make 'name' col generic
+
+####################### POPULATION DATA #####################################
+#Get total population
+pop <- dbGetQuery(con, paste0("SELECT geoid, total_pop, geolevel FROM ", rc_schema, ".arei_race_multigeo WHERE geolevel = 'county'")) %>% select(-geolevel)
+
+c_index_z <- left_join(c_index_z, pop, by = c("county_id" = "geoid"))
+
+c_tables <- lapply(c_tables, function(x) 
+  x %>% left_join(pop, by = c("county_id" = "geoid")))
+
+## Make 'name' col generic
+c_tables <- lapply(c_tables, function(x)
+  x %>% rename(geo_name = county_name))
+
+####################### GET STATE DATA #####################################
+state_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%state_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
+
+state_list <- dbGetQuery(con, state_list_query) %>% pull(table_name) 
+
+s_tables <- lapply(setNames(paste0("select * from ", rc_schema, ".", state_list), state_list), DBI::dbGetQuery, conn = con)
+
+# create column with indicator name
+s_tables <- map2(s_tables, names(s_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
+
+# clean up and add columns
+s_tables <- lapply(s_tables, function(x) x %>% 
+  select(-any_of('geolevel'), -ends_with("_pop")) %>%
+  mutate(issue = substring(indicator, 6,9),
+         indicator = substring(indicator, 11),
+         indicator = gsub(paste0('_state_', rc_yr), '', indicator),
+         geolevel = 'state'))
+
+
+##Add 2025 v7 Source Data##
+v7_sources <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_indicator_list_cntyst"))
+v7_sources <- v7_sources %>% filter(v7_sources$arei_issue_area==issue_name) %>%
+  select(arei_indicator, arei_issue_area, rate_descriptor, bar_chart_header, rate_rounding, methodology, data_source, api_name)
+
+
+## Join metadata to data
+c_tables <- lapply(c_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
+s_tables <- lapply(s_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
+
+names(c_tables)
+names(s_tables)
+```
+
+<!-- *** -->
+# Introduction
+NOTE: The data and findings below are drafts subject to change and some pieces are still in the QA process.
+
+RACE COUNTS provides a 3D view of racial equity:
+<br>OUTCOME: How well people are doing. The higher the circle, the better the outcome.
+<br>DISPARITY: How racial groups compare to one another. The further right the circle, the greater the differences by race.
+<br>IMPACT: The total population. The bigger the circle, the larger the population.
+
+<br><span style="color:purple">Purple</span> counties: Gains at Risk; 
+<br><span style="color:orange">Orange</span> counties: Prosperity for the Few;
+<br><span style="color:#c9cc14">Yellow</span> counties: Struggling to Prosper;
+<br><span style="color:red">Red</span> counties: Stuck and Unequal.
+
+# Key Findings 
+
+* Central Valley counties exhibit lower economic outcome and greater racial disparity in economic opportunity and wages compared to other counties. (See scatterplot on Economic Opportunity Index and People Ages 18-64 Earning A Living Wage (%))
+
+
+* NH-White and Asian residents across the counties have higher per capita income compared to other racial groups, who earn below the average income rate for all groups. (See bar chart on Per Capita Income ($))
+
+* NH-AIAN, NH-Black, and Latinx residents have incomes that fall below the cost-of-living-adjusted poverty rate. (See bar chart on Households Above Real Cost Measure ($))
+
+* Pacific Islanders, Latinx, AIAN, and NH-Black residents are far less likely to be employed as officials or managers. (See bar chart on People Ages 18-64 in labor Force who are Employed as Officials or Managers per 1k People)
+
+
+# Race/Ethnicity Notes
+<br>1) "Other" race includes those who identify with a race outside of the specifically named categories, such as Asian, White, etc.
+<br>2) Race labels for bar charts: The "NH_" prefix signifies that a group is non-Latinx (excludes Latinx).
+<br>3) The "two_or_more" group represents those who identify as Two or More Races.
+
+# Indicators
+
+## Economic Opportunity Index {.tabset .tabset-fade}
+```{r, echo=FALSE}
+# Remove counties without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
+  c_index_z <- c_index_z %>% mutate(arei_issue_area=issue_name)
+  c_index_chart <- index_scatterplot(c_index_z, 2)
+
+  c_index_chart
+```
+
+* Most Central Valley counties have lower than average outcome, with most having higher than average disparity as well. 
+
+* All Bay Area counties have higher than average outcome with low levels of disparity on the Economic Opportunity Index. However, Marin, Napa, and San Francisco also have higher than average levels of disparity.
+
+## Per Capita Income {.tabset .tabset-fade}
+
+
+### Scatterplot
+
+```{r, echo=FALSE} 
+c_1_chart <- county_scatterplot(c_tables[[1]])
+c_1_chart
+
+```
+* 
+* 
+* 
+
+### State Barchart
+```{r, echo=FALSE}
+  s_1_ <- state_barchart(s_tables[[1]])
+  s_1_
+
+``` 
+* 
+* 
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_1_long <- county_barchart(c_tables[[1]]) 
+c_1_long
+```
+
+
+## Internet Access  {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE} 
+c_2_chart <- county_scatterplot(c_tables[[2]])
+c_2_chart
+
+```
+* 
+* 
+* 
+
+### State Barchart
+```{r, echo=FALSE}
+  s_2_ <- state_barchart(s_tables[[2]])
+  s_2_
+
+``` 
+* 
+* 
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_2_long <- county_barchart(c_tables[[2]]) 
+c_2_long
+```
+
+
+## Living Wage {.tabset .tabset-fade}
+
+
+### Scatterplot
+
+```{r, echo=FALSE} 
+c_3_chart <- county_scatterplot(c_tables[[3]])
+c_3_chart
+```
+* 
+* 
+* 
+
+### State Barchart
+```{r, echo=FALSE}
+  s_3_ <- state_barchart(s_tables[[3]])
+  s_3_
+
+``` 
+* 
+* 
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_3_long <- county_barchart(c_tables[[3]]) 
+c_3_long
+```
+
+
+## Connected Youth {.tabset .tabset-fade}
+
+
+### Scatterplot
+
+```{r, echo=FALSE} 
+c_4_chart <- county_scatterplot(c_tables[[4]])
+c_4_chart
+
+```
+* 
+* 
+* 
+
+### State Barchart
+```{r, echo=FALSE}
+  s_4_ <- state_barchart(s_tables[[4]])
+  s_4_
+
+``` 
+* 
+* 
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_4_long <- county_barchart(c_tables[[4]]) 
+c_4_long
+```
+
+
+## Officials & Managers {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE} 
+c_5_chart <- county_scatterplot(c_tables[[5]])
+c_5_chart
+
+```
+* 
+* 
+* 
+
+### State Barchart
+```{r, echo=FALSE}
+  s_5_ <- state_barchart(s_tables[[5]])
+  s_5_
+
+``` 
+* 
+* 
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_5_long <- county_barchart(c_tables[[5]]) 
+c_5_long
+```
+
+
+
+## Employment {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE} 
+
+c_6_chart <- county_scatterplot(c_tables[[6]])
+c_6_chart
+
+```
+* 
+* 
+* 
+
+### State Barchart
+```{r, echo=FALSE}
+  s_6_ <- state_barchart(s_tables[[6]])
+  s_6_
+
+``` 
+* 
+* 
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_6_long <- county_barchart(c_tables[[6]]) 
+c_6_long
+```
+
+
+
+## Real Cost Measure {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE} 
+
+
+c_7_chart <- county_scatterplot(c_tables[[7]])
+c_7_chart
+
+```
+* 
+* 
+* 
+
+### State Barchart
+```{r, echo=FALSE}
+  s_7_ <- state_barchart(s_tables[[7]])
+  s_7_
+
+``` 
+* 
+* 
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_7_long <- county_barchart(c_tables[[7]]) 
+c_7_long
+```
+
+
+```{r, echo=FALSE}
+##Disconnect from database
+dbDisconnect(con)
+dbDisconnect(con2)
+
+```
+
+```{r echo=FALSE, include = FALSE}
+# below is a javascript chunk for the county bar-charts. The chunk automatically selects the 'Alameda' county as the first chunk. Without the chunk below, as you can see from the output above, the first bar-chart shown sums the race/ethnicity rates for all of the counties. 
+# Each line that starts with document is for each graph (0-5) for a total of 6 graphs. If another graph is added, then you would simply add another line and label it as [6]. 
+
+# Notice that it isn't an R chunk, it is a JS chunk. :) 
+```
+Warning: Specifying width/height in layout() is now deprecated.
+Please specify in ggplotly() or plot_ly()Warning: Sum of bscol width units is greater than 12Warning: Ignoring 241 observationsWarning: Ignoring 241 observations> 
+
+```{js}
+function filter_default() {
+    document.getElementsByClassName("selectized") 
+[0].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[1].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[2].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[3].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[4].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[5].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[6].selectize.setValue("Alameda", false);
+ }
+window.onload = filter_default;
+```
+
+
+
+
