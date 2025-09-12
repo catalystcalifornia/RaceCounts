@@ -1,4 +1,4 @@
-#### Composite Index Index (z-score) for RC v7 ####
+#### County Composite Index Index (z-score) for RC v7 ####
 
 #install packages if not already installed
 packages <- c("tidyverse","RPostgres","sf","usethis")  
@@ -114,7 +114,4 @@ source <- "various sources"
 
 index_to_postgres(index_table, rc_schema)
 dbDisconnect(con)
-
-
-
 
