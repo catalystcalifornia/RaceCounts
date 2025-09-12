@@ -154,7 +154,6 @@ county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table) 
 View(county_table)
 
-#rename geoid to state_id, county_id
 state_table <- rename(state_table, state_id = geoid, state_name = geoname)
 county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 
