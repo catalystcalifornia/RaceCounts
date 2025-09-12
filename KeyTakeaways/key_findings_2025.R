@@ -60,7 +60,7 @@ arei_race_multigeo_state <- dbGetQuery(con, paste0("SELECT geoid, name, geolevel
 crosswalk <- dbGetQuery(con, paste0("SELECT city_id, dist_id, total_enroll FROM ", curr_schema, ".arei_city_county_district_table"))
 
 ########## TO LOAD ALL DATA FROM RDATA FILE AND NOT RE-RUN ALL THE TABLE IMPORT/PREP UNLESS UNDERLYING DATA HAS CHANGED #########
-################## SKIP TO LINE ~312 ###
+################## SKIP TO LINE ~391 ###
 
 rc_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", curr_schema, "' AND table_name LIKE '%_", curr_yr, "';")
 
