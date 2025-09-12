@@ -482,10 +482,10 @@ worst_rate_count <- worst_table2 %>%
          finding = case_when(  
            # If rate_count is > threshold, generate valid finding
            # If not, generate data too limited finding
-		       geo_level %in% c("county", "state", "sldu", "sldl") & rate_count > finding1_threshold ~ paste0(geo_name, "'s ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), 
-           geo_level %in% c("county", "state", "sldu", "sldl") & rate_count <= finding1_threshold ~ paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for best rate by race analysis."),
-			     geo_level == "city" & rate_count > finding1_threshold_city ~ paste0(geo_name, "'s ", long_name, " residents have the best rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), 
-           rate_count <= finding1_threshold_city ~ paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for best rate by race analysis."),
+		       geo_level %in% c("county", "state", "sldu", "sldl") & rate_count > finding1_threshold ~ paste0(geo_name, "'s ", long_name, " residents have the worst rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), 
+           geo_level %in% c("county", "state", "sldu", "sldl") & rate_count <= finding1_threshold ~ paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for worst rate by race analysis."),
+			     geo_level == "city" & rate_count > finding1_threshold_city ~ paste0(geo_name, "'s ", long_name, " residents have the worst rate for ", count, " of the ", rate_count, " RACE COUNTS indicators with data for them."), 
+           rate_count <= finding1_threshold_city ~ paste0("Data for ", long_name, " residents of ", geo_name, " is too limited for worst rate by race analysis."),
            .default = "There is an error with your data. Please fix and re-run findings code.")) 
 
 
