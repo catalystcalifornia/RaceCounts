@@ -27,8 +27,7 @@ header-includes:
   - \setlength{\parskip}{14pt}
   - \pagestyle{fancy}
   - \fancyhf{}
-  - \fancyhead[C]{\begin{tabularx}{\textwidth}{@{}p{3in}@{}X@{}p{3in}@{}} \parbox[c][1.4in][c]{3in}{\centering \includegraphics[width=0.9\linewidth]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/racecounts.png} \\ \vspace{0.1in} \textbf{\large `r params$geolevel` District Profile}} & \parbox[c][1.4in][c]{\linewidth}{\centering \includegraphics[height=1.2in]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/`r params$logo_filename`}} & \parbox[c][1.4in][c]{3in}{\centering \vspace{0.1in} \textbf{\Huge `r params$rep_name`} \\ \vspace{0.15in} \textbf{\large `r params$geolevel` District `r params$district_number`}} \end{tabularx}} # header
-  - \fancyfoot[C]{\makebox[0pt]{\includegraphics[width=\paperwidth]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/footer.png}}} # footer
+  - \fancyhead[C]{\begin{tabularx}{\textwidth}{@{}p{3in}@{}X@{}p{1.5in}@{}} \parbox[c][1.4in][c]{3in}{\centering \includegraphics[width=0.9\linewidth]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/racecounts.png} \\ \vspace{0.1in} \textbf{\normalsize `r params$leg_name` Profile}} & \parbox[c][1.4in][c]{\linewidth}{\centering \vspace{0.1in} \textbf{\LARGE `r params$rep_name`} \\ \vspace{0.15in} \textbf{\normalsize `r params$party`}} & \parbox[c][1.4in][c]{1.5in}{\centering \includegraphics[height=1.2in]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/`r params$logo_filename`}} \end{tabularx}} # footer
   - \renewcommand{\headrulewidth}{0.4pt}
   - \renewcommand{\footrulewidth}{0pt}
   - \setlength{\headheight}{105pt}
@@ -39,16 +38,22 @@ params: # needs to add params used throughout .Rmd here - also need a df of the 
   geolevel: "geolevel"
   rep_name: "Firstname Lastname"
   district_number: "XX"
+  leg_name: "Geolevel District XX"
+  party: "X Party"
+  characteristics: "All of County A, County B"
   disparity_rank: "composite_disparity_rank"
   outcome_rank: "composite_outcome_rank"
   total_districts: "total_districts"
-  crim_summary: "crim_summary"
-  demo_summary: "demo_summary"
-  econ_summary: "econ_summary"
-  educ_summary: "educ_summary"
-  hben_summary: "hben_summary"
-  hlth_summary: "hlth_summary"
-  hous_summary: "hous_summary"
+  crim_outcome_summary: "crim_outcome_summary"
+  econ_outcome_summary: "econ_outcome_summary"
+  educ_outcome_summary: "educ_outcome_summary"
+  hben_outcome_summary: "hben_outcome_summary"
+  hous_outcome_summary: "hous_outcome_summary"
+  crim_disparity_summary: "crim_disparity_summary"
+  econ_disparity_summary: "econ_disparity_summary"
+  educ_disparity_summary: "educ_disparity_summary"
+  hben_disparity_summary: "hben_disparity_summary"
+  hous_disparity_summary: "hous_disparity_summary"
   worst_outcome_1: "worst_outcome_1"
   worst_outcome_2: "worst_outcome_2"
   worst_outcome_3: "worst_outcome_3"
@@ -59,8 +64,7 @@ params: # needs to add params used throughout .Rmd here - also need a df of the 
   worst_disparity_3: "worst_disparity_3"
   worst_disparity_4: "worst_disparity_4"
   worst_disparity_5: "worst_disparity_5"
-  most_disparate_race: "most_disparate_race"
-  most_disparate_count: "most_disparate_count"
+  most_disparate_race_finding: "most_disparate_race and count of worst indicators"
   logo_filename: "logo_filename"
 ---
 
@@ -90,16 +94,24 @@ See how `r params$geolevel` District `r params$district_number` compares to all 
 
 \newpage
 
-Compared to other `r params$geolevel` Districts, `r params$geolevel` District `r params$district_number` has ...
-\begin{itemize}[itemsep=2pt]
-  \item {`r params$crim_summary`} in Safety \& Justice indicators.
-  \item {`r params$demo_summary`} in Democracy indicators.
-  \item {`r params$econ_summary`} in Economic Opportunity indicators.
-  \item {`r params$educ_summary`} in Education indicators.
-  \item {`r params$hlth_summary`} in Health Access indicators.
-  \item {`r params$hben_summary`} in Healthy Built Environment indicators.
-  \item {`r params$hous_summary`} in Housing indicators.
-\end{itemize}
+{\large \textbf{\textcolor{headerblue}{`r params$leg_name` CHARACTERISTICS}}} \\
+`r params$characterstics`
+
+Compared to the average `r params$geolevel` District
+\begin{tabular}{l|p{5cm}|p{5cm}}
+\hline
+\textbf{District `r params$district_number`} & \textbf{Outcomes} & \textbf{Racial Disparity} \\
+\hline
+Safety \& Justice & `r params$crim_outcome_summary` & `r params$crim_disparity_summary` \\
+Economic Opportunity & `r params$econ_outcome_summary` & `r params$econ_disparity_summary` \\
+Education & `r params$educ_outcome_summary` & `r params$educ_disparity_summary` \\
+Healthy Built Environment & `r params$hben_outcome_summary` & `r params$hben_disparity_summary` \\
+Housing & `r params$hous_outcome_summary` & `r params$hous_disparity_summary` \\
+\hline
+\end{tabular}
+
+Want to see your district's data and compare it to to data from other California geographies? Visit racecounts.org/....
+
 \begin{multicols}{2}
 District `r params$district_number` indicators with the lowest outcomes:
 \begin{itemize}[itemsep=2pt]
@@ -119,10 +131,7 @@ District `r params$district_number` indicators with the greatest disparity:
 \end{itemize}
 \end{multicols}
 
-Across indicators, District `r params$district_number` `r params$most_disparate_race` residents are most impacted by racial disparity in outcomes, with the worst rates for `r params$most_disparate_count` out of 40 indicators measured. All races lose when systemic racism remains unchecked though.
+`r params$most_disparate_race_finding`
 
 Want to improve outcomes and reduce racial disparities? Visit info@racecounts.org
-
-
-
 
