@@ -9,21 +9,64 @@ library(scales)
 source("W:\\RDA Team\\R\\credentials_source.R")
 
 conn <- connect_to_db("racecounts")
-schema <- "v6" # substitute until v7 done
-yr <- "2024" # substitute until v7 done
-geolevel <- "county" #substitute until leg data collection complete
+conn_mosaic <- connect_to_db("mosaic")
+schema <- "v7"
+yr <- "2025" 
+geolevel <- "leg" 
 
-indicators <- dbGetQuery(conn, statement=paste0("SELECT arei_indicator, arei_issue_area, arei_issue_area_id, arei_best, api_name FROM ", schema,".","arei_indicator_list_cntyst;"))
-issues <- dbGetQuery(conn, statement=paste0("SELECT arei_issue_area_id, api_name_short, api_name_v2 FROM ", schema,".","arei_issue_list;")) %>%
-  mutate(index_table_name = paste0(schema, ".",paste("arei", api_name_short, "index", yr,sep="_")))
+leg_indicator_list <- c("incarceration",
+                    "officer_initiated_stops",
+                    "use_of_force",
+                    "census_participation",
+                    "connected_youth",
+                    "employment",
+                    "internet",
+                    "living_wage",
+                    "officials",
+                    "per_capita_income",
+                    "real_cost_measure",
+                    "chronic_absenteeism",
+                    "ece_access",
+                    "gr3_ela_scores",
+                    "gr3_math_scores",
+                    "hs_grad",
+                    "staff_diversity",
+                    "suspension",
+                    "drinking_water",
+                    "haz_weighted_avg",
+                    "lack_of_greenspace",
+                    "toxic_release",
+                    "health_insurance",
+                    "cost_burden_renter",
+                    "denied_mortgages",
+                    "eviction_filing_rate",
+                    "foreclosure",
+                    "homeownership",
+                    "housing_quality",
+                    "overcrowded",
+                    "subprime")
 
-combined <- indicators %>%
+issues <- dbGetQuery(conn, 
+                     statement=paste0("SELECT arei_issue_area_id, api_name_short, api_name_v2 FROM ", 
+                                      schema,".","arei_issue_list;")) %>%
+  # filter out demo and htlh indexes (only 1 indicator)
+  filter(!(api_name_v2 %in% c("democracy", "health_care_access"))) %>%
+  mutate(index_table_name = paste0(schema, ".",paste("arei", api_name_short, "index", geolevel, yr,sep="_"))) 
+
+cntyst_indicators <- dbGetQuery(conn, 
+                         statement=paste0("SELECT arei_indicator, arei_issue_area, arei_issue_area_id, arei_best, api_name FROM ", 
+                                          schema,".","arei_indicator_list_cntyst;")) 
+leg_indicators <- cntyst_indicators %>%
+  filter(api_name %in% leg_indicator_list)
+
+combined <- leg_indicators %>%
   left_join(issues, by = "arei_issue_area_id") %>%
   mutate(table_name = paste0(schema,".", paste("arei", api_name_short, api_name, geolevel, yr, sep="_")))
 
 # Get composite rank in disparity and outcomes
 composite_index <- dbGetQuery(conn, 
-                              statement=paste0("SELECT county_id, county_name, disparity_rank, performance_rank FROM ", schema,".","arei_composite_index_", yr, ";"))
+                              statement=paste0("SELECT leg_id, leg_name, geolevel, disparity_rank, performance_rank FROM ", 
+                                               schema,".","arei_composite_index_leg_", yr, ";"))
 
 # get each issue area index from pg
 issue_indexes <- list()
@@ -34,7 +77,7 @@ for(i in 1:nrow(issues)) {
   sql_query <- paste0("SELECT * FROM ", index_table_name, ";")
   x <- dbGetQuery(conn, sql_query) 
   x_transform <- x %>%
-    select(county_id, county_name, ends_with("_rank"), ends_with("_quadrant"), ends_with("_perf_z"), ends_with("_disp_z")) %>%
+    select(leg_id, leg_name, geolevel, ends_with("_rank"), ends_with("_quadrant"), ends_with("_perf_z"), ends_with("_disp_z")) %>%
     pivot_longer(
       cols = ends_with(c("_perf_z", "_disp_z")),
       names_to = c("indicator", "metric"),
@@ -57,22 +100,22 @@ for(i in 1:nrow(issues)) {
 
 }
 
-dbDisconnect(conn)
+
 list2env(issue_indexes, .GlobalEnv)
 
 # Combine all issue area dfs into 1 df
-all_indicators <- rbind(crim, demo, econ, educ, hben, hlth, hous)
+all_indicators <- rbind(crim, econ, educ, hben, hous)
 
 # Get summaries of each issue area based on quadrant
 all_issues <- all_indicators %>%
-  select(county_id, county_name, quadrant, issue_area) %>%
+  select(leg_id, leg_name, geolevel, quadrant, issue_area) %>%
   distinct() %>%
-  complete(county_id, issue_area,
+  complete(leg_id, issue_area,
            fill = list(disparity_rank = NA, 
                        performance_rank = NA, 
                        quadrant = NA)) %>%
-  group_by(county_id) %>%
-  fill(county_name, .direction = "downup") %>%
+  group_by(leg_id) %>%
+  fill(leg_name, .direction = "downup") %>%
   ungroup() %>%
   mutate(summary=case_when(
     quadrant=="red" ~ "Worse outcomes and higher disparity",
@@ -81,15 +124,15 @@ all_issues <- all_indicators %>%
     quadrant=="purple" ~ "Better outcomes and lower disparity",
     .default = "Not enough available data for comparison"
   )) %>%
-  select(-quadrant)%>%
+  select(-c(quadrant, leg_name))%>%
   pivot_wider(names_from = issue_area,
               values_from = summary,
-              names_glue = "{issue_area}_summary")
+              names_glue = "{issue_area}_summary") 
 
 # indicator codes from index table columns do not match arei_indicator_list names
 # creating a table to recode
 indicator_codes <- all_indicators %>% select(indicator) %>% distinct() %>%
-  left_join(indicators %>% select(arei_indicator, api_name), by=c("indicator"="api_name")) %>%
+  left_join(leg_indicators %>% select(arei_indicator, api_name), by=c("indicator"="api_name")) %>%
   mutate(arei_indicator=case_when(
     indicator=="safety"~"Perception of Safety",
     indicator=="offenses"~"Arrests for Status Offenses",
@@ -136,53 +179,89 @@ indicator_codes <- all_indicators %>% select(indicator) %>% distinct() %>%
   ))
 
 
-# Get 5 indicators with worst outcomes (lowest z?)
-worst_5_outcomes <- all_indicators %>%
-  select(county_id, county_name, indicator, perf_z) %>%
-  group_by(county_id, county_name) %>%
-  slice_min(perf_z, n=5) %>%
-  mutate(rank=row_number()) %>%
-  ungroup() %>%
-  left_join(indicator_codes, by="indicator") %>% 
-  select(county_id, county_name, rank, arei_indicator) %>%
-  pivot_wider(names_from=rank,
-              values_from = arei_indicator,
-              names_glue = "worst_outcome_{rank}")
+# Get 5 indicators with worst outcomes 
+worst_outcomes <- dbGetQuery(conn = conn_mosaic,
+                             statement = "SELECT leg_id, geolevel, variable, rk FROM v7.indicator_outc_rk WHERE rk <=5;") %>%
+  pivot_wider(names_prefix = "worst_outcome_",
+              names_from = rk,
+              values_from = variable)
 
-# Get 5 indicators with most disparity (highest z?)
-worst_5_disparity <- all_indicators %>%
-  select(county_id, county_name, indicator, disp_z) %>%
-  group_by(county_id, county_name) %>%
-  slice_max(disp_z, n=5) %>%
-  mutate(rank=row_number()) %>%
-  ungroup() %>%
-  left_join(indicator_codes, by="indicator") %>% 
-  select(county_id, county_name, rank, arei_indicator) %>%
-  pivot_wider(names_from=rank,
-              values_from = arei_indicator,
-              names_glue = "worst_disparity_{rank}")
-  
-# create final df: composite ranks, issue area summaries, and worst outcome and 
-# disparity indicators
-geolevels <- c("assembly", "senate")
-races <- c("American Indian / Alaska Native", "Asian", "Black", "Latinx", "Native Hawaiian / Pacific Islander", "White", "Southwest Asian / North African")
+# Get 5 indicators with most disparity 
+worst_disparity <- dbGetQuery(conn = conn_mosaic,
+                                 statement = "SELECT leg_id, geolevel, variable, rk FROM v7.indicator_disp_rk WHERE rk <=5;") %>%
+  pivot_wider(names_prefix = "worst_disparity_",
+              names_from = rk,
+              values_from = variable)
 
+dbDisconnect(conn_mosaic)
+
+# findings
+place_findings <- dbGetQuery(conn=conn,
+                              statement = "SELECT geoid as leg_id, geo_level as geolevel, finding_type, finding as most_impacted_part1 FROM v7.arei_findings_places_multigeo where finding_type='most impacted' and (geo_level='sldu' or geo_level = 'sldl');") %>%
+  mutate(most_impacted_part1 = gsub("\\.", ",", most_impacted_part1))
+
+race_findings <- dbGetQuery(conn=conn,
+                            statement = "SELECT geoid as leg_id, geo_level as geolevel, race, finding_type, finding  FROM v7.arei_findings_races_multigeo where finding_type='worst count' and (geo_level='sldu' or geo_level = 'sldl');")  %>%
+  mutate(worst_count = as.numeric(str_extract(finding, "\\d+(?=\\s+of\\s+the)")),
+         total_count = as.numeric(str_extract(finding, "(?<=of\\sthe\\s)\\d+")),
+         race = gsub("latino", "latinx", race),
+         race = gsub("nhpi", "native hawaiian / pacific islander", race),
+         race = gsub("aian", "american indian / alaska native", race),
+         race = gsub("other", "another race", race),
+         race = gsub("swana", "southwest asian / north african", race),
+         race = gsub("filipino", "filipinx", race),
+         race = gsub("twoormor", "multiracial", race)
+         ) %>%
+  group_by(leg_id, geolevel) %>%
+  filter(worst_count == max(worst_count, na.rm = TRUE)) %>%
+  summarise(
+    race = paste(str_to_title(race), collapse = " and "),
+    finding_type = first(finding_type),
+    worst_count = first(worst_count),
+    total_count = max(total_count),
+    most_impacted_part2 = paste0("with the wort rates for ", worst_count, " out of ",
+                                 total_count, 
+                                 " indicators measured. All races lose when systemic racism remains unchecked though."),
+    .groups = "drop") %>%
+  select(leg_id, geolevel, most_impacted_part2) 
+
+most_impacted_race_findings <- place_findings %>%
+  left_join(race_findings) %>%
+  mutate(most_impacted_race_finding = paste(most_impacted_part1, most_impacted_part2)) %>%
+  select(leg_id, geolevel, most_impacted_race_finding)
+
+dbDisconnect(conn)
+
+# Add leg member names
+ad_members <- read.csv("W:\\Project\\RACE COUNTS\\2025_v7\\Leg_Dist_PDFs\\ca_assembly_members_2025.csv") %>%
+  separate_wider_delim(cols=Name,
+                       delim=", ",
+                       names = c("last_name", "first_name")) %>%
+  mutate(District = gsub("District: ", "060", District),
+         rep_name = paste(first_name, last_name),
+         geolevel="sldl") %>%
+  select(-c(first_name, last_name))
+
+sd_members <- read.csv("W:\\Project\\RACE COUNTS\\2025_v7\\Leg_Dist_PDFs\\ca_senate_members_2025.csv") %>%
+  mutate(Name = str_sub(Name, end=-(4+1)),
+         District = gsub("District ", "060", District),
+         geolevel="sldu") %>%
+  rename(rep_name=Name)
+
+all_members <- rbind(ad_members, sd_members) %>%
+  rename(leg_id=District)
+
+# create final df: composite ranks, issue area summaries, and worst outcome and disparity indicators
 final_df <- composite_index %>%
   rename(composite_disparity_rank=disparity_rank,
          composite_performance_rank=performance_rank) %>%
   mutate(composite_disparity_rank=scales::label_ordinal()(composite_disparity_rank),
          composite_performance_rank=scales::label_ordinal()(composite_performance_rank)) %>%
-  left_join(all_issues, by=c("county_id","county_name")) %>%
-  left_join(worst_5_outcomes, by=c("county_id","county_name")) %>%
-  left_join(worst_5_disparity, by=c("county_id","county_name")) %>%
-  # cosmetic changes to emulate leg district df 
-  rename(district_number=county_id,
-         rep_name=county_name) %>%
-  # get two-digit district number, fake rep names, etc.
-  mutate(district_number=str_sub(district_number,-2,-1),
-         rep_name=paste(rep_name, "Surname"),
-         geolevel=sample(geolevels, size=nrow(.), replace=T),
-         most_disparate_race=sample(races, size=nrow(.), replace=T),
-         most_disparate_count=sample(1:45, size=nrow(.), replace=T))
-  
+  left_join(all_issues, by=c("leg_id","geolevel"), keep = FALSE) %>%
+  left_join(worst_outcomes, by=c("leg_id","geolevel"), keep = FALSE) %>%
+  left_join(worst_disparity, by=c("leg_id","geolevel"), keep = FALSE) %>%
+  left_join(most_impacted_race_findings, by=c("leg_id","geolevel"), keep = FALSE) %>%
+  left_join(all_members, by=c("leg_id","geolevel"), keep = FALSE) %>%
+  mutate(district_number=str_sub(leg_id,-2,-1))
+
   
