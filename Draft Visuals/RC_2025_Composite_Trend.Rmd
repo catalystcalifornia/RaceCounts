@@ -1,0 +1,291 @@
+---
+title: "RACE COUNTS: Small Pop Counties"
+author: "Authored by: Catalyst California"
+date: "8/28/25"
+output:
+  html_document:
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+
+subtitle: 'Composite Index Trends'
+---
+  
+<style type="text/css">
+  h1{
+  font-family: Rubik;
+  }
+  h2{
+  font-family: Rubik;
+  }
+  h3{
+  font-family: Rubik;
+  }
+  a{
+  font-family: Rubik;
+  }
+  ul{
+  font-family: Rubik;
+  }
+  ol{
+  font-family: Rubik;
+  }
+  body{
+  font-family: Rubik;
+  font-size: 15px;
+}
+p{
+  font-family: Rubik;
+  font-size: 15px;
+}
+
+</style>
+
+
+```{r setup, include = FALSE}
+## NOTE: Data viz below based on: W:\Project\RACE COUNTS\2024_v6\Visualizations\RC_2024_Indexes.RMD ###
+
+knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
+
+#Set up workspace
+packages <- c("DT","RPostgres","formattable","knitr","dplyr","sf","leaflet","htmltools","tidyr","stringr","rgdal","rpostgis","RColorBrewer","ggplot2","stringr","scales","colorspace","highcharter","here","htmltools","devtools","broom","kableExtra","reshape2")  
+
+install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
+
+if(length(install_packages) > 0) { 
+  install.packages(install_packages) 
+  
+} else { 
+  
+  print("All required packages are already installed.") 
+} 
+
+for(pkg in packages){ 
+  library(pkg, character.only = TRUE) 
+} 
+options(scipen=999)
+options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
+
+
+# Load PostgreSQL driver and databases --------------------------------------------------
+source("W:\\RDA Team\\R\\credentials_source.R")
+con <- connect_to_db("racecounts")
+con2 <- connect_to_db("rda_shared_data")
+
+# just a note of reference to inserting text #https://monashbioinformaticsplatform.github.io/2017-11-16-open-science-training/topics/rmarkdown.html
+#https://rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf
+
+```
+
+
+```{r echo=FALSE, include = FALSE}
+
+####################### ADD RC THEME #####################################
+rc_theme <- hc_theme(
+    # race counts colors
+  colors = c("#800080", "orange", "red", "yellow"),
+  chart = list(
+    backgroundColor = "#F7F7F7", # RC white
+    style = list(
+          fontFamily = "Rubik") 
+  ),
+  title = list(
+    style = list(
+      color = "#070024",
+      fontFamily = "Rubik")
+  ),
+  subtitle = list(
+    style = list(
+      color = "#8E8C8F", # medium grey
+      fontFamily = "Rubik")
+  ),
+  caption = list(
+    style = list(
+      color = "#8E8C8F",
+      fontFamily = "Rubik")
+  ),
+    axis = list(
+    style = list(
+      color = "#8E8C8F",
+      fontFamily = "Rubik")
+  ),
+  legend = list(
+    itemStyle = list(
+      fontFamily = "Rubik",
+      color = "#070024"),
+    itemHoverStyle = list(
+       fontFamily = "Rubik",
+      color = "#070024")
+  ))
+
+# Add commas to long numbers
+lang <- getOption("highcharter.lang")
+lang$thousandsSep <- ","
+options(highcharter.lang = lang)
+
+####################### GET DATA #####################################
+# Import index tables
+## v5
+v5_query <- "SELECT table_name FROM information_schema.tables WHERE table_schema='v5'"
+rc_listv5 <- dbGetQuery(con, v5_query)
+index_listv5 <- rc_listv5 %>% filter(grepl('index_2023',table_name))
+index_listv5 <- index_listv5[order(index_listv5$table_name), ] # alphabetize list of index tables, changes df to list the needed format for next step
+index_tablesv5 <- lapply(setNames(paste0("select * from v5.", index_listv5), index_listv5), DBI::dbGetQuery, conn = con)
+
+## v6
+v6_query <- "SELECT table_name FROM information_schema.tables WHERE table_schema='v6'"
+rc_listv6 <- dbGetQuery(con, v6_query)
+index_listv6 <- rc_listv6 %>% filter(grepl('index_2024',table_name))
+index_listv6 <- index_listv6[order(index_listv6$table_name), ] # alphabetize list of index tables, changes df to list the needed format for next step
+index_tablesv6 <- lapply(setNames(paste0("select * from v6.", index_listv6), index_listv6), DBI::dbGetQuery, conn = con)
+
+## v7
+v7_query <- "SELECT table_name FROM information_schema.tables WHERE table_schema='v7'"
+rc_listv7 <- dbGetQuery(con, v7_query)
+index_listv7 <- rc_listv7 %>% filter(grepl('index_2025',table_name))
+index_listv7 <- index_listv7[order(index_listv7$table_name), ] # alphabetize list of index tables, changes df to list the needed format for next step
+index_tablesv7 <- lapply(setNames(paste0("select * from v7.", index_listv7), index_listv7), DBI::dbGetQuery, conn = con)
+
+
+# Join matching vintage total population to index tables
+## v5
+popv5 <- dbGetQuery(con2, paste0("SELECT geoid AS county_id, dp05_0001e FROM demographics.acs_5yr_dp05_multigeo_2021"))
+index_pop_tablesv5 <- lapply(index_tablesv5, function(x) x%>% left_join(popv5, by='county_id'))
+
+## v6
+popv6 <- dbGetQuery(con2, paste0("SELECT geoid AS county_id, dp05_0001e FROM demographics.acs_5yr_dp05_multigeo_2022"))
+index_pop_tablesv6 <- lapply(index_tablesv6, function(x) x%>% left_join(popv6, by='county_id'))
+
+## v7
+popv7 <- dbGetQuery(con2, paste0("SELECT geoid AS county_id, dp05_0001e FROM demographics.acs_5yr_dp05_multigeo_2023"))
+index_pop_tablesv7 <- lapply(index_tablesv7, function(x) x%>% left_join(popv7, by='county_id'))
+
+
+####################### DATA ANALYSIS #####################################
+comp_index_list <-do.call(c, Map(list, index_pop_tablesv7[1], index_pop_tablesv6[1], index_pop_tablesv5[1]))
+names(comp_index_list) <- c("composite_index_2025", "composite_index_2024", "composite_index_2023")
+comp_index_list <- lapply(comp_index_list, transform, quadrant=ifelse(quadrant == "green", "purple", quadrant)) # update quadrant colors to match current colors
+
+# Remove counties without quadrant values. Cap composite index perf/disp z-scores at 1 and -1. More info: https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
+# set chart colors
+hex_code <- c("#81007F", "#FADA5E", "#FA8128", "#CA3433")
+quadrant <- c("purple", "yellow", "orange", "red")
+quadrant_hex <- data.frame(hex_code, quadrant)
+
+comp_index_list <- lapply(comp_index_list, function(x) x %>% mutate(
+    disp_z_cap = case_when(
+      disparity_z > 1 ~ 1,
+      disparity_z < -1 ~ -1,
+      TRUE ~ disparity_z)
+    ) %>% mutate (
+    perf_z_cap = case_when(
+      performance_z > 1 ~ 1,
+      performance_z < -1 ~ -1,
+      TRUE ~ performance_z)
+    ) %>% left_join(
+    quadrant_hex, by='quadrant'
+    ) %>% filter(
+    quadrant %in% c("purple", "yellow", "orange", "red")))
+
+list2env(comp_index_list, envir = .GlobalEnv)
+df_names <- as.data.frame(names(comp_index_list))   # get names of list elements to use in loop
+
+# list of low pop counties in RED quadrant in v7-v5
+small_pop <- lapply(comp_index_list, function(x) filter(x, dp05_0001e < 100000))
+small_popv5 <- as.data.frame(small_pop[3]) %>% select(c(composite_index_2023.county_name, composite_index_2023.county_id, composite_index_2023.quadrant))
+small_popv6 <- as.data.frame(small_pop[2]) %>% select(c(composite_index_2024.county_id, composite_index_2024.quadrant))
+small_popv7 <- as.data.frame(small_pop[1]) %>% select(c(composite_index_2025.county_id, composite_index_2025.quadrant))
+
+small_popall <- small_popv5 %>% left_join(small_popv6, by=c('composite_index_2023.county_id'='composite_index_2024.county_id')) 
+small_popall <- small_popall %>% left_join(small_popv7, by=c('composite_index_2023.county_id'='composite_index_2025.county_id')) 
+names(small_popall)[1] <- "County"
+names(small_popall)[2] <- "County ID"
+small_popall <- small_popall %>% as.data.frame() %>% arrange(County) %>% select(-c("County ID"))
+#red_small_pop <- lapply(comp_index_list, function(x) filter(x, quadrant == "red" & dp05_0001e < 100000))
+
+red_small <- data.frame(c(nrow(small_popall[small_popall$composite_index_2023.quadrant == 'red', ]), nrow(small_popall[small_popall$composite_index_2024.quadrant == 'red', ]), nrow(small_popall[small_popall$composite_index_2025.quadrant == 'red', ])))
+RC_Version_Year <- data.frame(c("2023", "2024", "2025"))
+
+small_popall_summary <- data.frame(c(RC_Version_Year, red_small))
+names(small_popall_summary)[2] <- "# of Small Pop Red Counties"
+names(small_popall_summary)[1] <- "RC_Year"
+
+# join v7/v5 z-scores for potential further analysis
+z_scores <- data.frame(index_pop_tablesv5[1]) 
+colnames(z_scores) = gsub("arei_composite_index_2023.", "", colnames(z_scores))
+z_scores <- z_scores %>% select(c(county_name, dp05_0001e, quadrant, ends_with("_z")))
+#z_scores <- z_scores %>% left_join(composite_index_2024 %>% select(county_name, ends_with("_z")), by = "county_name", suffix=c(".v5", ".v6"))
+z_scores <- z_scores %>% left_join(composite_index_2025 %>% select(county_name, ends_with("_z")), by = "county_name", suffix=c(".v5", ".v7"))
+
+
+
+```
+
+<!-- *** -->
+# Summary
+Looking at the composite index in 2025, there 9 (out of 21) counties with populations smaller than 100k (smaller pop counties) in the Red Quadrant. That number increased to 13 (out of 19) in 2024 and stayed at 13 (out of 18) in 2023. Behind that increase is the fact that 5 small pop counties (Colusa, Inyo, Plumas, Sutter, Tehama) moved into the Red Quadrant, while one (Mariposa) moved from Red into the Yellow Quadrant.
+
+Looking at 2023 issue area indexes, we can see that there are many smaller pop counties in the Red Quadrant for Economic Opportunity and Democracy.
+
+Note: All smaller population counties are in the Northern / Sierra region, except for San Benito in the Central Coast region.
+
+# Data
+
+## Composite Index 
+```{r}
+
+library(kableExtra)
+small_popall_summary_sort <- small_popall_summary %>% arrange((RC_Year), descending = FALSE)  
+
+summary <- kable(small_popall_summary_sort, digits=0, col.names=c("RC_Year","# of Small Pop Red Counties")) %>%
+  kable_styling()%>%
+    row_spec(1, bold = T, color ="white", background="#62bce5", extra_css = "border-bottom: 1px solid")%>%
+    row_spec(2:3, bold=T, color= "white", background="#6c90ca", extra_css = "border-bottom: 1px solid")%>%
+    add_header_above(c("Number of Counties with <100k Pop in Red Quadrant"=1," "=1), align="l")
+summary
+
+```
+
+```{r}
+counties <- kable(small_popall, digits=0, col.names=c("County", "2023.quadrant", "2024.quadrant", "2025.quadrant"))%>%
+  kable_styling()%>%
+    add_header_above(c("Counties with <100K Pop in 2023"=1," "=3), align="l") %>% 
+  kable_material(c("striped"))
+counties
+```
+
+```{r}
+
+scatterplot <- function(table_name, title) {
+scatter_ <- table_name %>%
+    hchart("scatter", 
+    hcaes(x=disp_z_cap, y=perf_z_cap, size=dp05_0001e, color=hex_code),
+      tooltip = 
+         list(pointFormat = 
+                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.performance_rank} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f}")) %>%
+  hc_title(text = (paste0("Composite Index ", title))) %>%
+  hc_xAxis(title = list(text = "Disparity Z-Score"), max = 1.2, min = -1.2, tickInterval = .5) %>% 
+  hc_yAxis(title = list(text = "Outcome Z-Score"), max = 1.2, min = -1.2, tickInterval = .5) %>% 
+  hc_caption(
+    text = "Data source: Various",
+    align = "center"
+     ) %>% hc_size(height=700,width=700)
+
+  hc_add_theme(scatter_, rc_theme) 
+  scatter_
+}
+
+v7 <- scatterplot(composite_index_2025, "2025")
+v7
+
+
+v6 <- scatterplot(composite_index_2024, "2024")
+v6
+
+
+v5 <- scatterplot(composite_index_2023, "2023")
+v5
+
+```

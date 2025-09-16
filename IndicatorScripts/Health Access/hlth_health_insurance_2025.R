@@ -99,10 +99,10 @@ leg_table <- rbind(upper_table, lower_table)
 View(leg_table)
 
 #rename geoid to state_id, county_id, city_id, leg_id
-colnames(state_table)[1:2] <- c("state_id", "state_name")
-colnames(county_table)[1:2] <- c("county_id", "county_name")
-colnames(city_table)[1:2] <- c("city_id", "city_name")
-colnames(leg_table)[1:2] <- c("leg_id", "leg_name")
+state_table <- rename(state_table, state_id = geoid, state_name = geoname)
+county_table <- rename(county_table, county_id = geoid, county_name = geoname)
+city_table <- rename(city_table, city_id = geoid, city_name = geoname)
+leg_table <- rename(leg_table, leg_id = geoid, leg_name = geoname)
 
 
 ############### COUNTY, STATE, CITY METADATA  ##############

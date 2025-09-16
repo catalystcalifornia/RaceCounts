@@ -1,0 +1,418 @@
+---
+title: "RACE COUNTS: Democracy"
+author: "Authored by: Catalyst California"
+date: "9/4/2025"
+output:
+  html_document:
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+
+subtitle: 'Draft Visuals'
+---
+  
+<style type="text/css">
+  h1{
+  font-family: Rubik;
+  }
+  h2{
+  font-family: Rubik;
+  }
+  h3{
+  font-family: Rubik;
+  }
+  a{
+  font-family: Rubik;
+  }
+  ul{
+  font-family: Rubik;
+  }
+  ol{
+  font-family: Rubik;
+  }
+  body{
+  font-family: Rubik;
+  font-size: 15px;
+}
+p{
+  font-family: Rubik;
+  font-size: 15px;
+}
+body { background-color: #FFFFFF; }
+
+</style>
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
+
+#load the libraries via the below source as well as the credentials and set the theme
+source("draft_visual_functions.R")
+
+options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
+
+##Add RC theme##
+rc_theme # load from the above draft_visual_functions.R script
+issue_name <- 'Democracy' # Issue names: Safety & Justice, Democracy, Economic Opportunity, Education, Healthy Built Environment, Health Care Access, Housing
+issue <- 'demo' #Issue: crim, demo, educ, econ, hben, hlth, hous
+rc_schema <- 'v7'
+rc_yr <- '2025'
+acs_yr <- '2023'
+
+```
+
+
+```{r echo=FALSE, include = FALSE}
+####################### GET COUNTY DATA #####################################
+county_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%county_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
+
+county_list <- dbGetQuery(con, county_list_query) %>% pull(table_name) 
+
+c_tables <- lapply(setNames(paste0("select * from ", rc_schema, ".", county_list), county_list), DBI::dbGetQuery, conn = con)
+
+# create column with indicator name
+c_tables <- map2(c_tables, names(c_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
+
+# clean up and add columns
+c_tables <- lapply(c_tables, function(x) x %>% 
+  select(-any_of('geolevel'), -ends_with("_pop")) %>%
+  mutate(issue = substring(indicator, 6,9),
+         indicator = substring(indicator, 11),
+         indicator = gsub(paste0('_county_', rc_yr), '', indicator),
+         geolevel = 'county'))
+
+# Get issue index
+c_index_z <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_", issue, "_index_", rc_yr)) %>%
+  rename(geo_name = county_name)  # make 'name' col generic
+
+####################### POPULATION DATA #####################################
+#Get total population
+pop <- dbGetQuery(con, paste0("SELECT geoid, total_pop, geolevel FROM ", rc_schema, ".arei_race_multigeo WHERE geolevel = 'county'")) %>% select(-geolevel)
+
+c_index_z <- left_join(c_index_z, pop, by = c("county_id" = "geoid"))
+
+c_tables <- lapply(c_tables, function(x) 
+  x %>% left_join(pop, by = c("county_id" = "geoid")))
+
+## Make 'name' col generic
+c_tables <- lapply(c_tables, function(x)
+  x %>% rename(geo_name = county_name))
+
+####################### GET STATE DATA #####################################
+state_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%state_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
+
+state_list <- dbGetQuery(con, state_list_query) %>% pull(table_name) 
+
+s_tables <- lapply(setNames(paste0("select * from ", rc_schema, ".", state_list), state_list), DBI::dbGetQuery, conn = con)
+
+# create column with indicator name
+s_tables <- map2(s_tables, names(s_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
+
+# clean up and add columns
+s_tables <- lapply(s_tables, function(x) x %>% 
+  select(-any_of('geolevel'), -ends_with("_pop")) %>%
+  mutate(issue = substring(indicator, 6,9),
+         indicator = substring(indicator, 11),
+         indicator = gsub(paste0('_state_', rc_yr), '', indicator),
+         geolevel = 'state'))
+
+
+##Add 2025 v7 Source Data##
+v7_sources <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_indicator_list_cntyst"))
+v7_sources <- v7_sources %>% filter(v7_sources$arei_issue_area==issue_name) %>%
+  select(arei_indicator, arei_issue_area, rate_descriptor, bar_chart_header, rate_rounding, methodology, data_source, api_name)
+
+
+## Join metadata to data
+c_tables <- lapply(c_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
+s_tables <- lapply(s_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
+
+names(c_tables)
+names(s_tables)
+```
+
+<!-- *** -->
+# Introduction
+NOTE: The data and findings below are drafts subject to change and some pieces are still in the QA process.
+
+RACE COUNTS provides a 3D view of racial equity:
+<br>OUTCOME: How well people are doing. The higher the circle, the better the outcome.
+<br>DISPARITY: How racial groups compare to one another. The further right the circle, the greater the differences by race.
+<br>IMPACT: The total population. The bigger the circle, the larger the population.
+
+<br><span style="color:purple">Purple</span> counties: Gains at Risk; 
+<br><span style="color:orange">Orange</span> counties: Prosperity for the Few;
+<br><span style="color:#c9cc14">Yellow</span> counties: Struggling to Prosper;
+<br><span style="color:red">Red</span> counties: Stuck and Unequal.
+
+
+# Race/Ethnicity Notes
+<br>1) "Other" race includes those who identify with a race outside of the specifically named categories, such as Asian, White, etc.
+<br>2) Race labels for bar charts: The "nh_" prefix signifies that a group is non-Latinx (excludes Latinx).
+<br>3) The "twoormor" group represents those who identify as Two or More Races.
+
+# Indicators
+
+## Democracy Index - UPDATED
+```{r, echo=FALSE}
+# Remove counties without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
+  c_index_z <- c_index_z %>% mutate(arei_issue_area=issue_name)
+  c_index_chart <- index_scatterplot(c_index_z, 2)
+
+  c_index_chart
+```
+
+* There seems to be a correlation between higher outcome and lower disparity.
+* Generally, larger population counties have below average racial disparity while smaller population counties have higher than average disparity.
+* All of the counties in the San Joaquin Valley besides Merced have below average outcome in the Democracy Index.
+* Nine of the 12 counties with the highest racial disparities in Democracy Index were in the Northern Sierra region.
+
+
+## Census Participation {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE} 
+
+c_1_chart <- county_scatterplot(c_tables[[1]])
+c_1_chart
+
+```
+
+* In general, larger population counties have higher overall Census participation rates than smaller population counties.
+* 8 out of 9 Bay Area counties and 5 out of 6 Central Coast counties are in the purple Quadrant (Lower Disparity, Higher Outcome). 
+* The bottom 15 counties in census participation outcome are all rural counties from the Northern Sierra region.
+
+### State Barchart
+```{r, echo=FALSE}
+
+  s_1_ <- state_barchart(s_tables[[1]])
+  s_1_
+
+``` 
+
+* At the state level, there is relatively little variation between the census participation rates of different racial groups. The lowest rate of any single racial group is just 1.6 percentage points below the overall statewide rate.
+* Latinx, Black, and American Indian or Alaska Native Californians had the three lowest Census participation rates, while Asian Californians have the highest.
+
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_1_long <- county_barchart(c_tables[[1]]) 
+c_1_long
+```
+
+
+## Registered Voters - UPDATED {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE}
+c_2_chart <- county_scatterplot(c_tables[[2]])
+c_2_chart
+
+
+```
+
+* There appears to be a relationship between higher outcome and lower disparity, meaning as registration goes up, disparity decreases.
+* All but one of the San Joaquin Valley counties have lower than average voter registration rates. In fact, five of the eight counties with the lowest registration rates are in that region.
+
+### State Barchart
+```{r, echo=FALSE}
+  s_2_ <- state_barchart(s_tables[[2]])
+  s_2_
+
+```
+
+* White voters have the best registration rate in the state, with 72% of eligible White Californians registered to vote.
+* Latinx and Asian Californians have the worst rate of voter registration in the state at 55%, a rate 17 percentage points lower than the White rate (71%).
+* Black Californians are registered to vote at a rate (63%) on par with the overall statewide rate (63.6%).
+
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_2_long <- county_barchart(c_tables[[2]]) 
+c_2_long
+```
+
+
+## Diversity of Candidates - UPDATED {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE}
+c_3_chart <- county_scatterplot(c_tables[[3]])
+c_3_chart
+```
+
+* All five counties in the purple Quadrant are in the Northern Sierra region.
+* The fact that there is very little variance between counties in overall outcome in this measure reflects that there is relatively equal proportional representation for each county across the various levels of government in California.
+* Los Angeles County, which has the largest population, has the fourth lowest racial disparities among its body of candidates for public office.
+* 7 of the 11 counties with the largest racial disparities in their elected representation are in the Bay Area.
+
+### State Barchart
+
+```{r, echo=FALSE}
+
+  s_3_ <- state_barchart(s_tables[[3]])
+  s_3_
+
+``` 
+
+* White Californians have by far the highest rate of representation among candidates for office, with 1.4 candidates per 100,000 residents. They are the only racial group in the entire state that have better representation than the overall statewide average.
+* American Indian and Alaska Native Californians have the worst rate of representation among candidates for office of any racial group at just 0.2 officials per 100,000 people. They have 7x less representation than White Californians.
+* Latinx Californians have nearly 3x less representation in the statewide candidate pool than White Californians.
+
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_3_long <- county_barchart(c_tables[[3]]) 
+c_3_long
+```
+
+
+## Diversity of Elected Officials - UPDATED {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE}
+c_4_chart <- county_scatterplot(c_tables[[4]])
+c_4_chart
+```
+
+* The fact that there is very little variance between counties in overall outcome in this measure reflects that there is relatively equal proportional representation for each county across the various levels of government in California.
+* Many of the counties with larger populations, such as Sacramento, San Diego, Orange, Fresno, and Los Angeles, rank towards the lower end of racial disparities among their elected officials
+* The 12 counties with the highest racial disparities in elected representation are all non-urban counties in the Northern Sierra region.
+
+### State Barchart
+
+```{r, echo=FALSE}
+
+  s_4_ <- state_barchart(s_tables[[4]])
+  s_4_
+
+```
+
+*The disparity between White representation and the representation of all other racial groups in California is even wider in the statewide pool of elected than it is in the pool of candidates for office. This means White candidates are not just more likely to run, but more likely to win.
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_4_long <- county_barchart(c_tables[[4]]) 
+c_4_long
+```
+
+
+## Voting in Midterm Elections {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE}
+c_5_chart <- county_scatterplot(c_tables[[5]])
+c_5_chart
+
+```
+
+* Five of the six counties in the Red Quadrant (Higher Disparity, Lower Outcome) are in the San Joaquin Valley.
+* Sonoma County has both the highest rates of voting in midterm elections in the state and the second lowest racial disparities in its midterm election voting pool.
+* There is a general correlation between lower racial disparities and better overall voter turnout for midterm elections, with relatively few counties firmly in the yellow or orange quadrants. 
+
+
+### State Barchart
+
+```{r, echo=FALSE}
+
+  s_5_ <- state_barchart(s_tables[[5]])
+  s_5_
+
+```
+
+* White voters are the most likely of any racial group in the state to turn out for midterm elections, voting at a rate 1.5 times higher than Asian and and Latinx voters.
+* Asian and Latinx voters turn out at rates more than 10 percentage points below the statewide turnout rate.
+
+
+
+### County Barchart
+
+```{r, echo=FALSE}
+
+c_5_long <- county_barchart(c_tables[[5]]) 
+c_5_long
+
+```
+
+
+## Voting in Presidential Elections - UPDATED {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE}
+c_6_chart <- county_scatterplot(c_tables[[6]])
+c_6_chart
+
+```
+
+* Data is relatively sparse for this indicator, as both the outcome and disparity measures can only be reported for 26 of the 54 counties in the state.
+* There appears to be a negative relationship between outcome and disparity, meaning as disparity increases, voter turnout decreases.
+* The three most disparate counties, Stanislaus, Kings, and Imperial, have large gaps between White and Latinx voter turnout.
+* Six of the eight counties with the worst voter turnout rates are in the San Joaquin Valley.
+
+### State Barchart
+
+```{r, echo=FALSE}
+
+  s_6_ <- state_barchart(s_tables[[6]])
+  s_6_
+
+``` 
+
+* White Californians have the highest turnout rate in the state for presidential elections, voting a rate well above the state average.
+* Although White voter rates are still the highest, the differences in voting rates between racial groups in the state is less pronounced for presidential elections than it is for midterm elections. For presidential elections, white turnout is two percentage points closer to the statewide rate and 1.8 points closer to the racial group with the lowest rate (Latinx Californians).
+* Asian voters increase their turnout by 17 percentage points for presidential elections compared to midterm elections.
+
+### County Barchart
+
+```{r, echo=FALSE}
+
+c_6_long <- county_barchart(c_tables[[6]]) 
+c_6_long
+
+```
+
+```{r}
+##Closing database connections##
+dbDisconnect(con)
+dbDisconnect(con2)
+```
+
+
+```{js}
+function filter_default() {
+    document.getElementsByClassName("selectized") 
+[0].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[1].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[2].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[3].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[4].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[5].selectize.setValue("Alameda", false);
+
+ }
+window.onload = filter_default;
+```
+
+
+
+

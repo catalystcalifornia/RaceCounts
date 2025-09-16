@@ -1,6 +1,6 @@
 ## Pop by race/ethnicity for RC 2025 v7 ###
 #install packages if not already installed
-packages <- c("readr", "tidyr", "dplyr", "DBI", "RPostgreSQL", "tidycensus", "tidyverse", "stringr", "usethis")
+packages <- c("readr", "tidyr", "dplyr", "DBI", "RPostgres", "tidycensus", "tidyverse", "stringr", "usethis")
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
 if(length(install_packages) > 0) { 
@@ -23,25 +23,40 @@ con <- connect_to_db("rda_shared_data")
 
 
 ############## UPDATE VARIABLES ##############
-curr_yr = 2023      # you MUST UPDATE each year
+curr_yr = 2023      # ACS year - you MUST UPDATE each year
 rc_yr = '2025'      # you MUST UPDATE each year
 rc_schema <- "v7"   # you MUST UPDATE each year
 schema = 'demographics'
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\QA_Sheet_Race.docx"
 
 
-# Check that variables in vars_list_acs haven't changed --------
+# Check that variables in vars_list_dp05 haven't changed --------
 # select acs race/eth pop variables: All AIAN/PacIsl, NH Alone White/Black/Asian/Other, NH Two+, Latinx of any race
 ## the variables MUST BE in this order:
-rc_races <-      c('total',     'aian',      'pacisl',    'latino',    'nh_white',  'nh_black',  'nh_asian',  'nh_other',  'nh_twoormor')
-vars_list_acs <- c("DP05_0001", "DP05_0071", "DP05_0073", "DP05_0076", "DP05_0082", "DP05_0083", "DP05_0085", "DP05_0087", "DP05_0088")
+vars_list_dp05 <- c('total' = "DP05_0001",
+                   'aian' = "DP05_0071",
+                   'pacisl' = "DP05_0073",
+                   'latino' = "DP05_0076",
+                   'nh_white' = "DP05_0082",
+                   'nh_black' = "DP05_0083",
+                   'nh_asian' = "DP05_0085",
+                   'nh_other' = "DP05_0087",
+                   'nh_twoormor' = "DP05_0088")
+
+race_mapping <- data.frame(
+  name = unlist(vars_list_dp05),
+  race = names(vars_list_dp05),
+  stringsAsFactors = FALSE
+)
+
 
 dp05_curr <- load_variables(curr_yr, "acs5/profile", cache = TRUE) %>% 
   select(-c(concept)) %>% 
-  filter(name %in% vars_list_acs) %>%
-  mutate(name = tolower(name)) # get all DP05 vars
-dp05_curr$label <- gsub("Estimate!!|HISPANIC OR LATINO AND RACE!!", "", dp05_curr$label)
-dp05_curr <- dp05_curr %>% cbind(rc_races)
+  filter(name %in% vars_list_dp05) %>%
+  left_join(race_mapping, by = "name") %>%
+  mutate(rc_races = paste0(race, "_pop"),
+         label = gsub("Estimate!!HISPANIC OR LATINO AND RACE!!", "", label),
+         name = tolower(name))
 
 # CHECK THIS TABLE TO MAKE SURE THE LABEL AND RC_RACES COLUMNS MATCH UP
 print(dp05_curr) 
@@ -50,7 +65,17 @@ print(dp05_curr)
 table_code = 'dp05'
 DP05 <- dbGetQuery(con, paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state', 'sldu', 'sldl')")) # import rda_shared_data table
 DP05$name <- str_remove(DP05$name,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
-DP05$name <- gsub("; California", "", DP05$name)
+
+# Clean geo names by removing type of geo and state name from name fields
+  DP05$name <- str_remove(DP05$name, ", California")
+  DP05$name <- str_remove(DP05$name, " city")
+  DP05$name <- str_remove(DP05$name, " CDP")
+  DP05$name <- str_remove(DP05$name, " town")
+  DP05$name <- gsub(" County)", ")", DP05$name)
+  DP05$name <- gsub("; California", "", DP05$name)
+  DP05$name <- gsub("State ", "", DP05$name)
+  
+
 cols_to_select <- tolower((paste0(c(vars_list_acs),"e")))  # format colnames to match postgres table colnames
 
 ## Clean and join pop tables
@@ -65,7 +90,7 @@ races_df_cols_meta <- races_df_cols %>%
   left_join(dp05_curr %>% 
               select(name, rc_races), by = 'name')  # join RC race names to data
 
-races_df_cols_meta$rc_races <- ifelse(grepl("dp05", races_df_cols_meta$name), paste0(races_df_cols_meta$rc_races, "_pop"), races_df_cols_meta$name)
+races_df_cols_meta$rc_races <- ifelse(grepl("dp05", races_df_cols_meta$name), races_df_cols_meta$rc_races, races_df_cols_meta$name)
 
 # update colnames to RC races
 colnames(races_df) <- races_df_cols_meta$rc_races
@@ -135,16 +160,16 @@ column_names <- colnames(pop_df)
 column_comments <- races_df_cols_meta$label  # note swana/swanasa cols do not have comments
 
 # create connection for rda database
-source("W:\\RDA Team\\R\\credentials_source.R")
-con <- connect_to_db("racecounts")
+con2 <- connect_to_db("racecounts")
 
-dbWriteTable(con, 
-             Id(schema = rc_schema, table = table_name), 
-             pop_df, overwrite = FALSE)
+# dbWriteTable(con2, 
+#              Id(schema = rc_schema, table = table_name), 
+#              pop_df, overwrite = FALSE)
 
 # comment on table and columns
-add_table_comments(con, rc_schema, table_name, indicator, source, qa_filepath, column_names, column_comments)
+# add_table_comments(con2, rc_schema, table_name, indicator, source, qa_filepath, column_names, column_comments)
 
-#dbDisconnect(con) 
+# dbDisconnect(con)
+# dbDisconnect(con2)
 
 

@@ -292,7 +292,7 @@ calc_ranks <- function(x) {
   
   #quadrants (updated 2023)
     #if perf_z below avg and disp_z above avg, then red / perf_z above or avg and disp_z above or avg, then orange /
-    #perf_z above or avg and disp_z below avg, then purple / perf_z below avg and disp_z below or avg, then yellow
+    #perf_z above or avg and disp_z below or avg, then purple / perf_z below avg and disp_z below or avg, then yellow
       ranks_table$quadrant = 
           ifelse(ranks_table$performance_z < 0 & ranks_table$disparity_z > 0, 'red',
             ifelse(ranks_table$performance_z >= 0 & ranks_table$disparity_z > 0, 'orange',
