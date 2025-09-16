@@ -117,81 +117,42 @@ all_issues <- all_indicators %>%
   group_by(leg_id) %>%
   fill(leg_name, .direction = "downup") %>%
   ungroup() %>%
-  mutate(summary=case_when(
-    quadrant=="red" ~ "Worse outcomes and higher disparity",
-    quadrant=="orange" ~ "Better outcomes and higher disparity",
-    quadrant=="yellow" ~ "Worse outcomes and lower disparity",
-    quadrant=="purple" ~ "Better outcomes and lower disparity",
+  mutate(outcome_summary=case_when(
+    quadrant=="red" ~ "Worse",
+    quadrant=="orange" ~ "Better",
+    quadrant=="yellow" ~ "Worse",
+    quadrant=="purple" ~ "Better",
+    .default = "Not enough available data for comparison"
+  ),
+  disparity_summary=case_when(
+    quadrant=="red" ~ "Worse",
+    quadrant=="orange" ~ "Worse",
+    quadrant=="yellow" ~ "Better",
+    quadrant=="purple" ~ "Better",
     .default = "Not enough available data for comparison"
   )) %>%
   select(-c(quadrant, leg_name))%>%
   pivot_wider(names_from = issue_area,
-              values_from = summary,
-              names_glue = "{issue_area}_summary") 
-
-# indicator codes from index table columns do not match arei_indicator_list names
-# creating a table to recode
-indicator_codes <- all_indicators %>% select(indicator) %>% distinct() %>%
-  left_join(leg_indicators %>% select(arei_indicator, api_name), by=c("indicator"="api_name")) %>%
-  mutate(arei_indicator=case_when(
-    indicator=="safety"~"Perception of Safety",
-    indicator=="offenses"~"Arrests for Status Offenses",
-    indicator=="force"~"Use of Force",
-    indicator=="stops"~"Officer-Initiated Stops",
-    indicator=="census"~"Census Participation",
-    indicator=="candidate"~"Diversity of Candidates",
-    indicator=="elected"~"Diversity of Elected Officials",
-    indicator=="voter"~"Registered Voters",
-    indicator=="midterm"~"Voting in Midterm Elections",
-    indicator=="president"~"Voting in Presidential Elections",
-    indicator=="connected"~"Connected Youth",
-    indicator=="employ"~"Employment",
-    indicator=="percap"~"Per Capita Income",
-    indicator=="realcost"~"Cost-of-Living Adjusted Poverty",
-    indicator=="living wage"~"Living Wage",
-    indicator=="abst"~"Chronic Absenteeism",
-    indicator=="grad"~"High School Graduation",
-    indicator=="ela"~"3rd Grade English Proficiency",
-    indicator=="math"~"3rd Grade Math Proficiency",
-    indicator=="susp"~"Suspensions",
-    indicator=="ece"~"Early Childhood Education Access",
-    indicator=="diver"~"Teacher \\& Staff Diversity",
-    indicator=="water"~"Drinking Water Contaminants",
-    indicator=="food"~"Food Access",
-    indicator=="hazard"~"Proximity to Hazards",
-    indicator=="toxic"~"Toxic Releases from Facilities",
-    indicator=="green"~"Lack of Greenspace",
-    indicator=="help"~"Got Help",
-    indicator=="insur"~"Health Insurance",
-    indicator=="life"~"Life Expectancy",
-    indicator=="bwt"~"Low Birthweight",
-    indicator=="usoc"~"Usual Source of Care",
-    indicator=="hosp"~"Preventable Hospitalizations",
-    indicator=="burden_own"~"Housing Cost Burden (Owner)",
-    indicator=="burden_rent"~"Housing Cost Burden (Renter)",
-    indicator=="denied"~"Denied Mortgage Applications",
-    indicator=="eviction"~"Evictions",
-    indicator=="forecl"~"Foreclosure",
-    indicator=="homeown"~"Homeownership",
-    indicator=="quality"~"Housing Quality",
-    indicator=="homeless"~"Student Homelessness",
-    .default = arei_indicator
-  ))
-
+              values_from = c(outcome_summary, disparity_summary),
+              names_glue = "{issue_area}_{.value}") 
 
 # Get 5 indicators with worst outcomes 
 worst_outcomes <- dbGetQuery(conn = conn_mosaic,
                              statement = "SELECT leg_id, geolevel, variable, rk FROM v7.indicator_outc_rk WHERE rk <=5;") %>%
+  left_join(leg_indicators, by=c("variable"="api_name")) %>%
+  select(leg_id, geolevel, rk, arei_indicator) %>%
   pivot_wider(names_prefix = "worst_outcome_",
               names_from = rk,
-              values_from = variable)
+              values_from = arei_indicator)
 
 # Get 5 indicators with most disparity 
 worst_disparity <- dbGetQuery(conn = conn_mosaic,
                                  statement = "SELECT leg_id, geolevel, variable, rk FROM v7.indicator_disp_rk WHERE rk <=5;") %>%
+  left_join(leg_indicators, by=c("variable"="api_name")) %>%
+  select(leg_id, geolevel, rk, arei_indicator) %>%
   pivot_wider(names_prefix = "worst_disparity_",
               names_from = rk,
-              values_from = variable)
+              values_from = arei_indicator)
 
 dbDisconnect(conn_mosaic)
 
@@ -262,6 +223,8 @@ final_df <- composite_index %>%
   left_join(worst_disparity, by=c("leg_id","geolevel"), keep = FALSE) %>%
   left_join(most_impacted_race_findings, by=c("leg_id","geolevel"), keep = FALSE) %>%
   left_join(all_members, by=c("leg_id","geolevel"), keep = FALSE) %>%
-  mutate(district_number=str_sub(leg_id,-2,-1))
+  mutate(district_number=str_sub(leg_id,-2,-1)) %>%
+  # format text so special characters don't break latex
+  mutate(across(where(is.character), ~str_replace_all(., "&", "\\\\&")))
 
   
