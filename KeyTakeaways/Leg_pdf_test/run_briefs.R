@@ -16,6 +16,9 @@ source(here("KeyTakeaways", "Leg_pdf_test", "get_briefs_data.R"))
 
 # add column to final df to get filename of assembly or senate logo
 final_df <- final_df %>%
+  mutate(geolevel = case_when(geolevel=="sldl"~"assembly",
+                              geolevel=="sldu"~"senate",
+                              .default = "error")) %>%
   mutate(png_filename = case_when(geolevel=="assembly"~"assm_logo.png",
                                   geolevel=="senate"~"senate_logo.png",
                                   .default = "error")) %>%
@@ -30,16 +33,26 @@ for(i in 1:nrow(final_df)) {
   print(paste("Starting on PDF", i, " of ", nrow(final_df)))
   geolevel <- str_to_title(final_df[i, "geolevel"])
   rep_name <- final_df[i, "rep_name"]
+  party <- final_df[i, "Party"]
   district_number <- final_df[i, "district_number"]
+  leg_name <- final_df[i, "leg_name"] ### added
+  characteristics <- final_df[i, "Characteristics"] ### added
   composite_disparity_rank <- final_df[i, "composite_disparity_rank"]
   composite_outcome_rank <- final_df[i, "composite_performance_rank"]
-  crim_summary <- final_df[i, "crim_summary"]
-  demo_summary <- final_df[i, "demo_summary"]
-  econ_summary <- final_df[i, "econ_summary"]
-  educ_summary <- final_df[i, "educ_summary"]
-  hben_summary <- final_df[i, "hben_summary"]
-  hlth_summary <- final_df[i, "hlth_summary"]
-  hous_summary <- final_df[i, "hous_summary"]
+  crim_outcome_summary <- final_df[i, "crim_outcome_summary"]
+  # demo_outcome_summary <- final_df[i, "demo_outcome_summary"]
+  econ_outcome_summary <- final_df[i, "econ_outcome_summary"]
+  educ_outcome_summary <- final_df[i, "educ_outcome_summary"]
+  hben_outcome_summary <- final_df[i, "hben_outcome_summary"]
+  # hlth_outcome_summary <- final_df[i, "hlth_outcome_summary"]
+  hous_outcome_summary <- final_df[i, "hous_outcome_summary"]
+  crim_disparity_summary <- final_df[i, "crim_disparity_summary"]
+  # demo_disparity_summary <- final_df[i, "demo_disparity_summary"]
+  econ_disparity_summary <- final_df[i, "econ_disparity_summary"]
+  educ_disparity_summary <- final_df[i, "educ_disparity_summary"]
+  hben_disparity_summary <- final_df[i, "hben_disparity_summary"]
+  # hlth_disparity_summary <- final_df[i, "hlth_disparity_summary"]
+  hous_disparity_summary <- final_df[i, "hous_disparity_summary"]
   worst_outcome_1 <- final_df[i, "worst_outcome_1"]
   worst_outcome_2 <- final_df[i, "worst_outcome_2"]
   worst_outcome_3 <- final_df[i, "worst_outcome_3"]
@@ -50,8 +63,7 @@ for(i in 1:nrow(final_df)) {
   worst_disparity_3 <- final_df[i, "worst_disparity_3"]
   worst_disparity_4 <- final_df[i, "worst_disparity_4"]
   worst_disparity_5 <- final_df[i, "worst_disparity_5"]
-  most_disparate_race <- final_df[i, "most_disparate_race"]
-  most_disparate_count <- final_df[i, "most_disparate_count"]
+  most_disparate_race_finding <- final_df[i, "most_disparate_race_finding"]
   png_filename <- final_df[i, "png_filename"]
   
   if (geolevel=="Senate") {
@@ -76,17 +88,28 @@ for(i in 1:nrow(final_df)) {
                     params = list(
                       geolevel=geolevel,
                       rep_name=rep_name,
+                      leg_name=leg_name,
+                      leg_name_caps=toupper(leg_name),
+                      party=party,
+                      characteristics=characteristics,
                       district_number=district_number,
                       disparity_rank=composite_disparity_rank,
                       outcome_rank=composite_outcome_rank,
                       total_districts=total_districts,
-                      crim_summary=crim_summary,
-                      demo_summary=demo_summary,
-                      econ_summary=econ_summary,
-                      educ_summary=educ_summary,
-                      hben_summary=hben_summary,
-                      hlth_summary=hlth_summary,
-                      hous_summary=hous_summary,
+                      crim_outcome_summary=crim_outcome_summary,
+                      # demo_outcome_summary=demo_outcome_summary,
+                      econ_outcome_summary=econ_outcome_summary,
+                      educ_outcome_summary=educ_outcome_summary,
+                      hben_outcome_summary=hben_outcome_summary,
+                      # hlth_outcome_summary=hlth_outcome_summary,
+                      hous_outcome_summary=hous_outcome_summary,
+                      crim_disparity_summary=crim_disparity_summary,
+                      # demo_disparity_summary=demo_disparity_summary,
+                      econ_disparity_summary=econ_disparity_summary,
+                      educ_disparity_summary=educ_disparity_summary,
+                      hben_disparity_summary=hben_disparity_summary,
+                      # hlth_disparity_summary=hlth_disparity_summary,
+                      hous_disparity_summary=hous_disparity_summary,
                       worst_outcome_1=worst_outcome_1,
                       worst_outcome_2=worst_outcome_2,
                       worst_outcome_3=worst_outcome_3,
@@ -97,11 +120,10 @@ for(i in 1:nrow(final_df)) {
                       worst_disparity_3=worst_disparity_3,
                       worst_disparity_4=worst_disparity_4,
                       worst_disparity_5=worst_disparity_5,
-                      most_disparate_race=most_disparate_race,
-                      most_disparate_count=most_disparate_count,
+                      most_disparate_race_finding=most_disparate_race_finding,
                       logo_filename=png_filename))
   
-  print(paste("FINISHED PDF", i))
+  print(paste("FINISHED PDF", i, "-", leg_name))
   
 }
 
