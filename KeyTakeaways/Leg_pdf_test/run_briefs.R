@@ -63,7 +63,7 @@ for(i in 1:nrow(final_df)) {
   worst_disparity_3 <- final_df[i, "worst_disparity_3"]
   worst_disparity_4 <- final_df[i, "worst_disparity_4"]
   worst_disparity_5 <- final_df[i, "worst_disparity_5"]
-  most_disparate_race_finding <- final_df[i, "most_disparate_race_finding"]
+  most_impacted_race_finding <- final_df[i, "most_impacted_race_finding"]
   png_filename <- final_df[i, "png_filename"]
   
   if (geolevel=="Senate") {
@@ -91,11 +91,13 @@ for(i in 1:nrow(final_df)) {
                       leg_name=leg_name,
                       leg_name_caps=toupper(leg_name),
                       party=party,
-                      characteristics=characteristics,
+                      characteristics=paste0(toupper(substr(characteristics, 1, 1)),substr(characteristics, 2, nchar(characteristics))),
                       district_number=district_number,
                       disparity_rank=composite_disparity_rank,
                       outcome_rank=composite_outcome_rank,
                       total_districts=total_districts,
+                      rankings_url_message=paste0("Compare ", leg_name, " to all districts at RaceCounts.org/",
+                                                  geolevel, "-Rankings or via QR Code"),
                       crim_outcome_summary=crim_outcome_summary,
                       # demo_outcome_summary=demo_outcome_summary,
                       econ_outcome_summary=econ_outcome_summary,
@@ -120,7 +122,7 @@ for(i in 1:nrow(final_df)) {
                       worst_disparity_3=worst_disparity_3,
                       worst_disparity_4=worst_disparity_4,
                       worst_disparity_5=worst_disparity_5,
-                      most_disparate_race_finding=most_disparate_race_finding,
+                      most_impacted_race_finding=most_impacted_race_finding,
                       logo_filename=png_filename))
   
   print(paste("FINISHED PDF", i, "-", leg_name))
