@@ -8,7 +8,7 @@ documentclass: extarticle
 classoption: 14pt
 geometry: 
   - top=0.5in
-  - bottom=2.7in
+  - bottom=1.6in
   - left=0.25in
   - right=0.25in
 header-includes:
@@ -25,6 +25,7 @@ header-includes:
   - \usepackage{fontspec}
   - \usepackage{afterpage}
   - \usepackage{lastpage}
+  - \usepackage{ragged2e}
   - \setmainfont{Libre Baskerville}    # Body text (serif)
   - \setsansfont{Rubik}                # Headers/accents (sans-serif)
   - \setmonofont{Space Mono}  
@@ -34,21 +35,24 @@ header-includes:
   - \setlength{\parskip}{10pt}
   - \pagestyle{empty}
   - \fancypagestyle{firstpage}{
-    \fancyhf{}
-    \fancyhead[C]{\begin{tabularx}{\textwidth}{@{}p{3in}@{}X@{}p{1.5in}@{}} \parbox[c][1.4in][c]{3in}{\centering \includegraphics[width=0.9\linewidth]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/racecounts.png} \\ \vspace{0.1in} \textbf{\normalsize `r params$leg_name` Profile}} & \parbox[c][1.4in][c]{\linewidth}{\centering \vspace{0.1in} \textbf{\LARGE `r params$rep_name`} \\ \vspace{0.15in} \textbf{\normalsize `r params$party`}} & \parbox[c][1.4in][c]{1.5in}{\centering \includegraphics[height=1.2in]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/`r params$logo_filename`}} \end{tabularx}}
-    \renewcommand{\headrulewidth}{0.4pt}
-    \renewcommand{\footrulewidth}{0pt}
-    \setlength{\headheight}{105pt}
-    \setlength{\footskip}{10pt}}
+      \fancyhf{}
+      \fancyhead[C]{\begin{tabularx}{\textwidth}{@{}p{3in}@{}X@{}p{1.5in}@{}} \parbox[c][1.4in][c]{3in}{\centering \includegraphics[width=0.9\linewidth]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/racecounts.png} \\ \vspace{0.1in} \textbf{\normalsize `r params$leg_name` Profile}} & \parbox[c][1.4in][c]{\linewidth}{\centering \vspace{0.1in} \textbf{\LARGE `r params$rep_name`} \\ \vspace{0.15in} \textbf{\normalsize `r params$party`}} & \parbox[c][1.4in][c]{1.5in}{\centering \includegraphics[height=1.2in]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/`r params$logo_filename`}} \end{tabularx}}
+      \fancyfoot[C]{\raisebox{0.7in}[0pt][0pt]{\begin{tabularx}{\textwidth}{@{}X@{}p{1.5in}@{}} \parbox[c]{\linewidth}{\normalsize \textbf{`r params$rankings_url_message`}} & \parbox[c]{1.5in}{\centering \includegraphics[height=1in]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/qr_placeholder.png}} \end{tabularx}}}
+      \renewcommand{\headrulewidth}{0.4pt}
+      \renewcommand{\footrulewidth}{0pt}
+      \setlength{\headheight}{105pt}
+      \setlength{\footskip}{30pt}}
   - \fancypagestyle{secondpage}{
     \fancyhf{}
-    \fancyfoot[C]{\hspace*{-0.25in}\raisebox{-2.3in}[0pt][0pt]{\includegraphics[width=\paperwidth]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/footer.png}}}
+    \fancyfoot[C]{\hspace*{-0.25in}\raisebox{-1.2in}[0pt][0pt]{\includegraphics[width=\paperwidth]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/footer.png}}}
     \renewcommand{\headrulewidth}{0pt}
     \renewcommand{\footrulewidth}{0pt}
     \setlength{\footskip}{30pt}}
   - \fancypagestyle{plain}{\fancyhf{}\renewcommand{\footrulewidth}{0pt}}
   - \renewcommand{\footrulewidth}{10pt}
   - \setlength{\columnsep}{0.75in}
+  - \setlength{\parindent}{0pt}
+  - \setlist[itemize]{nosep}
 params: # needs to add params used throughout .Rmd here - also need a df of the variables needed for each district to replace hardcoded values
   geolevel: "geolevel"
   rep_name: "Firstname Lastname"
@@ -100,7 +104,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
 RACE COUNTS analyzed 31 indicators such as employment, life expectancy, and homeownership, for every State {`r params$geolevel`} District and ranked districts by their outcomes and differences in those outcomes among racial groups.
 
-Data sources for indicators include the California Department of Education, the California Office of Justice, the California Office of Environmental Health Hazard Assessment, the U.S. Census Bureau's American Community Survey and others. All data are the most recent data published or within one year of publication. See RaceCounts.org/methodology for more information. 
+Data sources for indicators include the California Department of Education, the California Office of Justice, the California Office of Environmental Health Hazard Assessment, the U.S. Census Bureau's American Community Survey and others. All data are the most recent data published or within one year of publication. See RaceCounts.org/methodology for more information.
 
 {\headingfont \large \textbf{\textcolor{headerorange}{WHY THIS IS IMPORTANT}}}
 
@@ -109,11 +113,7 @@ Lorem ipsum dolor sit amet. At adipisci omnis qui modi soluta et corrupti conseq
 {\headingfont \large \textbf{\textcolor{headerorange}{WHAT YOU CAN DO ABOUT IT}}}
 
 Lorem ipsum dolor sit amet. At adipisci omnis qui modi soluta et corrupti consequatur est quod asperiores. Aut dolorem reprehenderit et dolorum quibusdam ab obcaecati esse est sequi officia qui asperiores ipsa. Ea quod dolorem et enim incidunt id assumenda voluptas aut facere nemo ut inventore accusamus.
-
 \end{multicols}
-
-\normalsize \textbf{`r params$rankings_url_message`}
-
 \newpage \thispagestyle{secondpage}
 ```{r, results='asis', echo=FALSE}
 cat("\\headingfont \\large \\textbf{\\textcolor{headerorange}{", 
@@ -123,10 +123,11 @@ cat("\\headingfont \\large \\textbf{\\textcolor{headerorange}{",
 
 \rmfamily \normalsize `r params$characteristics`
 
+\medskip
 \begin{table}[htp]
   \normalsize
   \centering
-  Compared to the average `r params$geolevel` District
+  \textbf{Compared to the average `r params$geolevel` District}
     \begin{tabular}{l|p{4cm}|p{5cm}}\toprule
       \textbf{District `r params$district_number`} & \textbf{Outcomes} & \textbf{Racial Disparity} \\
       \toprule
@@ -151,12 +152,16 @@ cat("\\headingfont \\large \\textbf{\\textcolor{headerorange}{",
     \end{tabular}
 \end{table}
 
-\rmfamily \normalsize \textbf{Want to compare your district's data to other California geographies? Visit racecounts.org/}
+\medskip
+\centering
+\rmfamily \normalsize \textbf{Want to compare your district's data to other California geographies?}
 
+\rmfamily \normalsize \textbf{Visit racecounts.org/}
+
+\medskip
 \begin{multicols}{2}
-\normalsize
-District `r params$district_number` indicators with the \textbf{lowest outcomes}:
-\begin{itemize}[itemsep=2pt]
+\normalsize District `r params$district_number` indicators with the \textbf{lowest outcomes}:
+\begin{itemize}[itemsep=1pt]
   \item `r params$worst_outcome_1`
   \item `r params$worst_outcome_2`  
   \item `r params$worst_outcome_3`
@@ -164,7 +169,7 @@ District `r params$district_number` indicators with the \textbf{lowest outcomes}
   \item `r params$worst_outcome_5`
 \end{itemize}
 District `r params$district_number` indicators with the \textbf{highest disparity}:
-\begin{itemize}[itemsep=2pt]
+\begin{itemize}[itemsep=1pt]
   \item `r params$worst_disparity_1`
   \item `r params$worst_disparity_2`  
   \item `r params$worst_disparity_3`
@@ -173,6 +178,11 @@ District `r params$district_number` indicators with the \textbf{highest disparit
 \end{itemize}
 \end{multicols}
 
+\justifying
 \normalsize `r params$most_impacted_race_finding`
 
-\centering \rmfamily \normalsize \textbf{Want to improve outcomes and reduce racial disparities? Contact us at info@racecounts.org}
+\vspace{\fill}
+\centering 
+\rmfamily \normalsize \textbf{Want to improve outcomes and reduce racial disparities?} 
+
+\rmfamily \normalsize \textbf{Contact us at info@racecounts.org}
