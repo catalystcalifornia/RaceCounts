@@ -21,7 +21,11 @@ final_df <- final_df %>%
                               .default = "error")) %>%
   mutate(png_filename = case_when(geolevel=="assembly"~"assm_logo.png",
                                   geolevel=="senate"~"senate_logo.png",
-                                  .default = "error")) %>%
+                                  .default = "error"),
+         characteristics_len = nchar(Characteristics),
+         impacted_finding_len = nchar(most_impacted_race_finding)) %>%
+  mutate(total_len = characteristics_len+impacted_finding_len) %>%
+  arrange(desc(total_len)) %>%
   
   head(5)
 
