@@ -1,0 +1,538 @@
+---
+title: "RACE COUNTS: Housing"
+author: "Authored by: Catalyst California"
+date: "9/16/2025"
+output:
+  html_document:
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+
+subtitle: 'Draft Visuals'
+---
+  
+<style type="text/css">
+  h1{
+  font-family: Rubik;
+  }
+  h2{
+  font-family: Rubik;
+  }
+  h3{
+  font-family: Rubik;
+  }
+  a{
+  font-family: Rubik;
+  }
+  ul{
+  font-family: Rubik;
+  }
+  ol{
+  font-family: Rubik;
+  }
+  body{
+  font-family: Rubik;
+  font-size: 15px;
+}
+p{
+  font-family: Rubik;
+  font-size: 15px;
+}
+body { background-color: #FFFFFF; }
+
+</style>
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
+
+#load the libraries via the below source as well as the credentials and set the theme
+source("draft_visual_functions.R")
+
+options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
+
+##Add RC theme##
+rc_theme # load from the above draft_visual_functions.R script
+
+##### UPDATE EACH YEAR AND FOR EACH ISSUE AREA ####
+issue_name <- 'Housing' # Issue names: Safety & Justice, Democracy, Economic Opportunity, Education, Healthy Built Environment, Health Care Access, Housing
+issue <- 'hous' #Issue: crim, demo, educ, econ, hben, hlth, hous
+rc_schema <- 'v7'
+rc_yr <- '2025'
+acs_yr <- '2023'
+
+```
+
+```{r echo=FALSE, include = FALSE}
+
+####################### GET COUNTY DATA #####################################
+county_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%county_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
+
+county_list <- dbGetQuery(con, county_list_query) %>% pull(table_name) 
+
+c_tables <- lapply(setNames(paste0("select * from ", rc_schema, ".", county_list), county_list), DBI::dbGetQuery, conn = con)
+
+# create column with indicator name
+c_tables <- map2(c_tables, names(c_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
+
+# clean up and add columns
+c_tables <- lapply(c_tables, function(x) x %>% 
+  select(-any_of('geolevel'), -ends_with("_pop")) %>%
+  mutate(issue = substring(indicator, 6,9),
+         indicator = substring(indicator, 11),
+         indicator = gsub(paste0('_county_', rc_yr), '', indicator),
+         geolevel = 'county'))
+
+# Get issue index
+c_index_z <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_", issue, "_index_", rc_yr)) %>%
+  rename(geo_name = county_name)  # make 'name' col generic
+
+####################### POPULATION DATA #####################################
+#Get total population
+pop <- dbGetQuery(con, paste0("SELECT geoid, total_pop, geolevel FROM ", rc_schema, ".arei_race_multigeo WHERE geolevel = 'county'")) %>% select(-geolevel)
+
+c_index_z <- left_join(c_index_z, pop, by = c("county_id" = "geoid"))
+
+c_tables <- lapply(c_tables, function(x) 
+  x %>% left_join(pop, by = c("county_id" = "geoid")))
+
+## Make 'name' col generic
+c_tables <- lapply(c_tables, function(x)
+  x %>% rename(geo_name = county_name))
+
+####################### GET STATE DATA #####################################
+state_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%state_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
+
+state_list <- dbGetQuery(con, state_list_query) %>% pull(table_name) 
+
+s_tables <- lapply(setNames(paste0("select * from ", rc_schema, ".", state_list), state_list), DBI::dbGetQuery, conn = con)
+
+# create column with indicator name
+s_tables <- map2(s_tables, names(s_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
+
+# clean up and add columns
+s_tables <- lapply(s_tables, function(x) x %>% 
+  select(-any_of('geolevel'), -ends_with("_pop")) %>%
+  mutate(issue = substring(indicator, 6,9),
+         indicator = substring(indicator, 11),
+         indicator = gsub(paste0('_state_', rc_yr), '', indicator),
+         geolevel = 'state'))
+
+
+##Add 2025 v7 Source Data##
+v7_sources <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_indicator_list_cntyst"))
+v7_sources <- v7_sources %>% filter(v7_sources$arei_issue_area==issue_name) %>%
+  select(arei_indicator, arei_issue_area, rate_descriptor, bar_chart_header, rate_rounding, methodology, data_source, api_name)
+
+
+## Join metadata to data
+c_tables <- lapply(c_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
+s_tables <- lapply(s_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
+
+names(c_tables)
+names(s_tables)
+```
+
+<!-- *** -->
+# Introduction
+NOTE: The data and findings below are drafts subject to change and some pieces are still in the QA process.
+
+RACE COUNTS provides a 3D view of racial equity:
+<br>OUTCOME: How well people are doing. The higher the circle, the better the outcome.
+<br>DISPARITY: How racial groups compare to one another. The further right the circle, the greater the differences by race.
+<br>IMPACT: The total population. The bigger the circle, the larger the population.
+
+<br><span style="color:purple">Purple</span> counties: Gains at Risk; 
+<br><span style="color:orange">Orange</span> counties: Prosperity for the Few;
+<br><span style="color:#c9cc14">Yellow</span> counties: Struggling to Prosper;
+<br><span style="color:red">Red</span> counties: Stuck and Unequal.
+
+# Key Findings
+
+# Race/Ethnicity Notes
+<br>1) "Other" race includes those who identify with a race outside of the specifically named categories, such as Asian, White, etc.
+<br>2) Race labels for bar charts: The "nh_" prefix signifies that a group is non-Latinx (excludes Latinx).
+<br>3) The "twoormor" group represents those who identify as Two or More Races.
+
+# Indicators
+
+## Housing Index
+```{r, echo=FALSE}
+# Remove counties without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
+  c_index_z <- c_index_z %>% mutate(arei_issue_area=issue_name)
+  c_index_chart <- index_scatterplot(c_index_z, 2)
+
+  c_index_chart
+```
+* All but one of the Bay Area county have above average outcomes. Disparity levels vary, with San Mateo, Marin, Alameda, Napa, and San Francisco among the top ten most disparate counties in the state.
+* All six Southern California counties have below average outcome, although 4 out 6, including Los Angeles and San Diego counties, also have below average disparities.
+* Looking across all Housing indicators, Latinx Californians had worse than average outcomes in all 10 housing indicators, while Black and American Indian / Alaskan Native residents had the worst rate in 4 out of 10 and 3 out of 10 indicators respectively. 
+
+
+## Homeownership {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE}
+c_1_chart <- county_scatterplot(c_tables[[1]])
+c_1_chart
+```
+* Homeownership is more prevalent in counties with smaller populations, which makes sense as we would generally expect lower house prices in those counties.
+* San Francisco, with the worst outcome, is one of two counties where less than half of households own a home. It has the worst racial disparity statewide because the Asian homeownership rate is double, or close to double, that of all other groups.
+* Los Angeles, with the second worst outcome, is the other county where less than half of households own a home. It has an average level of racial disparity, but the statewide patterns hold, with non-Latinx White and Asian homeownership rates being higher than other groups.
+
+### State Barchart
+```{r, echo=FALSE}
+  s_1_ <- state_barchart(s_tables[[1]])
+  s_1_
+``` 
+White Californians are nearly twice as likely to own their home as Black Californians. Slightly more than one-third of Black households own their home.
+Statewide, less than half of American Indian or Alaska Native, Pacific Islander, Latinx, Black, or households identifying with a racial group under “other” own a home.
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_1_long <- county_barchart(c_tables[[1]]) 
+c_1_long
+```
+
+
+## Denied Mortgage Applications {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE}
+c_2_chart <- county_scatterplot(c_tables[[2]])
+c_2_chart
+```
+* Counties with larger populations tend to have lower disparity and above average outcome in denied mortgage applications.
+* Eight out of the ten worst performing counties in mortgage denial rates also have above average racial disparities in application denials.
+* Imperial County and Amador County have the highest levels of racial disparity in the state by a substantial margin. In both counties, more than 42% of Black applicants and American Indian or Alaska Native applicants are denied mortgages.
+
+
+
+### State Barchart
+
+```{r, echo=FALSE}
+  s_2_ <- state_barchart(s_tables[[2]])
+  s_2_
+  
+```
+* Statewide, American Indian and Alaska Native Californians have the worst mortgage application rate of any racial group and are denied on over 30% of mortgage applications. This is almost double the overall denial rate in the state.
+* Black, Pacific Islander, and Latinx Californians are also all over 5 percentage points more likely to have a mortgage application denied than the average Californian.  
+
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_2_long <- county_barchart(c_tables[[2]]) 
+c_2_long
+```
+
+
+## Subprime Loans per 100 Mortgage Loan Applicants {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE}
+c_3_chart <- county_scatterplot(c_tables[[3]])
+c_3_chart
+```
+* Six out of the eight San Joaquin Valley counties are in the Yellow Quadrant (Lower Disparity, Lower Outcome) meaning they have subprime loan rates and lower racial disparities.
+* Seven out of the nine Bay Area counties are in the Orange Quadrant (Higher Disparity, Better Outcomes).
+
+
+### State Barchart
+
+```{r, echo=FALSE}
+  s_3_ <- state_barchart(s_tables[[3]])
+  s_3_
+``` 
+* Lenders are more than four times as likely to give Latinx applicants a subprime mortgage than the group with the best (lowest) rate. 
+
+
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_3_long <- county_barchart(c_tables[[3]]) 
+c_3_long
+```
+
+
+## Student Homelessness {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE}
+c_4_chart <- county_scatterplot(c_tables[[4]])
+c_4_chart
+
+```
+* Four of the Five most racially disparate counties on this measure are in the Bay Area. Alameda, Santa Cruz, and San Mateo Counties in particular have by far the highest rates of racial disparity in student homelessness in the state.
+* Three of the four counties that are struggling the worst with overall student homelessness rate are semi-urban counties in the Central Coast -- Santa Barbara, Monterey, and San Luis Obispo.
+
+
+### State Barchart
+
+```{r, echo=FALSE}
+  s_4_ <- state_barchart(s_tables[[4]])
+  s_4_
+```
+* American Indian and Alaska Native Californians have the highest student homelessness rate in the state at 7.1%, which is a 75% increase over the statewide rate.
+* Black, Latinx, and Pacific Islander students are all significantly above the statewide rate as well.
+* Asian, Filipino, and White students in California all experience rates of student homelessness that are less than half of the overall statewide rate.
+
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_4_long <- county_barchart(c_tables[[4]]) 
+c_4_long
+
+```
+
+
+## Evictons {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE}
+c_5_chart <- county_scatterplot(c_tables[[5]])
+c_5_chart
+```
+* San Bernardino County has the highest overall eviction filing rate (worst outcome), with higher rates for all groups (lower disparity).
+* Five of the ten most disparate counties for evictions are in the Bay Area (San Francisco, Alameda, Contra Costa, San Mateo, and Santa Clara). However,these same five counties all have higher than average outcome, meaning lower overall eviction rates.
+
+
+### State Barchart
+
+```{r, echo=FALSE}
+  s_5_ <- state_barchart(s_tables[[5]])
+  s_5_ 
+
+```
+* Black households are nearly twice as likely to face eviction statewide as White or Asian households.
+* Only Asian and non-Latinx White households have eviction filing rates better than the statewide average.
+
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_5_long <- county_barchart(c_tables[[5]]) 
+c_5_long
+
+```
+
+
+## Overcrowded Housing {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE}
+c_6_chart <- county_scatterplot(c_tables[[6]])
+c_6_chart
+
+```
+* Los Angeles ranks second in worst (outcome) in Overcrowded Housing. All of the ten counties with the worst outcome are in Southern California, Central Valley, or the Central Coast regions.
+* Four of the ten counties with the worst disparity are in the Bay Area region, with  Marin County having by far the worst disparity in the state.
+* Marin County has the highest disparity due to one in three Latinx households and more than one in two Other Race households living in overcrowded housing, while fewer than five out of every 100 non-Latinx White households do.
+
+
+
+### State Barchart
+
+```{r, echo=FALSE}
+  s_6_ <- state_barchart(s_tables[[6]])
+  s_6_
+``` 
+* Statewide, Black households have the second best rate of overcrowded housing and are about 33% less likely to live in overcrowded housing than the average Californian.
+* The Latinx overcrowded housing rate is almost 17 percentage points higher than that of Non-Latinx White households.
+
+
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_6_long <- county_barchart(c_tables[[6]]) 
+c_6_long
+```
+
+## Housing Quality {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE}
+c_7_chart <- county_scatterplot(c_tables[[7]])
+c_7_chart
+```
+* San Francisco County has the worst outcome (highest overall rate) of people living in low quality housing. Only non-Latinx White and Asian residents are less likely to have low quality housing rates below the average.
+* Los Angeles County has the second worst outcome and seventh worst disparity rankings on this measure. Latinx households face the worst racial disparities on this measure by far among all groups, with 12% living in low quality housing.
+
+
+### State Barchart
+
+```{r, echo=FALSE}
+  s_7_ <- state_barchart(s_tables[[7]])
+  s_7_
+``` 
+* Latinx Californians are over 2.5 times more likely to live in low quality housing as non-Latinx White Californians.
+* American Indians and Alaskan Natives, Pacific Islanders and Californians identifying with the racial category "other"  the other three other racial groups with low quality housing rates that are worse than the state average.
+
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_7_long <- county_barchart(c_tables[[7]]) 
+c_7_long
+
+```
+
+
+## Forclosures {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE}
+c_8_chart <- county_scatterplot(c_tables[[8]])
+c_8_chart
+```
+* Six out of the nine Bay Area counties are in the Purple Quadrant (High outcome, Low disparity).
+* Of the ten most populous counties in the state, eight better than average foreclosure rates and seven have low racial disparities within those rates.
+
+
+
+### State Barchart
+
+```{r, echo=FALSE}
+  s_8_ <- state_barchart(s_tables[[8]])
+  s_8_
+``` 
+* Black and AIAN foreclosure rates are over two times higher than the the group with the best (lowest) rate.
+* White and Asian Californians are the only racial groups who have better foreclosure rates than the state average.
+
+
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_8_long <- county_barchart(c_tables[[8]]) 
+c_8_long
+
+```
+
+
+## Housing Cost Burden (Owner) {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE}
+c_9_chart <- county_scatterplot(c_tables[[9]])
+c_9_chart
+```
+* Nearly one in three California homeowners is housing cost burdened, spending 30% or more of income on housing.
+* Statewide, Latinx and Black homeowners have the highest housing cost burden rate, at 3% and 7% above the statewide rate respectively.
+* The housing cost burden rate for Black homeowners is 10 percentage points higher than it is for the group with the best rate, American Indian or Alaska Native homeowners.
+
+
+
+### State Barchart
+
+```{r, echo=FALSE}
+  s_9_ <- state_barchart(s_tables[[9]])
+  s_9_
+``` 
+
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_9_long <- county_barchart(c_tables[[9]]) 
+c_9_long
+
+```
+
+
+## Housing Cost Burden (Renter) - UPDATED {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE}
+c_10_chart <- county_scatterplot(c_tables[[10]])
+c_10_chart
+```
+* Orange, San Francisco, and Frenso Counties are the only three of the state's 10 most populous counties to have higher than average racial disparities in rent burden rates.
+* Nine out of 10 of the worst performing counties in terms of rent burden are in the Northern / Sierra or Southern California regions.
+
+
+### State Barchart
+
+```{r, echo=FALSE}
+  s_10_ <- state_barchart(s_tables[[10]])
+  s_10_
+``` 
+* Over half of all renters in California are burdened by housing costs
+* Black and Latinx Californians are the only racial groups where over half of renters are housing cost burdened
+
+
+### County Barchart
+
+```{r, echo=FALSE}
+c_10_long <- county_barchart(c_tables[[10]]) 
+c_10_long
+
+```
+
+```{r echo=FALSE, include = FALSE}
+# below is a javascript chunk for the county bar-charts. The chunk automatically selects the 'Alameda' county as the first chunk. Without the chunk below, as you can see from the output above, the first bar-chart shown sums the race/ethnicity rates for all of the counties. 
+# Each line that starts with document is for each graph (0-9) for a total of 10 graphs. If another graph is added, then you would simply add another line and label it as [11]. 
+
+# Notice that it isn't an R chunk, it is a JS chunk. :) 
+```
+
+```{r echo=FALSE, include = FALSE}
+# Closing connections
+
+dbDisconnect(con)
+dbDisconnect(con2)
+```
+
+```{js}
+function filter_default() {
+    document.getElementsByClassName("selectized") 
+[0].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[1].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[2].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[3].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[4].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[5].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[6].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[7].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[8].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[9].selectize.setValue("Alameda", false);
+ }
+window.onload = filter_default;
+```
+
+
+
+

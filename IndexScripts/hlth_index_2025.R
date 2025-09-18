@@ -22,7 +22,7 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
 
 # Set Source for Index Functions script -----------------------------------
-source(here("Functions/RC_Index_Functions.R"))
+source("./Functions/RC_Index_Functions.R")
 
 # remove exponentiation
 options(scipen = 100) 

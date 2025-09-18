@@ -53,9 +53,6 @@ varname3 <- 'toxic'
 varname4 <- 'green'
 
 
-region_urban_type <- dbGetQuery(con, paste0("select county_id, region, urban_type from ", rc_schema, ".arei_county_region_urban_type")) # get region, urban_type
-
-
 # Clean data --------
 
 ### c1 
@@ -76,9 +73,11 @@ c_4 <- clean_data_z(c_4, varname4)
 
 
 # Join Data Together ------------------------------------------------------
-c_index <- mutate(c_1,c_2)
-c_index <- mutate(c_index,c_3)
-c_index <- mutate(c_index,c_4)
+index_list <- list(c_1, c_2, c_3, c_4)
+index_list <- lapply(index_list, function(x) x %>% mutate(leg_name = gsub("State ", "", leg_name)))
+
+c_index <- index_list %>% reduce(full_join, by=c('leg_id', 'leg_name', 'geolevel'))
+
 
 colnames(c_index) <- gsub("performance", "perf", names(c_index))  # shorten col names
 colnames(c_index) <- gsub("disparity", "disp", names(c_index))    # shorten col names
