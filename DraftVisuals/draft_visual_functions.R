@@ -77,7 +77,7 @@ rc_theme <- hc_theme(
 
 # different caps for the scatterplot, take out the cas then have it be user-defined
 #composite inex needs the same naming comvention ex: performance_z as opposed to perf_z
-index_scatterplot <- function(x, threshold){
+index_scatterplot <- function(x, threshold){   # works for county
   # Remove geos without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
   
   # Dynamically find relevant column names
@@ -131,7 +131,7 @@ index_scatterplot <- function(x, threshold){
     hc_add_theme(rc_theme)
 }
 
-county_scatterplot<- function(x) {
+county_scatterplot<- function(x) {    ## works for county and assm and sen (in separate df's)
   # Be sure to update title above depending on if indicator has been updated since RC v3
   # Remove geos without quadrant values. Cap indicator perf/disp z-scores at 3.5 and -3.5. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
   # Find all columns ending in "_rate"
@@ -221,7 +221,7 @@ x_long %>%
   hc_size(height=400, width=700) %>% hc_add_theme(rc_theme)
 }
 
-county_barchart <- function(x) {
+county_barchart <- function(x) {      ## works for county and assm and sen (in separate df's)
   x_long <- x %>%
     select(c(geo_name, ends_with('_rate')))
   
@@ -274,4 +274,70 @@ county_barchart <- function(x) {
   ) # end bscols
 
   
+}
+
+
+### LEG INDEX SCATTERPLOT FX ###
+leg_index_scatter <- function(x, gl, t) {
+  # x = index data, gl = 'sldu' or 'sldl', t = theme
+  
+  x <- x %>% filter(geolevel == gl) %>% select(-geolevel)
+  
+  c_chart_index <- x %>%
+    hchart("scatter", 
+           hcaes(x=disparity_z, y=performance_z, size=total_pop, group=quadrant),
+           tooltip = 
+             list(pointFormat = 
+                    "<strong>City: </strong>{point.leg_name} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Outcome Rank: </strong>{point.performance_rank} <br><strong>Population: </strong>{point.total_pop:,.0f}")) %>%
+    #hc_title(text = paste0("City Composite Index: ", r)) %>%
+    hc_xAxis(title = list(text = "Disparity Z-Score"), max = 1.2, min = -1.2, tickInterval = .5) %>% 
+    hc_yAxis(title = list(text = "Outcome Z-Score"), max = 1.2, min = -1.2, tickInterval = .5) %>% 
+    hc_caption(
+      text = "Data source: Various",
+      align = "center"
+    ) %>% hc_size(height=700,width=700) 
+  
+  
+  ### ADD RC THEME ###
+  rc_theme <- hc_theme(
+    # race counts colors
+    colors = c("orange", "#800080", "red", "yellow"),
+    chart = list(
+      backgroundColor = "#F7F7F7", # RC white
+      style = list(
+        fontFamily = "Rubik") 
+    ),
+    title = list(
+      style = list(
+        color = "#070024",
+        fontFamily = "Rubik")
+    ),
+    subtitle = list(
+      style = list(
+        color = "#8E8C8F", # medium grey
+        fontFamily = "Rubik")
+    ),
+    caption = list(
+      style = list(
+        color = "#8E8C8F",
+        fontFamily = "Rubik")
+    ),
+    axis = list(
+      style = list(
+        color = "#8E8C8F",
+        fontFamily = "Rubik")
+    ),
+    legend = list(
+      itemStyle = list(
+        fontFamily = "Rubik",
+        color = "#070024"),
+      itemHoverStyle = list(
+        fontFamily = "Rubik",
+        color = "#070024")
+    ))
+  
+  
+  c_chart_index <-  hc_add_theme(c_chart_index, rc_theme) 
+  
+  return(c_chart_index)
 }
