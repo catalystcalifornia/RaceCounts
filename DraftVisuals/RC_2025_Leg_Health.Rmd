@@ -91,10 +91,8 @@ acs_yr <- '2023'
     x %>% rename(geo_name = leg_name))
   
 ###################### GET STATE DATA #####################################
-  state_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%state_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
-  
-  state_list <- dbGetQuery(con, state_list_query) %>% pull(table_name) 
-  
+  state_list <- gsub("_leg", "_state", names(l_tables))
+
   s_tables <- lapply(setNames(paste0("select * from ", rc_schema, ".", state_list), state_list), DBI::dbGetQuery, conn = con)
   
   # create column with indicator name

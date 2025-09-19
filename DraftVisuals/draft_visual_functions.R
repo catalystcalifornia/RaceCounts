@@ -196,13 +196,16 @@ county_scatterplot<- function(x) {    ## works for county and assm and sen (in s
 }
 
 state_barchart <- function(x) {
-  # Be sure to update title above depending on if indicator has been updated since RC v3
+  # Be sure to update title above depending on if indicator has been updated since previous version of RC
   # Be sure to order bars in ascending or descending depending on whether MIN or MAX is best rate
 title = list(text=x$bar_chart_header[1])
-  x_ <- x %>%
+asbest <- x$asbest   # used to sort columns later
+
+x_ <- x %>%
   select(c(state_name, ends_with('_rate'), -total_rate))
 x_long <- melt(x_, id.vars=c("state_name"))
-x_long <- x_long[order(-x_long$value),]
+x_long <- case_when(asbest == 'min' ~ arrange(x_long, value),        # order columns based on 'asbest' value
+                    asbest == 'max' ~ arrange(x_long, desc(value)))
 x_long <- x_long %>% mutate_if(is.double, ~round(., 1))
 
 x_long %>% 
@@ -222,48 +225,50 @@ x_long %>%
 }
 
 county_barchart <- function(x) {      ## works for county and assm and sen (in separate df's)
+  asbest <- first(x$asbest)   # used to sort columns later
+
   x_long <- x %>%
     select(c(geo_name, ends_with('_rate')))
-  
+
   x_long <- melt(x_long, id.vars=c("geo_name"))
-  x_long <- x_long[order(x_long$value),]
-  # Round 'value' field to 1 decimal
-  x_long <- x_long %>% mutate(value = round(value, 1))
-  
-  
+  x_long <- case_when(asbest == 'min' ~ arrange(x_long, value),        # order columns based on 'asbest' value
+                      asbest == 'max' ~ arrange(x_long, desc(value)))
+  x_long <- x_long %>% mutate(value = round(value, 1))                 # Round 'value' field to 1 decimal
+
+
   # drop down selection menu for counties: check out this helpful resource https://rstudio.github.io/crosstalk/using.html
-  
+
   # create a shared data object from the df and assign a key for the unique observation. County/Assm/Sen is fine since each race/group has one unique geo. from now on, we will be using the shareddata object and not the df_long
-  
+
   sd2 <- SharedData$new(x_long, key = ~ geo_name)
   title = list(text=x$bar_chart_header[1])
-  
+
   #
   bscols(
-    widths = 7, 
-    
-    filter_select("geo_name",  ## this is the name of column we want to select. 
+    widths = 7,
+
+    filter_select("geo_name",  ## this is the name of column we want to select.
                   "Name:", # this is what we want to see in the selection menu
                   sd2,
                   ~ geo_name, multiple = FALSE),
     plot_ly(sd2) %>%
-      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"), 
+      add_trace(x = ~ variable, y = ~ value, type = "bar", color = I("yellow"),
                 marker = list(line = list(color = "black", width = 1)) ## add order t
       ) %>%
       layout(barmode = "stack",
              xaxis = list(title = 'Race/Ethnicity',
                           tickangle=-45,
                           categoryorder = "total ascending"),   # Change to "total ascending" when MIN is best or "total descending" when MAX is best
-             
+
              yaxis = list(title = title,
                           titlefont = list(size = 11)
              ),
-             
-             
+
+
              width = 600,
              paper_bgcolor = "#FFFFFF",
              plot_bgcolor = "#FFFFFF",
-             
+
              font = list(
                family = "Rubik",
                size = 12,
@@ -273,8 +278,9 @@ county_barchart <- function(x) {      ## works for county and assm and sen (in s
       ) # end layout
   ) # end bscols
 
-  
+
 }
+
 
 
 ### LEG INDEX SCATTERPLOT FX ###
