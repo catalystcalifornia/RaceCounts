@@ -182,7 +182,7 @@ assm_index_chart
 * [insert finding]
 
 # Senate Indicators
-## Per Capita Income {.tabset .tabset-fade}
+## Real Cost Measure {.tabset .tabset-fade}
 ### Scatterplot
 
 ```{r, echo=FALSE} 
@@ -208,7 +208,7 @@ sen_1_long
 ```
 
 
-## Internet Access  {.tabset .tabset-fade}
+## Employment  {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -235,7 +235,7 @@ sen_2_long
 ```
 
 
-## Living Wage {.tabset .tabset-fade}
+## Per Capita Income {.tabset .tabset-fade}
 
 
 ### Scatterplot
@@ -262,7 +262,7 @@ sen_3_long
 ```
 
 
-## Connected Youth {.tabset .tabset-fade}
+## Internet Access {.tabset .tabset-fade}
 
 
 ### Scatterplot
@@ -290,7 +290,7 @@ sen_4_long
 ```
 
 
-## Officials & Managers {.tabset .tabset-fade}
+## Living Wage {.tabset .tabset-fade}
 ### Scatterplot
 
 ```{r, echo=FALSE} 
@@ -317,7 +317,7 @@ sen_5_long
 
 
 
-## Employment {.tabset .tabset-fade}
+## Connected Youth {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -346,7 +346,7 @@ sen_6_long
 
 
 
-## Real Cost Measure {.tabset .tabset-fade}
+## Officials & Managers {.tabset .tabset-fade}
 
 ### Scatterplot
 
