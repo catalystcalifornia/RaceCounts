@@ -115,7 +115,7 @@ acs_yr <- '2023'
   ##Add metadata Data##
 ##### WILL NEED TO REPLACE WITH Leg DIST INDICATOR LIST WHEN READY ######
   v7_sources <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_indicator_list_cntyst"))
-  v7_sources <- v7_sources %>% filter(v7_sources$arei_issue_area==issue_name) %>%
+  v7_sources <- v7_sources %>% filter(v7_sources$arei_issue_area=="Crime & Justice") %>%
     select(arei_indicator, arei_issue_area, rate_descriptor, bar_chart_header, rate_rounding, methodology, data_source, api_name)
   
   ## Join metadata to indicator data
