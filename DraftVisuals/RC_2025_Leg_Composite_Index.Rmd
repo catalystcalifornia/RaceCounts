@@ -183,7 +183,8 @@ assm_table
 ## NOTE: Data viz below based on: W:\Project\RACE COUNTS\2022_v4\Visualizations\RC_2022_Indexes.RMD ###
 
 knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
-
+#load the libraries via the below source as well as the credentials and set the theme
+source("draft_visual_functions.R")
 #Set up workspace
 packages <- c("DT", "RPostgres", "formattable","knitr","dplyr","htmltools","tidyr","stringr","scales","colorspace","sf", "leaflet",
 "rgdal","rpostgis","RColorBrewer","ggplot2","scales","highcharter","here","htmltools","devtools","broom","kableExtra","reshape2")  
@@ -235,4 +236,3 @@ assm_comp_scatter <- leg_index_scatter(leg_index, 'sldl', rc_theme)
 assm_comp_scatter
 
 ```
-
