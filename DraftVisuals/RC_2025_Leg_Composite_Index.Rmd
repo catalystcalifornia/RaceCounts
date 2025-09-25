@@ -1,7 +1,7 @@
 ---
 title: "Composite Legislative Index"
 author: "Authored by: Catalyst California"
-date: "9/10/2025"
+date: "9/25/2025"
 output:
   html_document:
     number_sections: no
@@ -72,6 +72,9 @@ for(pkg in packages){
 # load PostgreSQL driver
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
+
+# set source for viz functions
+source("draft_visual_functions.R")
 
 ##### UPDATE EACH YEAR ####
 rc_schema <- 'v7'
