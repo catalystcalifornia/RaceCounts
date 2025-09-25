@@ -2,7 +2,7 @@
 
 
 #### Set Up Environment ####
-packages <- c("formattable", "knitr", "stringr", "tidyr", "dplyr", "tidyverse", "RPostgreSQL", "glue", "formatR", "readxl", "fedmatch", "listr", "usethis", "here")
+packages <- c("formattable", "knitr", "stringr", "tidyr", "dplyr", "tidyverse", "RPostgres", "glue", "formatR", "readxl", "fedmatch", "listr", "usethis", "here")
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
 if(length(install_packages) > 0) { 
