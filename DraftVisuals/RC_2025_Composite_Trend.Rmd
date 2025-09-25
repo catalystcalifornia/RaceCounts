@@ -211,7 +211,6 @@ comp_index_list <- lapply(comp_index_list, function(x) x %>% mutate(
 comp_index_list <- listr::list_rename(comp_index_list, 'prev2_index' = paste0("composite_index_", prev2_yr), 'prev_index' = paste0("composite_index_", prev_yr), 'curr_index' = paste0("composite_index_", curr_yr))  # rename list elements to generic names
 
 list2env(comp_index_list, envir = .GlobalEnv)
-#df_names <- as.data.frame(names(comp_index_list))   # get names of list elements to use in loop
 
 # list of low pop counties in RED quadrant in prev2 - curr yrs
 small_pop <- lapply(comp_index_list, function(x) filter(x, dp05_0001e < 100000))
