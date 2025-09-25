@@ -1,0 +1,428 @@
+---
+title: "RACE COUNTS: Safety & Justice"
+author: "Authored by: Catalyst California"
+date: "9/19/2025"
+output:
+  html_document:
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+
+subtitle: 'Leg District Draft Visuals'
+---
+  
+<style type="text/css">
+h1{
+  font-family: Rubik;
+  }
+h2{
+  font-family: Rubik;
+}
+h3{
+  font-family: Rubik;
+}
+a{
+  font-family: Rubik;
+}
+ul{
+  font-family: Rubik;
+}
+ol{
+  font-family: Rubik;
+}
+body{
+  font-family: Rubik;
+  font-size: 15px;
+}
+p{
+  font-family: Rubik;
+  font-size: 15px;
+}
+body { background-color: #FFFFFF; }
+    
+</style>
+    
+```{r include = FALSE}
+knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
+
+#load the libraries via the below source as well as the credentials and set the theme
+source("draft_visual_functions.R")
+
+##Add RC theme##
+rc_theme # load from the above draft_visual_functions.R script
+issue_name <- 'Safety & Justice' # Issue names: Safety & Justice, Democracy, Economic Opportunity, Education, Healthy Built Environment, Health Care Access, Housing
+issue <- 'crim' #Issue: crim, demo, educ, econ, hben, hlth, hous
+rc_schema <- 'v7'
+rc_yr <- '2025'
+acs_yr <- '2023'
+  
+```
+  
+```{r echo=FALSE, include = FALSE}
+###################### GET Leg DATA #####################################
+  leg_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%leg_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
+  
+  leg_list <- dbGetQuery(con, leg_list_query) %>% pull(table_name) 
+  
+  l_tables <- lapply(setNames(paste0("select * from ", rc_schema, ".", leg_list), leg_list), DBI::dbGetQuery, conn = con)
+  
+  # create column with indicator name
+  l_tables <- map2(l_tables, names(l_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
+  
+  # clean up and add columns
+  l_tables <- lapply(l_tables, function(x) x %>% 
+                       select(-ends_with("_pop")) %>%
+                       mutate(issue = substring(indicator, 6,9),
+                              indicator = substring(indicator, 11),
+                              indicator = gsub(paste0('_leg_', rc_yr), '', indicator)))
+  
+  # Get issue index
+  l_index_z <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_", issue, "_index_leg_", rc_yr)) %>%
+    rename(geo_name = leg_name)  # make 'name' col generic
+  
+###################### POPULATION DATA #####################################
+  #Get total population
+  pop <- dbGetQuery(con, paste0("SELECT geoid, total_pop, geolevel FROM ", rc_schema, ".arei_race_multigeo WHERE geolevel = 'sldu' OR geolevel = 'sldl'"))
+  
+  l_index_z <- left_join(l_index_z, pop, by = c("leg_id" = "geoid", "geolevel"))
+  
+  l_tables <- lapply(l_tables, function(x) 
+    x %>% left_join(pop, by = c("leg_id" = "geoid", "geolevel")))
+  
+  ## Make 'name' col generic
+  l_tables <- lapply(l_tables, function(x)
+    x %>% rename(geo_name = leg_name))
+  
+###################### GET STATE DATA #####################################
+  state_list <- gsub("_leg", "_state", names(l_tables))
+
+  s_tables <- lapply(setNames(paste0("select * from ", rc_schema, ".", state_list), state_list), DBI::dbGetQuery, conn = con)
+  
+  # create column with indicator name
+  s_tables <- map2(s_tables, names(s_tables), ~ mutate(.x, indicator = .y)) # create column with indicator name
+  
+  # clean up and add columns
+  s_tables <- lapply(s_tables, function(x) x %>% 
+                       select(-any_of('geolevel'), -ends_with("_pop")) %>%
+                       mutate(issue = substring(indicator, 6,9),
+                              indicator = substring(indicator, 11),
+                              indicator = gsub(paste0('_state_', rc_yr), '', indicator),
+                              geolevel = 'state'))
+  
+  
+  ##Add metadata Data##
+##### WILL NEED TO REPLACE WITH Leg DIST INDICATOR LIST WHEN READY ######
+  v7_sources <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".arei_indicator_list_cntyst"))
+  v7_sources <- v7_sources %>% filter(v7_sources$arei_issue_area==issue_name) %>%
+    select(arei_indicator, arei_issue_area, rate_descriptor, bar_chart_header, rate_rounding, methodology, data_source, api_name)
+  
+  ## Join metadata to indicator data
+  l_tables <- lapply(l_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
+  s_tables <- lapply(s_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
+  
+  sen_tables <- lapply(l_tables, function(x) x %>% filter(geolevel == 'sldu'))
+  assm_tables <- lapply(l_tables, function(x) x %>% filter(geolevel == 'sldl'))
+
+  names(l_tables)
+  names(s_tables)
+  
+  
+  l_index_z <- l_index_z %>% mutate(arei_issue_area=issue_name)
+
+  sen_index_z <- l_index_z %>% filter(geolevel == 'sldu')
+  assm_index_z <- l_index_z %>% filter(geolevel == 'sldl')
+  
+  
+```
+  
+# Introduction
+  NOTE: The data and findings below are drafts subject to change and some pieces are still in the QA process.
+  
+  RACE COUNTS provides a 3D view of racial equity:
+  <br>OUTCOME: How well people are doing. The higher the circle, the better the outcome.
+  <br>DISPARITY: How racial groups compare to one another. The further right the circle, the greater the differences by race.
+  <br>IMPACT: The total population. The bigger the circle, the larger the population.
+  
+  <br><span style="color:purple">Purple</span> districts: Gains at Risk; 
+  <br><span style="color:orange">Orange</span> districts: Prosperity for the Few;
+  <br><span style="color:#c9cc14">Yellow</span> districts: Struggling to Prosper;
+  <br><span style="color:red">Red</span> districts: Stuck and Unequal.
+  
+## Key Findings 
+  
+  * [insert finding]
+
+## Race/Ethnicity Notes
+<br>1) "Other" race includes those who identify with a race outside of the specifically named categories, such as Asian, White, etc.
+<br>2) Race labels for bar charts: The "nh_" prefix signifies that a group excludes Latinx.
+<br>3) The "twoormor" group represents those who identify as Two or More Races.
+
+
+# Safety & Justice Index {.tabset .tabset-fade}
+## Senate
+```{r, echo=FALSE}
+# Remove districts without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
+sen_index_chart <- index_scatterplot(sen_index_z, 2)
+sen_index_chart
+
+```
+
+## Assembly
+```{r, echo=FALSE}
+# Remove districts without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
+assm_index_chart <- index_scatterplot(assm_index_z, 2)
+assm_index_chart
+
+```
+
+* [insert finding]
+
+# Senate Indicators
+## Use of Force {.tabset .tabset-fade}
+### Scatterplot
+
+```{r, echo=FALSE} 
+sen_1_chart <- county_scatterplot(sen_tables[[1]])
+sen_1_chart
+
+```
+* 
+
+### State Barchart
+```{r, echo=FALSE}
+s_1_ <- state_barchart(s_tables[[1]])
+s_1_
+
+``` 
+*
+
+### Leg Barchart
+  
+```{r, echo=FALSE}
+sen_1_long <- county_barchart(sen_tables[[1]]) 
+sen_1_long
+```
+
+
+## Officer-Initiated Stops  {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE} 
+sen_2_chart <- county_scatterplot(sen_tables[[2]])
+sen_2_chart
+
+```
+* 
+
+### State Barchart
+```{r, echo=FALSE}
+s_2_ <- state_barchart(s_tables[[2]])
+s_2_
+
+``` 
+* 
+
+### Leg Barchart
+  
+```{r, echo=FALSE}
+sen_2_long <- county_barchart(sen_tables[[2]]) 
+sen_2_long
+```
+
+
+## Incarceration {.tabset .tabset-fade}
+
+
+### Scatterplot
+
+```{r, echo=FALSE} 
+sen_3_chart <- county_scatterplot(sen_tables[[3]])
+sen_3_chart
+```
+* 
+
+### State Barchart
+```{r, echo=FALSE}
+s_3_ <- state_barchart(s_tables[[3]])
+s_3_
+
+``` 
+* 
+
+### Leg Barchart
+  
+```{r, echo=FALSE}
+sen_3_long <- county_barchart(sen_tables[[3]]) 
+sen_3_long
+```
+
+
+
+
+```{r echo=FALSE, include = FALSE}
+# below is a javascript chunk for the Leg bar-charts. The chunk automatically selects the 'State Senate District 1' Leg as the first chunk. Without the chunk below, as you can see from the output above, the first bar-chart shown sums the race/ethnicity rates for all of the districts. 
+# Each line that starts with document is for each graph (0-5) for a total of 6 graphs. If another graph is added, then you would simply add another line and label it as [6]. 
+
+# Notice that it isn't an R chunk, it is a JS chunk. :) 
+```
+Warning: Specifying width/height in layout() is now deprecated.
+Please specify in ggplotly() or plot_ly()Warning: Sum of bscol width units is greater than 12Warning: Ignoring 241 observationsWarning: Ignoring 241 observations> 
+  
+```{js}
+function filter_default() {
+  document.getElementsByClassName("selectized") 
+  [0].selectize.setValue("State Senate District 1", false);
+  
+  document.getElementsByClassName("selectized") 
+  [1].selectize.setValue("State Senate District 1", false);
+  
+  document.getElementsByClassName("selectized") 
+  [2].selectize.setValue("State Senate District 1", false);
+  
+  document.getElementsByClassName("selectized") 
+  [3].selectize.setValue("State Senate District 1", false);
+  
+  document.getElementsByClassName("selectized") 
+  [4].selectize.setValue("State Senate District 1", false);
+  
+  document.getElementsByClassName("selectized") 
+  [5].selectize.setValue("State Senate District 1", false);
+  
+  document.getElementsByClassName("selectized") 
+  [6].selectize.setValue("State Senate District 1", false);
+}
+window.onload = filter_default;
+```
+
+
+# Assembly Indicators
+## Use of Force {.tabset .tabset-fade}
+### Scatterplot
+
+```{r, echo=FALSE} 
+assm_1_chart <- county_scatterplot(assm_tables[[1]])
+assm_1_chart
+
+```
+* 
+
+### State Barchart
+```{r, echo=FALSE}
+s_1_ <- state_barchart(s_tables[[1]])
+s_1_
+
+``` 
+*
+
+### Leg Barchart
+  
+```{r, echo=FALSE}
+assm_1_long <- county_barchart(assm_tables[[1]]) 
+assm_1_long
+```
+
+
+## Officer-Initiated Stops  {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE} 
+assm_2_chart <- county_scatterplot(assm_tables[[2]])
+assm_2_chart
+
+```
+* 
+
+### State Barchart
+```{r, echo=FALSE}
+s_2_ <- state_barchart(s_tables[[2]])
+s_2_
+
+``` 
+* 
+
+### Leg Barchart
+  
+```{r, echo=FALSE}
+assm_2_long <- county_barchart(assm_tables[[2]]) 
+assm_2_long
+```
+
+
+## Incarceration {.tabset .tabset-fade}
+
+
+### Scatterplot
+
+```{r, echo=FALSE} 
+assm_3_chart <- county_scatterplot(assm_tables[[3]])
+assm_3_chart
+```
+* 
+
+### State Barchart
+```{r, echo=FALSE}
+s_3_ <- state_barchart(s_tables[[3]])
+s_3_
+
+``` 
+* 
+
+### Leg Barchart
+  
+```{r, echo=FALSE}
+assm_3_long <- county_barchart(assm_tables[[3]]) 
+assm_3_long
+```
+
+
+
+
+```{r echo=FALSE, include = FALSE}
+# below is a javascript chunk for the Leg bar-charts. The chunk automatically selects the 'State Assembly District 1' Leg as the first chunk. Without the chunk below, as you can see from the output above, the first bar-chart shown sums the race/ethnicity rates for all of the districts. 
+# Each line that starts with document is for each graph (0-5) for a total of 6 graphs. If another graph is added, then you would simply add another line and label it as [6]. 
+
+# Notice that it isn't an R chunk, it is a JS chunk. :) 
+```
+Warning: Specifying width/height in layout() is now deprecated.
+Please specify in ggplotly() or plot_ly()Warning: Sum of bscol width units is greater than 12Warning: Ignoring 241 observationsWarning: Ignoring 241 observations> 
+  
+```{js}
+function filter_default() {
+  document.getElementsByClassName("selectized") 
+  [0].selectize.setValue("State Assembly District 1", false);
+  
+  document.getElementsByClassName("selectized") 
+  [1].selectize.setValue("State Assembly District 1", false);
+  
+  document.getElementsByClassName("selectized") 
+  [2].selectize.setValue("State Assembly District 1", false);
+  
+  document.getElementsByClassName("selectized") 
+  [3].selectize.setValue("State Assembly District 1", false);
+  
+  document.getElementsByClassName("selectized") 
+  [4].selectize.setValue("State Assembly District 1", false);
+  
+  document.getElementsByClassName("selectized") 
+  [5].selectize.setValue("State Assembly District 1", false);
+  
+  document.getElementsByClassName("selectized") 
+  [6].selectize.setValue("State Assembly District 1", false);
+}
+window.onload = filter_default;
+```
+
+
+
+
+
+```{r, echo=FALSE}
+##Disconnect from database
+dbDisconnect(con)
+dbDisconnect(con2)
+
+```

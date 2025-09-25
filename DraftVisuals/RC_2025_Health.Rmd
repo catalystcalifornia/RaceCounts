@@ -1,5 +1,5 @@
 ---
-title: "RACE COUNTS: Health Care Access               "
+title: "RACE COUNTS: Health Care Access"
 author: "Authored by: Catalyst California"
 date: "9/16/2025"
 output:
