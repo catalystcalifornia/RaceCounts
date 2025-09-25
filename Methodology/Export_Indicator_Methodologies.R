@@ -57,29 +57,29 @@ prep_method <- function (geo, curr_yr, curr_schema) {
     left_join(races)
   methodology$arei_issue_area = ifelse(methodology$arei_issue_area == "Crime & Justice", "Safety & Justice", methodology$arei_issue_area)
   methodology <- methodology %>% arrange(arei_issue_area, ind_order)
-    
+  
   # split methodology into list by issue area
   method_list <- split(methodology, f = methodology$api_name_short)
   method_list <- list_rename(method_list, hlthy = "hben")         # rename hben to hlthy so issues can be ordered as on website
   method_list <- method_list[order(names(method_list))]           # put list into alpha order as issues are ordered on website
-    
+  
   # convert list elements into dfs
   invisible(list2env(method_list,envir=.GlobalEnv))
   
-return(method_list)
-
+  return(method_list)
+  
 }
 
 # Function to render specific geolevel methodology - this fx runs the RMD
 render_method <- function(geoname, date, method_list) {
-
+  
   rmarkdown::render(#input = paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/LF/RaceCounts/Methodology/Indicator_Methodology_", geoname, ".Rmd"),
     input = here(paste0("Methodology/Indicator_Methodology_", geoname, ".Rmd")),
     output_format = "html_document",
     output_file = paste0("index.html"),  
     #output_dir = paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/RaceCounts/Methodology/Indicator_Methodology_", geoname))
     output_dir = here(paste0("Methodology/Indicator_Methodology_", geoname)))
-
+  
 }
 
 

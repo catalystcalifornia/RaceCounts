@@ -21,8 +21,8 @@ calc_rates_100k <- function(x) {
                     raw_long$measure_rate <- sub("raw", "_", raw_long$measure_rate)
                     calc_long <- pop_long %>% left_join(raw_long, by=c("geoid", "measure_rate"))
                     calc_long <- calc_long %>%
-                                 mutate(rate=raw/pop * 100000) %>%                                             #calc rates
-                                 mutate(measure_rate=sub("__", "_rate", measure_rate))                         #create new column names for diffs from best
+                                 dplyr::mutate(rate=raw/pop * 100000) %>%                                             #calc rates
+                                 dplyr::mutate(measure_rate=sub("__", "_rate", measure_rate))                         #create new column names for diffs from best
                     calc_wide <- calc_long %>% dplyr::select(geoid, measure_rate, rate) %>%      #pivot long table back to wide
                                  pivot_wider(names_from=measure_rate, values_from=rate)
                     x <- x %>% left_join(calc_wide, by="geoid")                           #join new diff from best columns back to original table
@@ -35,7 +35,7 @@ return(x)
 count_values <- function(x) {
   rates <- x %>%
     dplyr::select(geoid, geolevel, ends_with("_rate"), -ends_with("_no_rate"), -total_rate) %>%
-    mutate(values_count = rowSums(!is.na(select(., ends_with("_rate"))))) %>%
+    dplyr::mutate(values_count = rowSums(!is.na(select(., ends_with("_rate"))))) %>%
     dplyr::select(geoid, geolevel, values_count)
   
   x <- x %>%
@@ -56,11 +56,11 @@ calc_best <- function(x) {
     
     # Prep: Replace 0 rates with NA 
     # Excludes superficially low rates where asbest is "min"
-    mutate(across(ends_with("_rate"), ~if_else(. == 0, NA, .))) %>%
+    dplyr::mutate(across(ends_with("_rate"), ~if_else(. == 0, NA, .))) %>%
     
     # Calculation
     rowwise() %>%
-    mutate(best = case_when(
+    dplyr::mutate(best = case_when(
       asbest == "max" ~ max(c_across(ends_with("_rate")), na.rm = TRUE),
       asbest == "min" ~ min(c_across(ends_with("_rate")), na.rm = TRUE),
       .default = NA
@@ -69,7 +69,7 @@ calc_best <- function(x) {
     
     # Clean: If all rates in a row are NA, max()/min() will return "Inf" values
     # Replace Inf with NA 
-    mutate(best = if_else(is.infinite(best), NA, best)) %>%
+    dplyr::mutate(best = if_else(is.infinite(best), NA, best)) %>%
     dplyr::select(geoid, geolevel, best)
   
   x <- x %>% 
@@ -92,8 +92,8 @@ calc_diff <- function(x) {
   # then pivot back to wide to join to original dataframe
   diff <- rates %>%
     pivot_longer(ends_with("_rate"), names_to="measure_rate", values_to="rate") %>%   
-    mutate(diff=abs(best-rate)) %>%
-    mutate(measure_diff=sub("_rate", "_diff", measure_rate)) %>%
+    dplyr::mutate(diff=abs(best-rate)) %>%
+    dplyr::mutate(measure_diff=sub("_rate", "_diff", measure_rate)) %>%
     dplyr::select(geoid, geolevel, measure_diff, diff) %>%     
     pivot_wider(names_from=measure_diff, values_from=diff)
   
@@ -113,7 +113,7 @@ calc_avg_diff <- function(x) {
     dplyr::select(geoid, geolevel, ends_with("_diff")) %>%
   
     # Calculation: average absolute difference from best 
-    mutate(avg = rowMeans(across(ends_with("_diff")), na.rm = TRUE)) %>%
+    dplyr::mutate(avg = rowMeans(across(ends_with("_diff")), na.rm = TRUE)) %>%
     dplyr::select(geoid, geolevel, avg)
   
   # join avg diff column back to original table
@@ -132,7 +132,7 @@ calc_s_var <- function(x) {
     dplyr::select(geoid, geolevel, ends_with("_diff")) %>%
 
     # Calculation 
-    mutate(variance = apply(dplyr::select(., ends_with("_diff")), 1, var, na.rm = TRUE)) %>%
+    dplyr::mutate(variance = apply(dplyr::select(., ends_with("_diff")), 1, var, na.rm = TRUE)) %>%
     dplyr::select(geoid, geolevel, variance)
    
     # Join variance column back to original table
@@ -145,16 +145,22 @@ calc_s_var <- function(x) {
 
 #####calculate (row wise) POPULATION variance of differences from best - use for non-sample data like Decennial Census, CDPH Births, or CADOJ Incarceration#####
 calc_p_var <- function(x) {
-                suppressWarnings(rm(var))   #removes object 'var' if had been previously defined
-                diffs <- dplyr::select(x, geoid, geolevel, values_count, ends_with("_diff"))
-                counts <- diffs %>% filter(values_count > 1) #%>% dplyr::select(-c(values_count))       #filter for counts >1
-                counts$svar <- apply(counts[,4:ncol(counts)], 1, var, na.rm = T)                        #calc population variance
-                
-                #convert sample variance to population variance. checked that the svar and variance results match VARS.S/VARS.P Excel results.
-                #See more: https://stackoverflow.com/questions/37733239/population-variance-in-r
-                counts$variance <- counts$svar * (counts$values_count - 1) / counts$values_count
-                counts <- dplyr::select(counts, geoid, geolevel, variance)                               #remove extra cols before join
-                x <- x %>% left_join(counts, by=c("geoid","geolevel"))                                   #join new variance column back to original table
+  diffs <- x %>% 
+    # Prep
+    filter(values_count > 1) %>%
+    dplyr::select(geoid, geolevel, values_count, ends_with("_diff")) %>%
+    
+    # Calculation
+    dplyr::mutate(svar = apply(dplyr::select(., ends_with("_diff")), 1, var, na.rm = TRUE)) %>%   
+    
+    # Convert sample variance to population variance. Checked that the svar and variance results match VARS.S/VARS.P Excel results.
+    #See more: https://stackoverflow.com/questions/37733239/population-variance-in-r
+    dplyr::mutate(variance = svar * (values_count - 1) / values_count) %>%
+    dplyr::select(geoid, geolevel, variance)                               
+  
+  # Join variance column back to original table
+  x <- x %>% 
+    left_join(diffs, by=c("geoid","geolevel"))    
 
 return(x)
 }
@@ -167,12 +173,12 @@ calc_id <- function(x) {
     dplyr::select(geoid, geolevel, best, asbest, values_count, ends_with("_diff")) %>%
     
     # Calculation 1: sum of difference from best (needed for ID calc)
-    mutate(sumdiff = rowSums(select(., ends_with("_diff")), na.rm=TRUE)) %>%
+    dplyr::mutate(sumdiff = rowSums(select(., ends_with("_diff")), na.rm=TRUE)) %>%
     
     # Calculation 2: Index of Disparity (ID)
     # Returns NA when (there are <2 raced values) OR (there are 2 raced values AND MIN is best AND the sum of diffs = best)
     # Example: The second condition is where MIN is best, a geo has only 2 rates and one of them is 0.
-    mutate(index_of_disparity = ifelse((values_count < 2) | 
+    dplyr::mutate(index_of_disparity = ifelse((values_count < 2) | 
                                           (values_count == 2 & asbest == 'min' & sumdiff == best),
                                         NA, 
                                         (((sumdiff / best) / (values_count - 1)) * 100))) %>%
@@ -194,8 +200,8 @@ calc_state_z <- function(x) {
                 diff <- dplyr::select(x, geoid, avg, index_of_disparity, variance, ends_with("_diff"))          #get geoid, avg, variance, and raced diff columns
                 diff <- diff[!is.na(diff$index_of_disparity),]                                           #exclude rows with 2+ raced values, min is best, and lowest rate is 0
                 diff_long <- pivot_longer(diff, 5:ncol(diff), names_to="measure_rate", values_to="rate") %>%   #pivot wide table to long on geoid & variance cols
-                  mutate(diff=(rate - avg) / sqrt(variance)) %>%                                               #calc disparity z-scores
-                  mutate(measure_diff=sub("_diff", "_disparity_z", measure_rate))                              #create new column names for disparity z-scores
+                  dplyr::mutate(diff=(rate - avg) / sqrt(variance)) %>%                                               #calc disparity z-scores
+                  dplyr::mutate(measure_diff=sub("_diff", "_disparity_z", measure_rate))                              #create new column names for disparity z-scores
                 diff_wide <- diff_long %>% dplyr::select(geoid, measure_diff, diff) %>%      #pivot long table back to wide keeping only geoid and new columns
                   pivot_wider(names_from=measure_diff, values_from=diff)
                 x <- x %>% left_join(diff_wide, by="geoid")                           #join new columns back to original table
@@ -210,7 +216,7 @@ calc_z <- function(x) {
                 id_table <- dplyr::select(x, geoid, index_of_disparity)
                 avg_id = mean(id_table$index_of_disparity, na.rm = TRUE) #calc avg id and std dev of id
                 sd_id = sd((id_table$index_of_disparity), na.rm = TRUE)
-                #mutate(sd_id = sd(unlist(id_table$index_of_disparity)))                    #calc avg id and std dev of id with unlist()
+                #dplyr::mutate(sd_id = sd(unlist(id_table$index_of_disparity)))                    #calc avg id and std dev of id with unlist()
                 id_table$disparity_z <- (id_table$index_of_disparity - avg_id) / sd_id      #note the disp_z results are slightly different than pgadmin, must be due to slight methodology differences
                 x$disparity_z = id_table$disparity_z                                   #add disparity_z to original table
 
@@ -218,8 +224,8 @@ calc_z <- function(x) {
                 diff <- dplyr::select(x, geoid, avg, index_of_disparity, variance, ends_with("_diff"))          #get geoid, avg, variance, and raced diff columns
                 diff <- diff[!is.na(diff$index_of_disparity),]                                           #exclude rows with 2+ raced values, min is best, and lowest rate is 0
                 diff_long <- pivot_longer(diff, 5:ncol(diff), names_to="measure_diff", values_to="diff") %>%   #pivot wide table to long on geoid & variance cols
-                mutate(dispz=(diff - avg) / sqrt(variance), na.rm = TRUE) %>%                                   #calc disparity z-scores
-                mutate(measure_diff=sub("_diff", "_disparity_z", measure_diff))                                #create new column names for disparity z-scores
+                dplyr::mutate(dispz=(diff - avg) / sqrt(variance), na.rm = TRUE) %>%                                   #calc disparity z-scores
+                dplyr::mutate(measure_diff=sub("_diff", "_disparity_z", measure_diff))                                #create new column names for disparity z-scores
                 diff_wide <- diff_long %>% dplyr::select(geoid, measure_diff, dispz) %>%      #pivot long table back to wide keeping only geoid and new columns
                              pivot_wider(names_from=measure_diff, values_from=dispz)
                 x <- x %>% left_join(diff_wide, by="geoid")                           #join new columns back to original table
@@ -250,12 +256,12 @@ calc_z <- function(x) {
                 rates_long <- left_join(rates_long, s, by="measure_rate")                                             #join std dev for each raced rate
 
                 if (min(rates$asbest) == 'max') {
-                rates_long <- rates_long %>% mutate(perf=(rate - avg_rates) / sd_rates, na.rm = TRUE) %>%         #calc perf_z scores if MAX is best
-                              mutate(measure_perf=sub("_rate", "_performance_z", measure_rate))                   #create new column names for performance z-scores
+                rates_long <- rates_long %>% dplyr::mutate(perf=(rate - avg_rates) / sd_rates, na.rm = TRUE) %>%         #calc perf_z scores if MAX is best
+                              dplyr::mutate(measure_perf=sub("_rate", "_performance_z", measure_rate))                   #create new column names for performance z-scores
                 } else
                 if (min(rates$asbest) == 'min') {
-                rates_long <- rates_long %>% mutate(perf=((rate - avg_rates) / sd_rates) *-1, na.rm = TRUE) %>%   #calc perf_z scores if MIN is best
-                              mutate(measure_perf=sub("_rate", "_performance_z", measure_rate))                   #create new column names for performance z-scores
+                rates_long <- rates_long %>% dplyr::mutate(perf=((rate - avg_rates) / sd_rates) *-1, na.rm = TRUE) %>%   #calc perf_z scores if MIN is best
+                              dplyr::mutate(measure_perf=sub("_rate", "_performance_z", measure_rate))                   #create new column names for performance z-scores
                 }
 
                 rates_wide <- rates_long %>% dplyr::select(geoid, measure_perf, perf) %>%          #pivot long table back to wide keeping only geoid and new columns
@@ -286,7 +292,7 @@ calc_ranks <- function(x) {
   
   #quadrants (updated 2023)
     #if perf_z below avg and disp_z above avg, then red / perf_z above or avg and disp_z above or avg, then orange /
-    #perf_z above or avg and disp_z below avg, then purple / perf_z below avg and disp_z below or avg, then yellow
+    #perf_z above or avg and disp_z below or avg, then purple / perf_z below avg and disp_z below or avg, then yellow
       ranks_table$quadrant = 
           ifelse(ranks_table$performance_z < 0 & ranks_table$disparity_z > 0, 'red',
             ifelse(ranks_table$performance_z >= 0 & ranks_table$disparity_z > 0, 'orange',
@@ -336,15 +342,25 @@ to_postgres <- function(x,y) {
                       # add names to the character vector
                       names(charvect) <- colnames(state_table)
 
-                      dbWriteTable(con, c(rc_schema, state_table_name), state_table,
-                                   overwrite = FALSE, row.names = FALSE)
+                      dbWriteTable(con,
+                                   Id(schema = rc_schema, table = state_table_name),
+                                   state_table, overwrite = FALSE)
 
-                      #comment on table and columns
-                      comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", state_table_name,  " IS '", indicator, " from ", source, ".';
-                                                                        COMMENT ON COLUMN ", rc_schema, ".", state_table_name, ".state_id IS 'State fips';")
-                      print(comment)
-                      dbSendQuery(con, comment)
+                        # Start a transaction
+                        dbBegin(con)
 
+                        #comment on table and columns
+                        comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", state_table_name, "\"", " IS 'Table created on ", Sys.Date(), ". ", indicator, " from ", source, ".';")
+                        print(comment)
+                        dbExecute(con, comment)
+
+                        col_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", state_table_name, "\"", ".state_id IS 'State fips';")
+                        print(col_comment)                  
+                        dbExecute(con, col_comment)
+
+                        # Commit the transaction if everything succeeded
+                        dbCommit(con)
+                      
                       #COUNTY TABLE
                       county_table <- as.data.frame(county_table)
 
@@ -357,74 +373,109 @@ to_postgres <- function(x,y) {
                       # add names to the character vector
                       names(charvect) <- colnames(county_table)
 
-                      dbWriteTable(con, c(rc_schema, county_table_name), county_table,
-                                   overwrite = FALSE, row.names = FALSE)
+                      dbWriteTable(con,
+                                   Id(schema = rc_schema, table = county_table_name),
+                                   county_table, overwrite = FALSE)
+                      
+                       # Start a transaction
+                        dbBegin(con)
 
-                      #comment on table and columns
-                      comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", county_table_name,  " IS '", indicator, " from ", source, ".';
-                                         COMMENT ON COLUMN ", rc_schema, ".", county_table_name, ".county_id IS 'County fips';")
-                      print(comment)
-                      dbSendQuery(con, comment)
+                        #comment on table and columns
+                        comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", county_table_name, "\"", " IS 'Table created on ", Sys.Date(), ". ", indicator, " from ", source, ".';")
+                        print(comment)
+                        dbExecute(con, comment)
 
-                      dbDisconnect(con)
+                        col_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", county_table_name, "\"", ".county_id IS 'County fips';")
+                        print(col_comment)
+                        dbExecute(con, col_comment)
+
+                        # Commit the transaction if everything succeeded
+                        dbCommit(con)
+                        return("Table and columns comments added to table!")
+
+                        dbDisconnect(con)
 
 return(x)
 }
 
 city_to_postgres <- function(x) {
 
-  # create connection for rda database
-  source("W:\\RDA Team\\R\\credentials_source.R")
-  con <- connect_to_db("racecounts")
+                      # create connection for rda database
+                      source("W:\\RDA Team\\R\\credentials_source.R")
+                      con <- connect_to_db("racecounts")
 
-  #CITY TABLE
-  city_table <- as.data.frame(city_table)
+                      #CITY TABLE
+                      city_table <- as.data.frame(city_table)
 
-  # make character vector for field types in postgresql db
-  charvect = rep('numeric', dim(city_table)[2])
+                      # make character vector for field types in postgresql db
+                      charvect = rep('numeric', dim(city_table)[2])
 
-  # change data type for first two columns
-  charvect[1:2] <- "varchar" # first two cols are characters for the geoid and names
+                      # change data type for first two columns
+                      charvect[1:2] <- "varchar" # first two cols are characters for the geoid and names
 
-  # add names to the character vector
-  names(charvect) <- colnames(city_table)
+                      # add names to the character vector
+                      names(charvect) <- colnames(city_table)
 
-  dbWriteTable(con, c(rc_schema, city_table_name), city_table,
-               overwrite = FALSE, row.names = FALSE)
+                      dbWriteTable(con,
+                                   Id(schema = rc_schema, table = city_table_name),
+                                   city_table, overwrite = FALSE)
 
-  #comment on table and columns
-  comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", city_table_name,  " IS '", indicator, " from ", source, ".';")
-  print(comment)
-  dbSendQuery(con, comment)
-}
+                      # Start a transaction
+                      dbBegin(con)
+
+                      #comment on table and columns
+                      comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", city_table_name, "\"", " IS 'Table created on ", Sys.Date(), ". ", indicator, " from ", source, ".';")
+                      print(comment)
+
+                      dbExecute(con, comment)
+
+                      # Commit the transaction if everything succeeded
+                      dbCommit(con)
+                      return("Table and columns comments added to table!")
+
+                      dbDisconnect(con)
+  
+  return(x)
+ }
 
 leg_to_postgres <- function(x) {
-  # create connection for rda database
-  source("W:\\RDA Team\\R\\credentials_source.R")
-  con <- connect_to_db("racecounts")
-  
-  #STATE TABLE
-  leg_table <- as.data.frame(leg_table)
-  
-  # make character vector for field types in postgresql db
-  charvect = rep('numeric', dim(leg_table)[2])
-  
-  # change data type for first two columns
-  charvect[1:3] <- "varchar" # first two cols are characters for the geoid and names
-  
-  # add names to the character vector
-  names(charvect) <- colnames(leg_table)
-  
-  dbWriteTable(con, c(rc_schema, leg_table_name), leg_table,
-               overwrite = FALSE, row.names = FALSE)
-  
-  #comment on table and columns
-  comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", leg_table_name,  " IS '", indicator, " from ", source, ".';
-                                                                        COMMENT ON COLUMN ", rc_schema, ".", leg_table_name, ".leg_id IS 'Legislative District fips - note Assm and Sen fips are NOT unique. You must use combination of leg_id and geolevel to identify';")
-  print(comment)
-  dbSendQuery(con, comment)
-  
-  dbDisconnect(con)
+                      # create connection for rda database
+                      source("W:\\RDA Team\\R\\credentials_source.R")
+                      con <- connect_to_db("racecounts")
+
+                      #STATE TABLE
+                      leg_table <- as.data.frame(leg_table)
+
+                      # make character vector for field types in postgresql db
+                      charvect = rep('numeric', dim(leg_table)[2])
+
+                      # change data type for first two columns
+                      charvect[1:3] <- "varchar" # first two cols are characters for the geoid and names
+
+                      # add names to the character vector
+                      names(charvect) <- colnames(leg_table)
+
+                      dbWriteTable(con,
+                                   Id(schema = rc_schema, table = leg_table_name),
+                                   leg_table, overwrite = FALSE)
+
+                      # Start a transaction
+                      dbBegin(con)
+
+                      #comment on table and columns
+                      comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", leg_table_name, "\"", " IS 'Table created on ", Sys.Date(), ". ", indicator, " from ", source, ".';")
+                      print(comment)
+                      dbExecute(con, comment)
+
+                      col_comment <- paste0("COMMENT ON COLUMN ", "\"", rc_schema, "\"", ".", "\"", leg_table_name, "\"", ".leg_id IS 'Legislative District fips - note Assm and Sen fips are NOT unique. You must use combination of leg_id and geolevel to identify';")
+                      print(col_comment)
+                      dbExecute(con, col_comment)
+
+                      # Commit the transaction if everything succeeded
+                      dbCommit(con)
+                      return("Table and columns comments added to table!")
+
+                      dbDisconnect(con)
   
   return(x)
 }

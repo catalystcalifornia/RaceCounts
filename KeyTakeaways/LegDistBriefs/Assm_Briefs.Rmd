@@ -1,0 +1,117 @@
+---
+title: '`r`unique(dat$rep_name)`'
+subtitle: '`r paste0("Representing ", unique(dat$geo_name))`'
+author: ""
+output:
+  word_document:
+    reference_docx: leg_brief_style_reference.docx
+    toc: no
+---
+ 
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, dpi = 300)
+# 
+library(formattable)
+library(sf)
+library(dplyr)
+library(data.table)
+library(ggplot2)
+library(RColorBrewer)
+library(flextable)
+library(officer)
+library(knitr)
+library(ggthemes)
+library(stringr)
+library(docxtools)
+library(tidyr)
+library(tidycensus)
+library(grid)
+library(cowplot)
+library(extrafont)
+library(foreign)
+library(kableExtra)
+library(Rpostgres)
+library(usethis)
+wcl_root <- "W:\Project\RACE COUNTS\2025_v7\Leg_Dist_PDFs"
+
+# just a note of reference to inserting text #https://monashbioinformaticsplatform.github.io/2017-11-16-open-science-training/topics/rmarkdown.html
+#https://rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf
+```
+
+### SUMMARY  
+    
+District 1 is the `r comma(lowest3_place[1,2],0)` most racially disparate Assembly District in California. It ranks `r comma(lowest3_place[1,2],0)` out of 80 Assembly districts in outcomes such as employment, life expectancy, and homeownership.
+  
+#####  
+  
+### BACKGROUND    
+
+RACE COUNTS analyzed XX indicators such as high school graduation, asthma, and incarceration, for every State Assembly District and ranked disticts by their outcomes and differences in those outcomes among racial groups.
+
+Data sources for indicators include the California Department of Education, the California Department of Justice, the California Office of Environmental Health Hazard Assessment, the U.S. Census Bureau's American Community Survey, and others. All data are the most recent data published or within one year of publication. See RaceCounts.org/methodology for more information.
+
+#####  
+  
+### WHY THIS IS IMPORTANT    
+
+Lorem ipsum dolor sit amet. At adipisci omnis qui modi soluta et corrupti consequatur est quod asperiores. Aut dolorem reprehenderit et dolorum quibusdam. Lorem ipsum dolor sit amet. At adipisci omnis qui modi soluta et corrupti consequatur est quod asperiores. Aut dolorem reprehenderit et dolorum quibusdam. At adipisci omnis qui modi soluta et corrupti consequatur. 
+
+#####  
+  
+### WHAT YOU CAN DO ABOUT IT    
+
+* __Raise The Bar In Low-Wage Industries__: City of Los Angeles/Los Angeles County continues to suffer from a crisis of working poverty. While minimum wage has increased, it has not been congruent to the cost of living, especially for workers in low-wage industries. Policymakers and other leaders should support raising wages in targeted low-wage industries, and establish mechanisms for genuine worker empowerment such as anti-retaliation policies.
+
+* __Build More Affordable Housing & Continue Rental Assistance Programs__: Local governments must double down on subsidizing low-income housing for low, very-low, and moderate level incomes. In addition, increased public funding and incentives for affordable housing construction must require a Community Benefits Agreement that includes strong worker protections, targeted local hire, and a mix of housing at all income levels.
+
+* __Bring Big-Box Grocers To Traditional Food Deserts__: Allocate subsidies that incentivize big-box grocers to locate in traditionally low-wage communities where food deserts are prevalent. Further, wage standards and targeted local hire provisions must be included in any such incentive program. If executed well, this can provide healthy food options for residents who lack access to affordable, nutritious options, and ensure culturally relevant products for community members.
+  
+  
+#####  
+  
+## See how `r`unique(dat$geo_name)` compares to all districts at RaceCounts.org/Assembly-Briefs or via QR code:
+
+
+## Compared to other Assembly Districts, `r unique(dat$geo_name)` has...    
+* __`r unique(dat$demo_outcome)` outcomes and `r unique(dat$demo_disparity)` disparity in Democracy indicators.
+* __`r unique(dat$econ_outcome)` outcomes and `r unique(dat$econ_disparity)` disparity in Economic Opportunity indicators.
+* __`r unique(dat$educ_outcome)` outcomes and `r unique(dat$educ_disparity)` disparity in Education indicators.
+* __`r unique(dat$hlth_outcome)` outcomes and `r unique(dat$hlth_disparity)` disparity in Health Care Access indicators.
+* __`r unique(dat$crim_outcome)` outcomes and `r unique(dat$crim_disparity)` disparity in Healthy Built Environment indicators.
+* __`r unique(dat$educ_outcome)` outcomes and `r unique(dat$educ_disparity)` disparity in Housing indicators.
+* __`r unique(dat$educ_outcome)` outcomes and `r unique(dat$educ_disparity)` disparity in Safety & Justice indicators.
+
+#####  
+
+`r unique(dat$geo_name)` indicators with the
+lowest outcomes
+* __`r unique(dat$out_1)`
+* __`r unique(dat$out_2)`
+* __`r unique(dat$out_3)`
+* __`r unique(dat$out_4)`
+* __`r unique(dat$out_5)`
+
+`r unique(dat$geo_name)` indicators with the
+greatest disparity
+* __`r unique(dat$disp_1)`
+* __`r unique(dat$disp_2)`
+* __`r unique(dat$disp_3)`
+* __`r unique(dat$disp_4)`
+* __`r unique(dat$disp_5)`
+
+#####  
+
+Across indicators, `r unique(dat$geo_name)` `r unique(dat$impact_race)` are most impacted by racial disparity in outcomes, with the worst rates for `r unique(dat$impact_count)` out of the `r unique(dat$impact_ind)` indicators with data for them. All races lose when systemic racism remains unchecked though.
+
+#####  
+
+# Want to improve outcomes and reduce racial disparities?
+Reach out at info@racecounts.org
+
+
+<p align="center">
+![](W:/Project/RACE COUNTS/2025_v7/RC_Github/LF/RaceCounts/images/dark_logo.png){width=150px}
+</p>
+
+
