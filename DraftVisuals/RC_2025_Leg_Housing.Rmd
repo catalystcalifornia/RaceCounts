@@ -1,7 +1,7 @@
 ---
 title: "RACE COUNTS: Housing"
 author: "Authored by: Catalyst California"
-date: "9/18/2025"
+date: "9/25/2025"
 output:
   html_document:
     number_sections: no
@@ -376,7 +376,7 @@ sen_7_long
 ### Scatterplot
 
 ```{r, echo=FALSE} 
-sen_8_chart <- county_scatterplot(sen_tables[[7]])
+sen_8_chart <- county_scatterplot(sen_tables[[8]])
 sen_8_chart
 
 ```
@@ -384,7 +384,7 @@ sen_8_chart
 
 ### State Barchart
 ```{r, echo=FALSE}
-s_8_ <- state_barchart(s_tables[[7]])
+s_8_ <- state_barchart(s_tables[[8]])
 s_8_
 
 ``` 
@@ -393,7 +393,7 @@ s_8_
 ### Leg Barchart
   
 ```{r, echo=FALSE}
-sen_8_long <- county_barchart(sen_tables[[7]]) 
+sen_8_long <- county_barchart(sen_tables[[8]]) 
 sen_8_long
 ```
 
@@ -630,7 +630,7 @@ assm_7_long
 ### Scatterplot
 
 ```{r, echo=FALSE} 
-assm_8_chart <- county_scatterplot(assm_tables[[7]])
+assm_8_chart <- county_scatterplot(assm_tables[[8]])
 assm_8_chart
 
 ```
@@ -638,7 +638,7 @@ assm_8_chart
 
 ### State Barchart
 ```{r, echo=FALSE}
-s_8_ <- state_barchart(s_tables[[7]])
+s_8_ <- state_barchart(s_tables[[8]])
 s_8_
 
 ``` 
@@ -647,7 +647,7 @@ s_8_
 ### Leg Barchart
   
 ```{r, echo=FALSE}
-assm_8_long <- county_barchart(assm_tables[[7]]) 
+assm_8_long <- county_barchart(assm_tables[[8]]) 
 assm_8_long
 ```
 
