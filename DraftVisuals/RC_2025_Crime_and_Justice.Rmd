@@ -1,7 +1,7 @@
 ---
 title: "RACE COUNTS: Crime and Justice"
 author: "Authored by: Catalyst California"
-date: "9/16/2025"
+date: "9/26/2025"
 output:
   html_document: 
     number_sections: no
@@ -44,7 +44,7 @@ body { background-color: #FFFFFF; }
 
 </style>
 
-```{r include = FALSE}
+```{r setup, include = FALSE}
 #load the libraries via the below source as well as the credentials and set the theme
 source("draft_visual_functions.R")
 options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
@@ -59,7 +59,7 @@ acs_yr <- '2023'
 
 ```
 
-```{r echo=FALSE, include = FALSE}
+```{r load data, echo=FALSE, include = FALSE}
 ####################### GET COUNTY DATA #####################################
 county_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%county_%", rc_yr, "' AND table_name LIKE '%", issue, "%' AND table_name NOT LIKE '%index%';")
 
@@ -142,14 +142,6 @@ RACE COUNTS provides a 3D view of racial equity:
 <br><span style="color:#c9cc14">Yellow</span> counties: Struggling to Prosper;
 <br><span style="color:red">Red</span> counties: Stuck and Unequal.
 
-# Key Findings
-
-* Black Californians are significantly more likely to experience Law Enforcement Use of Force, with a rate 30.5x higher compared to other groups.
-
-* Black Youth experience the greatest racial disparity in arrests for Status Offenses, being 2.6 times more likely to be arrested for these offenses compared to White Youth. 
-
-* The majority of Californians (over 80%) generally feel safe in their neighborhoods. However, White, SWANA, and Those of Two or More Races (Non-Latinx) report feeling safer than the state average.
-
 # Race/Ethnicity Notes
 <br>1) "Other" race includes those who identify with a race outside of the specifically named categories, such as Asian, White, etc.
 <br>2) Race labels for bar charts: The "nh_" prefix signifies that a group is non-Latinx (excludes Latinx).
@@ -167,7 +159,8 @@ RACE COUNTS provides a 3D view of racial equity:
 
 ```
 
-* Four out of six Southern California counties are in the Purple Quadrant (Higher Outcome, Lower Disparity). San Bernardino County experiences lower outcome and lower racial disparity rates, while Los Angeles County experiences lower outcome and higher racial disparity rates.
+* Four out of six Southern California counties have better than average outcomes, though disparity varies. This is one issue where LA County, usually in the Yellow Quadrant (Better Disparity, Worse Outcomes), is in the Red Quadrant (Worse Disparity, Worse Outcomes). 
+* All Bay Area counties have better than average outcomes, though disparity varies. San Francisco has the third worst disparities in the state, while Marin has the best outcomes. Contra Costa has the 4th best outcomes, but the 9th worst disparities.
 
 
 ## Incarceration - NOT UPDATED {.tabset .tabset-fade}
@@ -180,9 +173,8 @@ c_1_chart
 
 
 ```
-* Los Angeles ranks among the counties with the most racial disparity (rank of 3) but has higher outcome - meaning a lower overall incarceration rate - (rank of 10).
-* Sutter is the only county in the Red Quadrant (Higher Disparity, Lower Outcome). Black Californians are 153 times more likely to be incarcerated as the group with the lowest rate, leading to Sutter being the second most disparate county in the state on this measure.
-* In Yolo County, with the worst racial disparities for incarceration, Black residents are 355 times more likely to be incarcerated as the group with the lowest rate.
+* Los Angeles ranks among the counties with the most racial disparity (rank of 2) but has a better outcome - lower overall incarceration rate - (rank of 11).
+* Contra Costa is by far the most disparate county on this measure due to very high AIAN and Black incarceration rates. 
 
 
 ### State Barchart
@@ -191,7 +183,7 @@ c_1_chart
   s_1_
 
 ```  
-* Black Californians are 19.5 times more likely to be incarcerated than the group with the lowest incarceration rate statewide. They are 1.8 times more likely to be incarcerated than even the group with the next highest rate (non-Latinx AIAN) indicating the extreme racial disparity facing this group.
+* Black Californians are 23.1x more likely to be incarcerated than the group with the lowest incarceration rate statewide. They are 2.6x more likely to be incarcerated than even the group with the next highest rate (non-Latinx AIAN) indicating the extreme racial disparity facing this group.
 
 ### County Barchart
 
@@ -209,7 +201,8 @@ c_1_long
 c_2_chart <- county_scatterplot(c_tables[[2]])
 c_2_chart
 ```
-
+* The 10 most disparate counties are all found in the Northern Sierra and San Joaquin Valley regions.
+* Los Angeles is in the Purple Quadrant (Lower Disparity, Better Outcome). However, law enforcement officers there are still 6x more likely to use force against Black residents than White residents, illustrating that even lower than average disparities can still be large. 
 
 
 ### State Barchart
@@ -218,9 +211,7 @@ c_2_chart
   s_2_
 
 ```
-* More than 4 out of 5 Californians reported feeling safe in their neighborhood all or most of the time.
-
-* Non-Hispanic Whites, those of Two or More Races (non-Latinx), and SWANA residents are the only groups who report feeling safer than the state average. 
+* Black Californians are 20x more likely, and Pacific Islander Californians 16x more likely, to be subject to Law Enforcement Use of Force than the group with the lowest rate. 
 
 ### County Barchart
 
@@ -238,9 +229,8 @@ c_2_long
 c_3_chart <- county_scatterplot(c_tables[[3]])
 c_3_chart
 ```
-* Most counties are near average when it comes to outcome for this measure.
-
-* Alpine County is the most racially disparate for this measure and is also among the lowest performing because of its high rates of Officer-Initiated Stops for its Latinx and White residents.
+* San Francisco has the third worst racial disparities on this measure while also having the best outcome (lowest overall stop rate). The high disparity is caused by high stop rates for Black and Pacific Islander residents.
+* All Southern California counties have better than average outcomes, except for Imperial.
 
 
 ### State Barchart
@@ -250,8 +240,8 @@ c_3_chart
   s_3_
 
 ``` 
-* Pacific Islanders experience officer-initiated stops 2.3 times more than the state average and 6.1 times more than the group with the lowest rate. 
-
+* Law enforcement officers stop Black Californians 2.2x more often than the average resident.
+* Law enforcement officers stop Pacific Islander Californians 1.7x times more than the average Californian.
 
 ### County Barchart
 
@@ -270,11 +260,8 @@ c_4_chart <- county_scatterplot(c_tables[[4]])
 c_4_chart
 
 ```
-* El Dorado County is the most racially disparate on this measure, with 56.1% of its Black residents having a much lower perception of safety than other groups within the county.
-
-* Placer County has the highest perception of safety, but its NHPI residents report a much lower perception of safety compared to other groups within the county.
-
-
+* Marin is the second most disparate on this measure, while also having the second best outcomes. Only 52% of Pacific Islander residents report feeling safe in their neighborhood, compared to 90% of Latinx and 99% of White residents.
+* All San Joaquin Valley counties have worse (lower) than average perception of safety rates. The majority also have better (lower) disparity on this measure.
 
 
 ### State Barchart
@@ -284,7 +271,9 @@ c_4_chart
   s_4_
 
 ```
-* Black Californians are 30.5 times more likely, and Pacific Islander Californians 27 times more likely, to be subject to Law Enforcement Use of Force than the group with the lowest rate. 
+* More than 4 out of 5 Californians reported feeling safe in their neighborhood all or most of the time.
+* Non-Hispanic Whites, SWANA, and those of Two or More Races (non-Latinx) residents are the only groups who report feeling safer than the state average. 
+
 
 ### County Barchart
 
@@ -297,13 +286,12 @@ c_4_long
 
 ### Scatterplot
 
-
 ```{r, echo=FALSE}
 c_5_chart <- county_scatterplot(c_tables[[5]])
 c_5_chart
 ```
-* Nevada County is ranked the most disparate and among the lowest performing counties in the state for Youth Status Offense Arrests.
-
+* All Bay Area counties have better than average outcomes, and lower than average disparity on this measure (except SF which does not have disparity data).
+* Nevada County is ranked the most disparate by far because it has few Black youth residents, but a high number of Black youth arrested for status offenses.
 
 
 ### State Barchart
@@ -312,7 +300,7 @@ c_5_chart
   s_5_ <- state_barchart(s_tables[[5]])
   s_5_
 ```
- * Black Youth face by far the most racial disparity on this measure. They are 2.6 times more likely to be arrested for status offenses than White Youth. 
+ * Black youth face by far the most racial disparity on this measure. They are 2.6x more likely to be arrested for status offenses than White youth. 
  
 
 ### County Barchart
