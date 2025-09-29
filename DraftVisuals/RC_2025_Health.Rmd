@@ -1,7 +1,7 @@
 ---
 title: "RACE COUNTS: Health Care Access"
 author: "Authored by: Catalyst California"
-date: "9/16/2025"
+date: "9/29/2025"
 output:
   html_document:
     number_sections: no
@@ -138,7 +138,7 @@ names(s_tables)
 NOTE: The data and findings below are drafts subject to change and some pieces are still in the QA process.
 
 RACE COUNTS provides a 3D view of racial equity:
-<br>PERFORMANCE: How well people are doing. The higher the circle, the better the outcome
+<br>OUTCOME: How well people are doing. The higher the circle, the better the outcome
 <br>DISPARITY: How racial groups compare to one another. The further right the circle, the greater the differences by race.
 <br>IMPACT: The total population. The bigger the circle, the larger the population.
 

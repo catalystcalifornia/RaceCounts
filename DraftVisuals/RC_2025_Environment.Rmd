@@ -1,7 +1,7 @@
 ---
 title: "RACE COUNTS: Healthy Built Environment"
 author: "Authored by: Catalyst California"
-date: "9/16/2025"
+date: "9/29/2025"
 output:
   html_document:
     number_sections: no
@@ -60,7 +60,6 @@ issue_name <- 'Healthy Built Environment' # Issue names: Safety & Justice, Democ
 issue <- 'hben' #Issue: crim, demo, educ, econ, hben, hlth, hous
 rc_schema <- 'v7'
 rc_yr <- '2025'
-acs_yr <- '2023'
 
 ```
 
@@ -152,45 +151,24 @@ RACE COUNTS provides a 3D view of racial equity:
 # Race/Ethnicity Notes
 <br>1) "Other" race includes those who identify with a race outside of the specifically named categories, such as Asian, White, etc.
 <br>2) Race labels for bar charts: The "nh_" prefix signifies that a group is non-Latinx (excludes Latinx).
-<br>3) The "twoormor" group represents those who identify as Two or More Races.
+<br>3) The "twoormor" group represents those who identify as Multiracial.
 
 # Indicators
 
 ## Healthy Built Environment Index - UPDATED
 ```{r, echo=FALSE}
 # Remove counties without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
-   c_index_z <- c_index_z %>% mutate(arei_issue_area=issue_name)
+  c_index_z <- c_index_z %>% mutate(arei_issue_area=issue_name)
   c_index_chart <- index_scatterplot(c_index_z, 2)
 
   c_index_chart
 ```
-* The four counties in the Red Quadrant (Higher Disparity, Lower Outcome) with the worst outcome measures are all in the San Joaquin Valley.
-* Los Angeles County has the worst outcome out of all 46 counties ranked on the healthy built environment index.
-* The Central Coast seems to be the region with the healthiest and least racially disparate built environments in the state. Of the six counties in the region, there are five with better than average outcome and five with below average racial disparities.
-
-<!--## Healthy Built Environment Index - UPDATED (Percentile) -->
-
-<!--```{r, echo=FALSE}
-c_index_pctile %>% 
-  filter(quadrant %in% c("purple", "yellow", "orange", "red")) %>%
-    hchart("scatter", 
-    hcaes(x=healthy_built_environment_disparity_pctile, y=healthy_built_environment_performance_pctile, size=dp05_0001e, group=quadrant),
-      tooltip = 
-         list(pointFormat = 
-                "<strong>County: </strong>{point.county_name} <br><strong>Performance Rank: </strong>{point.healthy_built_environment_performance_rank} <br><strong>Disparity Rank: </strong>{point.healthy_built_environment_disparity_rank} <br><strong>Universe: </strong>{point.dp05_0001e:,.0f}")) %>%
-  hc_title(text = "Healthy Built Environment Index Percentile") %>%
-  hc_xAxis(title = list(text = "Disparity Percentile"), max = 1, min = -0.1) %>% 
-  hc_yAxis(title = list(text = "Performance Percentile"), max = 1.1, min = 0) %>% 
-  hc_caption(
-    text = "Data source: Various <br>A Disparity Rank of 1 represents the most disparate. A Performance Rank of 1 represents the best outcomes.",
-    align = "center"
-     ) %>% #hc_size(height=400,width=700) %>%
-  hc_legend(element_blank) %>% hc_add_theme(rc_theme)
-
-```-->
+* Seven of the 10 counties with the worst overall outcomes on the HBE Index are in the San Joaquin Valley, the other three are LA, Amador, and Sutter counties.
+Los Angeles County has the worst outcome out of all 46 counties ranked on the healthy built environment index.
+* All San Joaquin Valley counties have below average outcomes, though disparity varies. Madera and San Joaquin counties in particular have high disparities, ranked 5th and 6th most disparate respectively.
 
 
-## Drinking Water Contaminants - UPDATED {.tabset .tabset-fade}
+## Lack of Green Space - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -200,8 +178,7 @@ c_1_chart
 ```
 
 * Counties with larger populations tend to have less than average racial disparity, while all of the counties with the most disparity have smaller populations.
-* Four of the Five counties in the Red Quadrant are from the San Joaquin Valley, meaning that region experiences above average levels of both drinking water contaminants and racial disparities in who in exposed to them.
-* Los Angeles County ranks the 4th worst of all 56 California counties measured in overall levels of drinking water contaminants.
+* Los Angeles County ranks the 2nd worst of the 56 California counties measured in overall lack of green space.
 
 ### State Barchart
 ```{r, echo=FALSE}
@@ -209,7 +186,7 @@ c_1_chart
   s_1_
 ``` 
 
-* Statewide, Latinx, Southwest Asian or North African, and American Indian or Alaska Native Californians are the three racial groups with more exposure to drinking water contaminants than the overall statewide rate.
+* Statewide, Black, Asian, and Southwest Asian or North African Californians are the three racial groups with the least access to green space.
 
 ### County Barchart
 
@@ -219,7 +196,7 @@ c_1_long
 ```
 
 
-## Food Access {.tabset .tabset-fade}
+## Toxic Releases - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -229,9 +206,9 @@ c_2_chart
 
 ```
 
-* All six counties in the Central Coast region and eight of the nine counties in the Bay Area have better than average overall access to fresh fruits and vegetables. Racial disparities in this access vary across the two regions though, with roughly half the counties in each region in the Purple Quadrant (low disparity) and half in the Orange Quadrant (high disparity).
-* All eight counties in the San Joaquin Valley have below average outcome in access to fresh foods, and five of the six counties in the Red Quadrant (low outcome, high disparity) are from the region.
-* San Diego and Orange County have uniquely high rates of access to fresh food among Southern California counties, and are the only two counties from the region in the Purple Quadrant (high outcome, low disparity).
+* All Bay Area counties have better than average racial disparity on this measure.
+* Madera County stands out as having the 3rd worst racial disparities and overall worst outcome on this indicator.
+* LA County has the second worst outcome, meaning second highest exposure to toxic releases, among all counties.
 
 ### State Barchart
 ```{r, echo=FALSE}
@@ -240,8 +217,7 @@ c_2_chart
 
 ```
 
-* White and multi-racial Californians are the only racial groups with access to fresh fruits and vegetables at a rate higher than the overall statewide rate.
-* Black and Latinx Californians have the worst access to fresh fruits and vegetables of any racial group in the state, with their respective access rates eight and seven percentage points lower than that of White people.
+* Black and Latinx Californians have the worst exposure to toxic releases among all racial groups in the state, with their respective exposure well above the average exposure level.
 
 ### County Barchart
 
@@ -260,9 +236,8 @@ c_3_chart <- county_scatterplot(c_tables[[3]])
 c_3_chart
 ```
 
-* There is a general negative correlation in California between county population size and the racial disparities in proximity to hazardous sites in that county. Meaning that, in general, larger population counties have less racial disparity on this indicator.
-* Nevada and Amador Counties rank as the having the worst and second worst proximity to hazards scores (outcomes) statewide. Their scores are close to or more than double that of the third worst outcome county.
-* In the counties with the four worst racial disparity scores, American Indian and Alaska Native residents live in the greatest proximity to hazardous sites. In two of these counties (Mono and Madera), AIAN folks are 2x more exposure to hazardous sites than the average county resident.
+* Amador and Nevada counties rank as the having the worst and second worst proximity to hazards scores (outcomes) statewide. Their scores are close to or more than double that of the third worst outcome county.
+* Mono County has the worst racial disparities on this measure, its AIAN residents score is 2.4x higher than the average exposure score.
 
 ### State Barchart
 
@@ -271,7 +246,7 @@ c_3_chart
   s_3_
 ``` 
 
-* Latinx and Southwest Asian or North African Californians face nearly 1.5 times more exposure to hazardous clean up sites than Whites, the group with the best rate. Black and Asian Californians also face exposure that is above the statewide rate.
+* Statewide, only non-Latinx White, Multiracial, and AIAN residents have below average (better) exposure scores than the average resident.
 
 ### County Barchart
 
@@ -281,7 +256,7 @@ c_3_long
 ```
 
 
-## Toxic Releases from Facilities - UPDATED {.tabset .tabset-fade}
+## Drinking Water Contaminants - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -290,9 +265,8 @@ c_4_chart <- county_scatterplot(c_tables[[4]])
 c_4_chart
 ```
 
-* Los Angeles and Orange Counties have by far the lowest outcome (most exposure to toxic releases) among all California counties.
-* The non-urban, northern counties of Mariposa and Siskiyou exhibit by far the highest racial disparities in those exposed to toxic releases from facilities. In Siskiyou County, Latinx residents are exposed to toxic releases at nearly 3x the overall county rate.
-* Six of the eight counties with higher racial disparities are counties with populations around or below 50,000 residents.
+* Alameda is the only urban county among the top 10 counties with the worst racial disparities on drinking water contaminants. However, it also has the best overall outcome on this measure.
+* San Bernardino and Los Angeles counties are the only urban counties among the top 10 counties with the worst overall outcomes on this measure. They are both also relatively lower disparity counties.
 
 ### State Barchart
 
@@ -301,7 +275,7 @@ c_4_chart
   s_4_
 ```
 
-* Black residents statewide face more than 2.5 times, and Latinx residents two times, as much exposure to toxic releases as White residents do.
+* Latinx, SWANA, and AIAN Californians are the only groups with above average (worst) exposure to drinking water contaminants in California.
 
 ### County Barchart
 
@@ -320,9 +294,9 @@ c_5_chart <- county_scatterplot(c_tables[[5]])
 c_5_chart
 ```
 
-* San Francisco has the second highest disparity rate in the state for asthma diagnoses behind only Mendocino County. American Indian or Alaska Native residents of the county are almost 3x as likely to be diagnosed with asthma than the average county resident.
-* The Central Coast counties particularly stand out in this measure. Five of the six counties in the region are in the Purple Quadrant (high outcome, low disparity), with Monterey, Ventura, and Santa Barbara recording three of the four best asthma rates in the state.
-* There is no data on asthma rates for 17 of the 25 counties in the Northern/Sierra region.
+* San Luis Obispo has the second highest disparity rate in the state for asthma diagnoses behind only Placer County. American Indian or Alaska Native residents of the county are 1.8x as likely to be diagnosed with asthma than the average county resident.
+* Los Angeles County has the fifth best (lowest) asthma rate, but also has the 9th worst racial disparities. LAC Multiracial, AIAN, Black, and NHPI residents have the highest asthma rates among all groups.
+* There is data for only 8 of the 25 Northern / Sierra region counties.
 
 ### State Barchart
 
@@ -331,9 +305,8 @@ c_5_chart
   s_5_
 ```
 
-* All but one of the eight counties in the San Joaquin Valley have higher rates of asthma than average. Counties from the region represent more than half of the counties in the Red Quadrant (low outcome, high disparity).
-* Southwest Asian or North African, Asian, and Latinx Californians have the lowest rates of asthma diagnoses in the state.
-* More than one in five Black, American Indian or Alaska Native, Native Hawaiian or Pacific Islander, and Multiracial non-Latinx Californians have been diagnosed with asthma.
+* Asian, Southwest Asian or North African, and Latinx Californians have the lowest rates of asthma diagnoses in the state.
+* About one in five Multiracial, AIAN, Black, and NHPI Californians have been diagnosed with asthma.
 
 ### County Barchart
 
@@ -343,7 +316,7 @@ c_5_long
 ```
 
 
-## Lack of Green Space - UPDATED {.tabset .tabset-fade}
+## Food Access - NOT UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -351,10 +324,9 @@ c_5_long
 c_6_chart <- county_scatterplot(c_tables[[6]])
 c_6_chart
 ```
-* The 10 counties with the lowest disparity also have worse outcomes (less greenspace).
-* There is a strong negative correlation between greenspace and population size in counties. Only two of the top ten performing counties have more than 100,000 residents, while all counties with more than 300,000 residents had below average outcome.
-* Los Angeles County ranks 55 out of 56 counties in greenspace.
-* In Mendocino County, which ranks first for the most racial disparities in access to greenspace, white people have nearly 2x greater access to greenspaces than Latinx residents of the county.
+* The top ten counties with the lowest racial disparities on Food Access are all semi-urban and urban counties, except for El Dorado.
+* The bottom ten counties with the worst racial disparities are also all semi-urban and urban counties. Four of them are in the Bay Area (Sonoma, San Francisco, Napa, and Santa Clara).
+
 
 ### State Barchart
 
@@ -363,8 +335,10 @@ c_6_chart
   s_6_
 ``` 
 
-* Black people have the least access to greenspaces of any racial group in California, with 54.5% of land in disproportionately Black neighborhoods covered by impenetrable surfaces. This rate is 14 percentage points higher than the rate for white people.
-* Asian, Latinx, and Southwest Asian or North African Californians are also less likely to have access to greenspace than the average Californian.
+* Black and Latinx Californians have the least food access of any racial group.
+* Only non-Latinx White and non-Latinx Multiracial residents have above average (better) food access than the average California resident.
+* It is important to note that there are many ways to measure food access that may reveal different perspectives.
+
 
 ### County Barchart
 
