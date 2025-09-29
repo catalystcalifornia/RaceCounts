@@ -56,8 +56,7 @@ issue_name <- 'Economic Opportunity' # Issue names: Safety & Justice, Democracy,
 issue <- 'econ' #Issue: crim, demo, educ, econ, hben, hlth, hous
 rc_schema <- 'v7'
 rc_yr <- '2025'
-acs_yr <- '2023'
-  
+
 ```
   
 ```{r echo=FALSE, include = FALSE}

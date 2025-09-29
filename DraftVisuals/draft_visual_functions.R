@@ -27,9 +27,10 @@ con <- connect_to_db("racecounts")
 source("W:\\RDA Team\\R\\credentials_source.R") 
 con2 <- connect_to_db("rda_shared_data")
 
+# race counts colors from: W:\Project\RACE COUNTS\Style Guide\RC_Website_Fonts_Color_Ramp_2023.txt
+colors = data.frame(name = c("orange", "purple", "red", "yellow"), clr = c("#FF6B02", "#AC0068", "#F91105", "#FEC009"))
+
 rc_theme <- hc_theme(
-    # race counts colors
-    colors = c("orange", "purple", "red", "yellow"),
     chart = list(
       backgroundColor = "#FFFFFF",
       borderColor = "black",
@@ -77,59 +78,62 @@ rc_theme <- hc_theme(
 
 # different caps for the scatterplot, take out the cas then have it be user-defined
 #composite inex needs the same naming comvention ex: performance_z as opposed to perf_z
-index_scatterplot <- function(x, threshold){   # works for county
-  # Remove geos without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
-  
-  # Dynamically find relevant column names
-  disp_col <- names(select(x, ends_with("_disparity_z")))
-  perf_col <- names(select(x, ends_with("_performance_z")))
-  quad_col <- names(select(x, ends_with("_quadrant")))
-  rank_disp_col <- names(select(x, ends_with("_disparity_rank")))
-  rank_perf_col <- names(select(x, ends_with("_performance_rank")))
-  
-  # Cap the z-scores
-  c_index_chart <- x %>% 
-    mutate(
-      disp_z_cap = case_when(
-        .data[[disp_col]] > threshold ~ threshold,
-        .data[[disp_col]] < -threshold ~ -threshold,
-        TRUE ~ .data[[disp_col]]
-      ),
-      perf_z_cap = case_when(
-        .data[[perf_col]] > threshold ~ threshold,
-        .data[[perf_col]] < -threshold ~ -threshold,
-        TRUE ~ .data[[perf_col]]
-      )
-    ) %>%
-    filter(.data[[quad_col]] %in% c("purple", "yellow", "orange", "red"))
-  
-  # Create the plot
-  c_index_chart %>% 
-    hchart("scatter", 
-           hcaes(
-             x = disp_z_cap,
-             y = perf_z_cap,
-             size = total_pop,
-             group = .data[[quad_col]]
-           ),
-           tooltip = list(
-             pointFormat = paste0(
-               "<strong>Name: </strong>{point.geo_name} <br>",
-               "<strong>Outcome Rank: </strong>{point.", rank_perf_col, "} <br>",
-               "<strong>Disparity Rank: </strong>{point.", rank_disp_col, "} <br>",
-               "<strong>Universe: </strong>{point.total_pop:,.0f}"
-             )
-           )) %>%
-    hc_title(text = x$arei_issue_area[1]) %>%
-    hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = threshold, min = -threshold) %>%
-    hc_yAxis(title = list(text = "Outcome (Low -> High)"), max = threshold, min = -threshold) %>%
-    hc_caption(
-      text = "Data source: Various. <br>A Disparity Rank of 1 represents the most disparate. A Outcome Rank of 1 represents the best outcomes.",
-      align = "center"
-    ) %>%
-    hc_legend(enabled = FALSE) %>%
-    hc_add_theme(rc_theme)
-}
+  index_scatterplot <- function(x, threshold){   # works for county
+    # Remove geos without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
+    
+    # Dynamically find relevant column names
+    disp_col <- names(select(x, ends_with("_disparity_z")))
+    perf_col <- names(select(x, ends_with("_performance_z")))
+    quad_col <- names(select(x, ends_with("_quadrant")))
+    rank_disp_col <- names(select(x, ends_with("_disparity_rank")))
+    rank_perf_col <- names(select(x, ends_with("_performance_rank")))
+    
+    # Cap the z-scores
+    c_index_chart <- x %>% 
+      mutate(
+        disp_z_cap = case_when(
+          .data[[disp_col]] > threshold ~ threshold,
+          .data[[disp_col]] < -threshold ~ -threshold,
+          TRUE ~ .data[[disp_col]]
+        ),
+        perf_z_cap = case_when(
+          .data[[perf_col]] > threshold ~ threshold,
+          .data[[perf_col]] < -threshold ~ -threshold,
+          TRUE ~ .data[[perf_col]]
+        )
+      ) %>%
+      filter(.data[[quad_col]] %in% c("purple", "yellow", "orange", "red")) %>%
+      rename(quadrant = .data[[quad_col]]) %>%
+      left_join(colors, by = c("quadrant"="name"))
+    
+    # Create the plot
+    c_index_chart %>% 
+      hchart("scatter", 
+             hcaes(
+               x = disp_z_cap,
+               y = perf_z_cap,
+               size = total_pop,
+               group = quadrant,
+               color = clr
+             ),
+             tooltip = list(
+               pointFormat = paste0(
+                 "<strong>Name: </strong>{point.geo_name} <br>",
+                 "<strong>Outcome Rank: </strong>{point.", rank_perf_col, "} <br>",
+                 "<strong>Disparity Rank: </strong>{point.", rank_disp_col, "} <br>",
+                 "<strong>Universe: </strong>{point.total_pop:,.0f}"
+               )
+             )) %>%
+      hc_title(text = x$arei_issue_area[1]) %>%
+      hc_xAxis(title = list(text = "Disparity (Low -> High)"), max = threshold, min = -threshold) %>%
+      hc_yAxis(title = list(text = "Outcome (Low -> High)"), max = threshold, min = -threshold) %>%
+      hc_caption(
+        text = "Data source: Various. <br>A Disparity Rank of 1 represents the most disparate. A Outcome Rank of 1 represents the best outcomes.",
+        align = "center"
+      ) %>%
+      hc_legend(enabled = FALSE) %>%
+      hc_add_theme(rc_theme)
+  }
 
 county_scatterplot<- function(x) {    ## works for county and assm and sen (in separate df's)
   # Be sure to update title above depending on if indicator has been updated since RC v3
@@ -163,12 +167,13 @@ county_scatterplot<- function(x) {    ## works for county and assm and sen (in s
         TRUE ~ performance_z
       )
     ) %>%
-    filter(quadrant %in% c("purple", "yellow", "orange", "red"))
+    filter(quadrant %in% c("purple", "yellow", "orange", "red")) %>%
+    left_join(colors, by = c("quadrant"="name"))
   
   # Create plot
   x_chart %>% 
     hchart("scatter", 
-           hcaes(x = disp_z_cap, y = perf_z_cap, size = total_pop, group = quadrant),
+           hcaes(x = disp_z_cap, y = perf_z_cap, size = total_pop, group = quadrant, color = clr),
            tooltip = list(
              pointFormat = paste0(
                "<strong>Name: </strong>{point.geo_name} <br>",
@@ -290,8 +295,9 @@ leg_index_scatter <- function(x, gl, t) {
   x <- x %>% filter(geolevel == gl) %>% select(-geolevel)
   
   c_chart_index <- x %>%
+    left_join(colors, by = c("quadrant" = "name")) %>%
     hchart("scatter", 
-           hcaes(x=disparity_z, y=performance_z, size=total_pop, group=quadrant),
+           hcaes(x=disparity_z, y=performance_z, size=total_pop, group=quadrant, color = clr),
            tooltip = 
              list(pointFormat = 
                     "<strong>City: </strong>{point.leg_name} <br><strong>Disparity Rank: </strong>{point.disparity_rank} <br><strong>Outcome Rank: </strong>{point.performance_rank} <br><strong>Population: </strong>{point.total_pop:,.0f}")) %>%
