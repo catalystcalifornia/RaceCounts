@@ -21,13 +21,7 @@ final_df <- final_df %>%
                               .default = "error")) %>%
   mutate(png_filename = case_when(geolevel=="assembly"~"assm_logo.png",
                                   geolevel=="senate"~"senate_logo.png",
-                                  .default = "error"),
-         characteristics_len = nchar(Characteristics),
-         impacted_finding_len = nchar(most_impacted_race_finding)) %>%
-  mutate(total_len = characteristics_len+impacted_finding_len) %>%
-  arrange(desc(total_len)) %>%
-  
-  head(5)
+                                  .default = "error")) 
 
 # Render in the source directory first
 original_wd <- getwd()
@@ -132,9 +126,6 @@ for(i in 1:nrow(final_df)) {
   print(paste("FINISHED PDF", i, "-", leg_name))
   
 }
-
-
-
 
 setwd(original_wd)
 
