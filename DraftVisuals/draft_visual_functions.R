@@ -78,7 +78,7 @@ rc_theme <- hc_theme(
 
 # different caps for the scatterplot, take out the cas then have it be user-defined
 #composite inex needs the same naming comvention ex: performance_z as opposed to perf_z
-  index_scatterplot <- function(x, threshold){   # works for county
+index_scatterplot <- function(x, threshold){   # works for county
     # Remove geos without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
     
     # Dynamically find relevant column names
