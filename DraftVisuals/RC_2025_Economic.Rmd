@@ -1,7 +1,7 @@
 ---
 title: "RACE COUNTS: Economic Opportunity"
 author: "Authored by: Catalyst California"
-date: "9/16/2025"
+date: "9/29/2025"
 output:
   html_document:
     number_sections: no
@@ -58,7 +58,7 @@ issue_name <- 'Economic Opportunity' # Issue names: Safety & Justice, Democracy,
 issue <- 'econ' #Issue: crim, demo, educ, econ, hben, hlth, hous
 rc_schema <- 'v7'
 rc_yr <- '2025'
-acs_yr <- '2023'
+
 ```
 
 ```{r include = FALSE}
@@ -144,17 +144,6 @@ RACE COUNTS provides a 3D view of racial equity:
 <br><span style="color:#c9cc14">Yellow</span> counties: Struggling to Prosper;
 <br><span style="color:red">Red</span> counties: Stuck and Unequal.
 
-# Key Findings 
-
-* Central Valley counties exhibit lower economic outcome and greater racial disparity in economic opportunity and wages compared to other counties. (See scatterplot on Economic Opportunity Index and People Ages 18-64 Earning A Living Wage (%))
-
-
-* NH-White and Asian residents across the counties have higher per capita income compared to other racial groups, who earn below the average income rate for all groups. (See bar chart on Per Capita Income ($))
-
-* NH-AIAN, NH-Black, and Latinx residents have incomes that fall below the cost-of-living-adjusted poverty rate. (See bar chart on Households Above Real Cost Measure ($))
-
-* Pacific Islanders, Latinx, AIAN, and NH-Black residents are far less likely to be employed as officials or managers. (See bar chart on People Ages 18-64 in labor Force who are Employed as Officials or Managers per 1k People)
-
 
 # Race/Ethnicity Notes
 <br>1) "Other" race includes those who identify with a race outside of the specifically named categories, such as Asian, White, etc.
@@ -163,7 +152,7 @@ RACE COUNTS provides a 3D view of racial equity:
 
 # Indicators
 
-## Economic Opportunity Index {.tabset .tabset-fade}
+## Economic Opportunity Index - UPDATED {.tabset .tabset-fade}
 ```{r, echo=FALSE}
 # Remove counties without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
   c_index_z <- c_index_z %>% mutate(arei_issue_area=issue_name)
@@ -172,11 +161,13 @@ RACE COUNTS provides a 3D view of racial equity:
   c_index_chart
 ```
 
-* Most Central Valley counties have lower than average outcome, with most having higher than average disparity as well. 
+* There appears to be a relationship between better Economic Opportunity outcomes and lower racial disparity.
+* Overall, higher population counties have lower racial disparity and better outcomes than smaller population counties.
+* All San Joaquin Valley counties have lower than average (worse) outcomes, with most having higher than average disparity as well. 
+* All Bay Area counties have better than average outcomes with lower levels of disparity on the Economic Opportunity Index, except for Napa and San Francisco which have higher disparity.
+* Among the top 10 counties with the best overall outcomes on Economic Opportunity, eight are in the Bay Area. In fact, Bay Area counties occupy ranks 1-6.
 
-* All Bay Area counties have higher than average outcome with low levels of disparity on the Economic Opportunity Index. However, Marin, Napa, and San Francisco also have higher than average levels of disparity.
-
-## Per Capita Income {.tabset .tabset-fade}
+## Per Capita Income - UPDATED {.tabset .tabset-fade}
 
 
 ### Scatterplot
@@ -186,9 +177,9 @@ c_1_chart <- county_scatterplot(c_tables[[1]])
 c_1_chart
 
 ```
-* 
-* 
-* 
+* Los Angeles County has the 10th worst racial disparity on this measure. Non-Latinx White per capita income is 2.8x higher than that of Latinx residents and 2.5x higher than AIAN residents.
+* San Francisco County has the secnd best outcome (highest per capita income) and the third worst disparities on this measure. The Non-Latinx White per capita income is 4.1x higher than AIAN income, and ~2.8x higher than NHPI and BLack residents' income.
+* In four counties, all in the Bay Area, non-Latinx White per capita income is above $100k (SF, San Mateo, Marin, and Santa Clara).
 
 ### State Barchart
 ```{r, echo=FALSE}
@@ -196,8 +187,8 @@ c_1_chart
   s_1_
 
 ``` 
-* 
-* 
+* Statewide, only non-Latinx White and Asian residents have per capita incomes above the state average ($47,977).
+* Another Race, Latinx, and AIAN residents have the lowest per capita incomes among all groups.
 
 ### County Barchart
 
@@ -207,7 +198,7 @@ c_1_long
 ```
 
 
-## Internet Access  {.tabset .tabset-fade}
+## Internet Access - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -216,9 +207,9 @@ c_2_chart <- county_scatterplot(c_tables[[2]])
 c_2_chart
 
 ```
-* 
-* 
-* 
+* There seems to be a relationship between better outcomes (more internet access) and lower racial disparity.
+* More populous counties have better internet access (outcomes) and less racial disparity than less populous counties.
+* Six of the top 10 counties with the best internet access (outcomes) are in the Bay Area.
 
 ### State Barchart
 ```{r, echo=FALSE}
@@ -226,8 +217,7 @@ c_2_chart
   s_2_
 
 ``` 
-* 
-* 
+* At the state level, disparity is relatively lower. The lowest (worst) rate among all groups is less than 3 percentage points below the average rate.
 
 ### County Barchart
 
@@ -237,7 +227,7 @@ c_2_long
 ```
 
 
-## Living Wage {.tabset .tabset-fade}
+## Living Wage - UPDATED {.tabset .tabset-fade}
 
 
 ### Scatterplot
@@ -246,9 +236,8 @@ c_2_long
 c_3_chart <- county_scatterplot(c_tables[[3]])
 c_3_chart
 ```
-* 
-* 
-* 
+* Four of the top 10 most disparate counties on this measure are in the San Joaquin Valley (Stanislaus, Tulare, Fresno, and Merced). Those four counties also have below average outcomes.
+* Eight of the top 10 best outcome counties on this measure are in the Bay Area, the other two are in the Sacramento area (Placer and El Dorado). SF, Santa Clara, and San Mateo are ranked 1-3. 
 
 ### State Barchart
 ```{r, echo=FALSE}
@@ -256,8 +245,8 @@ c_3_chart
   s_3_
 
 ``` 
-* 
-* 
+* In California, employers are least likely to pay Latinx, AIAN, and Black workers a living wage. These three groups are the only ones with rates that are worse than the state average.
+* 85.3% of non-Latinx White workers earn a living wage compared to just 70.5% of Latinx workers.
 
 ### County Barchart
 
@@ -267,7 +256,7 @@ c_3_long
 ```
 
 
-## Connected Youth {.tabset .tabset-fade}
+## Connected Youth - UPDATED {.tabset .tabset-fade}
 
 
 ### Scatterplot
@@ -277,9 +266,9 @@ c_4_chart <- county_scatterplot(c_tables[[4]])
 c_4_chart
 
 ```
-* 
-* 
-* 
+* There seems to be a connection between less racial disparity and better outcomes on this measure.
+* Six of the top 10 most disparate counties are in the San Joaquin Valley, with Madera and Tulare ranked first and second respectively.
+* All of the top 10 best outcome counties are semi-urban or urban. Four of them are in the Bay Area and three in the Central Coast.
 
 ### State Barchart
 ```{r, echo=FALSE}
@@ -287,8 +276,7 @@ c_4_chart
   s_4_
 
 ``` 
-* 
-* 
+* In California, Black, NHPI, and AIAN youth are least likely to be connected (in school and/or employed).
 
 ### County Barchart
 
@@ -298,7 +286,7 @@ c_4_long
 ```
 
 
-## Officials & Managers {.tabset .tabset-fade}
+## Officials & Managers - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -307,9 +295,11 @@ c_5_chart <- county_scatterplot(c_tables[[5]])
 c_5_chart
 
 ```
-* 
-* 
-* 
+* Five of the 10 most disparate counties on this measure are in the San Joaquin Valley. There are also three Central Coast counties with San Luis Obispo ranked #1.
+* Imperial County is ranked second most disparate (and has the worst overall outcome) because employers are 3.7x more likely to employ non-Latinx White workers as officials/managers than Latinx workers.
+* The below average disparity counties are mainly clustered just below average due to Shasta alone having much higher disparity; while the above average disparity counties have a bit more variation.
+* There seems to be some relationship between less disparity and better outcomes on this measure.
+
 
 ### State Barchart
 ```{r, echo=FALSE}
@@ -317,8 +307,7 @@ c_5_chart
   s_5_
 
 ``` 
-* 
-* 
+* Latinx, AIAN, and Black Californians are least likely to be employed as officials/managers by employers. 
 
 ### County Barchart
 
@@ -329,7 +318,7 @@ c_5_long
 
 
 
-## Employment {.tabset .tabset-fade}
+## Employment - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -339,9 +328,9 @@ c_6_chart <- county_scatterplot(c_tables[[6]])
 c_6_chart
 
 ```
-* 
-* 
-* 
+* There seems to be a relationship between lower disparity and better outcomes on employment.
+* Larger population counties have better outcomes than lower population counties in general.
+* Los Angeles County has the third lowest disparity in the state and the 11th best outcome.
 
 ### State Barchart
 ```{r, echo=FALSE}
@@ -349,8 +338,8 @@ c_6_chart
   s_6_
 
 ``` 
-* 
-* 
+* Statewide, Latinx Californians are the most likely to be employed.
+* Black and non-Latinx White Californians are less likely to be employed than the average state resident.
 
 ### County Barchart
 
@@ -361,7 +350,7 @@ c_6_long
 
 
 
-## Real Cost Measure {.tabset .tabset-fade}
+## Real Cost Measure - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -372,9 +361,9 @@ c_7_chart <- county_scatterplot(c_tables[[7]])
 c_7_chart
 
 ```
-* 
-* 
-* 
+* There seems to be a slight relationship between lower disparity and better outcomes on this measure.
+* Five of the top 10 most disparate counties on this measure are in the San Joaquin Valley, the rest are in the Central Coast and Bay Area.
+* Seven of the top 10 best outcome counties on this measure are in the Bay Area.
 
 ### State Barchart
 ```{r, echo=FALSE}
@@ -382,8 +371,9 @@ c_7_chart
   s_7_
 
 ``` 
-* 
-* 
+* Latinx and non-Latinx Black families are most likely to earn less than the cost-of-living adjusted poverty level. 
+* Fewer than half of Latinx families (48.5%) earn above the adjusted poverty level.
+* Only non-Latinx White and non-Latinx API families earn above the adjusted poverty level.
 
 ### County Barchart
 
