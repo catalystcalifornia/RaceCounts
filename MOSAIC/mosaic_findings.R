@@ -28,6 +28,8 @@ options(scipen = 100)
 rc_yr <- '2025'
 rc_schema <- 'v7'
 
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Findings\\MOSAIC\\QA_Sheet_Profile_Findings.docx"
+
 ####################### ADD DATA #####################################
 rc_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%leg_", rc_yr, "' AND table_name NOT LIKE '%index_%' ;")
 rc_list <- dbGetQuery(con, rc_list_query)
@@ -121,7 +123,7 @@ dbWriteTable(con2,
 dbCommit(con2)
 
 # Most disparate comments
-tcomment1 <- paste0("COMMENT ON TABLE ", rc_schema, ".", disp_table_name, " IS 'Created ", Sys.Date(), ". Findings for MOSAIC Leg Dist Profiles created using W:\\Project\\RACE COUNTS\\", rc_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\MOSAIC\\mosaic_findings.R.';")
+tcomment1 <- paste0("COMMENT ON TABLE ", rc_schema, ".", disp_table_name, " IS 'Created ", Sys.Date(), ". Findings for MOSAIC Leg Dist Profiles created using W:\\Project\\RACE COUNTS\\", rc_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\MOSAIC\\mosaic_findings.R. QA doc: ", qa_filepath, "';")
 
 ccomment1a <- paste0("COMMENT ON COLUMN ", rc_schema, ".", disp_table_name, ".variable
                        IS 'is the indicator api_name in racecounts.", rc_schema, ".arei_indicator_list_[geolevel]';")
@@ -135,7 +137,7 @@ dbSendQuery(con2, ccomment1b)
 
 
 # Worst outcome comments
-tcomment2 <- paste0("COMMENT ON TABLE ", rc_schema, ".", outc_table_name, " IS 'Created ", Sys.Date(), ". Findings for MOSAIC Leg Dist Profiles created using W:\\Project\\RACE COUNTS\\", rc_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\MOSAIC\\mosaic_findings.R.';")
+tcomment2 <- paste0("COMMENT ON TABLE ", rc_schema, ".", outc_table_name, " IS 'Created ", Sys.Date(), ". Findings for MOSAIC Leg Dist Profiles created using W:\\Project\\RACE COUNTS\\", rc_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\MOSAIC\\mosaic_findings.R. QA doc: ", qa_filepath, "';")
 
 ccomment2a <- paste0("COMMENT ON COLUMN ", rc_schema, ".", outc_table_name, ".variable
                        IS 'is the indicator api_name in racecounts.", rc_schema, ".arei_indicator_list_[geolevel]';")
