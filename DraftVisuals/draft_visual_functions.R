@@ -77,16 +77,16 @@ rc_theme <- hc_theme(
 
 
 # different caps for the scatterplot, take out the cas then have it be user-defined
-#composite inex needs the same naming comvention ex: performance_z as opposed to perf_z
-  index_scatterplot <- function(x, threshold){   # works for county
-    # Remove geos without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
+#composite index needs the same naming comvention ex: performance_z as opposed to perf_z
+index_scatterplot <- function(x, threshold){   # works for county
+    # Remove geos without quadrant values. Cap comp index perf/disp z-scores at 1 and -1, issue index at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
     
     # Dynamically find relevant column names
-    disp_col <- names(select(x, ends_with("_disparity_z")))
-    perf_col <- names(select(x, ends_with("_performance_z")))
-    quad_col <- names(select(x, ends_with("_quadrant")))
-    rank_disp_col <- names(select(x, ends_with("_disparity_rank")))
-    rank_perf_col <- names(select(x, ends_with("_performance_rank")))
+    disp_col <- names(select(x, ends_with("disparity_z")))
+    perf_col <- names(select(x, ends_with("performance_z")))
+    quad_col <- names(select(x, ends_with("quadrant")))
+    rank_disp_col <- names(select(x, ends_with("disparity_rank")))
+    rank_perf_col <- names(select(x, ends_with("performance_rank")))
     
     # Cap the z-scores
     c_index_chart <- x %>% 
@@ -135,7 +135,7 @@ rc_theme <- hc_theme(
       hc_add_theme(rc_theme)
   }
 
-county_scatterplot<- function(x) {    ## works for county and assm and sen (in separate df's)
+county_scatterplot<- function(x) {    ## works for indicators at county and assm and sen (in separate df's)
   # Be sure to update title above depending on if indicator has been updated since RC v3
   # Remove geos without quadrant values. Cap indicator perf/disp z-scores at 3.5 and -3.5. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
   # Find all columns ending in "_rate"
