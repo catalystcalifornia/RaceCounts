@@ -1,7 +1,7 @@
 ---
 title: "RACE COUNTS: Education"
 author: "Authored by: Catalyst California"
-date: "9/16/2025"
+date: "9/29/2025"
 output:
   html_document:
     number_sections: no
@@ -60,7 +60,6 @@ issue_name <- 'Education' # Issue names: Safety & Justice, Democracy, Economic O
 issue <- 'educ' #Issue: crim, demo, educ, econ, hben, hlth, hous
 rc_schema <- 'v7'
 rc_yr <- '2025'
-acs_yr <- '2023'
 
 ```
 
@@ -130,6 +129,10 @@ v7_sources <- v7_sources %>% filter(v7_sources$arei_issue_area==issue_name) %>%
 c_tables <- lapply(c_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
 s_tables <- lapply(s_tables, function(x) x %>% left_join(v7_sources, by = c("indicator" = "api_name")))
 
+## Sort Lists so they are in the same order
+c_tables <- c_tables[order(names(c_tables))]
+s_tables <- s_tables[order(names(s_tables))]
+
 names(c_tables)
 names(s_tables)
 ```
@@ -154,19 +157,6 @@ RACE COUNTS provides a 3D view of racial equity:
 <br>2) Race labels for bar charts: The "nh_" prefix signifies that a group is non-Latinx (excludes Latinx).
 <br>3) The "twoormor" group represents those who identify as Two or More Races.
 
-# Key Findings
-
-* There are several key areas where racial disparities exist in educational outcomes across different racial and ethnic groups in the state of California.
-
-* Across the state, NH-AIAN, NH-Black, Latinx, and NH-Pacific Islander are more likely to experience chronic absenteeism than other groups. (See State Barchart on Chronically Absent Students (%))
-
-* Additionally, NH-AIAN, NH-Black, Latinx, and NH-Pacific Islander students have lower graduation rates than the state average. NH-Black student graduation rates are 16.7 percentage points lower than the group with the highest rate. (See State Barchart on Graduates as a Percentage of Four-Year Adjusted Cohort Students)
-
-* NH- Filipinx, NH- Asian, NH- White, and NH- Students of Two or More races experience lower suspension rates. (See State Barchart on students Suspended per 100 Students)
-
-* More than 50% of Asian, Filipinx, Two or More Races, and White third graders scored proficient in English Language Arts, while less than a third of NH-PI, NH-Black, NH-AIAN, and Latinx students score proficient or better. (See State Barchart on 3rd Graders Scoring Proficient or Better in English Language Arts (%) and 3rd Graders Scoring Proficient or Better in Math (%))
-
-* ECE access rates are low across the state for all groups, even the best rate means less than one in two children has acess to licensed ECE programs. Still NH-AIAN, Latinx, and NH-Black children all have less acccess to licensed ECE programs than the average child in California. (See State Barchart on Children 0-5 Enrolled in Licensed ECE Program (%))
 
 # Indicators 
 
@@ -179,11 +169,9 @@ RACE COUNTS provides a 3D view of racial equity:
   c_index_chart
 ```
 
-* San Francisco has among the highest racial disparities, driven by large inequities in chronic absenteeism and graduation rates.
-
-* Most Northern California region counties have lower than average outcome, with many counties also exhibiting higher levels of disparity. 
-
-
+* San Francisco has the worst racial disparities, driven by large inequities in chronic absenteeism and graduation rates.
+* Most Northern/Sierra counties have lower than average outcomes and lower levels of disparity. 
+* Five out of six Southern California counties have higher than average disparities, the exception is San Diego. Imperial is ranked 5th most disparate, and San Bernardino is ranked 6th.
 
 
 ## Chronic Absenteeism - UPDATED {.tabset .tabset-fade}
@@ -195,18 +183,17 @@ RACE COUNTS provides a 3D view of racial equity:
 c_1_chart <- county_scatterplot(c_tables[[1]])
 c_1_chart
 ```
-* San Francisco County is by far the most racially disparate on chronic absenteeism. NHPI students have the highest absenteeism rate at 65.9%, which is  58.2 percentage points higher than the group with the lowest rate.
-
-* Plumas County has the highest rates of absenteeism, with more than half of students (56.2%) being chronically absent. All groups have higher rates, however, Latinx students are the most likely to be chronically absent (61.8%).
+* San Francisco County is by far the most racially disparate on chronic absenteeism. Non-Latinx NHPI, Non-Latinx Black, and non-Latinx AIAN students have the highest absenteeism rates, with rates between 58-60%.
+* Inyo County has the highest rates of absenteeism, with more than half of students (50.9%) being chronically absent. Non-Latinx Black students are the most likely to be chronically absent (78.3%), a rate 3x higher than that of non-Latinx White students (24.5%).
+* Los Angeles County is the third most disparate on this measure because about one in three Black, NHPI, and AIAN students (all non-Latinx) are chronically absent compared to only one in 15 non-Latinx Asian students.
 
 ### State Barchart
 ```{r, echo=FALSE}
   s_1_ <- state_barchart(s_tables[[1]])
   s_1_
 ``` 
-* Statewide, NHPI, NH-Black, NH-AIAN, and Latinx students have the highest rates for chronic absenteeism ranging from 28.9% to 36.6% respectively. 
-
-* NH-Black, NHPI, and NH-AIAN students are 3.5 times more likely to be chronically absent than the group with the lowest rate.
+* Statewide, AIAN, Black, and NHPI (all non-Latinx) students have the highest rates ranging from 33% to 32.3% respectively. 
+* AIAN, Black, NHPI (all non-Latinx) students are 3.8x more likely to be chronically absent than the group with the lowest (best) rate.
 
 ### County Barchart
 
@@ -225,9 +212,9 @@ c_1_long
 c_2_chart <- county_scatterplot(c_tables[[2]])
 c_2_chart
 ```
-* Mono, Nevada, Inyo, and San Francisco Counties have the lowest graduation rates and the highest racial disparities on this measure. 
-
-* In Mono, only one in three Latinx students graduate.
+* There seems to be a relationship between less racial disparity and better outcomes on high school graduation.
+* Nevada, San Francisco, Mono, and Inyo counties have the worst (lowest) graduation rates and the worst racial disparities on this measure. 
+* In Nevada County, only one in four Latinx and one in three non-Latinx Black students graduate.
 
 ### State Barchart
 ```{r, echo=FALSE}
@@ -235,7 +222,8 @@ c_2_chart
   s_2_
 
 ```
-* NH-AIAN, NH-Black, Latinx, and NH-PI students have below average graduation rates. Black and NH-AIAN student graduation rates are roughly 16 percentage points lower than the group with the highest rate.
+* Statewide, about one in five non-Latinx Black and non-Latinx AIAN students does not graduate from high school.
+* Filipinx, Asian, White, and Multiracial (all non-Latinx) students are more likely to graduate than the average California student.
 
 ### County Barchart
 
@@ -254,10 +242,9 @@ c_2_long
 c_3_chart <- county_scatterplot(c_tables[[3]])
 c_3_chart
 ```
-* Modoc County has the lowest rates in this measure, with only one in five 3rd graders scoring Proficient or Better in ELA.
-
-* Imperial County is the most disparate in this measure, with a 41.5 percentage point difference between the groups with the highest and lowest rate. 
-
+* Mono County is the most disparate in this measure, with a 39 percentage point difference between the groups with the highest and lowest rates. 
+* Del Norte County has the worst outcome on this measure with only one in five third graders being proficient in ELA, it is also the fourth most disparate county.
+* There seems to be some relationship between less disparity and better outcomes.
  
 
 ### State Barchart
@@ -266,8 +253,8 @@ c_3_chart
   s_3_ <- state_barchart(s_tables[[3]])
   s_3_
 ``` 
-* Statewide, two groups emerge. In the first group, fewer than one in three NH-AIAN, Latinx, NH-Black, and NHPI students scored proficient. While in the second group, more than 50% of Asian, Filipinx, Two or More Races, and White third graders scored proficient in English Language Arts. 
-
+* Statewide, two groups emerge. In the first group, about one in three non-Latinx Black, non-Latinx AIAN, Latinx, and non-Latinx NHPI students scored proficient. While in the second group, more than 50% of Asian, Filipinx, Two or More Races, and White (all non-Latinx) third graders scored proficient in English Language Arts. 
+* Overall, the results are poor. Fewer than half (42.8%) of California students were proficient.
 
 ### County Barchart
 
@@ -285,9 +272,9 @@ c_3_long
 c_4_chart <- county_scatterplot(c_tables[[4]])
 c_4_chart
 ```
-* Modoc County is the lowest performing on this measure with less than 25% of its students scoring Proficient or Better in Math.
-
+* Del Norte County has the worst outcome on this measure with only one in five students scoring Proficient or Better in Math.
 * Larger population counties have above average levels of racial disparities among racial and ethnic groups for this indicator.
+* Five of the top 10 counties with the best outcomes are in the Bay Area, some have better than average disparity while others have worse.
 
 ### State Barchart
 
@@ -295,7 +282,7 @@ c_4_chart
   s_4_ <- state_barchart(s_tables[[4]])
   s_4_
 ```
-* Statewide, two groups emerge. In the first group, about one in three NH-AIAN, NH-Black, Latinx, and NH-PI students scored proficient. While in the second group, more than 50% of Asian, Filipinx, White, Two or More Races third graders scored proficient in math. 
+* Statewide, two groups emerge. In the first group, about one in three Black, AIAN, NHPI (all non-Latinx), and Latinx students scored proficient. While in the second group, more than 50% of Asian, Filipinx, White, and Multiracial (all non-Latinx) third graders scored proficient in math. 
 
 ### County Barchart
 
@@ -313,9 +300,9 @@ c_4_long
 c_5_chart <- county_scatterplot(c_tables[[5]])
 c_5_chart
 ```
-* Inyo County is the most racially disparate for this measure, with suspension rates for NH-AIAN students reaching 7.1% while the suspension rates for the lowest group is 0.
-
-* Three counties (Modoc, Lake, and Del Norte) in the Northern California region are the lowest performing for this measure, with suspension rates at or nearing 10%. 
+* Santa Cruz is by far the most disparate county because of high suspension rates for Black and NHPI students (both non-Latinx).
+* Los Angeles County has the second best outcome (meaning second lowest overall suspension rate) in the state at 1.9%. However, the Black and AIAN (both non-Latinx) rates are much higher at 5.6% and 3.8% respectively.
+* Three counties (Lake, Modoc, and Del Norte) in the Northern/Sierra region have the lowest outcomes (highest rates), with suspension rates between 8-9%. 
 
 
 ### State Barchart
@@ -324,9 +311,8 @@ c_5_chart
   s_5_ <- state_barchart(s_tables[[5]])
   s_5_
 ```
-* NH-Pacific Islander, Latinx, NH-AIAN, and NH-Black students are suspended at above state average rates. 
-
-* NH-Black students are suspended at a rate 8.0 times higher than the lowest suspension rate. 
+* Black, AIAN, NHPI (all non-Latinx), and Latinx students are more likely to be suspended than the average student in California. 
+* School administrators are 7.8x more likely to suspend non-Latinx Black students than the group with the lowest suspension rate. 
 
 ### County Barchart
 
@@ -344,8 +330,8 @@ c_5_long
 c_6_chart <- county_scatterplot(c_tables[[6]])
 c_6_chart
 ```
-* 22.2% of San Bernardino County children ages 0-5 have access to a licensed ECE program, which is a 62.4 percentage point difference from Modoc County (84.6%), the county with the most access. 
-
+* Los Angeles County is the 10th most disparate county for ECE Access, due to low access for Latinx and AIAN children.
+* 22.2% of San Bernardino County children ages 0-5 have access to a licensed ECE program, which is a 62.4 percentage point difference from Modoc County (84.6%), the county with the most access (best outcome). 
 
 
 ### State Barchart
@@ -354,7 +340,7 @@ c_6_chart
   s_6_ <- state_barchart(s_tables[[6]])
   s_6_
 ``` 
-* ECE access rates are low across the state and for all groups, even the best rate means less than one in two children has access. Still NH-AIAN, Latinx, and NH-Black children all have less ECE access than the state average.
+* ECE access rates are low across the state and for all groups, even the best rate means less than one in two children has access. Still Latinx, non-Latinx AIAN and non-Latinx Black children all have less ECE access than the state average.
 
 ### County Barchart
 
