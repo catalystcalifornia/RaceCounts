@@ -220,7 +220,7 @@ options(highcharter.lang = lang)
 
 ### Senate Composite Index Scatterplot
 
-```{r sen comp scatter, echo=FALSE}
+```{r sen_comp_scatter, echo=FALSE}
 sen_comp_scatter <- leg_index_scatter(leg_index, 'sldu', rc_theme)
 #sen_comp_scatter <- sen_comp_scatter %>% hc_title(text = "Senate Composite Index")
 
@@ -230,7 +230,7 @@ sen_comp_scatter
 
 ### Assembly Composite Index Scatterplot
 
-```{r assm comp scatter, echo=FALSE}
+```{r assm_comp_scatter, echo=FALSE}
 
 assm_comp_scatter <- leg_index_scatter(leg_index, 'sldl', rc_theme)
 #assm_comp_scatter <- assm_comp_scatter %>% hc_title(text = "Assembly Composite Index")
