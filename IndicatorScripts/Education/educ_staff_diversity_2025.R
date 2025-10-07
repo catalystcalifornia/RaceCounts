@@ -194,12 +194,17 @@ enrollment_wide <- enrollment_wide %>%
 
 ###### STEP 3: Calculate student to staff ratios -----
 #join together to calculate rate
-df_enroll_staff <- left_join(enrollment_wide, staff_df, 
-                             by= c("geoid","geoname","geolevel")) 
+df_enroll_staff <- enrollment_wide %>%
+  left_join(staff_df, by= c("geoid","geoname","geolevel")) %>%
+  mutate(geolevel = 
+    case_when(geolevel == 'C' ~ 'county',
+              geolevel == 'T' ~ 'state',
+              geolevel == 'D' ~ 'district',
+              geolevel == 'S' ~ 'school'))
 #NOTE THAT staff data had more schools (about 341) than enrollment data, not sure why? You can check that by running table()
 
 df_enroll_staff_senate <- df_enroll_staff %>%
-  filter(geolevel == "S") %>%
+  filter(geolevel == "school") %>%
   inner_join(xwalk_school_sen, by = c("geoid" = "cdscode")) %>%
   group_by(leg_id) %>%
   summarise(across(nh_asian_pop:nh_twoormor,\(x) sum(x, na.rm = TRUE)), .groups = "drop") %>%
@@ -208,8 +213,8 @@ df_enroll_staff_senate <- df_enroll_staff %>%
          geoid = leg_id) %>%
   select(geoid, geolevel, geoname, nh_asian_pop:nh_twoormor)
 
-df_enroll_staff_assembly <-  df_enroll_staff %>%
-  filter(geolevel == "S") %>%
+df_enroll_staff_assembly <- df_enroll_staff %>%
+  filter(geolevel == "school") %>%
   inner_join(xwalk_school_assm,  by = c("geoid" = "cdscode")) %>%
   group_by(leg_id) %>%
   summarise(across(nh_asian_pop:nh_twoormor,\(x) sum(x, na.rm = TRUE)), .groups = "drop") %>%
@@ -219,7 +224,7 @@ df_enroll_staff_assembly <-  df_enroll_staff %>%
   select(geoid, geolevel, geoname, nh_asian_pop:nh_twoormor)
 
 
-df_enroll_staff_final <- bind_rows(df_enroll_staff %>% filter(geolevel != "S"), df_enroll_staff_senate, df_enroll_staff_assembly) 
+df_enroll_staff_final <- bind_rows(df_enroll_staff %>% filter(geolevel != "school"), df_enroll_staff_senate, df_enroll_staff_assembly) 
 
 
 #screen data and set population screen threshold
@@ -253,7 +258,7 @@ districts <- dbGetQuery(con, paste0("SELECT cdscode, ncesdist AS geoid FROM educ
 
 df_final <- left_join(df_enroll_staff_final, districts, by = c('geoid' = 'cdscode')) %>% 
   mutate(cdscode = geoid,
-  geoid=ifelse(geolevel == "D", geoid.y, geoid)) %>%
+  geoid=ifelse(geolevel == "district", geoid.y, geoid)) %>%
   select(-c(geoid.y)) %>% 
   distinct() %>%  # combine distinct county and district geoid matched df's
   relocate(geoid, geoname, cdscode, geolevel)
@@ -278,7 +283,7 @@ d <- calc_id(d) #calculate index of disparity
 # View(d)
 
 #split STATE into separate table and format id, name columns 
-state_table <- d[d$geolevel == 'T', ]
+state_table <- d[d$geolevel == 'state', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
@@ -287,7 +292,7 @@ state_table <- state_table %>% dplyr::rename("state_id" = "geoid", "state_name" 
 View(state_table)
 
 #remove state from county table
-county_table <- d[d$geolevel == 'C', ]
+county_table <- d[d$geolevel == 'county', ]
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
@@ -297,7 +302,7 @@ county_table <- county_table %>% dplyr::rename("county_id" = "geoid", "county_na
 View(county_table)
 
 #remove county/state from place table 
-city_table <- d[d$geolevel == 'D', ] 
+city_table <- d[d$geolevel == 'district', ] 
 
 #calculate DISTRICT z-scores
 city_table <- calc_z(city_table)
