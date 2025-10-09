@@ -1,7 +1,7 @@
 ---
 title: "RACE COUNTS: Education"
 author: "Authored by: Catalyst California"
-date: "9/29/2025"
+date: "10/9/2025"
 output:
   html_document:
     number_sections: no
@@ -204,7 +204,7 @@ c_1_long
 ```
 
 
-## High School Graduation - UPDATED {.tabset .tabset-fade}
+## ECE Access - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -212,25 +212,23 @@ c_1_long
 c_2_chart <- county_scatterplot(c_tables[[2]])
 c_2_chart
 ```
-* There seems to be a relationship between less racial disparity and better outcomes on high school graduation.
-* Nevada, San Francisco, Mono, and Inyo counties have the worst (lowest) graduation rates and the worst racial disparities on this measure. 
-* In Nevada County, only one in four Latinx and one in three non-Latinx Black students graduate.
+* Los Angeles County is the 10th most disparate county for ECE Access, due to low access for Latinx and AIAN children.
+* 22.2% of San Bernardino County children ages 0-5 have access to a licensed ECE program, which is a 62.4 percentage point difference from Modoc County (84.6%), the county with the most access (best outcome). 
+
 
 ### State Barchart
+
 ```{r, echo=FALSE}
   s_2_ <- state_barchart(s_tables[[2]])
   s_2_
-
-```
-* Statewide, about one in five non-Latinx Black and non-Latinx AIAN students does not graduate from high school.
-* Filipinx, Asian, White, and Multiracial (all non-Latinx) students are more likely to graduate than the average California student.
+``` 
+* ECE access rates are low across the state and for all groups, even the best rate means less than one in two children has access. Still Latinx, non-Latinx AIAN and non-Latinx Black children all have less ECE access than the state average.
 
 ### County Barchart
 
 ```{r, echo=FALSE}
-c_2_long <- county_barchart(c_tables[[2]]) 
-c_2_long
-
+c_6_long <- county_barchart(c_tables[[2]]) 
+c_6_long
 ```
 
 
@@ -292,7 +290,7 @@ c_4_long
 ```
 
 
-## Suspensions - UPDATED {.tabset .tabset-fade}
+## High School Graduation - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -300,29 +298,30 @@ c_4_long
 c_5_chart <- county_scatterplot(c_tables[[5]])
 c_5_chart
 ```
-* Santa Cruz is by far the most disparate county because of high suspension rates for Black and NHPI students (both non-Latinx).
-* Los Angeles County has the second best outcome (meaning second lowest overall suspension rate) in the state at 1.9%. However, the Black and AIAN (both non-Latinx) rates are much higher at 5.6% and 3.8% respectively.
-* Three counties (Lake, Modoc, and Del Norte) in the Northern/Sierra region have the lowest outcomes (highest rates), with suspension rates between 8-9%. 
-
+* There seems to be a relationship between less racial disparity and better outcomes on high school graduation.
+* Nevada, San Francisco, Mono, and Inyo counties have the worst (lowest) graduation rates and the worst racial disparities on this measure. 
+* In Nevada County, only one in four Latinx and one in three non-Latinx Black students graduate.
 
 ### State Barchart
-
 ```{r, echo=FALSE}
   s_5_ <- state_barchart(s_tables[[5]])
   s_5_
+
 ```
-* Black, AIAN, NHPI (all non-Latinx), and Latinx students are more likely to be suspended than the average student in California. 
-* School administrators are 7.8x more likely to suspend non-Latinx Black students than the group with the lowest suspension rate. 
+* Statewide, about one in five non-Latinx Black and non-Latinx AIAN students does not graduate from high school.
+* Filipinx, Asian, White, and Multiracial (all non-Latinx) students are more likely to graduate than the average California student.
 
 ### County Barchart
 
 ```{r, echo=FALSE}
 c_5_long <- county_barchart(c_tables[[5]]) 
 c_5_long
+
 ```
 
 
-## ECE Access - UPDATED {.tabset .tabset-fade}
+
+## Diversity of Teachers  - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -330,8 +329,8 @@ c_5_long
 c_6_chart <- county_scatterplot(c_tables[[6]])
 c_6_chart
 ```
-* Los Angeles County is the 10th most disparate county for ECE Access, due to low access for Latinx and AIAN children.
-* 22.2% of San Bernardino County children ages 0-5 have access to a licensed ECE program, which is a 62.4 percentage point difference from Modoc County (84.6%), the county with the most access (best outcome). 
+* Larger population counties overall are in the Yellow (Lower disparity, Lower outcome) and Red Quadrants (Higher disparity, Lower outcome), with Low Angeles County having the lowest disparity. Note: For this indicator, outcome represents the overall staff:student ratio.
+* In LA County, Latinx and Multiracial students are the only groups with below average levels of representation.
 
 
 ### State Barchart
@@ -340,7 +339,7 @@ c_6_chart
   s_6_ <- state_barchart(s_tables[[6]])
   s_6_
 ``` 
-* ECE access rates are low across the state and for all groups, even the best rate means less than one in two children has access. Still Latinx, non-Latinx AIAN and non-Latinx Black children all have less ECE access than the state average.
+* White students have by far the highest representation, with more than 16 White teachers and staff per 100 White students. Compare this to NH-AIANs, the group with the next highest rate, at 7.9 per 100 students.
 
 ### County Barchart
 
@@ -351,7 +350,7 @@ c_6_long
 
 
 
-## Diversity of Teachers  - NOT UPDATED {.tabset .tabset-fade}
+## Suspensions - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -359,17 +358,19 @@ c_6_long
 c_7_chart <- county_scatterplot(c_tables[[7]])
 c_7_chart
 ```
-* Larger population counties overall are in the Yellow (Lower disparity, Lower outcome) Quadrant, with Low Angeles County having the lowest disparity.
+* Santa Cruz is by far the most disparate county because of high suspension rates for Black and NHPI students (both non-Latinx).
+* Los Angeles County has the second best outcome (meaning second lowest overall suspension rate) in the state at 1.9%. However, the Black and AIAN (both non-Latinx) rates are much higher at 5.6% and 3.8% respectively.
+* Three counties (Lake, Modoc, and Del Norte) in the Northern/Sierra region have the lowest outcomes (highest rates), with suspension rates between 8-9%. 
 
-* All but two (Mariposa and Tuolumne) Central Valley counties are in the Yellow (Lower disparity, Lower outcome) and Red (Higher disparity, Lower outcome) Quadrants.
 
 ### State Barchart
 
 ```{r, echo=FALSE}
   s_7_ <- state_barchart(s_tables[[7]])
   s_7_
-``` 
-* White students have by far the highest representation, with more than 13 White teachers and staff per 100 White students. Compare this to NH-AIANs, the group with the next highest rate, at five per 100 students.
+```
+* Black, AIAN, NHPI (all non-Latinx), and Latinx students are more likely to be suspended than the average student in California. 
+* School administrators are 7.8x more likely to suspend non-Latinx Black students than the group with the lowest suspension rate. 
 
 ### County Barchart
 
@@ -377,6 +378,7 @@ c_7_chart
 c_7_long <- county_barchart(c_tables[[7]]) 
 c_7_long
 ```
+
 
 ```{r, include=FALSE}
 ##Disconnect from db
@@ -388,7 +390,7 @@ dbDisconnect(con2)
 
 ```{r echo=FALSE, include = FALSE}
 # below is a javascript chunk for the county bar-charts. The chunk automatically selects the 'Alameda' county as the first chunk. Without the chunk below, as you can see from the output above, the first bar-chart shown sums the race/ethnicity rates for all of the counties. 
-# Each line that starts with document is for each graph (0-5) for a total of 6 graphs. If another graph is added, then you would simply add another line and label it as [6]. 
+# Each line that starts with document is for each graph (0-6) for a total of 7 graphs. If another graph is added, then you would simply add another line and label it as [6]. 
 
 # Notice that it isn't an R chunk, it is a JS chunk. :) 
 ```
@@ -414,10 +416,10 @@ function filter_default() {
  document.getElementsByClassName("selectized") 
 [5].selectize.setValue("Alameda", false);
 
+ document.getElementsByClassName("selectized") 
+[6].selectize.setValue("Alameda", false);
+
  }
 window.onload = filter_default;
 ```
-
-
-
 
