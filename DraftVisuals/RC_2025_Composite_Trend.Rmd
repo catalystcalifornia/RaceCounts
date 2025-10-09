@@ -1,7 +1,7 @@
 ---
 title: "RACE COUNTS"
 author: "Authored by: Catalyst California"
-date: "9/25/25"
+date: "10/9/25"
 output:
   html_document:
     number_sections: no
@@ -10,7 +10,7 @@ output:
     toc_depth: 3
     toc_float: yes
 
-subtitle: 'Composite Index Trends'
+subtitle: 'Composite Index Trends for Smaller Pop Counties'
 ---
   
 <style type="text/css">

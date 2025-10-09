@@ -348,48 +348,6 @@ c_6_long <- county_barchart(c_tables[[6]])
 c_6_long
 ```
 
-```{r, include=FALSE}
-##Disconnect from db
-dbDisconnect(con)
-dbDisconnect(con2)
-
-```
-
-
-```{r echo=FALSE, include = FALSE}
-# below is a javascript chunk for the county bar-charts. The chunk automatically selects the 'Alameda' county as the first chunk. Without the chunk below, as you can see from the output above, the first bar-chart shown sums the race/ethnicity rates for all of the counties. 
-# Each line that starts with document is for each graph (0-5) for a total of 6 graphs. If another graph is added, then you would simply add another line and label it as [6]. 
-
-# Notice that it isn't an R chunk, it is a JS chunk. :) 
-```
-
-
-```{js}
-function filter_default() {
-    document.getElementsByClassName("selectized") 
-[0].selectize.setValue("Alameda", false);
-
- document.getElementsByClassName("selectized") 
-[1].selectize.setValue("Alameda", false);
-
- document.getElementsByClassName("selectized") 
-[2].selectize.setValue("Alameda", false);
-
- document.getElementsByClassName("selectized") 
-[3].selectize.setValue("Alameda", false);
-
- document.getElementsByClassName("selectized") 
-[4].selectize.setValue("Alameda", false);
-
- document.getElementsByClassName("selectized") 
-[5].selectize.setValue("Alameda", false);
-
- }
-window.onload = filter_default;
-```
-
-
-
 
 
 ## Suspensions - UPDATED {.tabset .tabset-fade}
@@ -421,4 +379,47 @@ c_7_long <- county_barchart(c_tables[[7]])
 c_7_long
 ```
 
+
+```{r, include=FALSE}
+##Disconnect from db
+dbDisconnect(con)
+dbDisconnect(con2)
+
+```
+
+
+```{r echo=FALSE, include = FALSE}
+# below is a javascript chunk for the county bar-charts. The chunk automatically selects the 'Alameda' county as the first chunk. Without the chunk below, as you can see from the output above, the first bar-chart shown sums the race/ethnicity rates for all of the counties. 
+# Each line that starts with document is for each graph (0-6) for a total of 7 graphs. If another graph is added, then you would simply add another line and label it as [6]. 
+
+# Notice that it isn't an R chunk, it is a JS chunk. :) 
+```
+
+
+```{js}
+function filter_default() {
+    document.getElementsByClassName("selectized") 
+[0].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[1].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[2].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[3].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[4].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[5].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[6].selectize.setValue("Alameda", false);
+
+ }
+window.onload = filter_default;
+```
 
