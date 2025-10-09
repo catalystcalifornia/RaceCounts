@@ -1,7 +1,7 @@
 ---
 title: "Composite Legislative Index"
 author: "Authored by: Catalyst California"
-date: "10/1/2025"
+date: "10/9/2025"
 output:
   html_document:
     number_sections: no
@@ -49,7 +49,7 @@ p{
 
 
 
-```{r leg data, echo=FALSE, cache=TRUE, include=FALSE}
+```{r leg data, echo=FALSE, include=FALSE}
 knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
 
 # set up workspace
@@ -114,7 +114,7 @@ leg_index_table <- leg_index %>% mutate(disp_z_rnd = round(disparity_z, 2), perf
 ```
 
 
-```{r leg data table, echo=FALSE, cache=TRUE}
+```{r leg data table, echo=FALSE}
 
 ## table fx ##
 leg_index_fx <- function(x, gl) {
@@ -174,7 +174,7 @@ return(index_table)
 
 ### RC 2025: Senate Index Table
 
-```{r sen tables, echo=FALSE, cache=TRUE}
+```{r sen tables, echo=FALSE}
 
 sen_table <- leg_index_fx(leg_index_table, 'sldu')
 sen_table
@@ -183,7 +183,7 @@ sen_table
 
 ### RC 2025: Assembly Index Table
 
-```{r assm tables, echo=FALSE, cache=TRUE}
+```{r assm tables, echo=FALSE}
 
 assm_table <- leg_index_fx(leg_index_table, 'sldl')
 assm_table
@@ -194,8 +194,6 @@ assm_table
 
 ```{r sen_comp_scatter, echo=FALSE}
 sen_comp_scatter <- leg_index_scatter(leg_index, 'sldu', rc_theme)
-#sen_comp_scatter <- sen_comp_scatter %>% hc_title(text = "Senate Composite Index")
-
 sen_comp_scatter
 
 ```
@@ -205,8 +203,6 @@ sen_comp_scatter
 ```{r assm_comp_scatter, echo=FALSE}
 
 assm_comp_scatter <- leg_index_scatter(leg_index, 'sldl', rc_theme)
-#assm_comp_scatter <- assm_comp_scatter %>% hc_title(text = "Assembly Composite Index")
-
 assm_comp_scatter
 
 ```
