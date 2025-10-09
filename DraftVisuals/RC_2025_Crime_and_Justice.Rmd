@@ -1,5 +1,5 @@
 ---
-title: "RACE COUNTS: Crime and Justice"
+title: "RACE COUNTS: Safety and Justice"
 author: "Authored by: Catalyst California"
 date: "9/26/2025"
 output:
@@ -149,8 +149,8 @@ RACE COUNTS provides a 3D view of racial equity:
 
 # Indicators
 
-## Crime and Justice Index - UPDATED
-```{r, echo=FALSE}
+## Safety and Justice Index - UPDATED
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 # Remove counties without quadrant values. Cap index perf/disp z-scores at 2 and -2. More info: https://advancementproject.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=bGyEaZ
   c_index_z <- c_index_z %>% mutate(arei_issue_area=issue_name)
   c_index_chart <- index_scatterplot(c_index_z, 2)
@@ -187,7 +187,7 @@ c_1_chart
 
 ### County Barchart
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 c_1_long <- county_barchart(c_tables[[1]]) 
 c_1_long
 ```
@@ -215,7 +215,7 @@ c_2_chart
 
 ### County Barchart
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 c_2_long <- county_barchart(c_tables[[2]]) 
 c_2_long
 ```
@@ -245,7 +245,7 @@ c_3_chart
 
 ### County Barchart
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 c_3_long <- county_barchart(c_tables[[3]]) 
 c_3_long
 ```
@@ -277,7 +277,7 @@ c_4_chart
 
 ### County Barchart
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 c_4_long <- county_barchart(c_tables[[4]]) 
 c_4_long
 ```
@@ -304,7 +304,7 @@ c_5_chart
  
 
 ### County Barchart
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 c_5_long <- county_barchart(c_tables[[5]]) 
 c_5_long
 ```
@@ -319,7 +319,7 @@ dbDisconnect(con2)
 
 ```{r echo=FALSE, include = FALSE}
 # below is a javascript chunk for the county bar-charts. The chunk automatically selects the 'Alameda' county as the first chunk. Without the chunk below, as you can see from the output above, the first bar-chart shown sums the race/ethnicity rates for all of the counties. 
-# Each line that starts with document is for each graph (0-5) for a total of 6 graphs. If another graph is added, then you would simply add another line and label it as [6]. 
+# Each line that starts with document is for each graph (0-4) for a total of 5 graphs. If another graph is added, then you would simply add another line and label it as [5]. 
 
 # Notice that it isn't an R chunk, it is a JS chunk. :) 
 ```
@@ -338,6 +338,9 @@ function filter_default() {
 
  document.getElementsByClassName("selectized") 
 [3].selectize.setValue("Alameda", false);
+
+ document.getElementsByClassName("selectized") 
+[4].selectize.setValue("Alameda", false);
 
  }
 window.onload = filter_default;
