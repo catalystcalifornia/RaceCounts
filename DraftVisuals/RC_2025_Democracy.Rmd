@@ -1,7 +1,7 @@
 ---
 title: "RACE COUNTS: Democracy"
 author: "Authored by: Catalyst California"
-date: "9/16/2025"
+date: "9/26/2025"
 output:
   html_document:
     number_sections: no
@@ -164,9 +164,11 @@ RACE COUNTS provides a 3D view of racial equity:
 ```
 
 * There seems to be a correlation between higher outcome and lower disparity.
-* Generally, larger population counties have below average racial disparity while smaller population counties have higher than average disparity.
-* All of the counties in the San Joaquin Valley besides Merced have below average outcome in the Democracy Index.
-* Nine of the 12 counties with the highest racial disparities in Democracy Index were in the Northern Sierra region.
+* The majority of larger population counties have below average racial disparity, while the reverse is true for non-urban counties with smaller populations.
+* All of the counties in the San Joaquin Valley, except Merced, have below average outcomes in the Democracy Index. Five of them are also higher disparity.
+* Six of the 10 counties with the highest racial disparities in Democracy Index were in the Northern Sierra region.
+* All Bay Area and Central Coast counties, except for Solano and Monterey, have better than average outcomes.
+
 
 
 ## Census Participation {.tabset .tabset-fade}
@@ -181,8 +183,8 @@ c_1_chart
 ```
 
 * In general, larger population counties have higher overall Census participation rates than smaller population counties.
-* 8 out of 9 Bay Area counties and 5 out of 6 Central Coast counties are in the purple Quadrant (Lower Disparity, Higher Outcome). 
-* The bottom 15 counties in census participation outcome are all rural counties from the Northern Sierra region.
+* Five out of the six Central Coast counties are in the Purple Quadrant (Lower Disparity, Higher Outcome). 
+* The 17 counties with the lowest census participation rates (outcomes) are all rural counties in the Northern Sierra region.
 
 ### State Barchart
 ```{r, echo=FALSE}
@@ -192,8 +194,7 @@ c_1_chart
 
 ``` 
 
-* At the state level, there is relatively little variation between the census participation rates of different racial groups. The lowest rate of any single racial group is just 1.6 percentage points below the overall statewide rate.
-* Latinx, Black, and American Indian or Alaska Native Californians had the three lowest Census participation rates, while Asian Californians have the highest.
+* American Indian or Alaska Native, Black, and Latinx Californians had the three lowest Census participation rates, while Asian Californians have the highest.
 
 
 ### County Barchart
@@ -215,8 +216,8 @@ c_2_chart
 
 ```
 
-* There appears to be a relationship between higher outcome and lower disparity, meaning as registration goes up, disparity decreases.
-* All but one of the San Joaquin Valley counties have lower than average voter registration rates. In fact, five of the eight counties with the lowest registration rates are in that region.
+* There appears to be a relationship between higher outcomes and lower disparity, meaning as registration goes up, disparity decreases.
+* All but one of the San Joaquin Valley counties have lower than average voter registration rates. In fact, five of the eight counties with the lowest registration rates are in that region. All but two counties in the region have worse than average racial disparities.
 
 ### State Barchart
 ```{r, echo=FALSE}
@@ -225,9 +226,9 @@ c_2_chart
 
 ```
 
-* White voters have the best registration rate in the state, with 72% of eligible White Californians registered to vote.
-* Latinx and Asian Californians have the worst rate of voter registration in the state at 55%, a rate 17 percentage points lower than the White rate (71%).
-* Black Californians are registered to vote at a rate (63%) on par with the overall statewide rate (63.6%).
+* White voters have the best (highest) registration rate in the state, with 73 of eligible White Californians registered to vote.
+* Latinx and Asian Californians have the worst rate of voter registration in the state at 57%, a rate 16 percentage points lower than the White rate.
+* Black Californians are registered to vote at a rate (64%) close to the overall statewide rate (65%).
 
 
 ### County Barchart
@@ -238,7 +239,7 @@ c_2_long
 ```
 
 
-## Diversity of Candidates - UPDATED {.tabset .tabset-fade}
+## Diversity of Candidates {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -247,10 +248,10 @@ c_3_chart <- county_scatterplot(c_tables[[3]])
 c_3_chart
 ```
 
-* All five counties in the purple Quadrant are in the Northern Sierra region.
+* All five counties in the Purple Quadrant are in the Northern Sierra region.
 * The fact that there is very little variance between counties in overall outcome in this measure reflects that there is relatively equal proportional representation for each county across the various levels of government in California.
 * Los Angeles County, which has the largest population, has the fourth lowest racial disparities among its body of candidates for public office.
-* 7 of the 11 counties with the largest racial disparities in their elected representation are in the Bay Area.
+* Five of the 11 counties with the largest racial disparities in their candidate pool are in the Bay Area. One notable exception is San Francisco, which has the 9th lowest racial disparity.
 
 ### State Barchart
 
@@ -274,7 +275,7 @@ c_3_long
 ```
 
 
-## Diversity of Elected Officials - UPDATED {.tabset .tabset-fade}
+## Diversity of Elected Officials {.tabset .tabset-fade}
 
 ### Scatterplot
 
@@ -284,8 +285,8 @@ c_4_chart
 ```
 
 * The fact that there is very little variance between counties in overall outcome in this measure reflects that there is relatively equal proportional representation for each county across the various levels of government in California.
-* Many of the counties with larger populations, such as Sacramento, San Diego, Orange, Fresno, and Los Angeles, rank towards the lower end of racial disparities among their elected officials
-* The 12 counties with the highest racial disparities in elected representation are all non-urban counties in the Northern Sierra region.
+* Many of the counties with larger populations, such as Sacramento, Riverside, San Diego, Orange, and Los Angeles, rank towards the lower end of racial disparities among their elected officials.
+* The 15 counties with the highest racial disparities in elected representation are all non-urban counties in the Northern Sierra region.
 
 ### State Barchart
 
@@ -296,7 +297,7 @@ c_4_chart
 
 ```
 
-*The disparity between White representation and the representation of all other racial groups in California is even wider in the statewide pool of elected than it is in the pool of candidates for office. This means White candidates are not just more likely to run, but more likely to win.
+* The disparity between White representation and the representation of all other racial groups in California is even wider in the statewide pool of elected than it is in the pool of candidates for office. This means White candidates are not just more likely to run, but more likely to win.
 
 ### County Barchart
 
@@ -306,81 +307,85 @@ c_4_long
 ```
 
 
-## Voting in Midterm Elections {.tabset .tabset-fade}
-
-### Scatterplot
-
-```{r, echo=FALSE}
-c_5_chart <- county_scatterplot(c_tables[[5]])
-c_5_chart
-
-```
-
-* Five of the six counties in the Red Quadrant (Higher Disparity, Lower Outcome) are in the San Joaquin Valley.
-* Sonoma County has both the highest rates of voting in midterm elections in the state and the second lowest racial disparities in its midterm election voting pool.
-* There is a general correlation between lower racial disparities and better overall voter turnout for midterm elections, with relatively few counties firmly in the yellow or orange quadrants. 
-
-
-### State Barchart
-
-```{r, echo=FALSE}
-
-  s_5_ <- state_barchart(s_tables[[5]])
-  s_5_
-
-```
-
-* White voters are the most likely of any racial group in the state to turn out for midterm elections, voting at a rate 1.5 times higher than Asian and and Latinx voters.
-* Asian and Latinx voters turn out at rates more than 10 percentage points below the statewide turnout rate.
-
-
-
-### County Barchart
-
-```{r, echo=FALSE}
-
-c_5_long <- county_barchart(c_tables[[5]]) 
-c_5_long
-
-```
-
 
 ## Voting in Presidential Elections - UPDATED {.tabset .tabset-fade}
 
 ### Scatterplot
 
 ```{r, echo=FALSE}
-c_6_chart <- county_scatterplot(c_tables[[6]])
+c_6_chart <- county_scatterplot(c_tables[[5]])
 c_6_chart
 
 ```
 
-* Data is relatively sparse for this indicator, as both the outcome and disparity measures can only be reported for 26 of the 54 counties in the state.
-* There appears to be a negative relationship between outcome and disparity, meaning as disparity increases, voter turnout decreases.
-* The three most disparate counties, Stanislaus, Kings, and Imperial, have large gaps between White and Latinx voter turnout.
-* Six of the eight counties with the worst voter turnout rates are in the San Joaquin Valley.
+* Data is relatively sparse for this indicator, as both the outcome and disparity measures can only be reported for 27 of the 58 counties in the state.
+* There appears to be a positive relationship between outcome and disparity, meaning as disparity increases, voter turnout also increases.
+* In Fresno, the county with the largest disparities, nearly 9 in 10 AIAN voters voted. However, only 4 in 10 Latinx or Black voters and 3 in 10 Asian voters voted.
+* Six of the 10 counties with the worst voter turnout rates are in the San Joaquin Valley, three of the remaining are in Southern California.
 
 ### State Barchart
 
 ```{r, echo=FALSE}
 
-  s_6_ <- state_barchart(s_tables[[6]])
+  s_6_ <- state_barchart(s_tables[[5]])
   s_6_
 
 ``` 
 
 * White Californians have the highest turnout rate in the state for presidential elections, voting a rate well above the state average.
-* Although White voter rates are still the highest, the differences in voting rates between racial groups in the state is less pronounced for presidential elections than it is for midterm elections. For presidential elections, white turnout is two percentage points closer to the statewide rate and 1.8 points closer to the racial group with the lowest rate (Latinx Californians).
-* Asian voters increase their turnout by 17 percentage points for presidential elections compared to midterm elections.
+* Although White voter rates are still the highest, the differences in voting rates between racial groups in the state is less pronounced for presidential elections than it is for midterm elections. For presidential elections.
+* Asian voters turnout is 18.5 percentage points higher for presidential elections compared to midterm elections.
+* Pacific Islanders have the second lowest presidential turnout (among 7 groups) which is well below average, but the 3rd highest midterm turnout.
 
 ### County Barchart
 
 ```{r, echo=FALSE}
 
-c_6_long <- county_barchart(c_tables[[6]]) 
+c_6_long <- county_barchart(c_tables[[5]]) 
 c_6_long
 
 ```
+
+## Voting in Midterm Elections {.tabset .tabset-fade}
+
+### Scatterplot
+
+```{r, echo=FALSE}
+c_5_chart <- county_scatterplot(c_tables[[7]])
+c_5_chart
+
+```
+
+* Five of the six counties in the Red Quadrant (Higher Disparity, Lower Outcome) are in the San Joaquin Valley.
+* Sonoma County has both the highest rate of voting in midterm elections in the state and the second lowest racial disparities.
+* There seems to be a relationship between lower racial disparities and better overall voter turnout for midterm elections, with relatively few counties firmly in the Yellow or Orange Quadrants. 
+
+
+### State Barchart
+
+```{r, echo=FALSE}
+
+  s_5_ <- state_barchart(s_tables[[7]])
+  s_5_
+
+```
+
+* White voters are the most likely of any racial group to turn out for midterm elections, voting at a rate 1.5 times higher than Asian and and Latinx voters.
+* Asian and Latinx voters turnout rates are 10 percentage points below the statewide turnout rate.
+
+
+
+### County Barchart
+
+```{r, echo=FALSE}
+
+c_5_long <- county_barchart(c_tables[[7]]) 
+c_5_long
+
+```
+
+
+
 
 ```{r}
 ##Closing database connections##

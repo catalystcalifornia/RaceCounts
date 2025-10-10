@@ -779,7 +779,7 @@ print(paste0("There are ", nrow(tie_check), " ties. If there are any ties, you w
 worst_disp3 <- worst_disp2 %>%
   mutate(finding_type = 'worst disparity', 
          finding = case_when(
-           (arei_issue_area == 'Education' & geo_level == "city") ~ paste0(long_disp_indicator, " (", district_name, ") is the most disparate indicator in ", geo_name, "."),
+           (arei_issue_area == 'Education' & geo_level == "city") ~ paste0(long_disp_indicator, " is the most disparate indicator in ", geo_name, " (", district_name, ")."),
            .default = paste0(long_disp_indicator, " is the most disparate indicator in ", geo_name, ".")),
          findings_pos = 4) %>% 
   select(geoid, geo_name, geo_level, dist_id, district_name, total_enroll, finding_type,finding, findings_pos)

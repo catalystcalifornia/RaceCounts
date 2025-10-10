@@ -24,6 +24,7 @@ curr_schema <- 'v7'
 prev_schema <- 'v6'
 rc_yr <- '2025'
 
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Composite Index\\QA_arei_multigeo_list.docx"
 
 # pull in RC county_ids from previous schema, then race and region/urban type from current schema
 county_ids <- dbGetQuery(con, paste0("select geoid, county_id from ", prev_schema, ".arei_multigeo_list where geolevel <> 'place'")) # get RC-specific county_id's
@@ -68,7 +69,7 @@ city_multigeo_list <- right_join(city_multigeo_list, city_index, by = c("geoid" 
 # bind city table to county/state table
 library(plyr)
 final_multigeo_list <- rbind.fill(multigeo_list, city_multigeo_list) # use rbind.fill so cols missing in city table autofill with NA.
-unloadNamespace("plyr") # unload plyr bc conflicts with dplyr used elsewhere
+#unloadNamespace("plyr") # unload plyr bc conflicts with dplyr used elsewhere
 
 # clean geo_name column
 clean_geo_names <- function(x){
@@ -89,7 +90,7 @@ final_multigeo_list <- final_multigeo_list %>%
 # Export to Postgres ------------------------------------------------------
 
 table_name <- "arei_multigeo_list"
-table_comment_source <- paste0("Created ", Sys.Date(), ". Based on arei_race_multigeo, arei_county_region_urban_type, composite index and all issue area index tables for cities and counties. Feeds RC.org scatterplots and map. Source: W:\\Project\\RACE COUNTS\\", rc_yr, "_", curr_schema, "\\Composite Index\\arei_multigeo_list.R")
+table_comment_source <- paste0("Created ", Sys.Date(), ". Based on arei_race_multigeo, arei_county_region_urban_type, composite index and all issue area index tables for cities and counties. Feeds RC.org scatterplots and map. Source: W:\\Project\\RACE COUNTS\\", rc_yr, "_", curr_schema, "\\RC_Github\\LF\\RaceCounts\\IndexScripts\\arei_multigeo_list.R. QA doc: ", qa_filepath)
 table_comment <- paste0("COMMENT ON TABLE ", curr_schema, ".", table_name, " IS '", table_comment_source, ".';")
 column_comment <- paste0("COMMENT ON COLUMN ", curr_schema, ".", table_name, ".county_id IS 'This is the RACE COUNTS-specific county id, not county FIPS code.';")
 
