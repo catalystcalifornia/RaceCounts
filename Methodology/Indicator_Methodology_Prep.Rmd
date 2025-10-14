@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = FALSE, comment = FALSE, message = FALSE, warning = 
 
 ```
 
-```{css echo=FALSE}
+```{css echo=FALSE, include=FALSE}
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Rubik">
 
 body {
@@ -27,6 +27,7 @@ body {
   font-weight: 700
 }
 
+rc_theme
 
 ```
 
@@ -50,7 +51,10 @@ indicators <- function(x) {
 Placeholder for RC logo
 
 
-### `r ifelse(geoname == 'County_State', paste0(gsub("_", " / ", geoname), ": "), paste0(geoname, ": "))` `r date `
+### `r case_when(geoname == 'CountyState' ~ paste('County / State', ": ", date), 
+                 geoname == 'City' ~ paste0('City', ": ", date), 
+                 geoname == 'Leg_District' ~ paste0('State Legislative Districts', ": ", date))`
+<!--(geoname == 'County_State', paste0(gsub("_", " / ", geoname), ": "), paste0(geoname, ": "))` `r date ` -->
 
 # Notes on Racial/Ethnic Categories
 Race is a social construct and a biological construct, neither of which are discussed in depth in this analysis. Thus, we use a simplified view of race to portray racial data to a broader audience. Ethnicity is also treated lightly, and while Latinx is an ethnicity, it is generally treated and spoken about as a race, even though Latinxs can be of any race. Additionally, each data source uses slightly different terminology and categorization. Considering all these factors, we use one simplified set of labels for the RACE COUNTS website and publications for consistency while maintaining fidelity to the data sources as much as possible. To find out more, please see our [Race & Ethnicity Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md) documentation. 
