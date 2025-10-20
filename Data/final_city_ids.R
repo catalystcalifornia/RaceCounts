@@ -38,6 +38,8 @@ if (current_yr != format(Sys.time(), "%Y")) {
     rename(api_id = city_id) %>%
     select(city_name, api_id, map_id)
   
+  missing_map_shapes <- final_csv %>% filter(is.na(map_id)) %>% select(city_name) %>% pull()
+  
   date_script_ran <- Sys.Date() %>%
     gsub("-", "", ., fixed=TRUE)
   
@@ -48,6 +50,7 @@ if (current_yr != format(Sys.time(), "%Y")) {
   write.csv(final_csv, full_filepath, row.names=FALSE)
   
   message(paste("Success! :", file_name, "exported to", full_filepath))
+  message(paste("Warning: The following cities do not have map shapes:", paste(missing_map_shapes, collapse = ", ")))
 }
 
 
