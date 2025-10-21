@@ -1,14 +1,14 @@
-/* Referenced in: W:/Project/RJS/Pillars/GitHub/EMG/sdpillars/report_embeds/chart_template.Rmd */
+/* Adapted from: W:/Project/RJS/Pillars/GitHub/EMG/sdpillars/report_embeds/chart_template.Rmd */
 /* W:/RDA Team/R/cc_brandguide.css */
 
 
 /* RC Brand Guide CSS Stylesheet for RMDs*/
 
-/* Styling pulled from W:\Project\RACE COUNTS\Style Guide */
+/* Styling pulled from W:\Project\RACE COUNTS\Style Guide\ */
 /* h1 Document Title */
 h1{
   font-size: 27px;
-  font-family: Rubik Bold, sans-serif;
+  font-family: Rubik, sans-serif;
   letter-spacing: normal;
   line-height: 1.24;
   font-weight: 600;
@@ -25,12 +25,12 @@ h2{
   font-weight: 600;
   margin: 1em 0;
   display: block;
-  color: #070024;
+  color: #AC0068;
 }
 
 /* h3 Indicator Name */
 h3{
-  font-size: 21px;
+  font-size: 20px;
   font-family: Rubik, sans-serif;
   letter-spacing: normal;
   line-height: 1.2;
@@ -43,14 +43,14 @@ h3{
 /* h4 */
 h4{
   font-size: 18px;
-  font-family: LibreBaskerville, sans-serif;
+  font-family: LibreBaskerville;
   color: #070024;
 }
 
 /* p is for body content */
 p{
-  font-size: 18px; /* consider changing to 15px*/
-  font-family: LibreBaskerville, sans-serif;
+  font-size: 18px;
+  font-family: LibreBaskerville;
   letter-spacing: normal;
   line-height: 1.5;
   font-weight: 400;
@@ -59,196 +59,38 @@ p{
   color: #070024;
 }
 
-.p .em{
-  color: #070024;
+
+/* --Links-- */
+
+a {
+  font-family: Rubik;
+  font-size: 16px;
 }
 
-/* --Link-- */
 
-a{
-  font-family: LibreBaskerville;
-}
-  
 /* --Unordered List (bullet list)-- */
 
 ul{
-  font-family: LibreBaskerville;
+  font-family: Rubik;
 }
   
 /* --Ordered List (numeric list)-- */
 
 ol{
-  font-family: LibreBaskerville;
-}
-  
-/* --Document body-- */
-
-body{
-  font-family: LibreBaskerville;
-  font-size: 14px;
-  background-color: #FFFFFF;
+  font-family: Rubik;
 }
 
-/* --Paragraph-- see above*/
 
-
-
-/* --Footer Logo-- */
-
-.image-container {
-    position: static;
-    /* top: 0; */
-    left: 0;
-    right: 0;
-    bottom: 0;
-    margin: 0;
-}
-
-/* --TOC coloring-- */
+/* --TOC-- */
 
 .list-group-item.active, .list-group-item.active:focus, .list-group-item.active:hover{
   background-color: #F1F0F2;
   border-color: #F1F0F2;
-}
-
-.leaflet-top .leaflet-right {
-  color:black;
-}
-
-.leaflet-map-title {
-  font-size: 21px;
-  color: #000000;
-  
-  margin-bottom: 5px;
+  color: #AC0068;
   font-family: Rubik;
-  font-weight: 800;
-  text-align: left;
-}
-.leaflet-map-subtitle {
-  font-size: 14px;
-  color: #000000;
-  text-align: left;
-  margin-top: 0px;
-  font-family: Rubik;
-  font-weight: 400;
-  text-align: left;
-}
-
-/* --Media Queries-- */
-@media (min-width: 450px) {
-  .highcharts-title{
-    font-size: 18px !important
-  }
-
-  .highcharts-subtitle{
-    font-size: 12px !important
-  }
-
-  .highcharts-axis-labels{
-    font-size: 8px !important
-  }
-
-  .highcharts-caption{
-    font-size: 8px !important
-  }
-
-  .highcharts-bubble-legend-labels{
-    font-size: 8px !important
-  }
-
+  font-weight: 600;
+  font-size: 20;
 }
 
 
-@media (min-width: 576px) {
-  .highcharts-title{
-    font-size: 18px !important
-  }
-
-  .highcharts-subtitle{
-    font-size: 12px !important
-  }
-
-  .highcharts-axis-labels{
-    font-size: 8px !important
-  }
-
-  .highcharts-caption{
-    font-size: 8px !important
-  }
-
-  .highcharts-bubble-legend-labels{
-    font-size: 8px !important
-  }
-
-
-}
-
-@media (min-width: 768px) {
-  .highcharts-title{
-    font-size: 21px !important
-  }
-
-  .highcharts-subtitle{
-    font-size: 14px !important
-  }
-
-  .highcharts-axis-labels{
-    font-size: 10px !important
-  }
-
-  .highcharts-caption{
-    font-size: 10px !important
-  }
-
-  .highcharts-bubble-legend-labels{
-    font-size: 10px !important
-  }
-
-
-}
-
-@media (min-width: 992px) {
-  .highcharts-title{
-    font-size: 21px !important
-  }
-
-  .highcharts-subtitle{
-    font-size: 14px !important
-  }
-
-  .highcharts-axis-labels{
-    font-size: 14px !important
-  }
-
-  .highcharts-axis-labels .highcharts-xaxis-labels{
-    font-size: 10px !important
-  }
-
-  .highcharts-axis-labels .highcharts-yaxis-labels{
-    font-size: 10px !important
-  }
-
-  .highcharts-caption{
-    font-size: 10px !important
-  }
-
-  .highcharts-container{
-    height: 472px !important
-  }
-
-  .highcharts-legend-item{
-    font-size: 14px !important
-  }
-
-  .highcharts-bubble-legend-labels{
-    font-size: 10px !important
-  }
-
-
-  /* .highcharts-tooltip {
-    width:40px !important;
-    overflow: auto;
-    white-space: normal !important;
-} */
-}
 
