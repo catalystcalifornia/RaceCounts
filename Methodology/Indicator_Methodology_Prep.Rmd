@@ -49,7 +49,6 @@ orange <- "#FF6B02"	   # scatterplot
 
 ## FONTS ## 
 font_add(family = "Rubik", regular = "W:/Project/RACE COUNTS/Style Guide/Fonts/Rubik/static/Rubik-Regular.ttf")
-font_add(family = "Rubik Bold", regular = "W:/Project/RACE COUNTS/Style Guide/Fonts/Rubik/static/Rubik-Bold.ttf")
 font_add(family = "LibreBaskerville", regular = "W:/Project/RACE COUNTS/Style Guide/Fonts/Libre_Baskerville/LibreBaskerville-Regular.ttf")
 
 ``` 
