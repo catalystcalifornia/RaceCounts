@@ -10,6 +10,14 @@ output:
 
 ---
 
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap');
+</style>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Rubik:ital,wght@0,300..900;1,300..900&display=swap');
+</style>
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, comment = FALSE, message = FALSE, warning = FALSE, dpi = 300, tidy.opts = list((width.cutoff = 80), tidy = TRUE))
 packages <- c("sysfonts", "extrafont", "showtext", "usethis", "here")
@@ -48,8 +56,8 @@ orange <- "#FF6B02"	   # scatterplot
 
 
 ## FONTS ## 
-font_add(family = "Rubik", regular = "W:/Project/RACE COUNTS/Style Guide/Fonts/Rubik/Rubik-Regular.ttf")
-font_add(family = "LibreBaskerville", regular = "W:/Project/RACE COUNTS/Style Guide/Fonts/Libre_Baskerville/LibreBaskerville-Regular.ttf")
+#font_add(family = "Rubik", regular = "W:/Project/RACE COUNTS/Style Guide/Fonts/Rubik/Rubik-Regular.ttf")
+#font_add(family = "LibreBaskerville", regular = "W:/Project/RACE COUNTS/Style Guide/Fonts/Libre_Baskerville/LibreBaskerville-Regular.ttf")
 
 ``` 
 
