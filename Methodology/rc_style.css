@@ -5,10 +5,20 @@
 /* RC Brand Guide CSS Stylesheet for RMDs*/
 
 /* Styling pulled from W:\Project\RACE COUNTS\Style Guide\ */
-/* h1 Document Title */
+
+@font-face {
+
+  font-family: "LibreBaskerville";
+  src: url("W:/Project/RACE COUNTS/Style Guide/Fonts/Libre_Baskerville/LibreBaskerville-Regular.ttf") format("truetype");
+  font-family: "Rubik";
+  src: url("W:/Project/RACE COUNTS/Style Guide/Fonts/Rubik/Rubik-Regular.ttf") format("truetype");
+}
+
+
+/* h1 Document Title  format("truetype")*/
 h1{
   font-size: 27px;
-  font-family: Rubik, sans-serif;
+  font-family: Rubik;
   letter-spacing: normal;
   line-height: 1.24;
   font-weight: 600;
