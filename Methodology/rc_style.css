@@ -6,13 +6,7 @@
 
 /* Styling pulled from W:\Project\RACE COUNTS\Style Guide\ */
 
-@font-face {
 
-  font-family: "LibreBaskerville";
-  src: url("W:/Project/RACE COUNTS/Style Guide/Fonts/Libre_Baskerville/LibreBaskerville-Regular.ttf") format("truetype");
-  font-family: "Rubik";
-  src: url("W:/Project/RACE COUNTS/Style Guide/Fonts/Rubik/Rubik-Regular.ttf") format("truetype");
-}
 
 
 /* h1 Document Title  format("truetype")*/
@@ -99,7 +93,7 @@ ol{
   color: #AC0068;
   font-family: Rubik;
   font-weight: 600;
-  font-size: 20;
+  font-size: 23;
 }
 
 
