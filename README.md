@@ -47,8 +47,8 @@ RACE COUNTS includes 47 county/state indicators, and 29 city indicators, across 
 At county level only, we calculate one index for each of the seven issue indexes including all indicators in that issue. At both city and county level, we calculate an overall Racial Equity Index combining all indicators. In all indexes, each county and city receives a rank for racial disparity and a rank for overall outcomes. The county or city ranked one for disparity is the most racially disparate, while a county ranked one for outcomes has the best outcomes.
 
 ## Data Methodology
-[RACE COUNTS: Indicator Methodology for County and State](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/IndicatorMethodology_CountyState.html) <br>
-[RACE COUNTS: Indicator Methodology for City](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/IndicatorMethodology_City.html) <br> 
+[RACE COUNTS: Indicator Methodology for County and State](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html) <br>
+[RACE COUNTS: Indicator Methodology for City](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_City.html) <br> 
 [RACE COUNTS: Race & Ethnicity Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md) <br>
 
 <!--[RACE COUNTS: Key Takeaways Methodology (2023)](https://github.com/catalystcalifornia/RaceCounts/blob/main/KeyTakeaways/README_Key_Takeaways.md) <br>-->
