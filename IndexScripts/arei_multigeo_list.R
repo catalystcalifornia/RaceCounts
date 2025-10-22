@@ -1,7 +1,7 @@
 #### arei_multigeo_list for RC v7 ####
 
 #install packages if not already installed
-list.of.packages <- c("tidyverse","RPostgres","sf", "usethis")
+list.of.packages <- c("tidyverse","RPostgres","sf", "usethis", "plyr", "dplyr")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
@@ -34,7 +34,7 @@ region_urban <- dbGetQuery(con, paste0("select county_id AS geoid, region, urban
 ## get RC county index tables ##
   # import county index tables
   table_list <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", curr_schema, "' AND table_name NOT LIKE '%_city_%' AND table_name NOT LIKE '%_leg_%'AND table_name LIKE '%index%';")
-  rc_list <- dbGetQuery(con, table_list) %>% rename('table' = 'table_name')
+  rc_list <- dbGetQuery(con, table_list) %>% dplyr::rename('table' = 'table_name')
   
   index_list <- rc_list[order(rc_list$table), ] # alphabetize list of index tables which transforms into character from list, needed to format list correctly for next steps
   index_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", index_list), index_list), DBI::dbGetQuery, conn = con) # import tables from postgres
@@ -63,11 +63,11 @@ city_ids <- dbGetQuery(con, paste0("select city_id AS geoid, region from ", curr
 city_index <- dbGetQuery(con, paste0("SELECT city_id, disparity_z, disparity_rank, performance_z, performance_rank, disparity_z_quartile, performance_z_quartile, quadrant FROM ", curr_schema, ".arei_composite_index_city_", rc_yr))
 
 # join city tables together
-city_multigeo_list <- left_join(city_race, city_ids) %>% rename(geo_name = name)
+city_multigeo_list <- left_join(city_race, city_ids) %>% dplyr::rename(geo_name = name)
 city_multigeo_list <- right_join(city_multigeo_list, city_index, by = c("geoid" = "city_id"))
 
 # bind city table to county/state table
-library(plyr)
+
 final_multigeo_list <- rbind.fill(multigeo_list, city_multigeo_list) # use rbind.fill so cols missing in city table autofill with NA.
 #unloadNamespace("plyr") # unload plyr bc conflicts with dplyr used elsewhere
 
@@ -86,6 +86,16 @@ clean_geo_names <- function(x){
 final_multigeo_list <- final_multigeo_list %>%
   clean_geo_names
 
+# create a leg list
+leg_list <- dbGetQuery(con, paste0("select * from ", curr_schema, ".arei_race_multigeo where geolevel = 'place'")) 
+
+con2 <- connect_to_db("rda_shared_data")
+
+sldl <- dbGetQuery(con2, "SELECT * FROM crosswalks.state_assembly_2024_region")
+sldu <- dbGetQuery(con2, "SELECT * FROM crosswalks.state_senate_2024_region")
+leg_index <- dbGetQuery(con, "SELECT * FROM v7.arei_composite_index_leg_2025")
+leg_regions <- rbind(sldl,sldu)
+leg_df <- left_join(leg_regions, leg_index, by=c("leg_id", "geolevel")) %>% dplyr::rename("geoid"="leg_id")
 
 # Export to Postgres ------------------------------------------------------
 

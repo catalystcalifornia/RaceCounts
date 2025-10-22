@@ -190,11 +190,9 @@ write_xlsx(df_state, paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_sch
 
 metadata <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_indicator_list_cntyst"))
 
-<<<<<<< HEAD
-metadata <- metadata %>% select(-c(arei_indicator,  arei_issue_area_id, arei_indicator_id, race_type, ind_order, site_year, data_year, raw_rounding, rate_rounding, ind_show_on_dev, ind_show_on_site))
-=======
+
 metadata <- metadata %>% select(-c(arei_indicator,  arei_issue_area_id, arei_indicator_id, race_type, ind_order, site_year, data_year, raw_rounding, rate_rounding, ind_show_on_dev, ind_show_on_site, newoid))
->>>>>>> b391c7a2d7d894c89612237dc0b3993d6c36cdaa
+
 
 metadata <- metadata %>% rename("indicator" = "api_name",
                                 "issue" = "arei_issue_area",
