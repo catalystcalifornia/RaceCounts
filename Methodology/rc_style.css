@@ -6,13 +6,15 @@
 
 /* Styling pulled from W:\Project\RACE COUNTS\Style Guide\ */
 
-
+body {
+  background-color: #F1F0F2;
+}
 
 
 /* h1 Document Title  format("truetype")*/
 h1{
   font-size: 27px;
-  font-family: Rubik;
+  font-family: Rubik, sans-serif;
   letter-spacing: normal;
   line-height: 1.24;
   font-weight: 600;
@@ -49,6 +51,7 @@ h4{
   font-size: 18px;
   font-family: Roboto, sans-serif;
   color: #070024;
+  
 }
 
 /* p is for body content */
