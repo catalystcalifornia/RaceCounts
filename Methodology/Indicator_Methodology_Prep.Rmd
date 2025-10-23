@@ -9,7 +9,15 @@ output:
       collapsed: true
 
 ---
- 
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap');
+</style>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+</style>
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, comment = FALSE, message = FALSE, warning = FALSE, dpi = 300, tidy.opts = list((width.cutoff = 80), tidy = TRUE))
 packages <- c("sysfonts", "extrafont", "showtext", "usethis", "here")
@@ -36,7 +44,7 @@ for(pkg in packages){
 
 ## COLORS ##
 
-dark_blue <- "#D6D7D6"
+dark_blue <- "#070024"
 dark_gray <- "#8E8C8F"
 med_gray <- "#D8D8D8"
 lgt_gray <- "#F1F0F2"  # background
@@ -48,84 +56,24 @@ orange <- "#FF6B02"	   # scatterplot
 
 
 ## FONTS ## 
-font_add(family = "Rubik", regular = "W:/Project/RACE COUNTS/Style Guide/Fonts/Rubik/static/Rubik-Regular.ttf")
-font_add(family = "Rubik Bold", regular = "W:/Project/RACE COUNTS/Style Guide/Fonts/Rubik/static/Rubik-Bold.ttf")
-font_add(family = "LibreBaskerville", regular = "W:/Project/RACE COUNTS/Style Guide/Fonts/Libre_Baskerville/LibreBaskerville-Regular.ttf")
-
-#font_add(family = "Archivo", regular = "W:/Project/RACE COUNTS/Style Guide/Fonts/Archivo/static/Archivo-Regular.ttf")
-#font_add(family = "Archivo Bold", regular = "W:/Project/RACE COUNTS/Style Guide/Fonts/Archivo/static/Archivo-Bold.ttf")
-#font_add(family = "Roboto", regular = "W:/Project/RACE COUNTS/Style Guide/Fonts/Roboto/static/Roboto-Regular.ttf")
-#font_add(family = "Roboto Bold", regular = "W:/Project/RACE COUNTS/Style Guide/Fonts/Roboto/static/Roboto-Bold.ttf")
-#font_add(family = "SpaceMono", regular = "W:/Project/RACE COUNTS/Style Guide/Fonts/Space_Mono/SpaceMono-Regular.ttf")
-
-
-# font_import()
-# loadfonts(device = "win")
-# windowsFonts()
-# showtext_auto()
-
-# define fonts in document
-# font_title <- "Rubik Bold"
-# font_subtitle <- "Rubik Bold"
-# font_issue_name <- "Rubik Bold"
-# font_ind_name <- "Rubik"
-# font_text <- "LibreBaskerville"
+#font_add(family = "Rubik", regular = "W:/Project/RACE COUNTS/Style Guide/Fonts/Rubik/Rubik-Regular.ttf")
+#font_add(family = "LibreBaskerville", regular = "W:/Project/RACE COUNTS/Style Guide/Fonts/Libre_Baskerville/LibreBaskerville-Regular.ttf")
 
 ``` 
 
 
-<!--```{css echo=FALSE, include=FALSE}
-<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Rubik">
-
-body {
-  background-color: "lgt_gray"; /* Light gray background */
-
-}
-
-<style type ="text/css">
-title {
-font-size: 20 pt;
-font-family: "Rubik Bold"
-}
-
-
-body {
-font-size: 12 pt;
-font-family: "LibreBaskerville"
-}
-
-
-.bold-inline {
-  font-weight: 700
-}
-```-->
-
-
-```{r, comment = "", results = 'asis'}
+```{r ind_fx, comment = "", results = 'asis'}
 # Function to create methodology for each indicator within an issue area
-# indicators <- function(x) {
-#   for(i in 1:nrow(x)) {
-#     cat("###",x$arei_indicator[i], "\n")
-#     cat("\n")
-#     cat(sprintf("<span class='bold-inline'>Indicator: </span>"), x$bar_chart_header[i], "\n", "\n")
-#     cat(x$method_long[i], "\n", "\n")
-#     cat(sprintf("<span class='bold-inline'>Source: </span>"), x$data_source[i], "\n", "\n")
-#     cat(sprintf("<span class='bold-inline'>Link(s): </span>"), x$links[i], "\n", "\n")
-#     cat(sprintf("<span class='bold-inline'>Racial/Ethnic Categories: </span>"), x$race_eth[i], "\n", "\n")
-#     cat("\n")
-#   }
-# }
 
-# test fx
 indicators <- function(x) {
   for(i in 1:nrow(x)) {
     cat("###",x$arei_indicator[i], "\n")
     cat("\n")
-    cat("Indicator: ", x$bar_chart_header[i], "\n", "\n")
-    cat("####",x$method_long[i], "\n", "\n")
-    cat("Source: ", x$data_source[i], "\n", "\n")
-    cat("Link(s): ", x$links[i], "\n", "\n")
-    cat("Racial/Ethnic Categories: ", x$race_eth[i], "\n", "\n")
+    cat("**Indicator:** ", x$bar_chart_header[i], "\n", "\n")
+    cat(x$method_long[i], "\n", "\n")
+    cat("**Source:** ", x$data_source[i], "\n", "\n")
+    cat("**Link(s):** ", x$links[i], "\n", "\n")
+    cat("**Racial-Ethnic Categories:** ", x$race_eth[i], "\n", "\n")
     cat("\n")
   }
 }
@@ -135,13 +83,16 @@ indicators <- function(x) {
 <!-- <p align="center">
 ![](W:/Project/RACE COUNTS/2025_v7/RC_Github/LF/RaceCounts/images/dark_logo.png){width=150px} -->
 
-# `r case_when(geoname == 'CountyState' ~ paste('County / State', ": ", date), 
+
+# `r case_when(geoname == 'CountyState' ~ paste0('County / State', ": ", date), 
                  geoname == 'City' ~ paste0('City', ": ", date), 
                  geoname == 'Leg_District' ~ paste0('State Legislative Districts', ": ", date))`
-<!--(geoname == 'County_State', paste0(gsub("_", " / ", geoname), ": "), paste0(geoname, ": "))` `r date ` -->
 
-## Notes on Racial/Ethnic Categories
-Race is a social construct and a biological construct, neither of which are discussed in depth in this analysis. Thus, we use a simplified view of race to portray racial data to a broader audience. Ethnicity is also treated lightly, and while Latinx is an ethnicity, it is generally treated and spoken about as a race, even though Latinxs can be of any race. Additionally, each data source uses slightly different terminology and categorization. Considering all these factors, we use one simplified set of labels for the RACE COUNTS website and publications for consistency while maintaining fidelity to the data sources as much as possible. To find out more, please see our [Race & Ethnicity Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md) documentation. 
+<span style="font-size=27px; font-weight: 400; font-color: dark_blue;">Citation: Catalyst California; RACE COUNTS,</span> <a href="https://www.racecounts.org/" target="_blank">racecounts.org</a>, `r format(Sys.Date(), "%Y")`.
+
+
+<span style="font-family: 'Rubik', sans serif; font-size=23px; font-weight: 600; font-color: dark_blue;">Notes on Racial-Ethnic Categories</span><br>
+Race is a social construct and a biological construct, neither of which are discussed in depth in this analysis. Thus, we use a simplified view of race to portray racial data to a broader audience. Ethnicity is also treated lightly, and while Latinx is an ethnicity, it is generally treated and spoken about as a race, even though Latinxs can be of any race. Additionally, each data source uses slightly different terminology and categorization. Considering all these factors, we use one simplified set of labels for the RACE COUNTS website and publications for consistency while maintaining fidelity to the data sources as much as possible. To find out more, please see our <a href="https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md" target="_blank">Race & Ethnicity Methodology</a> documentation. 
 
 In this document, groups marked with * are Latinx-inclusive, those without * are non-Latinx. Groups marked with ^ are that race alone or in combination with another race, groups without ^ are that one race alone. Latinx always includes Latinxs of any race.
 
@@ -153,6 +104,7 @@ In this document, groups marked with * are Latinx-inclusive, those without * are
 indicators(method_list[[1]])
 ``` 
 <p align="right">(<a href="#top">back to top</a>)</p>
+
 \pagebreak
 
 ## `r first(method_list[[2]][['arei_issue_area']])`
@@ -201,3 +153,7 @@ indicators(method_list[[6]])
 indicators(method_list[[7]])
 ```
 <p align="right">(<a href="#top">back to top</a>)</p>
+
+<p align="center">
+![](W:/Project/RACE COUNTS/2025_v7/RC_Github/LF/RaceCounts/images/dark_logo.png){width=300px}
+</p>
