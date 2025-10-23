@@ -1,14 +1,21 @@
 # Script to produce list of ACS SWANA ancestries for RC Race-Ethnicity Readme
 
 #install packages if not already installed
-list.of.packages <- c("DBI", "qpcR", "writexl", "usethis")
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
+packages <- c("DBI", "qpcR", "writexl", "usethis") 
+install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
-library(DBI)
-library(qpcR)
-library(writexl)
-library(usethis)
+if(length(install_packages) > 0) { 
+  install.packages(install_packages) 
+  
+} else { 
+  
+  print("All required packages are already installed.") 
+} 
+
+for(pkg in packages){ 
+  library(pkg, character.only = TRUE) 
+} 
+
 
 
 # Variables - Update each yr
@@ -32,5 +39,5 @@ ancestry <- do.call(qpcR:::cbind.na, ancestry_list) %>% as.data.frame()
 colnames(ancestry) <- c("Southwest Asian / N. African Ancestry", "S. Asian Ancestry")
 
 # export combined ancestry list as excel doc
-write_xlsx(ancestry, paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\Methodology\\SWANA_SoAsian_Ancestry.xlsx"))
+write_xlsx(ancestry, ".\\Methodology\\SWANA_SoAsian_Ancestry.xlsx")
 
