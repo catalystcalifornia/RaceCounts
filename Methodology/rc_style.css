@@ -47,14 +47,14 @@ h3{
 /* h4 */
 h4{
   font-size: 18px;
-  font-family: LibreBaskerville;
+  font-family: Roboto, sans-serif;
   color: #070024;
 }
 
 /* p is for body content */
 p{
   font-size: 18px;
-  font-family: LibreBaskerville;
+  font-family: Roboto, sans-serif;
   letter-spacing: normal;
   line-height: 1.5;
   font-weight: 400;
@@ -67,7 +67,7 @@ p{
 /* --Links-- */
 
 a {
-  font-family: Rubik;
+  font-family: Rubik, sans-serif;
   font-size: 16px;
 }
 
@@ -75,13 +75,13 @@ a {
 /* --Unordered List (bullet list)-- */
 
 ul{
-  font-family: Rubik;
+  font-family: Rubik, sans-serif;
 }
   
 /* --Ordered List (numeric list)-- */
 
 ol{
-  font-family: Rubik;
+  font-family: Rubik, sans-serif;
 }
 
 
@@ -91,7 +91,7 @@ ol{
   background-color: #F1F0F2;
   border-color: #F1F0F2;
   color: #AC0068;
-  font-family: Rubik;
+  font-family: Rubik, sans-serif;
   font-weight: 600;
   font-size: 23;
 }
