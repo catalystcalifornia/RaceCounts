@@ -104,15 +104,15 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
 RACE COUNTS analyzed 31 indicators such as employment, life expectancy, and homeownership, for every State {`r params$geolevel`} District and ranked districts by their outcomes and differences in those outcomes among racial groups.
 
-Data sources for indicators include the California Department of Education, the California Office of Justice, the California Office of Environmental Health Hazard Assessment, the U.S. Census Bureau's American Community Survey and others. All data are the most recent data published or within one year of publication. See RaceCounts.org/methodology for more information.
+Data sources for indicators include the California Department of Education, the California Office of Justice, the California Office of Environmental Health Hazard Assessment, the U.S. Census Bureau's American Community Survey and others. All data are the most recent data published or within one year of publication. See https://www.racecounts.org/explore-the-data/our-methodology/ for more information.
 
 {\headingfont \large \textbf{\textcolor{headerorange}{WHY THIS IS IMPORTANT}}}
 
-Lorem ipsum dolor sit amet. At adipisci omnis qui modi soluta et corrupti consequatur est quod asperiores. Aut dolorem reprehenderit et dolorum quibusdam. Lorem ipsum dolor sit amet. At adipisci omnis qui modi soluta et corrupti consequatur est quod asperiores. Aut dolorem reprehenderit et dolorum quibusdam. At adipisci omnis qui modi soluta et corrupti consequatur.
+Understanding racial disparities in each district is essential to creating fair and effective policy. Data on racial disparity highlight where local systems fail to deliver equitable outcomes and reveal opportunities for targeted policies that close gaps. By examining these disparities, policy makers can work alongside their constituents to promote equity in their districts. 
 
 {\headingfont \large \textbf{\textcolor{headerorange}{WHAT YOU CAN DO ABOUT IT}}}
 
-Lorem ipsum dolor sit amet. At adipisci omnis qui modi soluta et corrupti consequatur est quod asperiores. Aut dolorem reprehenderit et dolorum quibusdam ab obcaecati esse est sequi officia qui asperiores ipsa. Ea quod dolorem et enim incidunt id assumenda voluptas aut facere nemo ut inventore accusamus.
+Addressing racial disparities starts with partnership. Policymakers can engage community organizations that work directly with affected residents to understand their experiences and co-create solutions with them. By supporting data-driven policies, investing in equity initiatives, and amplifying community voices, policymakers can advance systemic change and ensure every community has the opportunity to thrive. To learn more about Catalyst California’s legislative priorities visit https://www.catalystcalifornia.org/how-we-do-it/government-relations.
 \end{multicols}
 \newpage \thispagestyle{secondpage}
 ```{r, results='asis', echo=FALSE}
