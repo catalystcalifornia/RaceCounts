@@ -12,7 +12,7 @@
 library(here)
 
 # get final_df
-source(here("KeyTakeaways", "Leg_pdf_test", "get_briefs_data.R"))
+source(here("BriefScripts", "ca_legislative_profiles_2025", "get_briefs_data.R"))
 
 # add column to final df to get filename of assembly or senate logo
 final_df <- final_df %>%
@@ -25,7 +25,7 @@ final_df <- final_df %>%
 
 # Render in the source directory first
 original_wd <- getwd()
-setwd(here("KeyTakeaways", "Leg_pdf_test"))
+setwd(here("BriefScripts", "ca_legislative_profiles_2025"))
 
 for(i in 1:nrow(final_df)) {
   print(paste("Starting on PDF", i, " of ", nrow(final_df)))
@@ -90,25 +90,25 @@ for(i in 1:nrow(final_df)) {
                       leg_name_caps=toupper(leg_name),
                       party=party,
                       characteristics=paste0(toupper(substr(characteristics, 1, 1)),substr(characteristics, 2, nchar(characteristics))),
-                      district_number=district_number,
+                      district_number=str_remove(district_number, "^0+"),
                       disparity_rank=composite_disparity_rank,
                       outcome_rank=composite_outcome_rank,
                       total_districts=total_districts,
-                      rankings_url_message=paste0("Compare ", leg_name, " to all districts at RaceCounts.org/",
-                                                  geolevel, "-Rankings or via QR Code"),
+                      profiles_url_message=paste0("Compare ", leg_name, " to all districts at www.RaceCounts.org/report/",
+                                                  tolower(geolevel), "-profiles or via QR Code:"),
                       crim_outcome_summary=crim_outcome_summary,
-                      # demo_outcome_summary=demo_outcome_summary,
+                      demo_outcome_summary=demo_outcome_summary,
                       econ_outcome_summary=econ_outcome_summary,
                       educ_outcome_summary=educ_outcome_summary,
                       hben_outcome_summary=hben_outcome_summary,
-                      # hlth_outcome_summary=hlth_outcome_summary,
+                      hlth_outcome_summary=hlth_outcome_summary,
                       hous_outcome_summary=hous_outcome_summary,
                       crim_disparity_summary=crim_disparity_summary,
-                      # demo_disparity_summary=demo_disparity_summary,
+                      demo_disparity_summary=demo_disparity_summary,
                       econ_disparity_summary=econ_disparity_summary,
                       educ_disparity_summary=educ_disparity_summary,
                       hben_disparity_summary=hben_disparity_summary,
-                      # hlth_disparity_summary=hlth_disparity_summary,
+                      hlth_disparity_summary=hlth_disparity_summary,
                       hous_disparity_summary=hous_disparity_summary,
                       worst_outcome_1=worst_outcome_1,
                       worst_outcome_2=worst_outcome_2,
