@@ -50,8 +50,11 @@ issues <- dbGetQuery(conn,
                      statement=paste0("SELECT arei_issue_area_id, api_name_short, api_name_v2 FROM ", 
                                       schema,".","arei_issue_list;")) %>%
   # filter out demo and htlh indexes (only 1 indicator)
-  filter(!(api_name_v2 %in% c("democracy", "health_care_access"))) %>%
-  mutate(index_table_name = paste0(schema, ".",paste("arei", api_name_short, "index", geolevel, yr,sep="_"))) 
+  # filter(!(api_name_v2 %in% c("democracy", "health_care_access"))) %>%
+  mutate(index_table_name = case_when(
+    api_name_v2 == "democracy" ~ paste0(schema, ".",paste("arei", api_name_short, "census_participation", geolevel, yr,sep="_")),
+    api_name_v2 == "health_care_access" ~ paste0(schema, ".",paste("arei", api_name_short, "health_insurance", geolevel, yr,sep="_")),
+    .default = paste0(schema, ".",paste("arei", api_name_short, "index", geolevel, yr,sep="_"))))
 
 cntyst_indicators <- dbGetQuery(conn, 
                          statement=paste0("SELECT arei_indicator, arei_issue_area, arei_issue_area_id, arei_best, api_name FROM ", 
@@ -76,8 +79,18 @@ for(i in 1:nrow(issues)) {
   index_table_name <- issues [i, "index_table_name"]
   sql_query <- paste0("SELECT * FROM ", index_table_name, ";")
   x <- dbGetQuery(conn, sql_query) 
+  if(issue_name=="demo"){
+    x <- x %>%
+      rename(demo_disp_z = disparity_z,
+             demo_perf_z = performance_z)
+  }
+  if(issue_name=="hlth"){
+    x <- x %>%
+      rename(hlth_disp_z = disparity_z,
+             hlth_perf_z = performance_z)
+  }
   x_transform <- x %>%
-    select(leg_id, leg_name, geolevel, ends_with("_rank"), ends_with("_quadrant"), ends_with("_perf_z"), ends_with("_disp_z")) %>%
+    select(leg_id, leg_name, geolevel, ends_with("_rank"), ends_with("quadrant"), ends_with("_perf_z"), ends_with("_disp_z")) %>%
     pivot_longer(
       cols = ends_with(c("_perf_z", "_disp_z")),
       names_to = c("indicator", "metric"),
@@ -104,7 +117,7 @@ for(i in 1:nrow(issues)) {
 list2env(issue_indexes, .GlobalEnv)
 
 # Combine all issue area dfs into 1 df
-all_indicators <- rbind(crim, econ, educ, hben, hous)
+all_indicators <- rbind(crim, demo, econ, educ, hben, hlth, hous)
 
 # Get summaries of each issue area based on quadrant
 all_issues <- all_indicators %>%
@@ -180,9 +193,9 @@ race_findings <- dbGetQuery(conn=conn,
     finding_type = first(finding_type),
     worst_count = first(worst_count),
     total_count = max(total_count),
-    most_impacted_part2 = paste0("with the wort rates for ", worst_count, " out of ",
+    most_impacted_part2 = paste0("with the worst rates for ", worst_count, " out of ",
                                  total_count, 
-                                 " indicators measured. All races lose when systemic racism remains unchecked though."),
+                                 " indicators with available data. All races lose when systemic racism remains unchecked though."),
     .groups = "drop") %>%
   select(leg_id, geolevel, most_impacted_part2) 
 
@@ -209,8 +222,18 @@ sd_members <- read.csv("W:\\Project\\RACE COUNTS\\2025_v7\\Leg_Dist_PDFs\\ca_sen
          geolevel="sldu") %>%
   rename(rep_name=Name)
 
+# replace senate descriptions:
+senate_geo_descriptions <- read.csv("W:\\Project\\RACE COUNTS\\2025_v7\\Leg_Dist_PDFs\\ca_senate_members_2025_sub_county_descriptors.csv") %>%
+  mutate(District=gsub("District ", "060", District))
+
+sd_members <- sd_members %>% left_join(senate_geo_descriptions,by="District",suffix=c("", "_updated")) %>%
+  select(District, rep_name, Party, Characteristics_updated, geolevel) %>%
+  rename(Characteristics=Characteristics_updated)
+
 all_members <- rbind(ad_members, sd_members) %>%
   rename(leg_id=District)
+
+
 
 # create final df: composite ranks, issue area summaries, and worst outcome and disparity indicators
 final_df <- composite_index %>%
