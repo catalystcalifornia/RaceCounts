@@ -95,7 +95,7 @@ for(i in 1:nrow(final_df)) {
                       disparity_rank=composite_disparity_rank,
                       outcome_rank=composite_outcome_rank,
                       total_districts=total_districts,
-                      profiles_url_message=paste0("Compare ", leg_name, " to all districts here: https://bit.ly/42YyiKt or via QR Code:"),
+                      profiles_url_message=paste0("Compare ", leg_name, " to all districts here: \\href{https://bit.ly/42YyiKt}{\\textcolor{blue}{https://bit.ly/42YyiKt}} or via QR Code"),
                       crim_outcome_summary=crim_outcome_summary,
                       demo_outcome_summary=demo_outcome_summary,
                       econ_outcome_summary=econ_outcome_summary,
