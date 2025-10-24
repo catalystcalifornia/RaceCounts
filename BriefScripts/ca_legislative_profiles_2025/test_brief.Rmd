@@ -37,7 +37,8 @@ header-includes:
   - \usepackage{ragged2e}
   - \setlength{\parskip}{10pt}
   - \pagestyle{empty}
-  - \fancypagestyle{firstpage}{
+  - |
+    \fancypagestyle{firstpage}{
       \fancyhf{}
       \fancyhead[C]{\begin{tabularx}{\textwidth}{@{}p{3in}@{}X@{}p{1.5in}@{}} \parbox[c][1.4in][c]{3in}{\centering \includegraphics[width=0.9\linewidth]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/racecounts.png} \\ \vspace{0.1in} \textbf{\normalsize `r params$leg_name` Profile}} & \parbox[c][1.4in][c]{\linewidth}{\centering \vspace{0.1in} \textbf{\LARGE `r params$rep_name`} \\ \vspace{0.15in} \textbf{\normalsize `r params$party`}} & \parbox[c][1.4in][c]{1.5in}{\centering \includegraphics[height=1.2in]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/`r params$logo_filename`}} \end{tabularx}}
       \fancyfoot[C]{\raisebox{0.7in}[0pt][0pt]{\begin{tabularx}{\textwidth}{@{}X@{}p{1.5in}@{}} \parbox[c]{\linewidth}{\normalsize \textbf{`r params$profiles_url_message`}} & \parbox[c]{1.5in}{\centering \includegraphics[height=1in]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/qr_code_final.png}} \end{tabularx}}}
@@ -45,12 +46,14 @@ header-includes:
       \renewcommand{\footrulewidth}{0pt}
       \setlength{\headheight}{105pt}
       \setlength{\footskip}{30pt}}
-  - \fancypagestyle{secondpage}{
-    \fancyhf{}
-    \fancyfoot[C]{\hspace*{-0.25in}\raisebox{-1.2in}{\includegraphics[width=\paperwidth, height=1.5in]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/footer.png}}}
-    \renewcommand{\headrulewidth}{0pt}
-    \renewcommand{\footrulewidth}{0pt}
-    \setlength{\footskip}{30pt}}
+
+  - |
+    \fancypagestyle{secondpage}{
+      \fancyhf{}
+      \fancyfoot[C]{\hspace*{-0.25in}\raisebox{-1.2in}{\includegraphics[width=\paperwidth, height=1.5in]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/footer.png}}}
+      \renewcommand{\headrulewidth}{0pt}
+      \renewcommand{\footrulewidth}{0pt}
+      \setlength{\footskip}{30pt}}
   - \fancypagestyle{plain}{\fancyhf{}\renewcommand{\footrulewidth}{0pt}}
   - \renewcommand{\footrulewidth}{10pt}
   - \setlength{\columnsep}{0.75in}
