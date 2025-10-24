@@ -28,7 +28,7 @@ con2 <- connect_to_db("rda_shared_data")
 
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Sheet_Subprime.docx"
 
-# update each year: variables used throughou
+# update each year: variables used throughout
 xwalk_yr <- 2020            # vintage of final shapes for analysis, eg: places, leg districts NOT vintage of the data
 hmda_yr <- '2013-2017'      # hmda data yrs
 rc_schema <- 'v7'
