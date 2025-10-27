@@ -1,18 +1,21 @@
 ### Status Offenses RC v7 ### 
 
 #install packages if not already installed
-list.of.packages <- c("DBI", "tidyverse","RPostgreSQL", "tidycensus", "readxl", "sf", "janitor")
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
+packages <- c("DBI", "tidyverse","RPostgres", "tidycensus", "readxl", "sf", "janitor")
+install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
-## packages
-library(tidyverse)
-library(readxl)
-library(RPostgreSQL)
-library(sf)
-library(tidycensus)
-library(DBI)
-library(janitor)
+if(length(install_packages) > 0) { 
+  install.packages(install_packages) 
+  
+} else { 
+  
+  print("All required packages are already installed.") 
+} 
+
+for(pkg in packages){ 
+  library(pkg, character.only = TRUE) 
+} 
+
 
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
@@ -25,6 +28,9 @@ yrs_list <- c("2010","2011","2012","2013","2014","2015","2016","2017","2018","20
 rc_yr <- "2025"
 dwnld_url <- "https://openjustice.doj.ca.gov/data"
 rc_schema <- "v7"
+
+pop_threshold <- 100  # data is screened where pop is < threshold
+raw_threshold <- 30   # data is screened where raw count is < threshold
 
 # Read Data: Update each year ---------------------------------------------------------------
 # Metadata: https://data-openjustice.doj.ca.gov/sites/default/files/dataset/2024-07/arrests-context-06062024.pdf
@@ -74,8 +80,6 @@ df_pop <- left_join(df_wide, pop_df, by = c("county" = "name")) %>% arrange(coun
 
 
 # Screen data ----------------------------------------------------------
-pop_threshold <- 100
-raw_threshold <- 30
 num_yrs <- length(unique(yrs_list))
 
 df_screened <- df_pop %>%
@@ -103,7 +107,7 @@ d <- df_screened
 ############ geoid and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
 #set source for RC Functions script
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
+source("./Functions/RC_Functions.R")
 
 d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
