@@ -1,13 +1,6 @@
-# This file runs the leg_brief.Rmd 
-# File is temporarily created here and then moved to outside of the repo
-# We do not want to store 80 pdfs on GitHub because it will eventually
-# overwhelm our storage.
-
-# This script still needs the following:
-# A df with all our params for each district 
-# A for loop to create each district profile using the df
-# An S3 bucket on AWS and code that will export the final pdfs to it
-
+# This file runs the leg_brief.Rmd for 120 legislative districts and
+# exports to an AWS S3 bucket for storage and hosting. S3 links will be 
+# used on racecounts.org
 
 library(here)
 
