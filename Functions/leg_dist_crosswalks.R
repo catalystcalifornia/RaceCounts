@@ -55,9 +55,9 @@ sldl_ct_pop <- dbGetQuery(con2, paste0("SELECT geo_id AS ct_geoid, ", sldl_id, "
   mutate(geolevel = 'sldl', county_id = str_sub(ct_geoid, 1, 5))
 
 # get sen dist pop by county
-sldu_county_pop <- sldu_ct_pop %>% group_by(leg_id, county_id, geolevel) %>% summarise(ct_total_pop = sum(pop20))
+sldu_county_pop <- sldu_ct_pop %>% group_by(leg_id, county_id, geolevel) %>% dplyr::summarise(ct_total_pop = sum(pop20))
 sldu_county_pop2 <- sldu_county_pop %>% left_join(regions, by = "county_id") %>% filter(geolevel == 'sldu') 
-sldu_county_pop3 <- sldu_county_pop2 %>% group_by(leg_id, region, geolevel) %>%
+sldu_county_pop3 <- sldu_county_pop2 %>% group_by(leg_id, region, geolevel, urban_type) %>%
   summarise(ct_total_pop = sum(ct_total_pop))
 
 # get sen dist pop by region
@@ -79,9 +79,9 @@ print(case_when(length(unique(sldu_region$leg_id)) != 40 ~ "There is at least on
 
 
 # get assm dist pop by county
-sldl_county_pop <- sldl_ct_pop %>% group_by(leg_id, county_id, geolevel) %>% summarise(ct_total_pop = sum(pop20))
+sldl_county_pop <- sldl_ct_pop %>% group_by(leg_id, county_id, geolevel) %>% dplyr::summarise(ct_total_pop = sum(pop20))
 sldl_county_pop2 <- sldl_county_pop %>% left_join(regions, by = "county_id") %>% filter(geolevel == 'sldl') 
-sldl_county_pop3 <- sldl_county_pop2 %>% group_by(leg_id, region, geolevel) %>%
+sldl_county_pop3 <- sldl_county_pop2 %>% group_by(leg_id, region, geolevel,urban_type) %>%
   summarise(ct_total_pop = sum(ct_total_pop))
 
 # get assm dist pop by region
@@ -626,5 +626,3 @@ source_geo <- "ssd"
 source_geo_yr <- "2020" # update data vintage as needed
 
 ssd_assembly <- prep_tables(target_geo, target_geo_yr, source_geo, source_geo_yr)
-
-

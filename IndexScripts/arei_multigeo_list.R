@@ -66,9 +66,42 @@ city_index <- dbGetQuery(con, paste0("SELECT city_id, disparity_z, disparity_ran
 city_multigeo_list <- left_join(city_race, city_ids) %>% dplyr::rename(geo_name = name)
 city_multigeo_list <- right_join(city_multigeo_list, city_index, by = c("geoid" = "city_id"))
 
-# bind city table to county/state table
 
-final_multigeo_list <- rbind.fill(multigeo_list, city_multigeo_list) # use rbind.fill so cols missing in city table autofill with NA.
+# Legislative District Data ---------------------------------------------------------------
+# pull in RC county_ids from previous schema, then race and region/urban type from current schema
+con2 <- connect_to_db("rda_shared_data")
+
+sldl_crosswalk <- dbGetQuery(con2, "SELECT * FROM crosswalks.state_assembly_2024_region")
+sldu_crosswalk <- dbGetQuery(con2, "SELECT * FROM crosswalks.state_senate_2024_region")
+leg_ids <- rbind(sldl_crosswalk, sldu_crosswalk) %>% select(-c(ct_total_pop, total_pop, pct_total_pop, rank))
+
+race <- dbGetQuery(con, paste0("select * from ", curr_schema, ".arei_race_multigeo where geolevel IN ('sldl','sldu')")) # import county & state records only
+
+## get RC leg index tables ##
+# import leg index tables
+leg_list <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", curr_schema, "' AND table_name LIKE '%_index_leg_%' AND table_name NOT LIKE '%_city_%'AND table_name NOT LIKE '%_county_%';")
+rc_leg_list <- dbGetQuery(con, leg_list) %>% dplyr::rename('table' = 'table_name')
+
+leg_list <- rc_leg_list[order(rc_leg_list$table), ] # alphabetize list of index tables which transforms into character from list, needed to format list correctly for next steps
+leg_index_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", leg_list), leg_list), DBI::dbGetQuery, conn = con) # import tables from postgres
+
+# format and clean tables
+leg_index_tables_sort <- lapply(leg_index_tables, function(i) i[order(i$leg_id),]) # sort all list elements by leg_id so they are all in the same order
+leg_index_tables_clean <- lapply(leg_index_tables_sort, function(x) x%>% select(leg_id, geolevel, ends_with(c("disparity_z", "disparity_rank", "performance_z", "performance_rank", "quartile", "quadrant"))))
+leg_index_df <- as.data.frame(do.call(cbind, leg_index_tables_clean))                     # convert list to df
+names(leg_index_df) <- gsub(x = names(leg_index_df), pattern = ".*\\.", replacement = "") # clean up column names
+leg_index_df = leg_index_df[,!duplicated(names(leg_index_df))]                                # drop duplicated leg_id columns
+
+# join tables together
+leg_multigeo_list <- left_join(race, leg_ids, by=c("geoid"="leg_id", "geolevel")) %>% relocate(geolevel, .after = geoid) %>% relocate(region, .after = name) %>% 
+  relocate(urban_type, .after = total_pop) %>%
+  dplyr::rename(geo_name = name)
+leg_multigeo_list <- left_join(leg_multigeo_list, leg_index_df, by = c("geoid" = "leg_id", "geolevel"))
+
+
+# bind leg and city table to county/state table
+
+final_multigeo_list <- rbind.fill(multigeo_list, city_multigeo_list, leg_multigeo_list) # use rbind.fill so cols missing in city table autofill with NA.
 #unloadNamespace("plyr") # unload plyr bc conflicts with dplyr used elsewhere
 
 # clean geo_name column
@@ -86,16 +119,6 @@ clean_geo_names <- function(x){
 final_multigeo_list <- final_multigeo_list %>%
   clean_geo_names
 
-# create a leg list
-leg_list <- dbGetQuery(con, paste0("select * from ", curr_schema, ".arei_race_multigeo where geolevel = 'place'")) 
-
-con2 <- connect_to_db("rda_shared_data")
-
-sldl <- dbGetQuery(con2, "SELECT * FROM crosswalks.state_assembly_2024_region")
-sldu <- dbGetQuery(con2, "SELECT * FROM crosswalks.state_senate_2024_region")
-leg_index <- dbGetQuery(con, "SELECT * FROM v7.arei_composite_index_leg_2025")
-leg_regions <- rbind(sldl,sldu)
-leg_df <- left_join(leg_regions, leg_index, by=c("leg_id", "geolevel")) %>% dplyr::rename("geoid"="leg_id")
 
 # Export to Postgres ------------------------------------------------------
 
@@ -119,18 +142,18 @@ charvect[dblprecision_type] <- "double precision" # specify which cols are doubl
 names(charvect) <- colnames(multigeo_list)
 charvect # check col types before exporting table to database
 
-# dbWriteTable(con,
-#               Id(schema = curr_schema, table = table_name), final_multigeo_list,
-#               overwrite = FALSE, row.names = FALSE, field.types = charvect)
-# 
-# # send table and column comments to database
-# # Start a transaction
-# dbBegin(con)
-# dbExecute(con, table_comment)
-# dbExecute(con, column_comment)
-# 
-# # Commit the transaction if everything succeeded
-# dbCommit(con)
+dbWriteTable(con,
+              Id(schema = curr_schema, table = table_name), final_multigeo_list,
+              overwrite = FALSE, row.names = FALSE, field.types = charvect)
+
+# send table and column comments to database
+# Start a transaction
+dbBegin(con)
+dbExecute(con, table_comment)
+dbExecute(con, column_comment)
+
+# Commit the transaction if everything succeeded
+dbCommit(con)
 
 dbDisconnect(con)
 
