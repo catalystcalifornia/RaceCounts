@@ -1,4 +1,4 @@
-# This file runs the test_brief.Rmd 
+# This file runs the leg_brief.Rmd 
 # File is temporarily created here and then moved to outside of the repo
 # We do not want to store 80 pdfs on GitHub because it will eventually
 # overwhelm our storage.
@@ -13,6 +13,9 @@ library(here)
 
 # get final_df
 source(here("BriefScripts", "ca_legislative_profiles_2025", "get_briefs_data.R"))
+
+# deliverable output folder
+output_folder <- "W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/"
 
 # add column to final df to get filename of assembly or senate logo
 final_df <- final_df %>%
@@ -37,7 +40,7 @@ for(i in 1:nrow(final_df)) {
   leg_name <- final_df[i, "leg_name"] ### added
   characteristics <- final_df[i, "Characteristics"] ### added
   composite_disparity_rank <- final_df[i, "composite_disparity_rank"]
-  composite_outcome_rank <- final_df[i, "composite_performance_rank"]
+  composite_outcome_rank <- final_df[i, "composite_outcome_rank"]
   crim_outcome_summary <- final_df[i, "crim_outcome_summary"]
   demo_outcome_summary <- final_df[i, "demo_outcome_summary"]
   econ_outcome_summary <- final_df[i, "econ_outcome_summary"]
@@ -73,7 +76,7 @@ for(i in 1:nrow(final_df)) {
   
   # for file creation and storage
   pdf_name <- paste0(paste(geolevel, "District", district_number, sep = "_"), ".pdf")
-  output_directory <- paste0("W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/", geolevel)
+  output_directory <- paste0(output_folder, geolevel)
   
   # Create the directory if it doesn't exist
   if (!dir.exists(output_directory)) {
@@ -81,7 +84,7 @@ for(i in 1:nrow(final_df)) {
   }
 
   # Render without specifying output_dir
-  rmarkdown::render(input = "test_brief.Rmd", 
+  rmarkdown::render(input = "leg_brief.Rmd", 
                     output_dir = output_directory,
                     output_file = pdf_name,
                     params = list(
@@ -95,7 +98,7 @@ for(i in 1:nrow(final_df)) {
                       disparity_rank=composite_disparity_rank,
                       outcome_rank=composite_outcome_rank,
                       total_districts=total_districts,
-                      profiles_url_message=paste0("Compare ", leg_name, " to all districts here: \\href{https://bit.ly/42YyiKt}{\\textcolor{blue}{https://bit.ly/42YyiKt}} or via QR Code"),
+                      profiles_url_message=paste0("Compare ", leg_name, " to all districts here: \\href{https://bit.ly/StateLegislatureData}{\\textcolor{blue}{https://bit.ly/StateLegislatureData}} or via QR Code"),
                       crim_outcome_summary=crim_outcome_summary,
                       demo_outcome_summary=demo_outcome_summary,
                       econ_outcome_summary=econ_outcome_summary,

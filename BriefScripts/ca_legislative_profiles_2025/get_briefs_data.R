@@ -13,41 +13,14 @@ conn_mosaic <- connect_to_db("mosaic")
 schema <- "v7"
 yr <- "2025" 
 geolevel <- "leg" 
+num_ind <- 5    # pull top "num_ind" most disparate/worst outcome indicators per district
 
-leg_indicator_list <- c("incarceration",
-                    "officer_initiated_stops",
-                    "use_of_force",
-                    "census_participation",
-                    "connected_youth",
-                    "employment",
-                    "internet",
-                    "living_wage",
-                    "officials",
-                    "per_capita_income",
-                    "real_cost_measure",
-                    "chronic_absenteeism",
-                    "ece_access",
-                    "gr3_ela_scores",
-                    "gr3_math_scores",
-                    "hs_grad",
-                    "staff_diversity",
-                    "suspension",
-                    "drinking_water",
-                    "haz_weighted_avg",
-                    "lack_of_greenspace",
-                    "toxic_release",
-                    "health_insurance",
-                    "cost_burden_renter",
-                    "denied_mortgages",
-                    "eviction_filing_rate",
-                    "foreclosure",
-                    "homeownership",
-                    "housing_quality",
-                    "overcrowded",
-                    "subprime")
+sen_members <- "W:\\Project\\RACE COUNTS\\2025_v7\\Leg_Dist_PDFs\\ca_senate_members_2025.csv"
+assm_members <- "W:\\Project\\RACE COUNTS\\2025_v7\\Leg_Dist_PDFs\\ca_assembly_members_2025.csv"
+sen_desc_update <- "W:\\Project\\RACE COUNTS\\2025_v7\\Leg_Dist_PDFs\\ca_senate_members_2025_sub_county_descriptors.csv"  # more detailed for urban districts
 
-issues <- dbGetQuery(conn, 
-                     statement=paste0("SELECT arei_issue_area_id, api_name_short, api_name_v2 FROM ", 
+issues <- dbGetQuery(conn,
+                     statement=paste0("SELECT arei_issue_area_id, api_name_short, api_name_v2 FROM ",
                                       schema,".","arei_issue_list;")) %>%
   # filter out demo and htlh indexes (only 1 indicator)
   # filter(!(api_name_v2 %in% c("democracy", "health_care_access"))) %>%
@@ -56,11 +29,9 @@ issues <- dbGetQuery(conn,
     api_name_v2 == "health_care_access" ~ paste0(schema, ".",paste("arei", api_name_short, "health_insurance", geolevel, yr,sep="_")),
     .default = paste0(schema, ".",paste("arei", api_name_short, "index", geolevel, yr,sep="_"))))
 
-cntyst_indicators <- dbGetQuery(conn, 
+leg_indicators <- dbGetQuery(conn, 
                          statement=paste0("SELECT arei_indicator, arei_issue_area, arei_issue_area_id, arei_best, api_name FROM ", 
-                                          schema,".","arei_indicator_list_cntyst;")) 
-leg_indicators <- cntyst_indicators %>%
-  filter(api_name %in% leg_indicator_list)
+                                          schema,".","arei_indicator_list_", geolevel, ";")) 
 
 combined <- leg_indicators %>%
   left_join(issues, by = "arei_issue_area_id") %>%
@@ -69,7 +40,7 @@ combined <- leg_indicators %>%
 # Get composite rank in disparity and outcomes
 composite_index <- dbGetQuery(conn, 
                               statement=paste0("SELECT leg_id, leg_name, geolevel, disparity_rank, performance_rank FROM ", 
-                                               schema,".","arei_composite_index_leg_", yr, ";"))
+                                               schema,".","arei_composite_index_", geolevel, "_", yr, ";"))
 
 # get each issue area index from pg
 issue_indexes <- list()
@@ -79,32 +50,31 @@ for(i in 1:nrow(issues)) {
   index_table_name <- issues [i, "index_table_name"]
   sql_query <- paste0("SELECT * FROM ", index_table_name, ";")
   x <- dbGetQuery(conn, sql_query) 
-  if(issue_name=="demo"){
+  if(issue_name=="demo"){     # rename disp/perf z cols to match issue index disp/perf z cols
     x <- x %>%
-      rename(demo_disp_z = disparity_z,
-             demo_perf_z = performance_z)
+      rename(democracy_disparity_z = disparity_z,
+             democracy_performance_z = performance_z)
   }
-  if(issue_name=="hlth"){
+  if(issue_name=="hlth"){     # rename disp/perf z cols to match issue index disp/perf z cols
     x <- x %>%
-      rename(hlth_disp_z = disparity_z,
-             hlth_perf_z = performance_z)
+      rename(health_care_access_disparity_z = disparity_z,
+             health_care_access_performance_z = performance_z)
   }
   x_transform <- x %>%
-    select(leg_id, leg_name, geolevel, ends_with("_rank"), ends_with("quadrant"), ends_with("_perf_z"), ends_with("_disp_z")) %>%
+    select(leg_id, leg_name, geolevel, ends_with("_rank"), ends_with("quadrant"), ends_with("_performance_z"), ends_with("_disparity_z")) %>%
     pivot_longer(
-      cols = ends_with(c("_perf_z", "_disp_z")),
+      cols = ends_with(c("_performance_z", "_disparity_z")),
       names_to = c("indicator", "metric"),
-      names_pattern = "(.*)_(perf_z|disp_z)",
+      names_pattern = "(.*)_(performance_z|disparity_z)",
       values_to = "value"
     ) %>%
     pivot_wider(
       names_from = metric,
       values_from = value
-    )
+    ) %>% 
+    filter(indicator %in% c(issues$api_name_v2))   # keep only issue area index rows
   
   df <- x_transform %>%
-    # select(county_id, county_name, ends_with("_rank"), ends_with("_quadrant")) %>%
-    # left_join(x_transform, by="county_id") %>%
     mutate(issue_area=issue_name)
   
   colnames(df) <- gsub(paste0(api_name_v2,"_"), "", colnames(df))
@@ -151,7 +121,7 @@ all_issues <- all_indicators %>%
 
 # Get 5 indicators with worst outcomes 
 worst_outcomes <- dbGetQuery(conn = conn_mosaic,
-                             statement = "SELECT leg_id, geolevel, variable, rk FROM v7.indicator_outc_rk WHERE rk <=5;") %>%
+                             statement = paste0("SELECT leg_id, geolevel, variable, rk FROM ", schema, ".indicator_outc_rk WHERE rk <=", num_ind, ";")) %>%
   left_join(leg_indicators, by=c("variable"="api_name")) %>%
   select(leg_id, geolevel, rk, arei_indicator) %>%
   pivot_wider(names_prefix = "worst_outcome_",
@@ -160,7 +130,7 @@ worst_outcomes <- dbGetQuery(conn = conn_mosaic,
 
 # Get 5 indicators with most disparity 
 worst_disparity <- dbGetQuery(conn = conn_mosaic,
-                                 statement = "SELECT leg_id, geolevel, variable, rk FROM v7.indicator_disp_rk WHERE rk <=5;") %>%
+                                 statement = paste0("SELECT leg_id, geolevel, variable, rk FROM ", schema, ".indicator_disp_rk WHERE rk <=", num_ind, ";")) %>%
   left_join(leg_indicators, by=c("variable"="api_name")) %>%
   select(leg_id, geolevel, rk, arei_indicator) %>%
   pivot_wider(names_prefix = "worst_disparity_",
@@ -171,11 +141,11 @@ dbDisconnect(conn_mosaic)
 
 # findings
 place_findings <- dbGetQuery(conn=conn,
-                              statement = "SELECT geoid as leg_id, geo_level as geolevel, finding_type, finding as most_impacted_part1 FROM v7.arei_findings_places_multigeo where finding_type='most impacted' and (geo_level='sldu' or geo_level = 'sldl');") %>%
+                              statement = paste0("SELECT geoid as leg_id, geo_level as geolevel, finding_type, finding as most_impacted_part1 FROM ", schema, ".arei_findings_places_multigeo where finding_type='most impacted' and (geo_level='sldu' or geo_level = 'sldl');")) %>%
   mutate(most_impacted_part1 = gsub("\\.", ",", most_impacted_part1))
 
 race_findings <- dbGetQuery(conn=conn,
-                            statement = "SELECT geoid as leg_id, geo_level as geolevel, race, finding_type, finding  FROM v7.arei_findings_races_multigeo where finding_type='worst count' and (geo_level='sldu' or geo_level = 'sldl');")  %>%
+                            statement = paste0("SELECT geoid as leg_id, geo_level as geolevel, race, finding_type, finding FROM ", schema, ".arei_findings_races_multigeo where finding_type='worst count' and (geo_level='sldu' or geo_level = 'sldl');"))  %>%
   mutate(worst_count = as.numeric(str_extract(finding, "\\d+(?=\\s+of\\s+the)")),
          total_count = as.numeric(str_extract(finding, "(?<=of\\sthe\\s)\\d+")),
          race = gsub("latino", "latinx", race),
@@ -207,7 +177,7 @@ most_impacted_race_findings <- place_findings %>%
 dbDisconnect(conn)
 
 # Add leg member names
-ad_members <- read.csv("W:\\Project\\RACE COUNTS\\2025_v7\\Leg_Dist_PDFs\\ca_assembly_members_2025.csv") %>%
+ad_members <- read.csv(assm_members) %>%
   separate_wider_delim(cols=Name,
                        delim=", ",
                        names = c("last_name", "first_name")) %>%
@@ -216,14 +186,14 @@ ad_members <- read.csv("W:\\Project\\RACE COUNTS\\2025_v7\\Leg_Dist_PDFs\\ca_ass
          geolevel="sldl") %>%
   select(-c(first_name, last_name))
 
-sd_members <- read.csv("W:\\Project\\RACE COUNTS\\2025_v7\\Leg_Dist_PDFs\\ca_senate_members_2025.csv") %>%
+sd_members <- read.csv(sen_members) %>%
   mutate(Name = str_sub(Name, end=-(4+1)),
          District = gsub("District ", "060", District),
          geolevel="sldu") %>%
   rename(rep_name=Name)
 
 # replace senate descriptions:
-senate_geo_descriptions <- read.csv("W:\\Project\\RACE COUNTS\\2025_v7\\Leg_Dist_PDFs\\ca_senate_members_2025_sub_county_descriptors.csv") %>%
+senate_geo_descriptions <- read.csv(sen_desc_update) %>%
   mutate(District=gsub("District ", "060", District))
 
 sd_members <- sd_members %>% left_join(senate_geo_descriptions,by="District",suffix=c("", "_updated")) %>%
@@ -238,9 +208,9 @@ all_members <- rbind(ad_members, sd_members) %>%
 # create final df: composite ranks, issue area summaries, and worst outcome and disparity indicators
 final_df <- composite_index %>%
   rename(composite_disparity_rank=disparity_rank,
-         composite_performance_rank=performance_rank) %>%
+         composite_outcome_rank=performance_rank) %>%
   mutate(composite_disparity_rank=scales::label_ordinal()(composite_disparity_rank),
-         composite_performance_rank=scales::label_ordinal()(composite_performance_rank)) %>%
+         composite_outcome_rank=scales::label_ordinal()(composite_outcome_rank)) %>%
   left_join(all_issues, by=c("leg_id","geolevel"), keep = FALSE) %>%
   left_join(worst_outcomes, by=c("leg_id","geolevel"), keep = FALSE) %>%
   left_join(worst_disparity, by=c("leg_id","geolevel"), keep = FALSE) %>%
