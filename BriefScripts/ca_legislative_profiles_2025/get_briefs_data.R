@@ -203,6 +203,11 @@ sd_members <- sd_members %>% left_join(senate_geo_descriptions,by="District",suf
 all_members <- rbind(ad_members, sd_members) %>%
   rename(leg_id=District)
 
+all_members$Characteristics_final <- toupper(str_sub(all_members$Characteristics, 1, 1))
+all_members$Characteristics_final <- paste0("District includes: ", all_members$Characteristics_final, str_sub(all_members$Characteristics, 2, nchar(all_members$Characteristics)))
+all_members <- all_members %>% 
+  select(-Characteristics) %>%
+  rename(Characteristics=Characteristics_final)
 
 
 # create final df: composite ranks, issue area summaries, and worst outcome and disparity indicators
