@@ -1,0 +1,208 @@
+---
+title: ""
+output:
+  pdf_document:
+    latex_engine: xelatex
+    keep_tex: false
+documentclass: extarticle
+classoption: 14pt
+geometry: 
+  - top=0.5in
+  - bottom=1.6in
+  - left=0.25in
+  - right=0.25in
+header-includes:
+  - \usepackage{fontspec}
+  - \setmainfont{Libre Baskerville}    # Body text (serif)
+  - \setsansfont{Rubik}                # Headers/accents (sans-serif)
+  - \setmonofont{Space Mono}  
+  - \newfontfamily\headingfont{Rubik}  # Custom heading command
+  - \newfontfamily\datafont{Space Mono}
+  - \usepackage{xcolor}
+  - \definecolor{headerorange}{RGB}{253,108,0}
+  - \definecolor{linkblue}{RGB}{0,0,255}
+  - \usepackage{hyperref}
+  - \hypersetup{colorlinks=true, urlcolor=linkblue, linkcolor=linkblue, citecolor=linkblue}
+  - \usepackage{fancyhdr}
+  - \usepackage{graphicx}
+  - \usepackage{multicol}
+  - \setlength{\columnsep}{1cm}
+  - \usepackage{titling}
+  - \usepackage{array}
+  - \usepackage{tabularx}
+  - \usepackage{booktabs}
+  - \usepackage{setspace}
+  - \usepackage{enumitem}
+  - \usepackage{afterpage}
+  - \usepackage{lastpage}
+  - \usepackage{ragged2e}
+  - \setlength{\parskip}{10pt}
+  - \pagestyle{empty}
+  - |
+    \fancypagestyle{firstpage}{
+      \fancyhf{}
+      \fancyhead[C]{\begin{tabularx}{\textwidth}{@{}p{3in}@{}X@{}p{1.5in}@{}} \parbox[c][1.4in][c]{3in}{\centering \includegraphics[width=0.9\linewidth]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/racecounts.png} \\ \vspace{0.1in} \textbf{\normalsize `r params$leg_name` Profile}} & \parbox[c][1.4in][c]{\linewidth}{\centering \vspace{0.1in} \textbf{\LARGE `r params$rep_name`} \\ \vspace{0.15in} \textbf{\normalsize `r params$party`}} & \parbox[c][1.4in][c]{1.5in}{\centering \includegraphics[height=1.2in]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/`r params$logo_filename`}} \end{tabularx}}
+      \fancyfoot[C]{\raisebox{0.7in}[0pt][0pt]{\begin{tabularx}{\textwidth}{@{}X@{}p{1.5in}@{}} \parbox[c]{\linewidth}{\normalsize \textbf{`r params$profiles_url_message`}} & \parbox[c]{1.5in}{\centering \includegraphics[height=1in]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/qr_code_final.png}} \end{tabularx}}}
+      \renewcommand{\headrulewidth}{0.4pt}
+      \renewcommand{\footrulewidth}{0pt}
+      \setlength{\headheight}{105pt}
+      \setlength{\footskip}{30pt}}
+
+  - |
+    \fancypagestyle{secondpage}{
+      \fancyhf{}
+      \fancyfoot[C]{\hspace*{-0.25in}\raisebox{-1.2in}{\includegraphics[width=\paperwidth, height=1.5in]{W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/images/footer.png}}}
+      \renewcommand{\headrulewidth}{0pt}
+      \renewcommand{\footrulewidth}{0pt}
+      \setlength{\footskip}{30pt}}
+  - \fancypagestyle{plain}{\fancyhf{}\renewcommand{\footrulewidth}{0pt}}
+  - \renewcommand{\footrulewidth}{10pt}
+  - \setlength{\parindent}{0pt}
+  - \setlist[itemize]{nosep}
+params: # needs to add params used throughout .Rmd here - also need a df of the variables needed for each district to replace hardcoded values
+  geolevel: "geolevel"
+  rep_name: "Firstname Lastname"
+  district_number: "XX"
+  leg_name: "Geolevel District XX"
+  leg_name_caps: "GEOLEVEL DISTRICT XX"
+  party: "X Party"
+  characteristics: "All of County A, County B"
+  disparity_rank: "composite_disparity_rank"
+  outcome_rank: "composite_outcome_rank"
+  total_districts: "total_districts"
+  profiles_url_message: "see district rankings at this url"
+  crim_outcome_summary: "crim_outcome_summary"
+  demo_outcome_summary: "demo_outcome_summary"
+  econ_outcome_summary: "econ_outcome_summary"
+  educ_outcome_summary: "educ_outcome_summary"
+  hben_outcome_summary: "hben_outcome_summary"
+  hlth_outcome_summary: "hlth_outcome_summary"
+  hous_outcome_summary: "hous_outcome_summary"
+  crim_disparity_summary: "crim_disparity_summary"
+  demo_disparity_summary: "demo_disparity_summary"
+  econ_disparity_summary: "econ_disparity_summary"
+  educ_disparity_summary: "educ_disparity_summary"
+  hben_disparity_summary: "hben_disparity_summary"
+  hlth_disparity_summary: "hlth_disparity_summary"
+  hous_disparity_summary: "hous_disparity_summary"
+  worst_outcome_1: "worst_outcome_1"
+  worst_outcome_2: "worst_outcome_2"
+  worst_outcome_3: "worst_outcome_3"
+  worst_outcome_4: "worst_outcome_4"
+  worst_outcome_5: "worst_outcome_5"
+  worst_disparity_1: "worst_disparity_1"
+  worst_disparity_2: "worst_disparity_2"
+  worst_disparity_3: "worst_disparity_3"
+  worst_disparity_4: "worst_disparity_4"
+  worst_disparity_5: "worst_disparity_5"
+  most_impacted_race_finding: "most impacted race and count of worst indicators"
+  logo_filename: "logo_filename"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+\thispagestyle{firstpage}
+\vspace{0.5in}
+\begin{multicols}{2}
+\normalsize
+{\headingfont \large \textbf{\textcolor{headerorange}{SUMMARY}}}
+
+{`r params$geolevel`} District {`r params$district_number`} is the {`r params$disparity_rank`} most racially disparate {`r params$geolevel`} district in California. It ranks {`r params$outcome_rank`} out of {`r params$total_districts`} {`r params$geolevel`} districts in outcomes such as employment, health insurance, and homeownership. 
+
+{\headingfont \large \textbf{\textcolor{headerorange}{BACKGROUND}}}
+
+RACE COUNTS analyzed 31 indicators, across seven issue areas, for every State {`r params$geolevel`} District and ranked districts by their outcomes and differences in those outcomes among racial groups.
+
+Data sources for indicators include the California Department of Education, the California Department of Justice, the California Office of Environmental Health Hazard Assessment, the U.S. Census Bureau's American Community Survey and others. All data are the most recent data published or within one year of publication. See \href{https://www.racecounts.org/explore-the-data/our-methodology/}{\textcolor{blue}{our methodology (https://bit.ly/RCMethodology)}} for more information.
+
+{\headingfont \large \textbf{\textcolor{headerorange}{WHY THIS IS IMPORTANT}}}
+
+Understanding racial disparities in each district is essential to creating fair and effective policy. Data on racial disparity highlight where local systems fail to deliver equitable outcomes and reveal opportunities for targeted policies that close gaps. By examining these disparities, policymakers can work alongside their constituents to promote equity in their districts. 
+
+{\headingfont \large \textbf{\textcolor{headerorange}{WHAT YOU CAN DO ABOUT IT}}}
+
+Addressing racial disparities starts with partnership. Policymakers can engage community organizations that work directly with affected residents to understand their experiences and co-create solutions with them. By supporting data-driven policies, investing in equity initiatives, and amplifying community voices, policymakers can advance systemic change and ensure every community has the opportunity to thrive. Learn more about \href{https://www.catalystcalifornia.org/how-we-do-it/government-relations}{\textcolor{blue}{Catalyst California’s legislative priorities (https://bit.ly/CatalystCAGovRelations)}}.
+\end{multicols}
+\newpage \thispagestyle{secondpage}
+\setlength{\footskip}{105pt}
+
+```{r, results='asis', echo=FALSE}
+cat("\\headingfont \\large \\textbf{\\textcolor{headerorange}{", 
+    paste0(params$leg_name_caps, " CHARACTERISTICS"), 
+    "}}")
+```
+
+\rmfamily \normalsize `r params$characteristics`
+
+\medskip
+\begin{table}[htp]
+  \normalsize
+  \centering
+  \textbf{Compared to the average `r params$geolevel` District}
+    \begin{tabular}{l|p{4cm}|p{5cm}}\toprule
+      \textbf{District `r params$district_number`} & \textbf{Outcomes} & \textbf{Racial Disparity} \\
+      \toprule
+      Democracy & `r params$demo_outcome_summary` & `r params$demo_disparity_summary` \\
+      \\[-1em]
+      \hline
+      \\[-1em]
+      Economic Opportunity & `r params$econ_outcome_summary` & `r params$econ_disparity_summary` \\
+      \\[-1em]
+      \hline
+      \\[-1em]
+      Education & `r params$educ_outcome_summary` & `r params$educ_disparity_summary` \\
+      \\[-1em]
+      \hline
+      \\[-1em]
+      Health Care Access & `r params$hlth_outcome_summary` & `r params$hlth_disparity_summary` \\
+      \\[-1em]
+      \hline
+      \\[-1em]
+      Healthy Built Environment & `r params$hben_outcome_summary` & `r params$hben_disparity_summary` \\
+      \\[-1em]
+      \hline
+      \\[-1em]
+      Housing & `r params$hous_outcome_summary` & `r params$hous_disparity_summary` \\
+      \\[-1em]
+      \hline
+      \\[-1em]
+      Safety \& Justice & `r params$crim_outcome_summary` & `r params$crim_disparity_summary` \\
+      \bottomrule
+    \end{tabular}
+\end{table}
+
+\medskip
+\centering
+\rmfamily \normalsize \textbf{Want to compare your district's data to other California geographies?}
+
+\rmfamily \normalsize \textbf{Visit RaceCounts.org}
+
+\medskip
+\begin{multicols}{2}
+\normalsize District `r params$district_number` indicators with the \newline \textbf{worst outcomes}:
+\begin{itemize}[itemsep=1pt]
+  \item `r params$worst_outcome_1`
+  \item `r params$worst_outcome_2`  
+  \item `r params$worst_outcome_3`
+  \item `r params$worst_outcome_4`
+  \item `r params$worst_outcome_5`
+\end{itemize}
+District `r params$district_number` indicators with the \newline \textbf{worst disparity}:
+\begin{itemize}[itemsep=1pt]
+  \item `r params$worst_disparity_1`
+  \item `r params$worst_disparity_2`  
+  \item `r params$worst_disparity_3`
+  \item `r params$worst_disparity_4`
+  \item `r params$worst_disparity_5`
+\end{itemize}
+\end{multicols}
+
+\justifying
+\normalsize `r params$most_impacted_race_finding`
+
+\vspace{\fill}
+\centering 
+\rmfamily \normalsize \textbf{Want to improve outcomes and reduce racial disparities?} 
+
+\rmfamily \normalsize \textbf{Contact us at info@racecounts.org}
