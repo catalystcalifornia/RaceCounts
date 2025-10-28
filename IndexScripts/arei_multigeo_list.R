@@ -71,8 +71,8 @@ city_multigeo_list <- right_join(city_multigeo_list, city_index, by = c("geoid" 
 # pull in RC county_ids from previous schema, then race and region/urban type from current schema
 con2 <- connect_to_db("rda_shared_data")
 
-sldl_crosswalk <- dbGetQuery(con2, "SELECT * FROM crosswalks.state_assembly_2024_region")
-sldu_crosswalk <- dbGetQuery(con2, "SELECT * FROM crosswalks.state_senate_2024_region")
+sldl_crosswalk <- dbGetQuery(con2, "SELECT * FROM crosswalks.state_assembly_2024_region_urban")
+sldu_crosswalk <- dbGetQuery(con2, "SELECT * FROM crosswalks.state_senate_2024_region_urban")
 leg_ids <- rbind(sldl_crosswalk, sldu_crosswalk) %>% select(-c(ct_total_pop, total_pop, pct_total_pop, rank))
 
 race <- dbGetQuery(con, paste0("select * from ", curr_schema, ".arei_race_multigeo where geolevel IN ('sldl','sldu')")) # import county & state records only
@@ -119,6 +119,8 @@ clean_geo_names <- function(x){
 final_multigeo_list <- final_multigeo_list %>%
   clean_geo_names
 
+final_leg_list <- final_multigeo_list %>% filter(geolevel=='sldl' | geolevel=='sldu' )
+final_multigeo_list <- final_multigeo_list %>% filter(geolevel!='sldl' | geolevel!='sldu' )
 
 # Export to Postgres ------------------------------------------------------
 
@@ -142,9 +144,44 @@ charvect[dblprecision_type] <- "double precision" # specify which cols are doubl
 names(charvect) <- colnames(multigeo_list)
 charvect # check col types before exporting table to database
 
+# dbWriteTable(con,
+#               Id(schema = curr_schema, table = table_name), final_multigeo_list,
+#               overwrite = FALSE, row.names = FALSE, field.types = charvect)
+# 
+# # send table and column comments to database
+# # Start a transaction
+# dbBegin(con)
+# dbExecute(con, table_comment)
+# dbExecute(con, column_comment)
+# 
+# # Commit the transaction if everything succeeded
+# dbCommit(con)
+
+# Export leg list to postgres
+
+table_name <- "arei_leg_list"
+table_comment_source <- paste0("Created ", Sys.Date(), ". Based on arei_race_multigeo, arei_county_region_urban_type, composite index and all issue area index tables for cities and counties. Feeds RC.org scatterplots and map. Source: W:\\Project\\RACE COUNTS\\", rc_yr, "_", curr_schema, "\\RC_Github\\LF\\RaceCounts\\IndexScripts\\arei_multigeo_list.R. QA doc: ", qa_filepath)
+table_comment <- paste0("COMMENT ON TABLE ", curr_schema, ".", table_name, " IS '", table_comment_source, ".';")
+column_comment <- paste0("COMMENT ON COLUMN ", curr_schema, ".", table_name, ".county_id IS 'This is the RACE COUNTS-specific county id, not county FIPS code.';")
+
+# get list of multigeo col names
+cols <- colnames(multigeo_list)
+text_type <- grep("^geoid|^geo_name|^region|^urban_type|^geolevel|quartile$|quadrant$", cols) # specify which cols should be text (geoid, geo_name, region, urban_type, geolevel)
+cols[text_type] # confirm correct cols are there
+dblprecision_type <- grep("^pct|_z$", cols) # specify which cols should be double precision (pct_, _z)
+cols[dblprecision_type] # confirm correct cols are there
+
+charvect = rep('integer', dim(multigeo_list)[2]) 
+charvect[text_type] <- "text" # specify which cols are text
+charvect[dblprecision_type] <- "double precision" # specify which cols are double precision
+
+# add names to the character vector
+names(charvect) <- colnames(multigeo_list)
+charvect # check col types before exporting table to database
+
 dbWriteTable(con,
-              Id(schema = curr_schema, table = table_name), final_multigeo_list,
-              overwrite = FALSE, row.names = FALSE, field.types = charvect)
+             Id(schema = curr_schema, table = table_name), final_leg_list,
+             overwrite = FALSE, row.names = FALSE, field.types = charvect)
 
 # send table and column comments to database
 # Start a transaction

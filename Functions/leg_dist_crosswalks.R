@@ -58,11 +58,11 @@ sldl_ct_pop <- dbGetQuery(con2, paste0("SELECT geo_id AS ct_geoid, ", sldl_id, "
 sldu_county_pop <- sldu_ct_pop %>% group_by(leg_id, county_id, geolevel) %>% dplyr::summarise(ct_total_pop = sum(pop20))
 sldu_county_pop2 <- sldu_county_pop %>% left_join(regions, by = "county_id") %>% filter(geolevel == 'sldu') 
 sldu_county_pop3 <- sldu_county_pop2 %>% group_by(leg_id, region, geolevel, urban_type) %>%
-  summarise(ct_total_pop = sum(ct_total_pop))
+  dplyr::summarise(ct_total_pop = sum(ct_total_pop))
 
 # get sen dist pop by region
 sldu_region_pop <- sldu_county_pop3 %>% group_by(leg_id) %>%
-  summarise(total_pop = sum(ct_total_pop))
+  dplyr::summarise(total_pop = sum(ct_total_pop))
 
 sldu_county_pop3 <- sldu_county_pop3 %>% left_join(sldu_region_pop, by = "leg_id") %>%
   mutate(pct_total_pop = ct_total_pop / total_pop) %>%
@@ -82,11 +82,11 @@ print(case_when(length(unique(sldu_region$leg_id)) != 40 ~ "There is at least on
 sldl_county_pop <- sldl_ct_pop %>% group_by(leg_id, county_id, geolevel) %>% dplyr::summarise(ct_total_pop = sum(pop20))
 sldl_county_pop2 <- sldl_county_pop %>% left_join(regions, by = "county_id") %>% filter(geolevel == 'sldl') 
 sldl_county_pop3 <- sldl_county_pop2 %>% group_by(leg_id, region, geolevel,urban_type) %>%
-  summarise(ct_total_pop = sum(ct_total_pop))
+  dplyr::summarise(ct_total_pop = sum(ct_total_pop))
 
 # get assm dist pop by region
 sldl_region_pop <- sldl_county_pop3 %>% group_by(leg_id) %>%
-  summarise(total_pop = sum(ct_total_pop))
+  dplyr::summarise(total_pop = sum(ct_total_pop))
 
 sldl_county_pop3 <- sldl_county_pop3 %>% left_join(sldl_region_pop, by = "leg_id") %>%
   mutate(pct_total_pop = ct_total_pop / total_pop) %>%
@@ -103,6 +103,56 @@ print(case_when(length(sldl_region$leg_id) != 80 ~ "There is at least one Assemb
 
 ### Export crosswalks ------------------------------------------------------
 xwalk_schema <- 'crosswalks'
+
+# # Export Senate-Region xwalk with urban_type
+# sen_table <- paste0('state_senate_', leg_yr, "_region_urban")
+# 
+# # dbWriteTable(con2,
+# #              Id(schema = xwalk_schema, table = sen_table),
+# #              sldu_region, overwrite = FALSE)
+# 
+# # comment on table and columns
+# ind <- paste0("State Senate (", leg_yr, ") to RC regions crosswalk. Districts are assigned to regions that contain > ", sen_pop_threshold, " of district pop (", pop_yr, "). NOTE: A district may be assigned to 1 or 2 regions. Row with rank = 1 is the region with the highest pct of district population. QA doc: ", qa_filepath)
+# source <- paste0("W:\\Project\\RACE COUNTS\\", rc_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\Functions\\leg_dist_crosswalks.R.")
+# column_names <- colnames(sldu_region)
+# column_comments <- c(
+#   'Legislative geoid',
+#   'RC region from racecounts.[schema].arei_county_region_urban_type',
+#   'sldu = State Senate, sldl = State Assembly',
+#   'Leg population within the region based on tract population',
+#   'Total Leg population',
+#   'Percent of total Leg population within the region', 
+#   'Rank = 1 is the region containing the highest percentage of total Leg population') 
+# 
+# # add_table_comments(con2, xwalk_schema, sen_table, ind, source, qa_filepath, column_names, column_comments)
+# 
+# 
+# # Export Assm-Region xwalk
+# assm_table <- paste0('state_assembly_', leg_yr, "_region_urban")
+# 
+# # dbWriteTable(con2,
+# #              Id(schema = xwalk_schema, table = assm_table),
+# #              sldl_region, overwrite = FALSE)
+# 
+# # comment on table and columns
+# ind <- paste0("State Assembly (", leg_yr, ") to RC regions crosswalk. Districts are assigned to regions that contain > ", assm_pop_threshold, " of district pop (", pop_yr, "). NOTE: A district may be assigned to 1 or 2 regions. Row with rank = 1 is the region with the highest pct of district population. QA doc: ", qa_filepath)
+# source <- paste0("W:\\Project\\RACE COUNTS\\", rc_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\Functions\\leg_dist_crosswalks.R.")
+# column_names <- colnames(sldl_region)
+# column_comments <- c(
+#   'Legislative geoid',
+#   'RC region from racecounts.[schema].arei_county_region_urban_type',
+#   'sldu = State Senate, sldl = State Assembly',
+#   'Leg population within the region based on tract population',
+#   'Total Leg population',
+#   'Percent of total Leg population within the region', 
+#   'Rank = 1 is the region containing the highest percentage of total Leg population') 
+# 
+# # add_table_comments(con2, xwalk_schema, assm_table, ind, source, qa_filepath, column_names, column_comments)
+
+
+####### Export Senate-Region xwalk but remove urban type ------------
+sldl_region <- sldl_region %>% select(-urban_type)
+sldu_region <- sldu_region%>% select(-urban_type)
 
 # Export Senate-Region xwalk
 sen_table <- paste0('state_senate_', leg_yr, "_region")
@@ -148,9 +198,6 @@ column_comments <- c(
   'Rank = 1 is the region containing the highest percentage of total Leg population') 
 
 # add_table_comments(con2, xwalk_schema, assm_table, ind, source, qa_filepath, column_names, column_comments)
-
-
-
 
 
 # Leg to Census Geo Crosswalks --------------------------------------------
