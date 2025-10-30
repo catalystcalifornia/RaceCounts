@@ -112,8 +112,7 @@ indicator <- dbGetQuery(con, paste0("SELECT arei_indicator AS indicator_long, ap
 #####################################
 
 df_3 <- final_df %>%
-  filter(race != 'total') %>%    	# remove total rates bc all findings in this section are raced
-  filter(geo_level == 'state')		# keep only state rows --- ADDED FOR ANNUAL REPORT
+  filter(race != 'total')   	# remove total rates bc all findings in this section are raced
 
 # race_generic == api records are duplicated, then race_generic is renamed as "asian" and "pacisl"
 df_3 <- api_split(df_3) %>%
