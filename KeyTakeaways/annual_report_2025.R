@@ -7,7 +7,7 @@
 #### Most disparate issue area and indicator ####
 
 #install packages if not already installed
-packages <- c("tidyverse","RPostgres","sf","data.table","usethis","xfun")  
+packages <- c("tidyverse","RPostgres","sf","data.table","usethis","xfun","openxlsx")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -106,7 +106,8 @@ race_names
 
 # Create indicator long name df -------------------------------------------
 ### NOTE: This list may need to be updated or re-ordered. ###
-indicator <- dbGetQuery(con, paste0("SELECT arei_indicator AS indicator_long, api_name AS indicator, arei_issue_area FROM ", rc_schema, ".arei_indicator_list_cntyst"))
+indicator <- dbGetQuery(con, paste0("SELECT arei_indicator AS indicator_long, api_name AS indicator, arei_issue_area FROM ", rc_schema, ".arei_indicator_list_cntyst")) %>%
+  mutate(arei_issue_area = gsub("Crime", "Safety", arei_issue_area))
 
 #####################################
 
@@ -120,31 +121,47 @@ df_3 <- api_split(df_3) %>%
   
 ######################################
 
-#most disparate issue area by race
-most_disp_issue <- df_3 %>% select(race_generic, issue, arei_issue_area, disparity_z_score) %>% 
+#rank issue areas by disparity for each race
+disp_issue_rks <- df_3 %>% select(race_generic, issue, arei_issue_area, disparity_z_score) %>% 
   group_by(race_generic, issue, arei_issue_area) %>% 
   summarise(avg_id = mean(disparity_z_score)) %>%
   group_by(race_generic) %>%
   mutate(most_disp_rk = dense_rank(-avg_id),
          least_disp_rk = dense_rank(avg_id)) 
 
-most_disp_issue <- most_disp_issue %>%
+disp_issue_rks <- disp_issue_rks %>%
   left_join(race_names, by = "race_generic") %>%
   select(long_name, race_generic, arei_issue_area, issue, most_disp_rk, least_disp_rk, avg_id) %>%
   arrange(race_generic, most_disp_rk) # sort from most disparate to least disparate issue
-View(most_disp_issue)
+View(disp_issue_rks)
 
-#rank indicators by disparity by race
-most_disp_indicator <- df_3 %>% select(race_generic, indicator, indicator_long, disparity_z_score) %>% 
+#rank indicators by disparity for each race
+disp_indicator_rks <- df_3 %>% select(race_generic, indicator, indicator_long, disparity_z_score) %>% 
   group_by(race_generic) %>% 
   mutate(most_disp_rk = dense_rank(-disparity_z_score),
          least_disp_rk = dense_rank(disparity_z_score)) 
 
-most_disp_indicator <- most_disp_indicator %>%
+disp_indicator_rks <- disp_indicator_rks %>%
   left_join(race_names, by = "race_generic") %>%
   select(long_name, race_generic, indicator_long, indicator, most_disp_rk, least_disp_rk, disparity_z_score) %>%
   arrange(race_generic, most_disp_rk) # sort from most disparate to least disparate indicator
-View(most_disp_indicator)
+View(disp_indicator_rks)
 
+## export data to excel
+wb <- loadWorkbook("W:\\Project\\RACE COUNTS\\2025_v7\\Annual_Report\\ann_report_findings.xlsx")
 
+# export issue area disparity findings 
+addWorksheet(wb, sheetName = "findings_2")
+writeData(wb, sheet = "findings_2", x = disp_issue_rks)
 
+# export indicator disparity findings 
+addWorksheet(wb, sheetName = "findings_3")
+writeData(wb, sheet = "findings_3", x = disp_indicator_rks)
+
+# export 'date of export' 
+addWorksheet(wb, sheetName = "export_date")
+export_date <- paste0("R export date: ", Sys.Date())
+writeData(wb, sheet = "export_date", x = export_date)
+
+# save modified workbook
+saveWorkbook(wb, file = "W:\\Project\\RACE COUNTS\\2025_v7\\Annual_Report\\ann_report_findings.xlsx", overwrite = TRUE)
