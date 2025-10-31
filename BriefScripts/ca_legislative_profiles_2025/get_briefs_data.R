@@ -224,8 +224,7 @@ final_df <- composite_index %>%
   mutate(district_number=str_sub(leg_id,-2,-1)) %>%
   # format text so special characters don't break latex
   mutate(across(where(is.character), ~str_replace_all(., "&", "\\\\&"))) %>%
-  mutate(district_number = as.numeric(district_number),
-         leg_type = case_when (geolevel == 'sldl' ~ 'AD',
-                               geolevel == 'sldu' ~ 'SD'))
+  mutate(leg_type = case_when(geolevel == 'sldl' ~ 'AD',
+                              geolevel == 'sldu' ~ 'SD'))
 
   

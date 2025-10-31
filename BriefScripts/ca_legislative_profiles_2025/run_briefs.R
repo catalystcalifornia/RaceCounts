@@ -175,11 +175,9 @@ uploaded_files <- list()
 
 for(i in 1:nrow(final_df)) {
   geolevel <- str_to_title(final_df[i, "geolevel"])
-  district_number <- as.numeric(final_df[i, "district_number"])
-  district_type <- case_when (final_df[i, "geolevel"] == 'sldl' ~ 'AD',
-                              final_df[i, "geolevel"] == 'sldu' ~ 'SD',
-                              TRUE ~ 'District_Type_Missing')
-  pdf_name <- paste0(district_type, district_number, ".pdf")
+  district_number <- final_df[i, "district_number"]
+  leg_type <- final_df[i, "leg_type"]
+  pdf_name <- paste0(leg_type, district_number, ".pdf")
   output_directory <- paste0("W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/", geolevel)
   local_path <- file.path(output_directory, pdf_name)
   
