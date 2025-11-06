@@ -203,6 +203,11 @@ sd_members <- sd_members %>% left_join(senate_geo_descriptions,by="District",suf
 all_members <- rbind(ad_members, sd_members) %>%
   rename(leg_id=District)
 
+all_members$Characteristics_final <- toupper(str_sub(all_members$Characteristics, 1, 1))
+all_members$Characteristics_final <- paste0("District includes: ", all_members$Characteristics_final, str_sub(all_members$Characteristics, 2, nchar(all_members$Characteristics)))
+all_members <- all_members %>% 
+  select(-Characteristics) %>%
+  rename(Characteristics=Characteristics_final)
 
 
 # create final df: composite ranks, issue area summaries, and worst outcome and disparity indicators
@@ -218,6 +223,8 @@ final_df <- composite_index %>%
   left_join(all_members, by=c("leg_id","geolevel"), keep = FALSE) %>%
   mutate(district_number=str_sub(leg_id,-2,-1)) %>%
   # format text so special characters don't break latex
-  mutate(across(where(is.character), ~str_replace_all(., "&", "\\\\&")))
+  mutate(across(where(is.character), ~str_replace_all(., "&", "\\\\&"))) %>%
+  mutate(leg_type = case_when(geolevel == 'sldl' ~ 'AD',
+                              geolevel == 'sldu' ~ 'SD'))
 
   

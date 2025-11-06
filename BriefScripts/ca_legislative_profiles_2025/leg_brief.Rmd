@@ -188,7 +188,7 @@ cat("\\headingfont \\large \\textbf{\\textcolor{headerorange}{",
   \item `r params$worst_outcome_4`
   \item `r params$worst_outcome_5`
 \end{itemize}
-District `r params$district_number` indicators with the \newline \textbf{worst disparity}:
+District `r params$district_number` indicators with the \newline \textbf{worst racial disparity}:
 \begin{itemize}[itemsep=1pt]
   \item `r params$worst_disparity_1`
   \item `r params$worst_disparity_2`  
