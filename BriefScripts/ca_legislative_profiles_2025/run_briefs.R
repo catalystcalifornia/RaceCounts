@@ -318,6 +318,12 @@ main_html <- '<!DOCTYPE html>
         <li><a href="Assembly/index.html">Assembly Districts (80 districts)</a></li>
         <li><a href="Senate/index.html">Senate Districts (40 districts)</a></li>
     </ul>
+    <p>Last updated <span id="currentDate"></span></p>
+      <script>
+      var now = new Date();
+      var dateString = now.toLocaleDateString(); 
+      document.getElementById("currentDate").innerHTML = dateString;
+      </script>
 </body>
 </html>'
 

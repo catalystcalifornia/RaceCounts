@@ -8,8 +8,8 @@ prep_dist_descr1 <- function(x, subgeo_name, overlap) {
   # overlap is the col containing the % (decimal form) of county that overlaps district, do NOT use quotation marks
   dist_descr2 <- x %>%
     arrange({{subgeo_name}}) %>%       # order subgeo_name alphabetically
-    mutate(portion = case_when({{overlap}} == 1 ~ 'all of',
-                               {{overlap}} < 1 ~ 'portion of',
+    mutate(portion = case_when({{overlap}} == 1 ~ 'all of',     # when district contains 100% of geo, then assign 'all of'
+                               {{overlap}} < 1 ~ 'portion of',  # when district contains less than 100% of geo, then assign 'portion of'
                                .default = 'na')) %>%
     group_by(leg_id, portion) %>%
     mutate(group_order = paste0("group_", rank({{subgeo_name}}, ties.method = "first")), # number the counties grouped by district and portion
@@ -38,8 +38,8 @@ prep_dist_descr2 <- function(x, subgeo_name) {
     # format 'Portion(s) of' descr
     mutate(clean_names = sub(",([^,]*)$", " and\\1", subgeo_names),   # sub 'and' for the comma where there are 2 counties intersecting the district
            descr = case_when(portion == 'portion of' & !grepl("and", clean_names, ignore.case = FALSE) ~ paste0("a ", portion, " ", clean_names, " County"), # add 'a' when there is only 1 partial county
-                             (portion == 'portion of' & grepl("and", clean_names, ignore.case = FALSE)) ~ paste0("portions of ", clean_names, " counties"),   # sub 'portions of' for 'portion of' when there are 2+ partial counties
-                             .default = paste0(portion, " ", clean_names))) %>%			# else, concatenate portion and subgeo_names fields
+                            (portion == 'portion of' & grepl("and", clean_names, ignore.case = FALSE)) ~ paste0("portions of ", clean_names, " counties"),   # sub 'portions of' for 'portion of' when there are 2+ partial counties
+                            .default = paste0(portion, " ", clean_names))) %>%			# else, concatenate portion and subgeo_names fields
     # format 'All of' descr
     mutate(descr = case_when(portion == 'all of' & !grepl("and", clean_names, ignore.case = FALSE) ~ paste0(descr, " County"),		# 
                              (portion == 'all of' & grepl("and", clean_names, ignore.case = FALSE)) ~ paste0(descr, " counties"),
