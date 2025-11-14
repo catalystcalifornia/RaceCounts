@@ -113,7 +113,7 @@ leg_indicators <- leg_indicators %>%
   rename(old_arei_indicator = arei_indicator) %>%
   mutate(arei_indicator = case_when
     (old_arei_indicator == 'Officials and Managers' ~ 'Employment as Officials & Managers',
-     old_arei_indicator == 'Proximity to Hazards' ~ 'Proximity to Environmental Hazards',
+     old_arei_indicator == 'Proximity to Hazards' ~ 'Environmental Hazards',
      old_arei_indicator == 'Suspensions' ~ 'School Suspensions',
      old_arei_indicator == 'Use of Force' ~ 'Police Use of Force',
      TRUE ~ old_arei_indicator)) %>%
