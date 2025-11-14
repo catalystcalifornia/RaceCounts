@@ -93,7 +93,7 @@ for(i in 1:nrow(final_df)) {
                       disparity_rank=composite_disparity_rank,
                       outcome_rank=composite_outcome_rank,
                       total_districts=total_districts,
-                      profiles_url_message=paste0("Compare ", leg_name, " to all districts here: \\href{https://bit.ly/StateLegislatureData}{\\textcolor{blue}{https://bit.ly/StateLegislatureData}} or via QR Code"),
+                      profiles_url_message=paste0("Compare ", leg_name, " to all districts by visiting \\href{https://bit.ly/StateLegislatureData}{\\textcolor{blue}{https://bit.ly/StateLegislatureData}} or via QR Code."),
                       crim_outcome_summary=crim_outcome_summary,
                       demo_outcome_summary=demo_outcome_summary,
                       econ_outcome_summary=econ_outcome_summary,
@@ -315,9 +315,15 @@ main_html <- '<!DOCTYPE html>
 <body>
     <h1>California Legislative Profiles - 2025</h1>
     <ul>
-        <li><a href="Senate/index.html">Senate Districts (40 districts)</a></li>
         <li><a href="Assembly/index.html">Assembly Districts (80 districts)</a></li>
+        <li><a href="Senate/index.html">Senate Districts (40 districts)</a></li>
     </ul>
+    <p>Last updated <span id="currentDate"></span></p>
+      <script>
+      var now = new Date();
+      var dateString = now.toLocaleDateString(); 
+      document.getElementById("currentDate").innerHTML = dateString;
+      </script>
 </body>
 </html>'
 
