@@ -2,7 +2,7 @@
 
 
 # Set up workspace ----------------------------------------------------------------
-packages <- c("tidyverse", "RPostgres", "xfun", "usethis", "writexl") 
+packages <- c("tidyverse", "RPostgres", "xfun", "usethis", "writexl", "openxlsx") 
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
 if(length(install_packages) > 0) {
@@ -31,14 +31,15 @@ curr_yr <- '2025'   # update each year, this field populates most table and file
 # pull in geo level ids with name. I don't do this directly in the data in case names differ and we have issues merging later
 arei_race_multigeo_city <- dbGetQuery(con, paste0("SELECT geoid, name, geolevel FROM ", curr_schema, ".arei_race_multigeo")) %>% filter(geolevel == "place") %>% dplyr::rename(city_id = geoid, city_name = name) %>% select(-geolevel)
 
-arei_race_multigeo <- dbGetQuery(con, paste0("SELECT geoid, name, geolevel FROM ", curr_schema, ".arei_race_multigeo")) %>% select(-geolevel) # used for county and state
+arei_race_multigeo <- dbGetQuery(con, paste0("SELECT geoid, name, geolevel FROM ", curr_schema, ".arei_race_multigeo")) %>% filter(geolevel %in% c('county', 'state', 'sldu', 'sldl')) # used for leg, county, and state
 
 # pull in crosswalk to go from district to city
 crosswalk <- dbGetQuery(con, paste0("SELECT city_id, dist_id, total_enroll FROM ", curr_schema, ".arei_city_county_district_table"))
 
 rc_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", curr_schema, "' AND table_name LIKE '%_", curr_yr, "';")
 
-rc_list <- dbGetQuery(con, rc_list_query)
+rc_list <- dbGetQuery(con, rc_list_query) %>% 
+  filter(!grepl("index", table_name))   # drop index table names
 
 
 
@@ -151,54 +152,91 @@ df_education_district <- df_merged_education %>%
 
 
 
-# get curr_schema.arei_indicator_list_city
+# City Indicator metadta table from curr_schema.arei_indicator_list_city
 
 metadata <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_indicator_list_city"))
 
-metadata <- metadata %>% select(-c(arei_indicator, arei_city_view,  arei_issue_area_id, arei_indicator_id, race_type, ind_order, oid, site_year, data_year, raw_rounding, rate_rounding, ind_show_on_dev, ind_show_on_site))
+metadata <- metadata %>% select(-c(arei_indicator, arei_city_view,  arei_issue_area_id, arei_indicator_id, prefix, race_type, ind_order, oid, site_year, data_year, raw_rounding, rate_rounding, y_label, ind_show_on_dev, ind_show_on_site))
 
-metadata <- metadata %>% dplyr::rename("indicator" = "api_name",
+metadata <- metadata %>% dplyr::rename("indicator" = "arei_indicator",
                                 "issue" = "arei_issue_area",
                                 "best" = "arei_best") %>%
-  select(indicator, everything())
+  select(issue, indicator, everything()) %>%
+  mutate(issue = case_when(
+    issue == 'Crime & Justice' ~ 'Safety & Justice',
+    TRUE ~ issue))
 
+metadata <- metadata[order(metadata$issue, metadata$indicator), ]
 
-write_xlsx(df_city, paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\Data\\rc_city_data.xlsx"))
-write_xlsx(df_education_district, paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\Data\\rc_school_district_data.xlsx"))
-write_xlsx(metadata, paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\Data\\rc_city_school_district_metadata.xlsx"))
+# Put city data, school district data and metadata in a list
+list_city <- list("City" = df_city, "School_District" = df_education_district, "Metadata" = metadata)
 
+# Export to Excel
+write_xlsx(list_city, ".\\Data\\rc_city_data.xlsx")
 
 # County & State Data Tables ------------------------------------------------------
-source("W:\\Project\\RACE COUNTS\\Functions\\Export_RCdata.R")
+source(".\\Functions\\Export_RCdata.R")
 
 # create county df for export
 geolevel <- 'county'
-df_county <- export_RCdata(rc_list, geolevel)
-
-# export county data Excel file
-write_xlsx(df_county, paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\Data\\rc_county_data.xlsx"))
+df_county <- export_RCdata(rc_list, geolevel) %>%
+  select(-geolevel)
 
 # create state df for export
 geolevel <- 'state'
-df_state <- export_RCdata(rc_list, geolevel)
+df_state <- export_RCdata(rc_list, geolevel) %>%
+  select(-geolevel)
 
-# export state data Excel file
-write_xlsx(df_state, paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\Data\\rc_state_data.xlsx"))
+# create Leg Dist df for export
+geolevel <- 'leg'
+df_leg <- export_RCdata(rc_list, geolevel)
 
+# split Senate and Assembly data
+df_senate <- df_leg %>% filter(geolevel == 'sldu') %>%
+  select(-geolevel)
+df_assembly <- df_leg %>% filter(geolevel == 'sldl') %>%
+  select(-geolevel)
 
-# Indicator metadata table from curr_schema.arei_indicator_list_cntyst ------------------------------------------------------
+# County/State Indicator metadata table from curr_schema.arei_indicator_list_cntyst ------------------------------------------------------
 
 metadata <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_indicator_list_cntyst"))
 
-metadata <- metadata %>% select(-c(arei_indicator,  arei_issue_area_id, arei_indicator_id, race_type, ind_order, site_year, data_year, raw_rounding, rate_rounding, ind_show_on_dev, ind_show_on_site, newoid))
+metadata <- metadata %>% select(-c(api_name,  arei_issue_area_id, arei_indicator_id, prefix, race_type, ind_order, site_year, data_year, raw_rounding, rate_rounding, y_label, ind_show_on_dev, ind_show_on_site, newoid))
 
-metadata <- metadata %>% dplyr::rename("indicator" = "api_name",
+metadata <- metadata %>% dplyr::rename("indicator" = "arei_indicator",
                                 "issue" = "arei_issue_area",
                                 "best" = "arei_best") %>%
-  select(indicator, everything())
+  select(issue, indicator, everything()) %>%
+  mutate(issue = case_when(
+                  issue == 'Crime & Justice' ~ 'Safety & Justice',
+                  TRUE ~ issue))
 
-# export metadata Excel file
-write_xlsx(metadata, paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_schema, "\\RC_Github\\RaceCounts\\Data\\rc_county_state_metadata.xlsx"))
+metadata <- metadata[order(metadata$issue, metadata$indicator), ]
+
+# Put county data, state data and metadata into a list
+list_cntyst <- list("County" = df_county, "State" = df_state, "Metadata" = metadata)
+write_xlsx(list_cntyst, ".\\Data\\rc_county_state_data.xlsx")
+
+
+# Leg Dist Indicator metadata table from curr_schema.arei_indicator_list_cntyst ------------------------------------------------------
+
+metadata <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_indicator_list_leg"))
+
+metadata <- metadata %>% select(-c(api_name,  arei_issue_area_id, arei_indicator_id, prefix, race_type, ind_order, site_year, data_year, raw_rounding, rate_rounding, y_label, ind_show_on_dev, ind_show_on_site, newoid))
+
+metadata <- metadata %>% dplyr::rename("indicator" = "arei_indicator",
+                                       "issue" = "arei_issue_area",
+                                       "best" = "arei_best") %>%
+  select(issue, indicator, everything()) %>%
+  mutate(issue = case_when(
+    issue == 'Crime & Justice' ~ 'Safety & Justice',
+    TRUE ~ issue))
+
+metadata <- metadata[order(metadata$issue, metadata$indicator), ]
+
+# Put county data, state data and metadata into a list
+list_cntyst <- list("Assembly" = df_assembly, "Senate" = df_senate, "Metadata" = metadata)
+write_xlsx(list_cntyst, ".\\Data\\rc_leg_data.xlsx")
 
 
 #close connection

@@ -59,13 +59,17 @@ export_RCdata <- function(table_list, geolevel) {
   
   
   # format
-  df_geolevel <- df_merged_geolevel %>% 
+  df_geotype <- df_merged_geotype %>% 
     mutate(indicator = substring(indicator, 11),
-           indicator = gsub(paste0('_', geolevel, '_', curr_yr), '', indicator),
-           geo_level = geolevel) %>%
-    left_join(arei_race_multigeo) %>%
-    rename(geo_name = name)
+           indicator = gsub(paste0('_', geotype, '_', curr_yr), '', indicator))
+  
+  # join geonames
+  arei_race_geo <- filter(arei_race_multigeo, geolevel %in% df_geotype$geolevel)
+  
+  df_geotype <- df_geotype %>%
+    left_join(arei_race_geo, by=c('geoid', 'geolevel')) %>%
+    rename(geo_name = name) %>%
+    select(ends_with("_id"), ends_with("name"), geolevel, indicator, race, rate, raw)
   
   return(df_geolevel)
 }
-
