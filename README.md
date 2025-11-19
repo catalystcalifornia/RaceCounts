@@ -53,13 +53,13 @@ The following links contain detailed information about our indicator methodology
 [RACE COUNTS: Indicator Methodology for City Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_City.html) <br> 
 [RACE COUNTS: Indicator Methodology for Legislative Districts Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_Leg_District.html) <br> 
 
-The following links contain detailed information about our composite and issue area index methodologies. For each index, we provide the data source and year with a link, detailed race/ethnicity definitions, and our methodology including calculations and data screening process.
+The following links contain detailed information about our composite and issue area index methodologies. For each index, we provide our methodology including calculations and data screening process.
 
 [RACE COUNTS: Index Methodology for County](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_County.pdf) <br>
 [RACE COUNTS: Index Methodology for City](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_City.pdf) <br>
 [RACE COUNTS: Index Methodology for Legislative Districts](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_Leg_Districts.pdf) <br>
 
-The following link contains detailed information about how we think about and work with race/ethnicity
+The following link contains detailed information about how we think about race/ethnicity and the standard definitions and labels we use when possible.
 
 [RACE COUNTS: Race & Ethnicity Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md) <br>
 
@@ -101,9 +101,9 @@ For more, please see our [RACE COUNTS: Race & Ethnicity Methodology](https://git
 * [Chris Ringewald, Senior Director of Research & Data Analysis](https://github.com/cringewald)
 * [Elycia Mulholland Graves, Director of Research & Data Analysis](https://github.com/elyciamg)
 * [Hillary Khan, Database Architect Manager](https://github.com/hillarykhan)
-* [Jennifer Zhang, Senior Research & Data Analyst](https://github.com/jzhang514)
+* [Jennifer Zhang, Research & Data Manager](https://github.com/jzhang514)
 * [Leila Forouzan, Senior Manager of Research & Data Analysis](https://github.com/lforouzan)
-* [Maria Khan, Research & Data Analyst II](https://github.com/mariatkhan)
+* [Maria Khan, Senior Research & Data Analyst](https://github.com/mariatkhan)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
