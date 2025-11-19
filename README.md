@@ -101,9 +101,9 @@ For more, please see our [RACE COUNTS: Race & Ethnicity Methodology](https://git
 * [Chris Ringewald, Senior Director of Research & Data Analysis](https://github.com/cringewald)
 * [Elycia Mulholland Graves, Director of Research & Data Analysis](https://github.com/elyciamg)
 * [Hillary Khan, Database Architect Manager](https://github.com/hillarykhan)
-* [Jennifer Zhang, Senior Research & Data Analyst](https://github.com/jzhang514)
+* [Jennifer Zhang, Research & Data Manager](https://github.com/jzhang514)
 * [Leila Forouzan, Senior Manager of Research & Data Analysis](https://github.com/lforouzan)
-* [Maria Khan, Research & Data Analyst II](https://github.com/mariatkhan)
+* [Maria Khan, Senior Research & Data Analyst](https://github.com/mariatkhan)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
