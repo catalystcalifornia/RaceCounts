@@ -57,7 +57,7 @@ The following links contain detailed information about our composite and issue a
 
 [RACE COUNTS: Index Methodology for County Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_County.pdf) <br>
 [RACE COUNTS: Index Methodology for City Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_City.pdf) <br>
-[RACE COUNTS: Index Methodology for Legislative District Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_Leg_Districts.pdf) <br>
+[RACE COUNTS: Index Methodology for Legislative District Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_Leg_District.pdf) <br>
 
 The following link contains detailed information about how we think about race/ethnicity and the standard definitions and labels we use when possible.
 
