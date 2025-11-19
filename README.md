@@ -51,13 +51,13 @@ The following links contain detailed information about our indicator methodology
 
 [RACE COUNTS: Indicator Methodology for County and State Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html) <br>
 [RACE COUNTS: Indicator Methodology for City Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_City.html) <br> 
-[RACE COUNTS: Indicator Methodology for Legislative Districts Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_Leg_District.html) <br> 
+[RACE COUNTS: Indicator Methodology for Legislative District Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_Leg_District.html) <br> 
 
 The following links contain detailed information about our composite and issue area index methodologies. For each index, we provide our methodology including calculations and data screening process.
 
-[RACE COUNTS: Index Methodology for County](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_County.pdf) <br>
-[RACE COUNTS: Index Methodology for City](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_City.pdf) <br>
-[RACE COUNTS: Index Methodology for Legislative Districts](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_Leg_Districts.pdf) <br>
+[RACE COUNTS: Index Methodology for County Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_County.pdf) <br>
+[RACE COUNTS: Index Methodology for City Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_City.pdf) <br>
+[RACE COUNTS: Index Methodology for Legislative District Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_Leg_Districts.pdf) <br>
 
 The following link contains detailed information about how we think about race/ethnicity and the standard definitions and labels we use when possible.
 
