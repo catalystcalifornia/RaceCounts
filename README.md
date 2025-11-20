@@ -1,5 +1,5 @@
 # RACE COUNTS
-### October 2025
+### November 2025
 
 <base target="_blank">
 
@@ -41,14 +41,26 @@ The website [RACECOUNTS.org](https://www.racecounts.org?target=_blank) is one pa
 # About The Data
 
 ## Indicators
-RACE COUNTS includes 47 county/state indicators, and 29 city indicators, across seven issues. The issues include: Democracy, Economic Opportunity, Education, Health Care Access, Healthy Built Environment, Housing, and Safety & Justice. These issues and indicators were selected through a collaborative process with our partners. Find out more about our partners here: [https://www.racecounts.org/about/](https://www.racecounts.org/about/). For each indicator, counties and cities receive a rank for racial disparity and a rank for overall outcomes. The county or city ranked one for disparity is the most racially disparate, while a county or city ranked one for outcomes has the best outcomes. 
+RACE COUNTS includes 47 county/state indicators, 29 city indicators, and 31 state legislative district indicators, across seven issues. The issues include: Democracy, Economic Opportunity, Education, Health Care Access, Healthy Built Environment, Housing, and Safety & Justice. These issues and indicators were selected through a collaborative process with our partners. Find out more about our partners here: [https://www.racecounts.org/about/](https://www.racecounts.org/about/#key-partners). For each indicator, counties, cities, and legislative districts receive a rank for racial disparity and a rank for overall outcomes. The city, county, or legislative district ranked one for disparity is the most racially disparate, while the geography ranked one for outcomes has the best outcomes. 
 
 ## Indexes
-At county level only, we calculate one index for each of the seven issue indexes including all indicators in that issue. At both city and county level, we calculate an overall Racial Equity Index combining all indicators. In all indexes, each county and city receives a rank for racial disparity and a rank for overall outcomes. The county or city ranked one for disparity is the most racially disparate, while a county ranked one for outcomes has the best outcomes.
+At county level, we calculate one index for each of the seven issue areas that includes all indicators in that issue. For state legislative districts, we calculate one index for five of the seven issue areas. We do not calculate legislative district indexes for Democracy or Health Care Access because those issue areas have only one indicator each. At city, county, and legislative district levels, we calculate a composite Racial Equity Index combining all indicators. In all indexes, each city, county, and legislative district receives a rank for racial disparity and a rank for overall outcomes. The city, county or legislative district ranked one for disparity is the most racially disparate, while the geography ranked one for outcomes has the best outcomes. 
 
 ## Data Methodology
-[RACE COUNTS: Indicator Methodology for County and State](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html) <br>
-[RACE COUNTS: Indicator Methodology for City](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_City.html) <br> 
+The following links contain detailed information about our indicator methodology. For each indicator, we provide the data source and year with a link, detailed race/ethnicity definitions, and our methodology including calculations and data screening process.
+
+[RACE COUNTS: Indicator Methodology for County and State Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html) <br>
+[RACE COUNTS: Indicator Methodology for City Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_City.html) <br> 
+[RACE COUNTS: Indicator Methodology for Legislative District Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_Leg_District.html) <br> 
+
+The following links contain detailed information about our composite and issue area index methodologies. For each index, we provide our methodology including calculations and data screening process.
+
+[RACE COUNTS: Index Methodology for County Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_County.pdf) <br>
+[RACE COUNTS: Index Methodology for City Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_City.pdf) <br>
+[RACE COUNTS: Index Methodology for Legislative District Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_Leg_District.pdf) <br>
+
+The following link contains detailed information about how we think about race/ethnicity and the standard definitions and labels we use when possible.
+
 [RACE COUNTS: Race & Ethnicity Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md) <br>
 
 <!--[RACE COUNTS: Key Takeaways Methodology (2023)](https://github.com/catalystcalifornia/RaceCounts/blob/main/KeyTakeaways/README_Key_Takeaways.md) <br>-->
@@ -89,9 +101,9 @@ For more, please see our [RACE COUNTS: Race & Ethnicity Methodology](https://git
 * [Chris Ringewald, Senior Director of Research & Data Analysis](https://github.com/cringewald)
 * [Elycia Mulholland Graves, Director of Research & Data Analysis](https://github.com/elyciamg)
 * [Hillary Khan, Database Architect Manager](https://github.com/hillarykhan)
-* [Jennifer Zhang, Senior Research & Data Analyst](https://github.com/jzhang514)
+* [Jennifer Zhang, Research & Data Manager](https://github.com/jzhang514)
 * [Leila Forouzan, Senior Manager of Research & Data Analysis](https://github.com/lforouzan)
-* [Maria Khan, Research & Data Analyst II](https://github.com/mariatkhan)
+* [Maria Khan, Senior Research & Data Analyst](https://github.com/mariatkhan)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 

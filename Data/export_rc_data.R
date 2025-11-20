@@ -2,7 +2,7 @@
 
 
 # Set up workspace ----------------------------------------------------------------
-packages <- c("tidyverse", "RPostgreSQL", "xfun", "usethis", "writexl") 
+packages <- c("tidyverse", "RPostgres", "xfun", "usethis", "writexl") 
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
 if(length(install_packages) > 0) {
@@ -23,13 +23,13 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
 
 # Update schema and year variables --------------------------------------------------
-curr_schema <- 'v6' # update each year, this field populates most table and file names automatically
-curr_yr <- '2024'   # update each year, this field populates most table and file names automatically
+curr_schema <- 'v7' # update each year, this field populates most table and file names automatically
+curr_yr <- '2025'   # update each year, this field populates most table and file names automatically
 
 
 # Load metadata tables and create RC table list ----------------------------------------------------
 # pull in geo level ids with name. I don't do this directly in the data in case names differ and we have issues merging later
-arei_race_multigeo_city <- dbGetQuery(con, paste0("SELECT geoid, name, geolevel FROM ", curr_schema, ".arei_race_multigeo")) %>% filter(geolevel == "place") %>% rename(city_id = geoid, city_name = name) %>% select(-geolevel)
+arei_race_multigeo_city <- dbGetQuery(con, paste0("SELECT geoid, name, geolevel FROM ", curr_schema, ".arei_race_multigeo")) %>% filter(geolevel == "place") %>% dplyr::rename(city_id = geoid, city_name = name) %>% select(-geolevel)
 
 arei_race_multigeo <- dbGetQuery(con, paste0("SELECT geoid, name, geolevel FROM ", curr_schema, ".arei_race_multigeo")) %>% select(-geolevel) # used for county and state
 
@@ -157,7 +157,7 @@ metadata <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_indicat
 
 metadata <- metadata %>% select(-c(arei_indicator, arei_city_view,  arei_issue_area_id, arei_indicator_id, race_type, ind_order, oid, site_year, data_year, raw_rounding, rate_rounding, ind_show_on_dev, ind_show_on_site))
 
-metadata <- metadata %>% rename("indicator" = "api_name",
+metadata <- metadata %>% dplyr::rename("indicator" = "api_name",
                                 "issue" = "arei_issue_area",
                                 "best" = "arei_best") %>%
   select(indicator, everything())
@@ -190,13 +190,9 @@ write_xlsx(df_state, paste0("W:\\Project\\RACE COUNTS\\", curr_yr, "_", curr_sch
 
 metadata <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_indicator_list_cntyst"))
 
-<<<<<<< HEAD
-metadata <- metadata %>% select(-c(arei_indicator,  arei_issue_area_id, arei_indicator_id, race_type, ind_order, site_year, data_year, raw_rounding, rate_rounding, ind_show_on_dev, ind_show_on_site))
-=======
 metadata <- metadata %>% select(-c(arei_indicator,  arei_issue_area_id, arei_indicator_id, race_type, ind_order, site_year, data_year, raw_rounding, rate_rounding, ind_show_on_dev, ind_show_on_site, newoid))
->>>>>>> b391c7a2d7d894c89612237dc0b3993d6c36cdaa
 
-metadata <- metadata %>% rename("indicator" = "api_name",
+metadata <- metadata %>% dplyr::rename("indicator" = "api_name",
                                 "issue" = "arei_issue_area",
                                 "best" = "arei_best") %>%
   select(indicator, everything())

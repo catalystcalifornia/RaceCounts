@@ -37,6 +37,8 @@ header-includes:
   - \usepackage{lastpage}
   - \usepackage{ragged2e}
   - \setlength{\parskip}{10pt}
+  - \hyphenpenalty=9000
+  - \exhyphenpenalty=9000
   - \pagestyle{empty}
   - |
     \fancypagestyle{firstpage}{
@@ -59,7 +61,7 @@ header-includes:
   - \renewcommand{\footrulewidth}{10pt}
   - \setlength{\parindent}{0pt}
   - \setlist[itemize]{nosep}
-params: # needs to add params used throughout .Rmd here - also need a df of the variables needed for each district to replace hardcoded values
+params: # needs to add params used throughout .Rmd here - need a df of the variables needed for each district
   geolevel: "geolevel"
   rep_name: "Firstname Lastname"
   district_number: "XX"
@@ -114,15 +116,15 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
 RACE COUNTS analyzed 31 indicators, across seven issue areas, for every State {`r params$geolevel`} District and ranked districts by their outcomes and differences in those outcomes among racial groups.
 
-Data sources for indicators include the California Department of Education, the California Department of Justice, the California Office of Environmental Health Hazard Assessment, the U.S. Census Bureau's American Community Survey and others. All data are the most recent data published or within one year of publication. See \href{https://www.racecounts.org/explore-the-data/our-methodology/}{\textcolor{blue}{our methodology (https://bit.ly/RCMethodology)}} for more information.
+Data sources for indicators include the California Department of Education, the California Department of Justice, the California Office of Environmental Health Hazard Assessment, the U.S. Census Bureau's American Community Survey, and others. All data are the most recent data published or within one year of publication. See \href{https://www.racecounts.org/explore-the-data/our-methodology/}{\textcolor{blue}{our methodology (https://bit.ly/RCMethodology)}} for more information.
 
 {\headingfont \large \textbf{\textcolor{headerorange}{WHY THIS IS IMPORTANT}}}
 
-Understanding racial disparities in each district is essential to creating fair and effective policy. Data on racial disparity highlight where local systems fail to deliver equitable outcomes and reveal opportunities for targeted policies that close gaps. By examining these disparities, policymakers can work alongside their constituents to promote equity in their districts. 
+Understanding racial disparities in each district is essential to creating fair and effective policy. Data on racial disparities highlight where local systems fail to deliver equitable outcomes and reveal opportunities for targeted policies that close gaps. By examining these disparities, policymakers can work alongside their constituents to promote equity in their districts. 
 
 {\headingfont \large \textbf{\textcolor{headerorange}{WHAT YOU CAN DO ABOUT IT}}}
 
-Addressing racial disparities starts with partnership. Policymakers can engage community organizations that work directly with affected residents to understand their experiences and co-create solutions with them. By supporting data-driven policies, investing in equity initiatives, and amplifying community voices, policymakers can advance systemic change and ensure every community has the opportunity to thrive. Learn more about \href{https://www.catalystcalifornia.org/how-we-do-it/government-relations}{\textcolor{blue}{Catalyst California’s legislative priorities (https://bit.ly/CatalystCAGovRelations)}}.
+Addressing racial disparities starts with partnership. Policymakers can engage community organizations that work directly with affected residents to understand their experiences and co-create solutions with them. By supporting data-driven policies, investing in equity initiatives, and amplifying community voices, policymakers can advance systemic change and ensure every community has the opportunity to thrive. Learn more about \href{https://www.catalystcalifornia.org/how-we-do-it/government-relations}{\textcolor{blue}{Catalyst California’s legislative priorities}}               \href{https://www.catalystcalifornia.org/how-we-do-it/government-relations}{\textcolor{blue}{(https://bit.ly/CatalystCAGovRelations)}}.
 \end{multicols}
 \newpage \thispagestyle{secondpage}
 \setlength{\footskip}{105pt}
@@ -176,25 +178,25 @@ cat("\\headingfont \\large \\textbf{\\textcolor{headerorange}{",
 \centering
 \rmfamily \normalsize \textbf{Want to compare your district's data to other California geographies?}
 
-\rmfamily \normalsize \textbf{Visit RaceCounts.org}
+\rmfamily \normalsize \textbf{Visit} \href{https://www.racecounts.org/}{\textcolor{blue}{RaceCounts.org}}
 
 \medskip
 \begin{multicols}{2}
 \normalsize District `r params$district_number` indicators with the \newline \textbf{worst outcomes}:
 \begin{itemize}[itemsep=1pt]
-  \item `r params$worst_outcome_1`
-  \item `r params$worst_outcome_2`  
-  \item `r params$worst_outcome_3`
-  \item `r params$worst_outcome_4`
-  \item `r params$worst_outcome_5`
+  \item \mbox{`r params$worst_outcome_1`}
+  \item \mbox{`r params$worst_outcome_2`} 
+  \item \mbox{`r params$worst_outcome_3`}
+  \item \mbox{`r params$worst_outcome_4`}
+  \item \mbox{`r params$worst_outcome_5`}
 \end{itemize}
-District `r params$district_number` indicators with the \newline \textbf{worst disparity}:
+District `r params$district_number` indicators with the \newline \textbf{worst racial disparity}:
 \begin{itemize}[itemsep=1pt]
-  \item `r params$worst_disparity_1`
-  \item `r params$worst_disparity_2`  
-  \item `r params$worst_disparity_3`
-  \item `r params$worst_disparity_4`
-  \item `r params$worst_disparity_5`
+  \item \mbox{`r params$worst_disparity_1`}
+  \item \mbox{`r params$worst_disparity_2`}  
+  \item \mbox{`r params$worst_disparity_3`}
+  \item \mbox{`r params$worst_disparity_4`}
+  \item \mbox{`r params$worst_disparity_5`}
 \end{itemize}
 \end{multicols}
 

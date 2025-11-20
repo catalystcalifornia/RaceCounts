@@ -150,11 +150,13 @@ geometries <- city_map_geojson$objects$geo$geometries
 city_map_ids <- geometries %>%
   select(id, properties) %>%
   unnest_wider(properties) %>%
-  select(id, geoid) %>%
-  rename(city_map_id = id,
-         city_geoid = geoid)
-
+  select(-shape_id) %>%
+  dplyr::rename(city_map_id = id,
+                city_name = name,
+                city_geoid = geoid)
+  
 city_map_ids$city_map_id <- as.character(city_map_ids$city_map_id)
+city_map_ids$city_name <- gsub(" County", "", city_map_ids$city_name)  # keep County for dupe city names, eg: El Sobrante
 
 rc_table <- xwalk_filter %>% left_join(counties, by = "place_geoid") %>% mutate(county_name = gsub(" County", "", county_name))
 rc_table <- rc_table %>% left_join(city_pop, by = "place_geoid")
@@ -162,13 +164,16 @@ rc_table <- rc_table %>% left_join(county_pop, by = "county_geoid")
 rc_table <- rc_table %>% left_join(dist_enr, by = c("cdscode"="cds"))
 rc_table <- rc_table %>% left_join(regions, by = "county_geoid")
 rc_table <- rc_table %>% left_join(city_map_ids, by=c("place_geoid"="city_geoid"))
-
-rc_table <- rc_table %>% rename(
-                                dist_id = district_geoid,
-                                city_id = place_geoid,
-                                city_name = place_name,
-                                county_id = county_geoid,
-                                total_enroll = totalenrollment      ) %>% 
+rc_table <- rc_table %>% 
+  mutate(place_name = ifelse(!is.na(city_name), city_name, place_name)) %>%  # replace city name with name from city_map_ids (if not null)
+  mutate(place_name = gsub(" CDP", "", place_name)) %>%  # drop "CDP" from place_name
+  select(-city_name)  # drop city_map_ids name
+  
+rc_table <- rc_table %>% dplyr::rename(dist_id = district_geoid,
+                                       city_id = place_geoid,
+                                       city_name = place_name,
+                                       county_id = county_geoid,
+                                       total_enroll = totalenrollment      ) %>% 
               select(c(city_id, city_map_id, city_name, city_pop, dist_id, district_name, cdscode, total_enroll, district_type, county_id, county_name, region, county_pop))
 
 # Export to postgres

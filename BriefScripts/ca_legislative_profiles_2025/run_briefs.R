@@ -60,7 +60,9 @@ for(i in 1:nrow(final_df)) {
   worst_disparity_5 <- final_df[i, "worst_disparity_5"]
   most_impacted_race_finding <- final_df[i, "most_impacted_race_finding"]
   png_filename <- final_df[i, "png_filename"]
-  
+  leg_type <- final_df[i, "leg_type"]
+
+
   if (geolevel=="Senate") {
     total_districts<-"40"
   } else if (geolevel=="Assembly") {
@@ -68,7 +70,7 @@ for(i in 1:nrow(final_df)) {
   }
   
   # for file creation and storage
-  pdf_name <- paste0(paste(geolevel, "District", district_number, sep = "_"), ".pdf")
+  pdf_name <- paste0(leg_type, district_number, ".pdf")
   output_directory <- paste0(output_folder, geolevel)
   
   # Create the directory if it doesn't exist
@@ -91,7 +93,7 @@ for(i in 1:nrow(final_df)) {
                       disparity_rank=composite_disparity_rank,
                       outcome_rank=composite_outcome_rank,
                       total_districts=total_districts,
-                      profiles_url_message=paste0("Compare ", leg_name, " to all districts here: \\href{https://bit.ly/StateLegislatureData}{\\textcolor{blue}{https://bit.ly/StateLegislatureData}} or via QR Code"),
+                      profiles_url_message=paste0("Compare ", leg_name, " to all districts by visiting \\href{https://bit.ly/StateLegislatureData}{\\textcolor{blue}{https://bit.ly/StateLegislatureData}} or via QR Code."),
                       crim_outcome_summary=crim_outcome_summary,
                       demo_outcome_summary=demo_outcome_summary,
                       econ_outcome_summary=econ_outcome_summary,
@@ -174,8 +176,8 @@ uploaded_files <- list()
 for(i in 1:nrow(final_df)) {
   geolevel <- str_to_title(final_df[i, "geolevel"])
   district_number <- final_df[i, "district_number"]
-  
-  pdf_name <- paste0(paste(geolevel, "District", district_number, sep = "_"), ".pdf")
+  leg_type <- final_df[i, "leg_type"]
+  pdf_name <- paste0(leg_type, district_number, ".pdf")
   output_directory <- paste0("W:/Project/RACE COUNTS/2025_v7/Leg_Dist_PDFs/Deliverables/", geolevel)
   local_path <- file.path(output_directory, pdf_name)
   
@@ -313,9 +315,15 @@ main_html <- '<!DOCTYPE html>
 <body>
     <h1>California Legislative Profiles - 2025</h1>
     <ul>
-        <li><a href="Senate/index.html">Senate Districts (40 districts)</a></li>
         <li><a href="Assembly/index.html">Assembly Districts (80 districts)</a></li>
+        <li><a href="Senate/index.html">Senate Districts (40 districts)</a></li>
     </ul>
+    <p>Last updated <span id="currentDate"></span></p>
+      <script>
+      var now = new Date();
+      var dateString = now.toLocaleDateString(); 
+      document.getElementById("currentDate").innerHTML = dateString;
+      </script>
 </body>
 </html>'
 
