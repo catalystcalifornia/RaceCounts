@@ -27,7 +27,7 @@
     <li><a href="#contact-us">Contact Us</a></li>
     <li><a href="#citation">Citation</a></li>
     <li><a href="#license">License</a></li>
-    <li><a href="#race-counts-partners">RACE COUNTS Partners</a></li>
+    <li><a href="#race-counts-partners">RACE COUNTS Key Partners</a></li>
   </ol>
 </details>
 
@@ -155,7 +155,7 @@ Catalyst California; RACE COUNTS, racecounts.org, [current year].
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
-## RACE COUNTS Partners
+## RACE COUNTS Key Partners
 
 * [CALIFORNIA CALLS](https://www.cacalls.org/)
 * [USC Dornsife](https://dornsife.usc.edu/)
