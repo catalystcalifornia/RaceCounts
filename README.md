@@ -50,9 +50,10 @@ At county level, we calculate one index for each of the seven issue areas that i
 ## Data Methodology
 The following links contain detailed information about our indicator methodology. For each indicator, we provide the data source and year with a link, detailed race/ethnicity definitions, and our methodology including calculations and data screening process.
 
-[RACE COUNTS: Indicator Methodology for County and State Data](/Methodology/Indicator_Methodology_CountyState.html) <br>
-[RACE COUNTS: Indicator Methodology for City Data](/Methodology/Indicator_Methodology_City.html) <br> 
-[RACE COUNTS: Indicator Methodology for Legislative District Data](/Methodology/Indicator_Methodology_Leg_District.html) <br> 
+[RACE COUNTS: Indicator Methodology for County and State Data](W:\Project\RACE COUNTS\2025_v7\RC_Github\LF\RaceCounts\Methodology\Indicator_Methodology_CountyState.html) <br>
+[RACE COUNTS: Indicator Methodology for City Data](
+W:\Project\RACE COUNTS\2025_v7\RC_Github\LF\RaceCounts\Methodology\Indicator_Methodology_City.html) <br> 
+[RACE COUNTS: Indicator Methodology for Legislative District Data](W:\Project\RACE COUNTS\2025_v7\RC_Github\LF\RaceCounts\Methodology\Indicator_Methodology_Leg_Dist.html) <br> 
 
 The following links contain detailed information about our composite and issue area index methodologies. For each index, we provide our methodology including calculations and data screening process.
 
@@ -101,13 +102,13 @@ Each year RACE COUNTS undergoes updates due to changes in data availability, how
   <ol>
     <li>Methodology-Related Changes</li>
      <ul>
-        <li>Expand our working definition of Southwest Asian / North African to include the following Census Ancestry responses: Amazigh, Azerbaijan, Copt, Djiboutian, Levantine, Mauritanian, Somali, Southwest Asian or North African, SWANA, West Asian, and Middle Eastern or North African Responses, not classified elsewhere. See our RACE COUNTS: Race & Ethnicity Methodology for more information.</li>
+        <li>Working definition of Southwest Asian / North African: We expanded to include the following Census Ancestry responses: Amazigh, Azerbaijan, Copt, Djiboutian, Levantine, Mauritanian, Somali, Southwest Asian or North African, SWANA, West Asian, and Middle Eastern or North African Responses, not classified elsewhere. See our RACE COUNTS: Race & Ethnicity Methodology for more information.</li>
         <li>Denied Mortgages, Drinking Water Contaminants, Eviction, Foreclosure, Proximity to Hazards, Subprime Mortgages, and Toxic Releases indicators: In 2025, we converted the census tract-based data from 2010 vintage tracts to 2020 vintage tracts before calculating weighted averages by race/ethnicity. This resulted in minor changes to the results.</li>
         <li>Census Participation indicator: In 2025, we used householders not population as the denominator for rate calculations, as surveys are collected for households not individuals.</li>
-        <li>Low Birthweight indicator: In 2025, we calculate rates for American Indian / Alaska Native alone or in combination with another race, including Latinx and non-Latinx, and the same for Native Hawaiian / Pacific Islander birthing parents.</li>
-        <li>Census Public Use Microdata (PUMS) indicators, including Connected Youth, Living Wage, Employment as Officials & Managers, and Low-Quality Housing: In 2025, we use a population-weighted crosswalk from Geocorr 2022 to assign PUMAs to counties and legislative districts, rather than the crosswalk based on area intersect used in the past.</li>
-        <li>Officer-Initiated Stops indicator: We now have two years of data for most agencies, so we report the average annual stop rate and the multi-year total number of stops.</li>
-        <li>High School Graduation indicator: In 2025, we suppress data for geography and race combinations that have fewer than 20 students in the cohort. We previously suppressed data when there were fewer than 20 graduates in a cohort.</li>
+        <li>Low Birthweight indicator: In 2025, we calculated rates for American Indian / Alaska Native alone or in combination with another race, including Latinx and non-Latinx. We used the same method for Native Hawaiian / Pacific Islander rates.</li>
+        <li>Census Public Use Microdata Sample (PUMS) indicators, including Connected Youth, Living Wage, Employment as Officials & Managers, and Low-Quality Housing: In 2025, we used a population-weighted crosswalk from Geocorr 2022 to assign PUMAs to counties and legislative districts, rather than a crosswalk based on area intersect used in the past.</li>
+        <li>Officer-Initiated Stops indicator: We now have two years of data for most agencies, so we reported the average annual stop rate and the multi-year total number of stops.</li>
+        <li>High School Graduation indicator: In 2025, we suppressed data for geography and race combinations that have fewer than 20 students in the cohort. We previously suppressed data when there were fewer than 20 graduates in a cohort.</li>
         <li>Use of Force indicator: In 2025, we suppress data for geography and race combinations with fewer than 800 people. We previously suppressed data for populations smaller than 100.</li>
       </ul>
       </ul>
