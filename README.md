@@ -91,7 +91,7 @@ Second, RACE COUNTS primarily includes data at city, county, and state levels. T
 
 Finally, while RACE COUNTS is the most comprehensive compilation of data about racial equity by county in California, clear weaknesses in available data are evident. Data availability in the Democracy issue was particularly challenging for less populous places. The availability of data by race at sub-state levels was challenging across the board, and we created weighted averages to address this issue in some cases such as Lack of Greenspace. 
 
-For more, please see our [RACE COUNTS: Race & Ethnicity Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md).
+For more, please see our [RACE COUNTS: Race & Ethnicity Methodology](/Methodology/README_Race_Ethnicity.md).
 
 ## New This Year
 Each year RACE COUNTS undergoes updates due to changes in data availability, how our sources collect data, and upgrades to our methodologies. Below is a summary of the changes for this year's RACE COUNTS release.
@@ -101,7 +101,7 @@ Each year RACE COUNTS undergoes updates due to changes in data availability, how
   <ol>
     <li>Methodology-Related Changes</li>
      <ul>
-        <li>Expand our working definition of Southwest Asian / North African to include the following Census Ancestry responses: Amazigh, Azerbaijan, Copt, Djiboutian, Levantine, Mauritanian, Somali, Southwest Asian or North African, SWANA, West Asian, and Middle Eastern or North African Responses, not classified elsewhere. SFor more, please see our [RACE COUNTS: Race & Ethnicity Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md).</li>
+        <li>Expand our working definition of Southwest Asian / North African to include the following Census Ancestry responses: Amazigh, Azerbaijan, Copt, Djiboutian, Levantine, Mauritanian, Somali, Southwest Asian or North African, SWANA, West Asian, and Middle Eastern or North African Responses, not classified elsewhere. For more, please see our [RACE COUNTS: Race & Ethnicity Methodology](/Methodology/README_Race_Ethnicity.md).</li>
         <li>Denied Mortgages, Drinking Water Contaminants, Eviction, Foreclosure, Proximity to Hazards, Subprime Mortgages, and Toxic Releases indicators: In 2025, we converted the census tract-based data from 2010 vintage tracts to 2020 vintage tracts before calculating weighted averages by race/ethnicity. This resulted in minor changes to the results.</li>
         <li>Census Participation indicator: In 2025, we used householders not population as the denominator for rate calculations, as surveys are collected for households not individuals.</li>
         <li>Low Birthweight indicator: In 2025, we calculate rates for American Indian / Alaska Native alone or in combination with another race, including Latinx and non-Latinx, and the same for Native Hawaiian / Pacific Islander birthing parents.</li>
