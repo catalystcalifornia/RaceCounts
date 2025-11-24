@@ -48,10 +48,9 @@ At county level, we calculate one index for each of the seven issue areas that i
 ## Data Methodology
 The following links contain detailed information about our indicator methodology. For each indicator, we provide the data source and year with a link, detailed race/ethnicity definitions, and our methodology including calculations and data screening process.
 
-[RACE COUNTS: Indicator Methodology for County and State Data](W:\Project\RACE COUNTS\2025_v7\RC_Github\LF\RaceCounts\Methodology\Indicator_Methodology_CountyState.html) <br>
-[RACE COUNTS: Indicator Methodology for City Data](
-W:\Project\RACE COUNTS\2025_v7\RC_Github\LF\RaceCounts\Methodology\Indicator_Methodology_City.html) <br> 
-[RACE COUNTS: Indicator Methodology for Legislative District Data](W:\Project\RACE COUNTS\2025_v7\RC_Github\LF\RaceCounts\Methodology\Indicator_Methodology_Leg_Dist.html) <br> 
+[RACE COUNTS: Indicator Methodology for County and State Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html) <br>
+[RACE COUNTS: Indicator Methodology for City Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_City.html) <br> 
+[RACE COUNTS: Indicator Methodology for Legislative District Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_Leg_District.html) <br> 
 
 The following links contain detailed information about our composite and issue area index methodologies. For each index, we provide our methodology including calculations and data screening process.
 
