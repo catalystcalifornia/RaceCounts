@@ -111,7 +111,7 @@ Each year RACE COUNTS undergoes updates due to changes in data availability, how
 </details>
 
 <details>
-   <summary>Data-Related Change</summary>
+   <summary>Data-Related Changes</summary>
       <ul>
         <li>None this year.</li>
       </ul>
