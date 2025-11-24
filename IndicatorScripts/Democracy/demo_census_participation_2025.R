@@ -174,6 +174,7 @@ sen_name <- get_decennial(geography = "State Legislative District (Upper Chamber
 sen_name <- sen_name[,1:2]
 sen_name$NAME <- str_remove(sen_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldu/sldu
 sen_name$NAME <- gsub(", California", "", sen_name$NAME)
+sen_name$NAME <- gsub("State ", "", sen_name$NAME)
 names(sen_name) <- c("target_id", "target_name")
 # View(sen_name)
 
@@ -252,7 +253,7 @@ ca_pop_wide <- state_pop(vars = vars_list_p16, yr = curr_yr, srvy = survey)
 
 # calc state wa
 ca_pct_df <- ca_pop_pct(ca_pop_wide)
-ca_wa <- ca_wt_avg(ca_pct_df) %>% mutate(geolevel = 'state')   # add geolevel type
+ca_wa <- ca_wt_avg(ca_pct_df, ind_df) %>% mutate(geolevel = 'state')   # add geolevel type
 
 
 ############ JOIN CITY, LEG DISTRICT, COUNTY & STATE WA TABLES  ##################
