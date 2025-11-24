@@ -132,8 +132,6 @@ Each year RACE COUNTS undergoes updates due to changes in data availability, how
 * [Leila Forouzan, Senior Manager of Research & Data Analysis](https://github.com/lforouzan)
 * [Maria Khan, Senior Research & Data Analyst](https://github.com/mariatkhan)
 
-<p align="right">(<a href="#RACE-COUNTS">back to top</a>)</p>
-
 
 ## Contact Us
 [Chris Ringewald](https://www.linkedin.com/in/chris-ringewald-6766369/) - cringewald[at]catalystcalifornia.org  <br>
