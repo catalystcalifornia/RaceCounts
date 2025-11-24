@@ -27,7 +27,7 @@ curr_yr <- '2023_24'
 acs_yr <- 2023  # used to get census geonames
 rc_yr <- '2025'
 rc_schema <- 'v7'
-threshold = 20  # geo + race combos with fewer than threshold # of graduating students are suppressed
+threshold = 20  # geo + race combos with fewer than threshold # of cohort students are suppressed
 
 qa_filepath <- paste0("W:\\Project\\RACE COUNTS\\", rc_yr,"_", rc_schema,"\\Education\\QA_Sheet_HS_Grad.docx")
 
