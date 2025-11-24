@@ -50,21 +50,21 @@ At county level, we calculate one index for each of the seven issue areas that i
 ## Data Methodology
 The following links contain detailed information about our indicator methodology. For each indicator, we provide the data source and year with a link, detailed race/ethnicity definitions, and our methodology including calculations and data screening process.
 
-[RACE COUNTS: Indicator Methodology for County and State Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html) <br>
-[RACE COUNTS: Indicator Methodology for City Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_City.html) <br> 
-[RACE COUNTS: Indicator Methodology for Legislative District Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_Leg_District.html) <br> 
+[RACE COUNTS: Indicator Methodology for County and State Data](/Methodology/Indicator_Methodology_CountyState.html) <br>
+[RACE COUNTS: Indicator Methodology for City Data](/Methodology/Indicator_Methodology_City.html) <br> 
+[RACE COUNTS: Indicator Methodology for Legislative District Data](/Methodology/Indicator_Methodology_Leg_District.html) <br> 
 
 The following links contain detailed information about our composite and issue area index methodologies. For each index, we provide our methodology including calculations and data screening process.
 
-[RACE COUNTS: Index Methodology for County Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_County.pdf) <br>
-[RACE COUNTS: Index Methodology for City Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_City.pdf) <br>
-[RACE COUNTS: Index Methodology for Legislative District Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_Leg_District.pdf) <br>
+[RACE COUNTS: Index Methodology for County Data](/Methodology/IndexMethodology_County.pdf) <br>
+[RACE COUNTS: Index Methodology for City Data](/Methodology/IndexMethodology_City.pdf) <br>
+[RACE COUNTS: Index Methodology for Legislative District Data](/Methodology/IndexMethodology_Leg_District.pdf) <br>
 
 The following link contains detailed information about how we think about race/ethnicity and the standard definitions and labels we use when possible.
 
-[RACE COUNTS: Race & Ethnicity Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md) <br>
+[RACE COUNTS: Race & Ethnicity Methodology](/Methodology/README_Race_Ethnicity.md) <br>
 
-<!--[RACE COUNTS: Key Takeaways Methodology (2023)](https://github.com/catalystcalifornia/RaceCounts/blob/main/KeyTakeaways/README_Key_Takeaways.md) <br>-->
+<!--[RACE COUNTS: Key Takeaways Methodology (2023)](/KeyTakeaways/README_Key_Takeaways.md) <br>-->
 
 ## Measuring Outcomes, Impact & Racial Disparity
 Measuring outcomes and impact are straightforward. An outcome is the rate for the total population on an indicator, across an issue, or across all issues. For example, when we compare outcomes in high school graduation rates between Los Angeles and Orange counties, we are comparing their overall graduation rates. Impact is the size of the total population. Following this example, Los Angeles has a population of nearly 10 million people, more than three times the size of Orange, with a population of nearly 3.1 million people. All else being equal, expected impacts of disparities are thus expected to be larger in Los Angeles than Orange county based on population size.
@@ -101,7 +101,7 @@ Each year RACE COUNTS undergoes updates due to changes in data availability, how
   <ol>
     <li>Methodology-Related Changes</li>
      <ul>
-        <li>Expand our working definition of Southwest Asian / North African to include the following Census Ancestry responses: Amazigh, Azerbaijan, Copt, Djiboutian, Levantine, Mauritanian, Somali, Southwest Asian or North African, SWANA, West Asian, and Middle Eastern or North African Responses, not classified elsewhere. For more, please see our [RACE COUNTS: Race & Ethnicity Methodology](/Methodology/README_Race_Ethnicity.md).</li>
+        <li>Expand our working definition of Southwest Asian / North African to include the following Census Ancestry responses: Amazigh, Azerbaijan, Copt, Djiboutian, Levantine, Mauritanian, Somali, Southwest Asian or North African, SWANA, West Asian, and Middle Eastern or North African Responses, not classified elsewhere. See our RACE COUNTS: Race & Ethnicity Methodology for more information.</li>
         <li>Denied Mortgages, Drinking Water Contaminants, Eviction, Foreclosure, Proximity to Hazards, Subprime Mortgages, and Toxic Releases indicators: In 2025, we converted the census tract-based data from 2010 vintage tracts to 2020 vintage tracts before calculating weighted averages by race/ethnicity. This resulted in minor changes to the results.</li>
         <li>Census Participation indicator: In 2025, we used householders not population as the denominator for rate calculations, as surveys are collected for households not individuals.</li>
         <li>Low Birthweight indicator: In 2025, we calculate rates for American Indian / Alaska Native alone or in combination with another race, including Latinx and non-Latinx, and the same for Native Hawaiian / Pacific Islander birthing parents.</li>
