@@ -101,18 +101,20 @@ Each year RACE COUNTS undergoes updates due to changes in data availability, how
   <ol>
     <li>Methodology-Related Changes</li>
      <ul>
-        <li>We expanded our working definition of Southwest Asian / North African to include the following Census Ancestry responses: Amazigh, Azerbaijan, Copt, Djiboutian, Levantine, Mauritanian, Somali, Southwest Asian or North African, SWANA, West Asian, and Middle Eastern or North African Responses, not classified elsewhere.</li>
-        <li>We updated our methodology for the following indicators: Eviction, Foreclosure, Subprime, Denied Mortgages, Drinking Water Contaminants, Proximity to Hazards, Toxic Releases. In 2025, we converted the census tract-based data from 2010 vintage tracts to 2020 vintage tracts before calculating weighted averages by race/ethnicity. This resulted in minor changes to the results.</li>
-        <li>We updated our methodology for our Census Participation indicator. In 2025, we used householders not population as the denominator for rate calculations, as surveys are collected for households not individuals.</li>
-        <li>We updated our methodology for our Low Birthweight indicator. In 2025, we calculate rates for American Indian / Alaska Native alone or in combination with another race, including Latinx and non-Latinx, and the same for Native Hawaiian / Pacific Islander birthing parents.</li>
-        <li>We updated our methodology for Census Public Use Microdata-based indicators, including Connected Youth, Living Wage, Employment as Officials & Managers, and Low-Quality Housing. In 2025, we use a population-weighted crosswalk from Geocorr 2022 to assign PUMAs to counties and legislative districts rather than the crosswalk based on area intersect used in the past.</li>
-        <li><We updated our methodology for our Officer-Initiated Stops indicator. We now have two years of data for most agencies, so we report the average annual stop rate and the multi-year total number of stops.</li>
-        <li>We updated the data screening method for our High School Graduation indicator. In 2025, we suppress data for geography and race combinations that have fewer than 20 students in the cohort. We previously suppressed data when there were fewer than 20 graduates in a cohort.</li>
-        <li>We updated the methodology for our Use of Force indicator. In 2025, we suppress data for geography and race combinations with fewer than 800 people. We previously suppressed data for populations smaller than 100.</li>
+        <li>Expand our working definition of Southwest Asian / North African to include the following Census Ancestry responses: Amazigh, Azerbaijan, Copt, Djiboutian, Levantine, Mauritanian, Somali, Southwest Asian or North African, SWANA, West Asian, and Middle Eastern or North African Responses, not classified elsewhere. See our [RACE COUNTS: Race & Ethnicity Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md) for more information.</li>
+        <li>Eviction, Foreclosure, Subprime, Denied Mortgages, Drinking Water Contaminants, Proximity to Hazards, and Toxic Releases indicators: In 2025, we converted the census tract-based data from 2010 vintage tracts to 2020 vintage tracts before calculating weighted averages by race/ethnicity. This resulted in minor changes to the results.</li>
+        <li>Census Participation indicator: In 2025, we used householders not population as the denominator for rate calculations, as surveys are collected for households not individuals.</li>
+        <li>Low Birthweight indicator: In 2025, we calculate rates for American Indian / Alaska Native alone or in combination with another race, including Latinx and non-Latinx, and the same for Native Hawaiian / Pacific Islander birthing parents.</li>
+        <li>Census Public Use Microdata-based indicators, including Connected Youth, Living Wage, Employment as Officials & Managers, and Low-Quality Housing: In 2025, we use a population-weighted crosswalk from Geocorr 2022 to assign PUMAs to counties and legislative districts rather than the crosswalk based on area intersect used in the past.</li>
+        <li>Officer-Initiated Stops indicator: We now have two years of data for most agencies, so we report the average annual stop rate and the multi-year total number of stops.</li>
+        <li>Data screening method for our High School Graduation indicator: In 2025, we suppress data for geography and race combinations that have fewer than 20 students in the cohort. We previously suppressed data when there were fewer than 20 graduates in a cohort.</li>
+        <li>Use of Force indicator: In 2025, we suppress data for geography and race combinations with fewer than 800 people. We previously suppressed data for populations smaller than 100.</li>
       </ul>
       </ul>
     <li>Data-Related Changes</li>
-    <li>None this year.</li>
+      <ul>
+        <li>None this year.</li>
+      </ul>
   </ol>
 </details>
 
