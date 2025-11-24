@@ -38,3 +38,8 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 config.py
+
+# Other files - related to leg district pdf automation
+.tex
+.log
+.db
