@@ -36,8 +36,6 @@
 
 The website [RACECOUNTS.org](https://www.racecounts.org?target=_blank) is one part of the larger RACE COUNTS initiative created by [Catalyst California](https://www.catalystcalifornia.org/) (formerly Advancement Project California) and partners. At Catalyst California, we strategize with community partners to identify funding, services and opportunities in our public systems that can be redistributed for more just outcomes for all. Our goal is to promote racial equity and build a foundation so that every Californian may thrive. The RACE COUNTS website includes an analysis of racial disparity, overall outcomes, and impact based on population size. This repo is meant to make the methods we use more transparent and duplicable. The repo is a work in progress and we will continue to add more documentation around indicators, indexes, and more as we continue to update the website.
 
-<p align="right">(<a href="#RACE-COUNTS">back to top</a>)</p>
-
 
 # About The Data
 
@@ -64,6 +62,8 @@ The following links contain detailed information about our composite and issue a
 The following link contains detailed information about how we think about race/ethnicity and the standard definitions and labels we use when possible.
 
 [RACE COUNTS: Race & Ethnicity Methodology](/Methodology/README_Race_Ethnicity.md) <br>
+
+<p align="right">(<a href="#RACE-COUNTS">back to top</a>)</p>
 
 <!--[RACE COUNTS: Key Takeaways Methodology (2023)](/KeyTakeaways/README_Key_Takeaways.md) <br>-->
 
@@ -119,7 +119,7 @@ Each year RACE COUNTS undergoes updates due to changes in data availability, how
   </ol>
 </details>
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+<p align="right">(<a href="#RACE-COUNTS">back to top</a>)</p>
 
 
 ## Contributors
@@ -132,7 +132,7 @@ Each year RACE COUNTS undergoes updates due to changes in data availability, how
 * [Leila Forouzan, Senior Manager of Research & Data Analysis](https://github.com/lforouzan)
 * [Maria Khan, Senior Research & Data Analyst](https://github.com/mariatkhan)
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+<p align="right">(<a href="#RACE-COUNTS">back to top</a>)</p>
 
 
 ## Contact Us
@@ -152,8 +152,6 @@ Catalyst California; RACE COUNTS, racecounts.org, [current year].
 
 [License](License.md)
 
-<p align="right">(<a href="#top">back to top</a>)</p>
-
 
 ## RACE COUNTS Key Partners
 
@@ -161,5 +159,5 @@ Catalyst California; RACE COUNTS, racecounts.org, [current year].
 * [USC Dornsife](https://dornsife.usc.edu/)
 * [PICO California](http://www.picocalifornia.org/)
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+<p align="right">(<a href="#RACE-COUNTS">back to top</a>)</p>
 
