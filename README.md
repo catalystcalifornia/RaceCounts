@@ -21,7 +21,7 @@
         <li><a href="#measuring-outcomes,-impact-&-racial-disparity">Measuring Outcomes, Impact & Disparity</a></li>
         <li><a href="#summarizing-racial-disparity">Summarizing Racial Disparity</a></li>
         <li><a href="#key-limitations">Key Limitations</a></li>
-        <li><a href="#whats-new">What's New This Year</a></li>
+        <li><a href="#new-this-year">New This Year</a></li>
       </ul>
     <li><a href="#contributors">Contributors</a></li>
     <li><a href="#contact-us">Contact Us</a></li>
@@ -93,7 +93,7 @@ Finally, while RACE COUNTS is the most comprehensive compilation of data about r
 
 For more, please see our [RACE COUNTS: Race & Ethnicity Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md).
 
-## What's New This Year
+## New This Year
 Each year RACE COUNTS undergoes updates due to changes in data availability, how our sources collect data, and upgrades to our methodologies. Below is a summary of the changes for this year's RACE COUNTS release.
 
 <details>
@@ -111,18 +111,12 @@ Each year RACE COUNTS undergoes updates due to changes in data availability, how
         <li>We updated the methodology for our Use of Force indicator. In 2025, we suppress data for geography and race combinations with fewer than 800 people. We previously suppressed data for populations smaller than 100.</li>
       </ul>
       </ul>
-    <li><a href="#contributors">Contributors</a></li>
-    <li><a href="#contact-us">Contact Us</a></li>
-    <li><a href="#citation">Citation</a></li>
-    <li><a href="#license">License</a></li>
-    <li><a href="#race-counts-partners">RACE COUNTS Partners</a></li>
+    <li>Data-Related Changes</li>
+    <li>None this year.</li>
   </ol>
 </details>
 
-
-
 <p align="right">(<a href="#top">back to top</a>)</p>
-
 
 
 ## Contributors
