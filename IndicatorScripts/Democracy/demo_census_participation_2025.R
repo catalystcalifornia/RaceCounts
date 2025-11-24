@@ -32,6 +32,7 @@ curr_yr <- 2020 # yr of Census data release
 rc_yr <- '2025'
 rc_schema <- 'v7'
 pop_threshold = 150               # define household threshold for screening
+leg_int_threshold = .25           # tracts with >= threshold pct of pop in a leg dist or where the tract makes up >= threshold pct of leg dist pop are assigned to a leg dist 
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Democracy\\QA_Census_Participation.docx"
 
 # Check that variables in vars_list_p16 used in WA fx haven't changed --------
@@ -92,7 +93,7 @@ survey <- "census"             # define which Census survey you want
 
 ### Load CT-Assm Crosswalk ### 
 crosswalk <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, ", afact, afact2 FROM crosswalks.", assm_xwalk)) %>%
-  filter(afact >= .25 | afact2 >= .25)  # screen xwalk based on pct of ct pop in dist OR pct of dist pop in ct 
+  filter(afact >= leg_int_threshold | afact2 >= leg_int_threshold)  # screen xwalk based on pct of ct pop in dist OR pct of dist pop in ct 
 
 ##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table_census(vars = vars_list_p16, yr = curr_yr, srvy = survey, subgeo = subgeo, sumfile = sum_file)  # subgeolevel pop
@@ -142,7 +143,7 @@ survey <- "census"             # define which Census survey you want
 
 ### Load CT-Sen Crosswalk ### 
 crosswalk <- dbGetQuery(con, paste0("SELECT geo_id AS ct_geoid, ", sen_geoid, ", afact, afact2 FROM crosswalks.", sen_xwalk)) %>%
-  filter(afact >= .25 | afact2 >= .25)  # screen xwalk based on pct of ct pop in dist OR pct of dist pop in ct 
+  filter(afact >= leg_int_threshold | afact2 >= leg_int_threshold)  # screen xwalk based on pct of ct pop in dist OR pct of dist pop in ct 
 
 ##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table_census(vars = vars_list_p16, yr = curr_yr, srvy = survey, subgeo = subgeo, sumfile = sum_file)  # subgeolevel pop

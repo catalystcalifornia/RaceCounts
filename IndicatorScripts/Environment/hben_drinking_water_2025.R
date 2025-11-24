@@ -38,6 +38,7 @@ acs_yr <- 2020
 rc_yr <- '2025'
 rc_schema <- 'v7'
 pop_threshold = 250              # define population threshold for screening
+leg_int_threshold = .25          # tracts with >= threshold pct of pop in a leg dist or where the tract makes up >= threshold pct of leg dist pop are assigned to a leg dist 
 
 # may need to update each year: variables for state assm and senate calcs
 assm_geoid <- 'sldl24'			                    # Define column with Assm geoid
@@ -124,7 +125,7 @@ survey <- "acs5"              # define which Census survey you want
 ### CT-Assm Crosswalk ### 
 # Import CT-Assm Crosswalk
 xwalk_assm <- dbGetQuery(conn, paste0("SELECT geo_id AS ct_geoid, ", assm_geoid, " AS assm_geoid, afact, afact2 FROM crosswalks.", assm_xwalk)) %>%
-  filter(afact >= .25 | afact2 >= .25)  # screen xwalk based on pct of ct pop in dist OR pct of dist pop in ct
+  filter(afact >= leg_int_threshold | afact2 >= leg_int_threshold)  # screen xwalk based on pct of ct pop in dist OR pct of dist pop in ct
 
 ##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table(vars = vars_list_dp05, yr = acs_yr, srvy = survey)  # subgeolevel pop
@@ -190,7 +191,7 @@ survey <- "acs5"              # define which Census survey you want
 ### CT-Sen Crosswalk ### 
 # Import CT-Sen Crosswalk
 xwalk_sen <- dbGetQuery(conn, paste0("SELECT geo_id AS ct_geoid, ", sen_geoid, " AS sen_geoid, afact, afact2 FROM crosswalks.", sen_xwalk)) %>%
-  filter(afact >= .25 | afact2 >= .25)  # screen xwalk based on pct of ct pop in dist OR pct of dist pop in ct
+  filter(afact >= leg_int_threshold | afact2 >= leg_int_threshold)  # screen xwalk based on pct of ct pop in dist OR pct of dist pop in ct
 
 ##### GET SUB GEOLEVEL POP DATA ###
 pop <- update_detailed_table(vars = vars_list_dp05, yr = acs_yr, srvy = survey)  # subgeolevel pop
