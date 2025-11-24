@@ -97,9 +97,7 @@ For more, please see our [RACE COUNTS: Race & Ethnicity Methodology](/Methodolog
 Each year RACE COUNTS undergoes updates due to changes in data availability, how our sources collect data, and upgrades to our methodologies. Below is a summary of the changes for this year's RACE COUNTS release.
 
 <details>
-  <summary>Updates</summary>
-  <ol>
-    <li>Methodology-Related Changes</li>
+  <summary>Methodology-Related Changes</summary>
      <ul>
         <li>Working definition of Southwest Asian / North African: We expanded to include the following Census Ancestry responses: Amazigh, Azerbaijan, Copt, Djiboutian, Levantine, Mauritanian, Somali, Southwest Asian or North African, SWANA, West Asian, and Middle Eastern or North African Responses, not classified elsewhere. See our RACE COUNTS: Race & Ethnicity Methodology for more information.</li>
         <li>Denied Mortgages, Drinking Water Contaminants, Eviction, Foreclosure, Proximity to Hazards, Subprime Mortgages, and Toxic Releases indicators: In 2025, we converted the census tract-based data from 2010 vintage tracts to 2020 vintage tracts before calculating weighted averages by race/ethnicity. This resulted in minor changes to the results.</li>
@@ -109,13 +107,14 @@ Each year RACE COUNTS undergoes updates due to changes in data availability, how
         <li>Officer-Initiated Stops indicator: We now have two years of data for most agencies, so we reported the average annual stop rate and the multi-year total number of stops.</li>
         <li>High School Graduation indicator: In 2025, we suppressed data for geography and race combinations that have fewer than 20 students in the cohort. We previously suppressed data when there were fewer than 20 graduates in a cohort.</li>
         <li>Use of Force indicator: In 2025, we suppress data for geography and race combinations with fewer than 800 people. We previously suppressed data for populations smaller than 100.</li>
-      </ul>
-      </ul>
-    <li>Data-Related Changes</li>
+    </ul>
+</details>
+
+<details>
+   <summary>Data-Related Change</summary>
       <ul>
         <li>None this year.</li>
       </ul>
-  </ol>
 </details>
 
 <p align="right">(<a href="#RACE-COUNTS">back to top</a>)</p>
