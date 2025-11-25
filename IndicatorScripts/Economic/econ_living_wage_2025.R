@@ -229,6 +229,7 @@ View(rc_assm)
 
 rc_sen <- calc_pums(d = ppl_sen, indicator, indicator_val, weight)      # Calc senate
 rc_sen$geolevel <- 'sldu'
+rc_sen$geoname <- gsub("State ", "", rc_sen$geoname)  # clean geonames
 View(rc_sen)
 
 rc_state <- calc_pums(d = ppl_state, indicator, indicator_val, weight)  # Calc state

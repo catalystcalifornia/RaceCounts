@@ -39,6 +39,7 @@ acs_yr <- 2020
 rc_schema <- "v7"
 rc_yr <- "2025"
 pop_threshold = 50               # define population threshold for screening
+leg_int_threshold = .25          # tracts with >= threshold pct of pop in a leg dist or where the tract makes up >= threshold pct of leg dist pop are assigned to a leg dist 
 
 # may need to update each year: variables for state assm and senate calcs
 assm_geoid <- 'sldl24'			                    # Define column with Assm geoid
@@ -172,7 +173,7 @@ survey <- "census"            # define which Census survey you want
 
 ### Load ZCTA-Assm Crosswalk ### 
 xwalk_assm <- dbGetQuery(conn, paste0("SELECT geo_id, ", assm_geoid, ", afact, afact2 FROM crosswalks.", assm_xwalk)) %>%
-  filter(afact >= .25 | afact2 >= .25)  # screen xwalk based on pct of zcta pop in dist OR pct of dist pop in zcta
+  filter(leg_int_threshold >= leg_int_threshold | leg_int_threshold >= leg_int_threshold)  # screen xwalk based on pct of zcta pop in dist OR pct of dist pop in zcta
 
 #### Get ZCTA under 5 pop by race ##
 pop <- update_detailed_table_census(vars = vars_list_p12, yr = acs_yr, srvy = survey, subgeo = subgeo, sumfile = sum_file)  # subgeolevel pop
@@ -240,7 +241,7 @@ survey <- "census"            # define which Census survey you want
 
 ### Load ZCTA-sen Crosswalk ### 
 xwalk_sen <- dbGetQuery(conn, paste0("SELECT geo_id, ", sen_geoid, ", afact, afact2 FROM crosswalks.", sen_xwalk)) %>%
-  filter(afact >= .25 | afact2 >= .25)  # screen xwalk based on pct of zcta pop in dist OR pct of dist pop in zcta
+  filter(afact >= leg_int_threshold | afact2 >= leg_int_threshold)  # screen xwalk based on pct of zcta pop in dist OR pct of dist pop in zcta
 
 #### Get ZCTA under 5 pop by race ##
 pop <- update_detailed_table_census(vars = vars_list_p12, yr = acs_yr, srvy = survey, subgeo = subgeo, sumfile = sum_file)  # subgeolevel pop

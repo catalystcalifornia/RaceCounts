@@ -1,0 +1,103 @@
+/* Adapted from: W:/Project/RJS/Pillars/GitHub/EMG/sdpillars/report_embeds/chart_template.Rmd */
+/* W:/RDA Team/R/cc_brandguide.css */
+
+
+/* RC Brand Guide CSS Stylesheet for RMDs*/
+
+/* Styling pulled from W:\Project\RACE COUNTS\Style Guide\ */
+
+body {
+  background-color: #F1F0F2;
+}
+
+
+/* h1 Document Title  format("truetype")*/
+h1{
+  font-size: 27px;
+  font-family: Rubik, sans-serif;
+  letter-spacing: normal;
+  line-height: 1.24;
+  font-weight: 600;
+  display: block;
+  color: #070024;
+}
+
+/* h2 Subtitle & Issue Name */
+h2{
+  font-size: 23px;
+  font-family: Rubik, sans-serif;
+  letter-spacing: normal;
+  line-height: 1.2;
+  font-weight: 600;
+  margin: 1em 0;
+  display: block;
+  color: #AC0068;
+}
+
+/* h3 Indicator Name */
+h3{
+  font-size: 20px;
+  font-family: Rubik, sans-serif;
+  letter-spacing: normal;
+  line-height: 1.2;
+  font-weight: 600;
+  margin: 1em 0;
+  display: block;
+  color: #070024;
+}
+
+/* h4 */
+h4{
+  font-size: 18px;
+  font-family: Roboto, sans-serif;
+  color: #070024;
+  
+}
+
+/* p is for body content */
+p{
+  font-size: 18px;
+  font-family: Roboto, sans-serif;
+  letter-spacing: normal;
+  line-height: 1.5;
+  font-weight: 400;
+  margin: 1em 0;
+  display: block;
+  color: #070024;
+}
+
+
+/* --Links-- */
+
+a {
+  font-family: Rubik, sans-serif;
+  font-size: 16px;
+}
+
+
+/* --Unordered List (bullet list)-- */
+
+ul{
+  font-family: Rubik, sans-serif;
+}
+  
+/* --Ordered List (numeric list)-- */
+
+ol{
+  font-family: Rubik, sans-serif;
+}
+
+
+/* --TOC-- */
+
+.list-group-item.active, .list-group-item.active:focus, .list-group-item.active:hover{
+  background-color: #F1F0F2;
+  border-color: #F1F0F2;
+  color: #AC0068;
+  font-family: Rubik, sans-serif;
+  font-weight: 600;
+  font-size: 23;
+}
+
+
+

@@ -184,6 +184,7 @@ sen_name <- get_acs(geography = "State Legislative District (upper Chamber)",
 sen_name <- sen_name[,1:2]
 sen_name$NAME <- str_remove(sen_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldu/sldu
 sen_name$NAME <- gsub(", California", "", sen_name$NAME)
+sen_name$NAME <- gsub("State ", "", sen_name$NAME)
 names(sen_name) <- c("target_id", "target_name")
 # View(sen_name)
 

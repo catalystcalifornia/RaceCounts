@@ -180,19 +180,20 @@ ppl_state <- ppl %>% rename(geoid = state_geoid) %>% mutate(geoname = 'Californi
 
 #### Run PUMS Calcs ####
 rc_county <- calc_pums(d = ppl_cs, indicator, indicator_val, weight)   # Calc county
-rc_county <- rc_county %>% mutate(geolevel = 'county')
+rc_county$geolevel <- 'county'
 View(rc_county)
 
 rc_assm <- calc_pums(d = ppl_assm, indicator, indicator_val, weight)    # Calc assembly
-rc_assm <- rc_assm %>% mutate(geolevel = 'sldl')
+rc_assm$geolevel <- 'sldl'
 View(rc_assm)
 
 rc_sen <- calc_pums(d = ppl_sen, indicator, indicator_val, weight)      # Calc senate
-rc_sen <- rc_sen %>% mutate(geolevel = 'sldu')
+rc_sen$geolevel <- 'sldu'
+rc_sen$geoname <- gsub("State ", "", rc_sen$geoname)  # clean geonames
 View(rc_sen)
 
 rc_state <- calc_pums(d = ppl_state, indicator, indicator_val, weight)  # Calc state
-rc_state<- rc_state %>% mutate(geolevel = 'state')
+rc_state$geolevel <- 'state'
 View(rc_state)
 
 ############ COMBINE & SCREEN COUNTY/STATE DATA ############# 

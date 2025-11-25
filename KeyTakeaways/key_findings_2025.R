@@ -389,9 +389,9 @@ final_df <- bind_rows(df_city, df_county, df_state, df_leg) %>%
 # saveRDS(df_education_district, file = paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/df_education_district_", Sys.Date(), ".RData")) 
 
 ######## LOAD ALL DATA FROM RDATA FILE (as needed) ###### ---------------
-#### You may need to manually substitute the most recent date for Sys.Date() in the lines below.
-# final_df <- readRDS(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/final_df_", Sys.Date(), ".RData"))
-# df_education_district <- readRDS(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/df_education_district_", Sys.Date(), ".RData"))
+#file_date <- '2025-10-08'  #### You must update the date to the file you want here: W:\Project\RACE COUNTS\[rc_yr_rc_version]\RC_Github
+#final_df <- readRDS(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/final_df_", file_date, ".RData"))
+#df_education_district <- readRDS(paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/df_education_district_", file_date, ".RData"))
 
 # NOTE: when you call final_df in your code chunk(s), rename it before running code on it bc it takes a LONG time to run again...
 
@@ -690,7 +690,7 @@ most_disp_final <- most_disp %>%
       .default = "There is an error with your data. Please fix and re-run findings code."),
     finding_type = 'most disparate', 
     findings_pos = 3) %>%
-  select(geoid, geo_name, geo_level, dist_id, district_name, total_enroll, finding_type,finding, findings_pos)
+  select(geoid, geo_name, geo_level, dist_id, district_name, total_enroll, finding_type, race, finding, findings_pos)
 
 
 # Save most_disp, best_rate_counts, worst_rate_counts as 1 df
