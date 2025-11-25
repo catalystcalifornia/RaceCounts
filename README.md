@@ -23,6 +23,7 @@
         <li><a href="#key-limitations">Key Limitations</a></li>
         <li><a href="#new-this-year">New This Year</a></li>
       </ul>
+    <li><a href="#download-the-data">Download The Data</a></li>
     <li><a href="#contributors">Contributors</a></li>
     <li><a href="#contact-us">Contact Us</a></li>
     <li><a href="#citation">Citation</a></li>
@@ -118,6 +119,10 @@ Each year RACE COUNTS undergoes updates due to changes in data availability, how
 </details>
 
 <p align="right">(<a href="#RACE-COUNTS">back to top</a>)</p>
+
+
+## Download The Data
+You can download all of the indicator data we are able to share, in Excel format, from our repository [here](https://github.com/catalystcalifornia/RaceCounts/tree/main/Data).
 
 
 ## Contributors
