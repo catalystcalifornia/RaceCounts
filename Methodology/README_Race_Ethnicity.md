@@ -1,5 +1,5 @@
 # RACE COUNTS: Race & Ethnicity Methodology
-### October 2025
+### November 2025
 
 <base target="_blank">
 
@@ -58,7 +58,7 @@ There are instances where we use different terms, or definitions, due to conside
 
 *See [this document](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/SWANA_SoAsian_Ancestry.xlsx) for the list of ancestries included in Southwest Asian / North African and South Asian categories. We have also created this [SWANA Data Sources](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/SWANA_Data_Sources.docx) document that details how data definitions change by data source. 
 
-The specific definition of each race / ethnicity for each indicator can be found in the [County & State Indicator Methodology](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html) and the [City Indicator Methodology](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_City.html).
+The specific definition of each race / ethnicity for each indicator can be found in the [County & State Indicator Methodology](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html), the [City Indicator Methodology](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_City.html), and the ]State Legislative District Indicator Methodology](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_Leg_District.html).
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
