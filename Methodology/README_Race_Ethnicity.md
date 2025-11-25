@@ -1,5 +1,5 @@
 # RACE COUNTS: Race & Ethnicity Methodology
-### October 2024
+### October 2025
 
 <base target="_blank">
 
@@ -52,13 +52,13 @@ We use one simplified set of terms for the RACE COUNTS website and publications,
 | Southwest Asian / North African* | Alone or in combination with another race  | Includes |
 | White | Alone | Excludes |
 | Another Race | Alone | Excludes |
-| Multiracial | Alone or in combination with another race  | Excludes |
+| Multiracial | Combination of two or more races  | Excludes |
 
 There are instances where we use different terms, or definitions, due to considerations like the preferences of our partners on a specific project or data considerations.
 
-*See [this document](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/SWANA_SoAsian_Ancestry.xlsx) for the list of ancestries included in Southwest Asian / North African and South Asian categories.
+*See [this document](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/SWANA_SoAsian_Ancestry.xlsx) for the list of ancestries included in Southwest Asian / North African and South Asian categories. We have also created this [SWANA Data Sources](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/SWANA_Data_Sources.docx) document that details how data definitions change by data source. 
 
-The specific definition of each race / ethnicity for each indicator can be found in the [Indicator Methodology documents](https://github.com/catalystcalifornia/RaceCounts/tree/main/Methodology).
+The specific definition of each race / ethnicity for each indicator can be found in the [County & State Indicator Methodology](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html) and the [City Indicator Methodology](https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_City.html).
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -78,13 +78,13 @@ Examples:
 
 * Other datasets, such as American Community Survey Public Use Microdata (PUMS) include rich detail allowing us to calculate statistics for our standard RACE COUNTS race/ethnicity groupings.
 
-Reliability of data is often low for groups that have smaller populations such as American Indian / Alaska Natives due to data collectors having inadequate sample sizes. As a result, we do our best to strike a balance between including data for as many groups as possible, while also only presenting statistics that we are confident are strong enough for advocacy and policymaking. At times this may mean that we suppress data for one or more groups.
+Reliability of data is often low for groups that have smaller populations such as American Indian / Alaska Natives due to data collectors having inadequate sample sizes. As a result, we do our best to strike a balance between including data for as many groups as possible, while also only presenting statistics that we are confident are strong enough for advocacy and policymaking. At times, this may mean that we suppress data for one or more groups.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
 ## Race Pages on RACECOUNTS Website
-We currently have Race pages for Asian, American Indian / Alaska Native, Black, Latinx, and Native Hawaiian / Pacific Islander Californians on the website. These groups have data for most RACE COUNTS indicators for many places. We do not have pages for other groups including Southwest Asian / North African, Another Race, Multiracial, Filipinx and more. The Another Race and Multiracial groups can be hard to define and often include people with very different lived experiences, making it less meaningful to compare across indicators. Additional groups with unique experiences, such as Filipinx Californians or those with origins in the Middle East, Southwest Asia and North Africa (MENA or SWANA) are not represented on a race page due to data availability issues. At the same time, we are always working to expand our methodologies and include data for some of the groups without Race pages on the Place and Issue pages on the website.
+We currently have Race pages for Asian, American Indian / Alaska Native, Black, Latinx, Native Hawaiian / Pacific Islander, and SWANA Californians on the website. These groups have data for many RACE COUNTS indicators for many places. We do not have pages for other groups including Another Race, Multiracial, Filipinx and more. The Another Race and Multiracial groups can be hard to define and often include people with very different lived experiences, making it less meaningful to compare across indicators. Additional groups with unique experiences, such as Filipinx Californians, are not represented on a race page due to data availability issues. At the same time, we are always working to expand our methodologies and include data for some of the groups without Race pages on the Place and Issue pages on the website.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
