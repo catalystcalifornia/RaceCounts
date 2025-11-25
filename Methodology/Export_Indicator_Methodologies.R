@@ -24,7 +24,7 @@ con <- connect_to_db("racecounts")
 #### UPDATE VARIABLES EACH YEAR ####
 curr_yr <- '2025'       # RC release year
 curr_schema <- 'v7'     # RC postgres db schema
-date <- 'October 2025'  # RC data release date
+date <- 'November 2025'  # RC data release date
 
 
 #### Prep Methodology: All Geolevels ####
