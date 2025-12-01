@@ -297,7 +297,7 @@ metadata <- metadata[order(metadata$issue, metadata$indicator), ]
 list_leg <- list("Assembly" = df_assembly, "Senate" = df_senate, "Metadata" = metadata)
 
 # Export to Excel
-write_xlsx(list_leg, ".\\Data\\rc_leg_data_.xlsx")
+write_xlsx(list_leg, ".\\Data\\rc_leg_data.xlsx")
 
 
 #close connection
