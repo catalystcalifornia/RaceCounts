@@ -22,14 +22,14 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
 
 # Set Source for Index Functions script -----------------------------------
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Index_Functions.R")
+source("./Functions/RC_Index_Functions.R")
 
 # remove exponentiation
 options(scipen = 100) 
 
 # udpate each yr
-rc_yr <- '2024'
-rc_schema <- 'v6'
+rc_yr <- '2025'
+rc_schema <- 'v7'
 
 # Add indicators and arei_multigeo_list ------------------------------------------------------
 ####################### ADD state DATA #####################################
