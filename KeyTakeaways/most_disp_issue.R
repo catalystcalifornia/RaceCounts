@@ -1,4 +1,5 @@
 #### Most disparate issue area and indicator ####
+## This script identifies the most disparate issue, most disparate indicators, and most disparate indicators within each issue.
 
 #install packages if not already installed
 packages <- c("tidyverse","RPostgreSQL","sf","data.table","usethis")  
