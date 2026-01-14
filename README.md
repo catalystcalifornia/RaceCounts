@@ -21,12 +21,14 @@
         <li><a href="#measuring-outcomes,-impact-&-racial-disparity">Measuring Outcomes, Impact & Disparity</a></li>
         <li><a href="#summarizing-racial-disparity">Summarizing Racial Disparity</a></li>
         <li><a href="#key-limitations">Key Limitations</a></li>
+        <li><a href="#new-this-year">New This Year</a></li>
       </ul>
+    <li><a href="#download-the-data">Download The Data</a></li>
     <li><a href="#contributors">Contributors</a></li>
     <li><a href="#contact-us">Contact Us</a></li>
     <li><a href="#citation">Citation</a></li>
     <li><a href="#license">License</a></li>
-    <li><a href="#race-counts-partners">RACE COUNTS Partners</a></li>
+    <li><a href="#race-counts-partners">RACE COUNTS Key Partners</a></li>
   </ol>
 </details>
 
@@ -34,8 +36,6 @@
 ## About The Project
 
 The website [RACECOUNTS.org](https://www.racecounts.org?target=_blank) is one part of the larger RACE COUNTS initiative created by [Catalyst California](https://www.catalystcalifornia.org/) (formerly Advancement Project California) and partners. At Catalyst California, we strategize with community partners to identify funding, services and opportunities in our public systems that can be redistributed for more just outcomes for all. Our goal is to promote racial equity and build a foundation so that every Californian may thrive. The RACE COUNTS website includes an analysis of racial disparity, overall outcomes, and impact based on population size. This repo is meant to make the methods we use more transparent and duplicable. The repo is a work in progress and we will continue to add more documentation around indicators, indexes, and more as we continue to update the website.
-
-<p align="right">(<a href="#top">back to top</a>)</p>
 
 
 # About The Data
@@ -55,15 +55,17 @@ The following links contain detailed information about our indicator methodology
 
 The following links contain detailed information about our composite and issue area index methodologies. For each index, we provide our methodology including calculations and data screening process.
 
-[RACE COUNTS: Index Methodology for County Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_County.pdf) <br>
-[RACE COUNTS: Index Methodology for City Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_City.pdf) <br>
-[RACE COUNTS: Index Methodology for Legislative District Data](https://catalystcalifornia.github.io/RaceCounts/Methodology/IndexMethodology_Leg_District.pdf) <br>
+[RACE COUNTS: Index Methodology for County Data](/Methodology/IndexMethodology_County.pdf) <br>
+[RACE COUNTS: Index Methodology for City Data](/Methodology/IndexMethodology_City.pdf) <br>
+[RACE COUNTS: Index Methodology for Legislative District Data](/Methodology/IndexMethodology_Leg_District.pdf) <br>
 
 The following link contains detailed information about how we think about race/ethnicity and the standard definitions and labels we use when possible.
 
-[RACE COUNTS: Race & Ethnicity Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md) <br>
+[RACE COUNTS: Race & Ethnicity Methodology](/Methodology/README_Race_Ethnicity.md) <br>
 
-<!--[RACE COUNTS: Key Takeaways Methodology (2023)](https://github.com/catalystcalifornia/RaceCounts/blob/main/KeyTakeaways/README_Key_Takeaways.md) <br>-->
+<p align="right">(<a href="#RACE-COUNTS">back to top</a>)</p>
+
+<!--[RACE COUNTS: Key Takeaways Methodology (2023)](/KeyTakeaways/README_Key_Takeaways.md) <br>-->
 
 ## Measuring Outcomes, Impact & Racial Disparity
 Measuring outcomes and impact are straightforward. An outcome is the rate for the total population on an indicator, across an issue, or across all issues. For example, when we compare outcomes in high school graduation rates between Los Angeles and Orange counties, we are comparing their overall graduation rates. Impact is the size of the total population. Following this example, Los Angeles has a population of nearly 10 million people, more than three times the size of Orange, with a population of nearly 3.1 million people. All else being equal, expected impacts of disparities are thus expected to be larger in Los Angeles than Orange county based on population size.
@@ -90,9 +92,37 @@ Second, RACE COUNTS primarily includes data at city, county, and state levels. T
 
 Finally, while RACE COUNTS is the most comprehensive compilation of data about racial equity by county in California, clear weaknesses in available data are evident. Data availability in the Democracy issue was particularly challenging for less populous places. The availability of data by race at sub-state levels was challenging across the board, and we created weighted averages to address this issue in some cases such as Lack of Greenspace. 
 
-For more, please see our [RACE COUNTS: Race & Ethnicity Methodology](https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md).
+For more, please see our [RACE COUNTS: Race & Ethnicity Methodology](/Methodology/README_Race_Ethnicity.md).
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+## New This Year
+Each year RACE COUNTS undergoes updates due to changes in data availability, how our sources collect data, and upgrades to our methodologies. Below is a summary of the changes for this year's RACE COUNTS release.
+
+<details>
+  <summary>Methodology-Related Changes</summary>
+     <ul>
+        <li>Working definition of Southwest Asian / North African: We expanded to include the following Census Ancestry responses: Amazigh, Azerbaijan, Copt, Djiboutian, Levantine, Mauritanian, Somali, Southwest Asian or North African, SWANA, West Asian, and Middle Eastern or North African Responses, not classified elsewhere. See our RACE COUNTS: Race & Ethnicity Methodology for more information.</li>
+        <li>Denied Mortgages, Drinking Water Contaminants, Eviction, Foreclosure, Proximity to Hazards, Subprime Mortgages, and Toxic Releases indicators: In 2025, we converted the census tract-based data from 2010 vintage tracts to 2020 vintage tracts before calculating weighted averages by race/ethnicity. This resulted in minor changes to the results.</li>
+        <li>Census Participation indicator: In 2025, we used householders not population as the denominator for rate calculations, as surveys are collected for households not individuals.</li>
+        <li>Low Birthweight indicator: In 2025, we calculated rates for American Indian / Alaska Native alone or in combination with another race, including Latinx and non-Latinx. We used the same method for Native Hawaiian / Pacific Islander rates.</li>
+        <li>Census Public Use Microdata Sample (PUMS) indicators, including Connected Youth, Living Wage, Employment as Officials & Managers, and Low-Quality Housing: In 2025, we used a population-weighted crosswalk from Geocorr 2022 to assign PUMAs to counties and legislative districts, rather than a crosswalk based on area intersect used in the past.</li>
+        <li>Officer-Initiated Stops indicator: We now have two years of data for most agencies, so we reported the average annual stop rate and the multi-year total number of stops.</li>
+        <li>High School Graduation indicator: In 2025, we suppressed data for geography and race combinations that have fewer than 20 students in the cohort. We previously suppressed data when there were fewer than 20 graduates in a cohort.</li>
+        <li>Use of Force indicator: In 2025, we suppress data for geography and race combinations with fewer than 800 people. We previously suppressed data for populations smaller than 100.</li>
+    </ul>
+</details>
+
+<details>
+   <summary>Data-Related Changes</summary>
+      <ul>
+        <li>None this year.</li>
+      </ul>
+</details>
+
+<p align="right">(<a href="#RACE-COUNTS">back to top</a>)</p>
+
+
+## Download The Data
+You can download all of the indicator data we are able to share, in Excel format, from our repository [here](https://github.com/catalystcalifornia/RaceCounts/tree/main/Data).
 
 
 ## Contributors
@@ -104,8 +134,6 @@ For more, please see our [RACE COUNTS: Race & Ethnicity Methodology](https://git
 * [Jennifer Zhang, Research & Data Manager](https://github.com/jzhang514)
 * [Leila Forouzan, Senior Manager of Research & Data Analysis](https://github.com/lforouzan)
 * [Maria Khan, Senior Research & Data Analyst](https://github.com/mariatkhan)
-
-<p align="right">(<a href="#top">back to top</a>)</p>
 
 
 ## Contact Us
@@ -125,14 +153,12 @@ Catalyst California; RACE COUNTS, racecounts.org, [current year].
 
 [License](License.md)
 
-<p align="right">(<a href="#top">back to top</a>)</p>
 
-
-## RACE COUNTS Partners
+## RACE COUNTS Key Partners
 
 * [CALIFORNIA CALLS](https://www.cacalls.org/)
 * [USC Dornsife](https://dornsife.usc.edu/)
 * [PICO California](http://www.picocalifornia.org/)
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+<p align="right">(<a href="#RACE-COUNTS">back to top</a>)</p>
 
