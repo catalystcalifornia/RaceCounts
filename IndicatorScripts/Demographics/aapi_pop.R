@@ -1,6 +1,6 @@
 ## Disaggregated AAPI Pop for RC 2025 v7 ###
 #install packages if not already installed
-packages <- c("readr", "tidyr", "dplyr", "DBI", "RPostgreSQL", "tidycensus", "tidyverse", "stringr", "usethis")
+packages <- c("readr", "tidyr", "dplyr", "DBI", "RPostgres", "tidycensus", "tidyverse", "stringr", "usethis")
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
 if(length(install_packages) > 0) { 
@@ -30,15 +30,16 @@ rc_schema <- "v7"   # you MUST UPDATE each year
 schema = 'demographics'
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\QA_Sheet_AAPI_Pop.docx"
 
-# Create Table B02019 in Postgres db: Only run this section if the table has not been created yet
-# source("W:\\RDA Team\\R\\Github\\RDA Functions\\LF\\RDA-Functions\\acs_rda_shared_tables.R")
-# B02019 <- update_acs(curr_yr, 'B02019', "W://Project//RACE COUNTS//2025_v7//RC_Github//LF//RaceCounts//IndicatorScripts//Demographics/aapi_pop.R")
+# Only run this section if the table has not been created yet: Create Table B02018 / B02019 in Postgres db
+# source(".\\acs_rda_shared_tables.R")
+# B02019 <- update_acs(curr_yr, 'B02019', "W://Project//RACE COUNTS//2025_v7//RC_Github//LF//RaceCounts//IndicatorScripts//Demographics//aapi_pop.R")
+# B02018 <- update_acs(curr_yr, 'B02018', "W://Project//RACE COUNTS//2025_v7//RC_Github//LF//RaceCounts//IndicatorScripts//Demographics//aapi_pop.R")
 
 # Get AA and NHPI Pop variables --------
 acs_var <- load_variables(curr_yr, 'acs5')
 
 clean_vars <- function(table_name, region_name){
-  x <- acs_var %>% filter(grepl({{table_name}}, name))                           # get variables
+  x <- acs_var %>% filter(grepl({{table_name}}, name))                       # get variables
   x$name <- tolower(paste0(x$name, "e"))                                     # format variable names to match postgres table later
   x$label <- gsub("Estimate!!Total Groups Tallied:!!", "", x$label)          # clean up labels
   x <- x %>% separate(label, c("region", "subgroup"), "!!")
