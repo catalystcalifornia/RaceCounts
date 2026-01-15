@@ -24,11 +24,10 @@ options(scipen = 100) # disable scientific notation
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 source("./Functions/pums_fx.R")  # MOSAIC-specific PUMS fx
-source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/PUMS_Functions_new.R")    # generic PUMS fx
 
 
 # update QA doc filepath
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Living_Wage_AAPI.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Living_Wage_ANHPI.docx"
 
 # define variables used throughout - update each year
 curr_yr <- 2023 
