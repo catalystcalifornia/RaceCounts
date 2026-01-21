@@ -1,7 +1,7 @@
 ### Perception of Safety RC v7 ### 
 
 #install packages if not already installed
-packages <- c("tidyr", "dplyr", "sf", "tidycensus", "tidyverse", "usethis", "openxlsx", "RPostgreSQL")  
+packages <- c("tidyr", "dplyr", "sf", "tidycensus", "tidyverse", "usethis", "openxlsx", "RPostgres")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -23,7 +23,7 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
 # define variables used in several places that must be updated each year
-curr_yr <- "2011_23"  # must keep same format
+curr_yr <- "2017_24"  # must keep same format
 dwnld_url <- "https://ask.chis.ucla.edu/"
 rc_schema <- "v7"
 yr <- "2025"
@@ -32,7 +32,7 @@ setwd("W:/Data/Health/CHIS/")
 
 
 #get data for Total population
-total_df = read.xlsx(paste0("Perception_of_Safety/",curr_yr,"/Safety_total.xlsx"), sheet=1, startRow=5, rows=c(5:8))
+total_df = read.xlsx(paste0("Perception_of_Safety/2011_23/Safety_total.xlsx"), sheet=1, startRow=5, rows=c(5:8))
 
 #format row headers
 total_df_rownames <- c("measure","total_yes", "total_no")
@@ -40,7 +40,7 @@ total_df[1:3,1] <- total_df_rownames[1:3]
 
 
 #get data for Hispanic/non-Hispanic races, excluding AIAN, NHPI, and SWANA
-races_df = read.xlsx(paste0("Perception_of_Safety/",curr_yr,"/Safety_race.xlsx"), sheet=1, startRow=8, rows=c(8,10:12,14,16:19,21,23))
+races_df = read.xlsx(paste0("Perception_of_Safety/2011_23/Safety_race.xlsx"), sheet=1, startRow=8, rows=c(8,10:12,14,16:19,21,23))
 
 #format row headers
 races_rownames <- c("latino_yes", "nh_white_yes", "nh_black_yes", "nh_asian_yes", "nh_twoormor_yes", 
@@ -49,7 +49,7 @@ races_df[1:10,1] <- races_rownames[1:10]
 
 
 #get data for ALL-AIAN
-aian_df = read.xlsx(paste0("Perception_of_Safety/",curr_yr,"/Safety_aian.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
+aian_df = read.xlsx(paste0("Perception_of_Safety/2011_23/Safety_aian.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
 
 #format row headers
 aian_rownames <- c("aian_yes", "aian_no")
@@ -57,7 +57,7 @@ aian_df[1:2,1] <- aian_rownames[1:2]
 
 
 #get data for ALL-NHPI
-pacisl_df = read.xlsx(paste0("Perception_of_Safety/",curr_yr,"/Safety_nhpi.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
+pacisl_df = read.xlsx(paste0("Perception_of_Safety/2011_23/Safety_nhpi.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
 
 #format row headers
 pacisl_rownames <- c("pacisl_yes", "pacisl_no")
@@ -65,18 +65,29 @@ pacisl_df[1:2,1] <- pacisl_rownames[1:2]
 
 
 #get data for ALL-SWANA
-swana_df = read.xlsx(paste0("Perception_of_Safety/",curr_yr,"/Safety_mena.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
+swana_df = read.xlsx(paste0("Perception_of_Safety/2011_23/Safety_mena.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
 
 #format row headers
 swana_rownames <- c("swana_yes", "swana_no")
 swana_df[1:2,1] <- swana_rownames[1:2]
 
 
+#get data for Asian subgroups
+asian_df = read.xlsx(paste0("Perception_of_Safety/",curr_yr,"/AsianEthnicityGroups.xlsx"), sheet=1, startRow=8, rows=c(8,10:23))
+
+#format row headers
+asian_rownames <- c("chinese_yes", "japanese_yes", "korean_yes", "filipino_yes", "south_asian_yes", "vietnamese_yes", "other_asian_yes", 
+                 "chinese_no", "japanese_no", "korean_no", "filipino_no", "south_asian_no", "vietnamese_no", "other_asian_no")
+asian_df[1:14,1] <- asian_rownames[1:14]
+
+#asian column names come in different for some reason so updating
+names(asian_df) <- names(aian_df)
+
 #combine
-df <- rbind(total_df, races_df, aian_df, pacisl_df, swana_df)
+df <- rbind(total_df, races_df, aian_df, pacisl_df, swana_df, asian_df)
 
 #run the rest of CHIS prep including formatting column names, screen using flags, adding geonames, etc.
-source("W:/Project/RACE COUNTS/Functions/CHIS_Functions.R")
+source("W:/Project/RACE COUNTS/2025_v7/RC_Github/CR/Functions/CHIS_Functions.R")
 df_subset <- prep_chis(df)
 View(df_subset)
 
@@ -123,7 +134,7 @@ indicator <- paste0("Created on ", Sys.Date(), ". Adults who Feel Safe in Their 
 source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url)
 
 #send tables to postgres
-#to_postgres(county_table,state_table)
+#to_postgres(county_table,state_table, "mosaic")
 
 dbDisconnect(con)
 
