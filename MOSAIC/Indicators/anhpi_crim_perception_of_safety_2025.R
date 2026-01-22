@@ -98,6 +98,7 @@ d <- df_subset
 source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
+d$geolevel = case_when(d$geoname == "California" ~ "state", .default = "county")
 
 d <- count_values(d) #calculate number of "_rate" values
 d <- calc_best(d) #calculate best rates -- be sure to update $asbest line of code accordingly before running this function.
@@ -128,13 +129,13 @@ county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
 ###info for postgres tables - automatically updates###
-county_table_name <- paste0("arei_crim_perception_of_safety_county_",yr)
-state_table_name <- paste0("arei_crim_perception_of_safety_state_",yr)
+county_table_name <- paste0("asian_crim_perception_of_safety_county_",yr)
+state_table_name <- paste0("asian_crim_perception_of_safety_state_",yr)
 indicator <- paste0("Created on ", Sys.Date(), ". Adults who Feel Safe in Their Neighborhood (%)")
 source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url)
 
 #send tables to postgres
-#to_postgres(county_table,state_table, "mosaic")
+to_postgres(county_table,state_table, conn = "mosaic")
 
 dbDisconnect(con)
 

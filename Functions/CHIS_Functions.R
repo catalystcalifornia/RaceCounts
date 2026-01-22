@@ -127,6 +127,13 @@ prep_chis <- function(x) {
                     aian_rate_flag = ifelse(grepl("\\*", aian_rate), 1,0),
                     pacisl_rate_flag = ifelse(grepl("\\*", pacisl_rate), 1,0),
                     swana_rate_flag = ifelse(grepl("\\*", swana_rate), 1,0),
+                    chinese_rate_flag = ifelse(grepl("\\*", chinese_rate), 1,0),
+                    japanese_rate_flag = ifelse(grepl("\\*", japanese_rate), 1,0),
+                    korean_rate_flag = ifelse(grepl("\\*", korean_rate), 1,0),
+                    filipino_rate_flag = ifelse(grepl("\\*", filipino_rate), 1,0),
+                    south_asian_rate_flag = ifelse(grepl("\\*", south_asian_rate), 1,0),
+                    vietnamese_rate_flag = ifelse(grepl("\\*", vietnamese_rate), 1,0),
+                    other_asian_rate_flag = ifelse(grepl("\\*", other_asian_rate), 1,0),
                     
                     total_no_rate_flag = ifelse(grepl("\\*", total_no_rate), 1,0),
                     latino_no_rate_flag = ifelse(grepl("\\*", latino_no_rate), 1,0),
@@ -136,7 +143,14 @@ prep_chis <- function(x) {
                     nh_twoormor_no_rate_flag = ifelse(grepl("\\*", nh_twoormor_no_rate), 1,0),
                     aian_no_rate_flag = ifelse(grepl("\\*", aian_no_rate), 1,0),
                     pacisl_no_rate_flag = ifelse(grepl("\\*", pacisl_no_rate), 1,0),
-                    swana_no_rate_flag = ifelse(grepl("\\*", swana_no_rate), 1,0)
+                    swana_no_rate_flag = ifelse(grepl("\\*", swana_no_rate), 1,0),
+                    chinese_no_rate_flag = ifelse(grepl("\\*", chinese_no_rate), 1,0),
+                    japanese_no_rate_flag = ifelse(grepl("\\*", japanese_no_rate), 1,0),
+                    korean_no_rate_flag = ifelse(grepl("\\*", korean_no_rate), 1,0),
+                    filipino_no_rate_flag = ifelse(grepl("\\*", filipino_no_rate), 1,0),
+                    south_asian_no_rate_flag = ifelse(grepl("\\*", south_asian_no_rate), 1,0),
+                    vietnamese_no_rate_flag = ifelse(grepl("\\*", vietnamese_no_rate), 1,0),
+                    other_asian_no_rate_flag = ifelse(grepl("\\*", other_asian_no_rate), 1,0)
                     
   )
   
@@ -160,6 +174,20 @@ prep_chis <- function(x) {
                     pacisl_no_rate = ifelse (pacisl_rate_flag == 1 | pacisl_no_rate_flag == 1, "NA", pacisl_no_rate),
                     swana_rate = ifelse (swana_rate_flag == 1 | swana_no_rate_flag == 1, "NA", swana_rate),
                     swana_no_rate = ifelse (swana_rate_flag == 1 | swana_no_rate_flag == 1, "NA", swana_no_rate),
+                    chinese_rate = ifelse (chinese_rate_flag == 1 | chinese_no_rate_flag == 1, "NA", chinese_rate),
+                    chinese_no_rate = ifelse (chinese_rate_flag == 1 | chinese_no_rate_flag == 1, "NA", chinese_no_rate),
+                    japanese_rate = ifelse (japanese_rate_flag == 1 | japanese_no_rate_flag == 1, "NA", japanese_rate),
+                    japanese_no_rate = ifelse (japanese_rate_flag == 1 | japanese_no_rate_flag == 1, "NA", japanese_no_rate),                   
+                    korean_rate = ifelse (korean_rate_flag == 1 | korean_no_rate_flag == 1, "NA", korean_rate),
+                    korean_no_rate = ifelse (korean_rate_flag == 1 | korean_no_rate_flag == 1, "NA", korean_no_rate),                    
+                    filipino_rate = ifelse (filipino_rate_flag == 1 | filipino_no_rate_flag == 1, "NA", filipino_rate),
+                    filipino_no_rate = ifelse (filipino_rate_flag == 1 | filipino_no_rate_flag == 1, "NA", filipino_no_rate),                  
+                    south_asian_rate = ifelse (south_asian_rate_flag == 1 | south_asian_no_rate_flag == 1, "NA", south_asian_rate),
+                    south_asian_no_rate = ifelse (south_asian_rate_flag == 1 | south_asian_no_rate_flag == 1, "NA", south_asian_no_rate),                   
+                    vietnamese_rate = ifelse (vietnamese_rate_flag == 1 | vietnamese_no_rate_flag == 1, "NA", vietnamese_rate),
+                    vietnamese_no_rate = ifelse (vietnamese_rate_flag == 1 | vietnamese_no_rate_flag == 1, "NA", vietnamese_no_rate),
+                    other_asian_rate = ifelse (other_asian_rate_flag == 1 | other_asian_no_rate_flag == 1, "NA", other_asian_rate),
+                    other_asian_no_rate = ifelse (other_asian_rate_flag == 1 | other_asian_no_rate_flag == 1, "NA", other_asian_no_rate),
  
                     total_raw = ifelse (total_rate_flag == 1 | total_no_rate_flag == 1, "NA", total_raw),
                     total_no_raw = ifelse (total_rate_flag == 1 | total_no_rate_flag == 1, "NA", total_no_raw),
@@ -178,7 +206,21 @@ prep_chis <- function(x) {
                     pacisl_raw = ifelse (pacisl_rate_flag == 1 | pacisl_no_rate_flag == 1, "NA", pacisl_raw),
                     pacisl_no_raw = ifelse (pacisl_rate_flag == 1 | pacisl_no_rate_flag == 1, "NA", pacisl_no_raw),
                     swana_raw = ifelse (swana_rate_flag == 1 | swana_no_rate_flag == 1, "NA", swana_raw),
-                    swana_no_raw = ifelse (swana_rate_flag == 1 | swana_no_rate_flag == 1, "NA", swana_no_raw)
+                    swana_no_raw = ifelse (swana_rate_flag == 1 | swana_no_rate_flag == 1, "NA", swana_no_raw),
+                    chinese_raw = ifelse (chinese_rate_flag == 1 | chinese_no_rate_flag == 1, "NA", chinese_raw),
+                    chinese_no_raw = ifelse (chinese_rate_flag == 1 | chinese_no_rate_flag == 1, "NA", chinese_no_raw),                    
+                    japanese_raw = ifelse (japanese_rate_flag == 1 | japanese_no_rate_flag == 1, "NA", japanese_raw),
+                    japanese_no_raw = ifelse (japanese_rate_flag == 1 | japanese_no_rate_flag == 1, "NA", japanese_no_raw),
+                    korean_raw = ifelse (korean_rate_flag == 1 | korean_no_rate_flag == 1, "NA", korean_raw),
+                    korean_no_raw = ifelse (korean_rate_flag == 1 | korean_no_rate_flag == 1, "NA", korean_no_raw),
+                    filipino_raw = ifelse (filipino_rate_flag == 1 | filipino_no_rate_flag == 1, "NA", filipino_raw),
+                    filipino_no_raw = ifelse (filipino_rate_flag == 1 | filipino_no_rate_flag == 1, "NA", filipino_no_raw),
+                    south_asian_raw = ifelse (south_asian_rate_flag == 1 | south_asian_no_rate_flag == 1, "NA", south_asian_raw),
+                    south_asian_no_raw = ifelse (south_asian_rate_flag == 1 | south_asian_no_rate_flag == 1, "NA", south_asian_no_raw),
+                    vietnamese_raw = ifelse (vietnamese_rate_flag == 1 | vietnamese_no_rate_flag == 1, "NA", vietnamese_raw),
+                    vietnamese_no_raw = ifelse (vietnamese_rate_flag == 1 | vietnamese_no_rate_flag == 1, "NA", vietnamese_no_raw),
+                    other_asian_raw = ifelse (other_asian_rate_flag == 1 | other_asian_no_rate_flag == 1, "NA", other_asian_raw),
+                    other_asian_no_raw = ifelse (other_asian_rate_flag == 1 | other_asian_no_rate_flag == 1, "NA", other_asian_no_raw)
                      
   )
   
@@ -187,9 +229,13 @@ prep_chis <- function(x) {
   
   #format numeric
   cols.num <- c("total_no_rate","latino_no_rate","nh_white_no_rate","nh_black_no_rate","nh_asian_no_rate","nh_twoormor_no_rate","aian_no_rate","pacisl_no_rate","swana_no_rate",
+                "chinese_no_rate", "japanese_no_rate", "korean_no_rate", "filipino_no_rate", "south_asian_no_rate", "vietnamese_no_rate", "other_asian_no_rate",
                 "total_rate","latino_rate","nh_white_rate","nh_black_rate","nh_asian_rate","nh_twoormor_rate","aian_rate","pacisl_rate","swana_rate",
+                "chinese_rate", "japanese_rate", "korean_rate", "filipino_rate", "south_asian_rate", "vietnamese_rate", "other_asian_rate",
                 "total_no_raw","latino_no_raw","nh_white_no_raw","nh_black_no_raw","nh_asian_no_raw","nh_twoormor_no_raw","aian_no_raw","pacisl_no_raw","swana_no_raw",
-                "total_raw","latino_raw","nh_white_raw","nh_black_raw","nh_asian_raw","nh_twoormor_raw","aian_raw","pacisl_raw","swana_raw")
+                "chinese_no_raw", "japanese_no_raw", "korean_no_raw", "filipino_no_raw", "south_asian_no_raw", "vietnamese_no_raw", "other_asian_no_raw",
+                "total_raw","latino_raw","nh_white_raw","nh_black_raw","nh_asian_raw","nh_twoormor_raw","aian_raw","pacisl_raw","swana_raw",
+                "chinese_raw", "japanese_raw", "korean_raw", "filipino_raw", "south_asian_raw", "vietnamese_raw", "other_asian_raw")
   df_wide[cols.num] <- sapply(df_wide[cols.num],as.numeric)
   
   
