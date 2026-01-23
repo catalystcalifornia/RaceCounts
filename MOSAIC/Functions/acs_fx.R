@@ -89,35 +89,54 @@ clean_data$geolevel <- case_when(                                # add geolevel 
 
   clean_data <- clean_data %>%
     select(where(~!all(is.na(.))))         # drop cols where all vals are NA, eg: X_EA and X_MA the annotation cols
-  # clean_data <- clean_data %>%             # drop 'E' if last character in colname that starts with 'B'
-  #   rename_at(vars(starts_with("B")), ~ str_remove(., paste0('B', "$")))
-  # clean_data <- clean_data %>%             # drop 'E' if last character in colname that starts with 'B'
-  #   rename_at(vars(ends_with("M")), ~ str_remove(., paste0('E', "$")))
-  # clean_data$race <- gsub('alone or in any combination', 'aoic', clean_data$POPGROUP_LABEL)
-  # clean_data$race <- gsub('alone', '', clean_data$race)
-  # clean_data$race <- tolower(clean_data$race)         # make lowercase
-  # clean_data$race <- gsub(', except taiwanese', '_ntaiw', clean_data$race)
-  # clean_data$race <- trimws(clean_data$race)          # remove trailing white spaces
-  # clean_data$race <- gsub(' ', '_', clean_data$race)  # replace spaces with underscores
-  # clean_data <- clean_data %>% rename(fips = GEO_ID) %>%  # rename old geoid
-  #   relocate(geoid, .before = fips)                      # make clean geoid first col
-  # 
-  # # convert to long format
-  # clean_data <- clean_data %>%
-  #   pivot_longer(cols = starts_with("B"),
-  #                names_to = "var",
-  #                values_to = "raw")
-                                            
+
+  # reformat clean data
+  df_wide <- clean_data %>%
+    pivot_longer(
+      cols = starts_with("B25003"),
+      names_to = "orig_col",
+      values_to = "value"
+    ) %>%
+    mutate(
+      suffix = str_remove(orig_col, "^B25003_?"),
+      new_col = paste0("B25003_", POPGROUP, "_", suffix)
+    ) %>%
+    select(NAME, geoid, geolevel, new_col, value) %>%
+    pivot_wider(
+      names_from = new_col,
+      values_from = value
+    )
+  
+  colnames(df_wide) <- tolower(colnames(df_wide))
+  
+  # prep metadata
+  metadata <- clean_data %>%
+    pivot_longer(cols = starts_with("B"),
+                 names_to = "var",
+                 values_to = "raw")
+  
+  metadata <- metadata %>%
+    select(POPGROUP, POPGROUP_LABEL, var) %>%
+    unique() %>%
+    mutate(var_suff = sub(".*_", "", var),
+           generic_var = gsub(("E|M"), "", var),
+           new_var = tolower(paste0(table_code, "_", POPGROUP, "_", var_suff)))
+                                              
   # load variable names
   v21 <- load_variables(2021, "acs5", cache = TRUE)
   table_vars <- v21 %>% filter(grepl(table_name, name))
   
-  # join variable names to data
-  join_data <- clean_data %>%
-    left_join(table_vars %>% select(name, label), by = c('var' = 'name'))
-  colnames(join_data) <- tolower(colnames(join_data))
+  # join variable names to metadata
+  metadata <- metadata %>% 
+    left_join(table_vars %>% select(name, label), by = c("generic_var" = "name")) %>%
+    mutate(new_label = paste0(label, " ", POPGROUP_LABEL)) %>%
+    mutate(new_label = case_when(
+      grepl("M", var) == TRUE ~ gsub("Estimate", "MOE", new_label),
+      .default = new_label))
+
+data_list <- list(df_wide, metadata)
   
-return(join_data)
+return(data_list)
 }
   
 

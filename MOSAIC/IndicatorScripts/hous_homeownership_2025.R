@@ -37,21 +37,21 @@ schema = 'housing'
 table_code = 'b25003'    # Select relevant indicator table name
 
 
-# # CREATE RAW DATA TABLES (LONG FORMAT) -------------------------------------------------------------------------
-# # Only run this section if the raw data tables have not been created yet
-# race <- "asian"
-# asian_df <- get_detailed_race(table_code, race, 2021)
-# # check race col names which are created in fx
-# unique(asian_df$race)
-# 
-# race <- "nhpi"
-# nhpi_df <- get_detailed_race(table_code, race, 2021)
-# # check race col names which are created in fx
-# unique(nhpi_df$race)
-# 
-# # Send table to postgres
-# send_to_mosaic(table_code, asian_df, rc_schema)
-# send_to_mosaic(table_code, nhpi_df, rc_schema)
+# CREATE RAW DATA TABLES (LONG FORMAT) -------------------------------------------------------------------------
+# Only run this section if the raw data tables have not been created yet
+race <- "asian"
+asian_list <- get_detailed_race(table_code, race, 2021)
+# check race col names which are created in fx
+unique(asian_list[[2]]$POPGROUP_LABEL)
+
+race <- "nhpi"
+nhpi_list <- get_detailed_race(table_code, race, 2021)
+# check race col names which are created in fx
+unique(nhpi_list[[2]]$POPGROUP_LABEL)
+
+# Send table to postgres
+send_to_mosaic(table_code, asian_list[[1]], rc_schema)
+send_to_mosaic(table_code, nhpi_df, rc_schema)
 
 
 # IMPORT RAW DATA FROM POSTGRES -------------------------------------------
@@ -63,14 +63,7 @@ race <- "nhpi"
 nhpi_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.%s_acs_5yr_%s_multigeo_%s",
                                      rc_schema, tolower(race), tolower(table_code), curr_yr))
 
-
-df_wide_multigeo <- dbGetQuery(con, paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state', 'sldu', 'sldl')")) # import rda_shared_data table
-df_wide_multigeo$name <- str_remove(df_wide_multigeo$name,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
-df_wide_multigeo$name <- gsub("; California", "", df_wide_multigeo$name)
-
 ############## Pre-RC CALCS ##############
-source(".\\Functions\\rdashared_functions.R")
-
 df <- prep_acs(df_wide_multigeo, table_code, cv_threshold, pop_threshold)
 
 df_screened <- dplyr::select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("003m"), -ends_with("003e"), -ends_with("_cv"))
