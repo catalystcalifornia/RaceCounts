@@ -109,6 +109,13 @@ clean_data$geolevel <- case_when(                                # add geolevel 
   
   colnames(df_wide) <- tolower(colnames(df_wide))
   
+  source(".//Functions//rdashared_functions.R")
+  df_wide <- df_wide %>% 
+    mutate(geoname = name) %>%
+    clean_geo_names() %>%
+    mutate(name = geoname) %>%
+    select(-geoname)
+
   # prep metadata
   metadata <- clean_data %>%
     pivot_longer(cols = starts_with("B"),
@@ -133,17 +140,29 @@ clean_data$geolevel <- case_when(                                # add geolevel 
     mutate(new_label = case_when(
       grepl("M", var) == TRUE ~ gsub("Estimate", "MOE", new_label),
       .default = new_label))
-
-data_list <- list(df_wide, metadata)
   
+  metadata_ <- metadata %>%
+    select(new_var, new_label) %>%
+    arrange(new_var)
+  
+  new_rows <- data.frame(
+    new_var = c("name", "geoid", "geolevel"),
+    new_label = c("","fips code","city, county, state"))
+  
+  metadata_final <- rbind(new_rows, metadata_)
+
+data_list <- list(df_wide, metadata_final)
+
+names(data_list) <- c(paste0(race,"_df"), "metadata")
+
 return(data_list)
 }
   
 
 ### Send raw detailed tables to postgres - info for postgres tables automatically updates ###
-send_to_mosaic <- function(acs_table, df, table_schema){
+send_to_mosaic <- function(acs_table, df_list, table_schema){
   
-  name_as_string <- as_name(enquo(df))
+  name_as_string <- names(df_list)[1]
   
   table_name <- sprintf("%s_acs_5yr_%s_multigeo_%s",
                         str_replace(name_as_string, "_df*.", ""), tolower(table_code), curr_yr)
@@ -152,16 +171,16 @@ send_to_mosaic <- function(acs_table, df, table_schema){
   # generate table comment
   indicator <-  paste0("Disaggregated ", str_replace(name_as_string, "_df*.", ""), " detailed race alone and alone or in combination with another race by City, County, and State")       
   source <- paste0("ACS ", curr_yr - 4, "-", curr_yr, ", Table ", toupper(acs_table)) 
-  column_names <- colnames(df)
   print(indicator)
   print(source)
   
-  column_comments <- c()
+  column_names <- df_list[[2]]$new_var
+  column_comments <- df_list[[2]]$new_label
   
   # send table to postgres
   dbWriteTable(con, 
                Id(schema = table_schema, table = table_name), 
-               df, overwrite = FALSE)
+               df_list[[1]], overwrite = FALSE)
   
   # comment on table and columns
   add_table_comments(con, table_schema, table_name, indicator, source, qa_filepath, column_names, column_comments)

@@ -42,16 +42,16 @@ table_code = 'b25003'    # Select relevant indicator table name
 race <- "asian"
 asian_list <- get_detailed_race(table_code, race, 2021)
 # check race col names which are created in fx
-unique(asian_list[[2]]$POPGROUP_LABEL)
+#unique(asian_list[[2]]$POPGROUP_LABEL)
 
 race <- "nhpi"
 nhpi_list <- get_detailed_race(table_code, race, 2021)
 # check race col names which are created in fx
-unique(nhpi_list[[2]]$POPGROUP_LABEL)
+#unique(nhpi_list[[2]]$POPGROUP_LABEL)
 
 # Send table to postgres
-send_to_mosaic(table_code, asian_list[[1]], rc_schema)
-send_to_mosaic(table_code, nhpi_df, rc_schema)
+send_to_mosaic(table_code, asian_list, rc_schema)
+send_to_mosaic(table_code, nhpi_list, rc_schema)
 
 
 # IMPORT RAW DATA FROM POSTGRES -------------------------------------------
