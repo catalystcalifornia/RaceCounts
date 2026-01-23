@@ -1,6 +1,6 @@
 ## Disaggregated Asian/NHPI Homeownership B25003 ###
 #install packages if not already installed
-packages <- c("readr", "tidyr", "dplyr", "DBI", "RPostgres", "tidycensus", "tidyverse", "stringr", "usethis", "httr", "jsonlite", "janitor")
+packages <- c("readr", "tidyr", "dplyr", "DBI", "RPostgres", "tidycensus", "tidyverse", "stringr", "usethis", "httr", "jsonlite", "rlang")
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
 if(length(install_packages) > 0) { 
@@ -26,26 +26,43 @@ con <- connect_to_db("mosaic")
 ############## UPDATE VARIABLES ##############
 curr_yr = 2021      # Always 2021 for MOSAIC 2026 project
 rc_yr = '2025'      # you MUST UPDATE each year
-rc_schema <- "v7"   # you MUST UPDATE each year
+rc_schema ="v7"     # you MUST UPDATE each year
 schema = 'v7'
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Homeownership - MOSAIC.docx"
 
-### Variables that do not need updates ###
 cv_threshold = 40         
 pop_threshold = 100       
 asbest = 'max'            
 schema = 'housing'
-table_code = 'b25003'
+table_code = 'b25003'    # Select relevant indicator table name
 
 
-# CREATE RAW DATA TABLES -------------------------------------------------------------------------
-asian_df <- get_detailed_data("b25003", "asian", 2021)
-nhpi_api_call <- write_api_call("b25003", "nhpi", 2021)
+# # CREATE RAW DATA TABLES (LONG FORMAT) -------------------------------------------------------------------------
+# # Only run this section if the raw data tables have not been created yet
+# race <- "asian"
+# asian_df <- get_detailed_race(table_code, race, 2021)
+# # check race col names which are created in fx
+# unique(asian_df$race)
+# 
+# race <- "nhpi"
+# nhpi_df <- get_detailed_race(table_code, race, 2021)
+# # check race col names which are created in fx
+# unique(nhpi_df$race)
+# 
+# # Send table to postgres
+# send_to_mosaic(table_code, asian_df, rc_schema)
+# send_to_mosaic(table_code, nhpi_df, rc_schema)
 
 
+# IMPORT RAW DATA FROM POSTGRES -------------------------------------------
+race = 'asian'
+asian_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.%s_acs_5yr_%s_multigeo_%s",
+                                     rc_schema, tolower(race), tolower(table_code), curr_yr))
 
+race <- "nhpi"
+nhpi_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.%s_acs_5yr_%s_multigeo_%s",
+                                     rc_schema, tolower(race), tolower(table_code), curr_yr))
 
-# Only run this section if the raw data tables have not been created yet: Create Table B25003 Detailed Asian / B25003 Detailed NHPI in Postgres db
 
 df_wide_multigeo <- dbGetQuery(con, paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state', 'sldu', 'sldl')")) # import rda_shared_data table
 df_wide_multigeo$name <- str_remove(df_wide_multigeo$name,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
