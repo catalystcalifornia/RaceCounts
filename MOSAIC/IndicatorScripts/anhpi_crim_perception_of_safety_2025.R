@@ -27,6 +27,7 @@ curr_yr <- "2017_24"  # must keep same format
 dwnld_url <- "https://ask.chis.ucla.edu/"
 rc_schema <- "v7"
 yr <- "2025"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Crime and Justice\\QA_Sheet_Perception_of_Safety - MOSAIC.docx"
 
 setwd("W:/Data/Health/CHIS/")
 
@@ -133,7 +134,7 @@ View(county_table)
 county_table_name <- paste0("asian_crim_perception_of_safety_county_",yr)
 state_table_name <- paste0("asian_crim_perception_of_safety_state_",yr)
 indicator <- paste0("Created on ", Sys.Date(), ". Adults who Feel Safe in Their Neighborhood (%)")
-source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url)
+source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url, ". QA doc: ", qa_filepath)
 
 
 #send tables to postgres
