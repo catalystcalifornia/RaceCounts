@@ -325,7 +325,7 @@ calc_ranks <- function(x) {
 
 
 #####send city, county, state and leg district tables to postgres#####
-to_postgres <- function(x,y, conn) {
+to_postgres <- function(x,y, conn = 'racecounts') {
                       # create connection for rda database
                       source("W:\\RDA Team\\R\\credentials_source.R")
                       con <- connect_to_db(conn)   # connect to user-defined db or racecounts if none specified
