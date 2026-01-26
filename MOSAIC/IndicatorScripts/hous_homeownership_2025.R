@@ -1,4 +1,5 @@
-## Disaggregated Asian/NHPI Homeownership B25003 ###
+## MOSAIC: Disaggregated Asian/NHPI Homeownership B25003 ###
+
 #install packages if not already installed
 packages <- c("readr", "tidyr", "dplyr", "DBI", "RPostgres", "tidycensus", "tidyverse", "stringr", "usethis", "httr", "jsonlite", "rlang")
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
@@ -37,21 +38,21 @@ schema = 'housing'
 table_code = 'b25003'    # Select relevant indicator table name
 
 
-# CREATE RAW DATA TABLES (LONG FORMAT) -------------------------------------------------------------------------
-# Only run this section if the raw data tables have not been created yet
-race <- "asian"
-asian_list <- get_detailed_race(table_code, race, 2021)
-# check race col names which are created in fx
-#unique(asian_list[[2]]$POPGROUP_LABEL)
-
-race <- "nhpi"
-nhpi_list <- get_detailed_race(table_code, race, 2021)
-# check race col names which are created in fx
-#unique(nhpi_list[[2]]$POPGROUP_LABEL)
-
-# Send table to postgres
-send_to_mosaic(table_code, asian_list, rc_schema)
-send_to_mosaic(table_code, nhpi_list, rc_schema)
+# CREATE RAW DATA TABLES -------------------------------------------------------------------------
+## Only run this section if the raw data tables have not been created yet ##
+# race <- "asian"
+# asian_list <- get_detailed_race(table_code, race, 2021)
+# # check race col names which are created in fx
+# #unique(asian_list[[2]]$POPGROUP_LABEL)
+# 
+# race <- "nhpi"
+# nhpi_list <- get_detailed_race(table_code, race, 2021)
+# # check race col names which are created in fx
+# #unique(nhpi_list[[2]]$POPGROUP_LABEL)
+# 
+# # Send table to postgres
+# send_to_mosaic(table_code, asian_list, rc_schema)
+# send_to_mosaic(table_code, nhpi_list, rc_schema)
 
 
 # IMPORT RAW DATA FROM POSTGRES -------------------------------------------
