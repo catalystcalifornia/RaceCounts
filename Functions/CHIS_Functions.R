@@ -6,17 +6,17 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 # Update columns with names starting with "X", to blank.
 
 fix_colnames <- function(x) {
-
-names(x) <- sub("^X", "", names(x)) # Remove X from column names
-names(x) <- sub("[0-9]+", "", names(x)) # Remove numbers from column names
-
-return(x)
+  
+  names(x) <- sub("^X", "", names(x)) # Remove X from column names
+  names(x) <- sub("[0-9]+", "", names(x)) # Remove numbers from column names
+  
+  return(x)
 }
 
 
 # Finish cleaning, formatting CHIS data
 prep_chis <- function(x) { 
-
+  
   df1 <- x
   #format column headers
   #create new object colnames
@@ -39,8 +39,8 @@ prep_chis <- function(x) {
   colnames[1] <- "variable"
   #rename columns in df to those in colnames
   names(df1) <- colnames
-
-
+  
+  
   #format values
   df1[df1=="-"]<-NA
   
@@ -61,7 +61,7 @@ prep_chis <- function(x) {
                         values_from = yes # value columns(s) that hold data for each category column
                         #names_sep # optional string separator for category-value columns
   )
-
+  
   #rename
   names(df_pct) <- gsub("yes", "rate", names(df_pct))
   names(df_pct) <- gsub("_no", "_no_rate", names(df_pct))
@@ -160,7 +160,7 @@ prep_chis <- function(x) {
                     pacisl_no_rate = ifelse (pacisl_rate_flag == 1 | pacisl_no_rate_flag == 1, "NA", pacisl_no_rate),
                     swana_rate = ifelse (swana_rate_flag == 1 | swana_no_rate_flag == 1, "NA", swana_rate),
                     swana_no_rate = ifelse (swana_rate_flag == 1 | swana_no_rate_flag == 1, "NA", swana_no_rate),
- 
+                    
                     total_raw = ifelse (total_rate_flag == 1 | total_no_rate_flag == 1, "NA", total_raw),
                     total_no_raw = ifelse (total_rate_flag == 1 | total_no_rate_flag == 1, "NA", total_no_raw),
                     latino_raw = ifelse (latino_rate_flag == 1 | latino_no_rate_flag == 1, "NA", latino_raw),
@@ -179,7 +179,7 @@ prep_chis <- function(x) {
                     pacisl_no_raw = ifelse (pacisl_rate_flag == 1 | pacisl_no_rate_flag == 1, "NA", pacisl_no_raw),
                     swana_raw = ifelse (swana_rate_flag == 1 | swana_no_rate_flag == 1, "NA", swana_raw),
                     swana_no_raw = ifelse (swana_rate_flag == 1 | swana_no_rate_flag == 1, "NA", swana_no_raw)
-                     
+                    
   )
   
   #remove asterisks
@@ -214,6 +214,6 @@ prep_chis <- function(x) {
   #remove CHIS region rows
   df_subset <- df_wide %>% drop_na(geoid)
   df_subset <- df_subset %>% select(-c(ends_with("_no_rate"), ends_with("_no_raw"), ends_with("_no_ci")))
-
-return(df_subset)
+  
+  return(df_subset)
 }
