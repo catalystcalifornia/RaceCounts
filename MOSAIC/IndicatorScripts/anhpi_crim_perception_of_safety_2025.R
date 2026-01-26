@@ -20,7 +20,6 @@ for(pkg in packages){
 
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
-con <- connect_to_db("rda_shared_data")
 
 # define variables used in several places that must be updated each year
 curr_yr <- "2017_24"  # must keep same format
