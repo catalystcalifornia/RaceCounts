@@ -1,4 +1,4 @@
-### Perception of Safety RC v7 ### 
+### MOSAIC: Perception of Safety RC v7 ### 
 
 #install packages if not already installed
 packages <- c("tidyr", "dplyr", "sf", "tidycensus", "tidyverse", "usethis", "openxlsx", "RPostgres")  
@@ -29,52 +29,19 @@ rc_schema <- "v7"
 yr <- "2025"
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Crime and Justice\\QA_Sheet_Perception_of_Safety - MOSAIC.docx"
 
-setwd("W:/Data/Health/CHIS/")
+chis_dir <- ("W:/Data/Health/CHIS/")
 
 
-#get data for Total population
-total_df = read.xlsx(paste0("Perception_of_Safety/2011_23/Safety_total.xlsx"), sheet=1, startRow=5, rows=c(5:8))
+#get data for Total population - NOTE: We only pull in this data to make CHIS fx work, we drop this data at the end
+total_df = read.xlsx(paste0(chis_dir, "Perception_of_Safety/2011_23/Safety_total.xlsx"), sheet=1, startRow=5, rows=c(5:8))
 
 #format row headers
 total_df_rownames <- c("measure","total_yes", "total_no")
 total_df[1:3,1] <- total_df_rownames[1:3]
 
 
-#get data for Hispanic/non-Hispanic races, excluding AIAN, NHPI, and SWANA
-races_df = read.xlsx(paste0("Perception_of_Safety/2011_23/Safety_race.xlsx"), sheet=1, startRow=8, rows=c(8,10:12,14,16:19,21,23))
-
-#format row headers
-races_rownames <- c("latino_yes", "nh_white_yes", "nh_black_yes", "nh_asian_yes", "nh_twoormor_yes", 
-                    "latino_no", "nh_white_no", "nh_black_no", "nh_asian_no", "nh_twoormor_no")
-races_df[1:10,1] <- races_rownames[1:10]
-
-
-#get data for ALL-AIAN
-aian_df = read.xlsx(paste0("Perception_of_Safety/2011_23/Safety_aian.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
-
-#format row headers
-aian_rownames <- c("aian_yes", "aian_no")
-aian_df[1:2,1] <- aian_rownames[1:2]
-
-
-#get data for ALL-NHPI
-pacisl_df = read.xlsx(paste0("Perception_of_Safety/2011_23/Safety_nhpi.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
-
-#format row headers
-pacisl_rownames <- c("pacisl_yes", "pacisl_no")
-pacisl_df[1:2,1] <- pacisl_rownames[1:2]
-
-
-#get data for ALL-SWANA
-swana_df = read.xlsx(paste0("Perception_of_Safety/2011_23/Safety_mena.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
-
-#format row headers
-swana_rownames <- c("swana_yes", "swana_no")
-swana_df[1:2,1] <- swana_rownames[1:2]
-
-
 #get data for Asian subgroups
-asian_df = read.xlsx(paste0("Perception_of_Safety/",curr_yr,"/AsianEthnicityGroups.xlsx"), sheet=1, startRow=8, rows=c(8,10:23))
+asian_df = read.xlsx(paste0(chis_dir, "Perception_of_Safety/",curr_yr,"/AsianEthnicityGroups.xlsx"), sheet=1, startRow=8, rows=c(8,10:23))
 
 #format row headers
 asian_rownames <- c("chinese_yes", "japanese_yes", "korean_yes", "filipino_yes", "south_asian_yes", "vietnamese_yes", "other_asian_yes", 
@@ -82,13 +49,13 @@ asian_rownames <- c("chinese_yes", "japanese_yes", "korean_yes", "filipino_yes",
 asian_df[1:14,1] <- asian_rownames[1:14]
 
 #asian column names come in different for some reason so updating
-names(asian_df) <- names(aian_df)
+names(asian_df) <- names(total_df)
 
 #combine
-df <- rbind(total_df, races_df, aian_df, pacisl_df, swana_df, asian_df)
+df <- rbind(total_df, asian_df)
 
 #run the rest of CHIS prep including formatting column names, screen using flags, adding geonames, etc.
-source("W:/Project/RACE COUNTS/2025_v7/RC_Github/CR/Functions/CHIS_Functions.R")
+source("./MOSAIC/Functions/CHIS_Functions.R")
 df_subset <- prep_chis(df)
 View(df_subset)
 
@@ -96,8 +63,7 @@ d <- df_subset
 
 
 #set source for RC Functions script
-#source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
-source("W:/Project/RACE COUNTS/2025_v7/RC_Github/CR/Functions/RC_Functions.R")
+source("./Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 d$geolevel = case_when(d$geoname == "California" ~ "state", .default = "county")
@@ -130,10 +96,15 @@ county_table <- calc_ranks(county_table)
 county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
+# DROP TOTAL ROWS
+county_table <- county_table %>% select(-c(starts_with("total")))
+state_table <- state_table %>% select(-c(starts_with("total")))
+
+
 ###info for postgres tables - automatically updates###
 county_table_name <- paste0("asian_crim_perception_of_safety_county_",yr)
 state_table_name <- paste0("asian_crim_perception_of_safety_state_",yr)
-indicator <- paste0("Created on ", Sys.Date(), ". Adults who Feel Safe in Their Neighborhood (%)")
+indicator <- paste0("Adults who Feel Safe in Their Neighborhood (%) Asian Ethnic Groups ONLY")
 source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url, ". QA doc: ", qa_filepath)
 
 
