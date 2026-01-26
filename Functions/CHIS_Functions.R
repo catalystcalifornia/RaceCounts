@@ -136,7 +136,7 @@ prep_chis <- function(x) {
                     nh_twoormor_no_rate_flag = ifelse(grepl("\\*", nh_twoormor_no_rate), 1,0),
                     aian_no_rate_flag = ifelse(grepl("\\*", aian_no_rate), 1,0),
                     pacisl_no_rate_flag = ifelse(grepl("\\*", pacisl_no_rate), 1,0),
-                    swana_no_rate_flag = ifelse(grepl("\\*", swana_no_rate), 1,0)
+                    swana_no_rate_flag = ifelse(grepl("\\*", swana_no_rate), 1,0),
                     
   )
   
@@ -189,7 +189,7 @@ prep_chis <- function(x) {
   cols.num <- c("total_no_rate","latino_no_rate","nh_white_no_rate","nh_black_no_rate","nh_asian_no_rate","nh_twoormor_no_rate","aian_no_rate","pacisl_no_rate","swana_no_rate",
                 "total_rate","latino_rate","nh_white_rate","nh_black_rate","nh_asian_rate","nh_twoormor_rate","aian_rate","pacisl_rate","swana_rate",
                 "total_no_raw","latino_no_raw","nh_white_no_raw","nh_black_no_raw","nh_asian_no_raw","nh_twoormor_no_raw","aian_no_raw","pacisl_no_raw","swana_no_raw",
-                "total_raw","latino_raw","nh_white_raw","nh_black_raw","nh_asian_raw","nh_twoormor_raw","aian_raw","pacisl_raw","swana_raw")
+                "total_raw","latino_raw","nh_white_raw","nh_black_raw","nh_asian_raw","nh_twoormor_raw","aian_raw","pacisl_raw","swana_raw",
   df_wide[cols.num] <- sapply(df_wide[cols.num],as.numeric)
   
   

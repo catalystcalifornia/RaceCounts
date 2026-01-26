@@ -27,6 +27,41 @@ curr_schema <- 'v7' # update each year, this field populates most table and file
 curr_yr <- '2025'   # update each year, this field populates most table and file names automatically
 
 
+
+# Fx to update race names ----------------------------------------------------
+update_race <- function(x) {
+  # x is the dataframe which must contain a column with standard RC postgres race names
+  x <- x %>%
+    mutate(new_race = case_when (
+      str_detect(race, "api") ~ "Asian / Native Hawaiian / Pacific Islander",
+      str_detect(race, "aian") ~ "American Indian / Alaska Native",
+      str_detect(race, "asian") ~ "Asian",
+      str_detect(race, "black") ~ "Black",
+      str_detect(race, "filipino") ~ "Filipinx",
+      str_detect(race, "latino") ~ "Latinx",
+      str_detect(race, "other") ~ "Another Race",
+      str_detect(race, "pacisl") ~ "Native Hawaiian / Pacific Islander",
+      race == "swana" ~ "Southwest Asian / North African",
+      race == "swanasa" ~ "Southwest Asian / North African / South Asian",
+      str_detect(race, "twoormor") ~ "Multiracial",
+      str_detect(race, "white") ~ "White",
+      str_detect(race, "total") ~ "Total",
+      TRUE ~ race
+        )
+    ) %>%
+    mutate(latinx_inclusive = case_when (
+      str_detect(race, "nh_") ~ "Non-Latinx",
+      str_detect(race, "total") ~ "Latinx-inclusive",
+      TRUE ~ "Latinx-inclusive"
+        )
+    ) %>%
+    relocate(new_race, .after = race) %>%
+    relocate(latinx_inclusive, .after = new_race)
+
+return(x)
+}
+
+
 # Load metadata tables and create RC table list ----------------------------------------------------
 # pull in geo level ids with name. I don't do this directly in the data in case names differ and we have issues merging later
 arei_race_multigeo_city <- dbGetQuery(con, paste0("SELECT geoid, name, geolevel FROM ", curr_schema, ".arei_race_multigeo")) %>% filter(geolevel == "place") %>% dplyr::rename(city_id = geoid, city_name = name) %>% select(-geolevel)
@@ -102,7 +137,10 @@ df_city <- df_merged %>%
   left_join(arei_race_multigeo_city) %>%
   select(city_id, city_name, everything())
 
-
+# format race
+df_city <- update_race(df_city) %>%
+  select(-race) %>%
+  rename(race = new_race)
 
 # City (School District) Education Tables: must be handled separately bc they are school district not city-level ----------------------------------------
 education_list <- rc_list %>%
@@ -150,7 +188,10 @@ df_education_district <- df_merged_education %>%
   mutate(indicator = substring(indicator, 10),
          indicator = gsub(paste0('_district_', curr_yr), '', indicator))
 
-
+# format race
+df_education_district <- update_race(df_education_district) %>%
+  select(-race) %>%
+  rename(race = new_race)
 
 # City Indicator metadata table from curr_schema.arei_indicator_list_city
 
@@ -187,6 +228,14 @@ geolevel <- 'state'
 df_state <- export_RCdata(rc_list, geolevel) %>%
   select(-geolevel)
 
+# format race
+df_county <- update_race(df_county) %>%
+  select(-race) %>%
+  rename(race = new_race)
+
+df_state <- update_race(df_state) %>%
+  select(-race) %>%
+  rename(race = new_race)
 
 # County/State Indicator metadata table from curr_schema.arei_indicator_list_cntyst ------------------------------------------------------
 
@@ -216,6 +265,11 @@ write_xlsx(list_cntyst, ".\\Data\\rc_county_state_data.xlsx")
 # create Leg Dist df for export
 geolevel <- 'leg'
 df_leg <- export_RCdata(rc_list, geolevel)
+
+# format race
+df_leg <- update_race(df_leg) %>%
+  select(-race) %>%
+  rename(race = new_race)
 
 # split Senate and Assembly data
 df_senate <- df_leg %>% filter(geolevel == 'sldu') %>%
