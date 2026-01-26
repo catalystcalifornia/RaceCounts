@@ -55,7 +55,8 @@ names(asian_df) <- names(total_df)
 df <- rbind(total_df, asian_df)
 
 #run the rest of CHIS prep including formatting column names, screen using flags, adding geonames, etc.
-source("./MOSAIC/Functions/CHIS_Functions.R")
+#source("./MOSAIC/Functions/CHIS_Functions.R")
+source("W://Project//RACE COUNTS//2025_v7//RC_Github//CR//MOSAIC//Functions//CHIS_Functions.R")
 df_subset <- prep_chis(df)
 View(df_subset)
 
@@ -63,7 +64,8 @@ d <- df_subset
 
 
 #set source for RC Functions script
-source("./Functions/RC_Functions.R")
+#source("./Functions/RC_Functions.R")
+source("W://Project//RACE COUNTS//2025_v7//RC_Github//CR//Functions//RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 d$geolevel = case_when(d$geoname == "California" ~ "state", .default = "county")
