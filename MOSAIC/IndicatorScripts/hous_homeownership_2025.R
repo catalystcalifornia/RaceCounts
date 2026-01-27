@@ -128,7 +128,7 @@ city_table_name <- paste0(tolower(race_name), "_hous_homeownership_city_", rc_yr
 start_yr <- curr_yr-4
 
 indicator <- paste0("Owner-Occupied Housing Units (%) ", str_to_title(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
-source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, Tables B25003B-I, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
+source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table B25003, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## ASIAN: SEND TO POSTGRES #######
 to_postgres(county_table,state_table, 'mosaic')
@@ -177,16 +177,18 @@ View(state_table)
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table) 
 
-## Calc county ranks##
-county_table <- calc_ranks(county_table) %>% dplyr::select(-c(geolevel))
-View(county_table)
+## Calc county ranks## These fx don't work bc total_rate is NA
+# county_table <- calc_ranks(county_table) 
+county_table <- county_table %>% dplyr::select(-c(geolevel, total_rate))
+# View(county_table)
 
 #calculate CITY z-scores
 city_table <- calc_z(city_table)
 
 ## Calc city ranks##
-city_table <- calc_ranks(city_table) %>% dplyr::select(-c(geolevel))
-View(city_table)
+# city_table <- calc_ranks(city_table)
+city_table <- city_table %>% dplyr::select(-c(geolevel, total_rate))
+#View(city_table)
 
 #rename geoid to state_id, county_id, city_id
 colnames(state_table)[1:2] <- c("state_id", "state_name")
@@ -203,7 +205,7 @@ city_table_name <- paste0(tolower(race_name), "_hous_homeownership_city_", rc_yr
 start_yr <- curr_yr-4
 
 indicator <- paste0("Owner-Occupied Housing Units (%) ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
-source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, Tables B25003B-I, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
+source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table B25003, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## NHPI: SEND TO POSTGRES #######
 to_postgres(county_table,state_table, 'mosaic')
