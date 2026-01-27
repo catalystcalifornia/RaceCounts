@@ -1,7 +1,7 @@
-### Asthma RC v6 ### 
+### Asthma for MOSAIC### 
 
 #install packages if not already installed
-packages <- c("tidyr", "dplyr", "sf", "tidycensus", "tidyverse", "usethis", "openxlsx", "RPostgreSQL")  
+packages <- c("tidyr", "dplyr", "sf", "tidycensus", "tidyverse", "usethis", "openxlsx", "RPostgres")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -20,68 +20,45 @@ for(pkg in packages){
 
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
-con <- connect_to_db("rda_shared_data")
 
 # define variables used in several places that must be updated each year
-curr_yr <- "2011_23"  # must keep same format
+curr_yr <- "2017_24"  # must keep same format
 dwnld_url <- "https://ask.chis.ucla.edu/"
 rc_schema <- "v7"
 yr <- "2025"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Environment\\QA_Sheet_Asthma - MOSAIC.docx"
 
-setwd("W:/Data/Health/CHIS/")
+chis_dir <- ("W:/Data/Health/CHIS/")
 
 
-#get data for Total population
-total_df = read.xlsx(paste0("Asthma/",curr_yr,"/Asthma_total.xlsx"), sheet=1, startRow=5, rows=c(5:8))
+#get data for Total population - NOTE: We only pull in this data to make CHIS fx work, we drop this data at the end
+total_df = read.xlsx(paste0(chis_dir, "Asthma/2011_23/Asthma_total.xlsx"), sheet=1, startRow=5, rows=c(5:8))
 
 #format row headers
 total_df_rownames <- c("measure","total_yes", "total_no")
 total_df[1:3,1] <- total_df_rownames[1:3]
 
 
-#get data for Hispanic/non-Hispanic races, excluding AIAN, NHPI, and SWANA
-races_df = read.xlsx(paste0("Asthma/",curr_yr,"/Asthma_race.xlsx"), sheet=1, startRow=8, rows=c(8,10:12,14,16:19,21,23))
+#get data for Asian subgroups
+asian_df = read.xlsx(paste0(chis_dir, "Asthma/",curr_yr,"/AsianEthnicityGroups.xlsx"), sheet=1, startRow=8, rows=c(8,10:23))
 
 #format row headers
-races_rownames <- c("latino_yes", "nh_white_yes", "nh_black_yes", "nh_asian_yes", "nh_twoormor_yes", 
-                    "latino_no", "nh_white_no", "nh_black_no", "nh_asian_no", "nh_twoormor_no")
-races_df[1:10,1] <- races_rownames[1:10]
+asian_rownames <- c("chinese_yes", "japanese_yes", "korean_yes", "filipino_yes", "south_asian_yes", "vietnamese_yes", "other_asian_yes", 
+                    "chinese_no", "japanese_no", "korean_no", "filipino_no", "south_asian_no", "vietnamese_no", "other_asian_no")
+asian_df[1:14,1] <- asian_rownames[1:14]
 
-
-#get data for ALL-AIAN
-aian_df = read.xlsx(paste0("Asthma/",curr_yr,"/Asthma_aian.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
-
-#format row headers
-aian_rownames <- c("aian_yes", "aian_no")
-aian_df[1:2,1] <- aian_rownames[1:2]
-
-
-#get data for ALL-NHPI
-pacisl_df = read.xlsx(paste0("Asthma/",curr_yr,"/Asthma_nhpi.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
-
-#format row headers
-pacisl_rownames <- c("pacisl_yes", "pacisl_no")
-pacisl_df[1:2,1] <- pacisl_rownames[1:2]
-
-
-#get data for ALL-SWANA
-swana_df = read.xlsx(paste0("Asthma/",curr_yr,"/Asthma_mena.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
-
-#format row headers
-swana_rownames <- c("swana_yes", "swana_no")
-swana_df[1:2,1] <- swana_rownames[1:2]
-
+#asian column names come in different for some reason so updating
+names(asian_df) <- names(total_df)
 
 #combine
-df <- rbind(total_df, races_df, aian_df, pacisl_df, swana_df)
+df <- rbind(total_df, asian_df)
 
 #run the rest of CHIS prep including formatting column names, screen using flags, adding geonames, etc.
-source("W:/Project/RACE COUNTS/Functions/CHIS_Functions.R")
+source("./MOSAIC/Functions/CHIS_Functions.R")
 df_subset <- prep_chis(df)
 View(df_subset)
 
 d <- df_subset
-
 
 #set source for RC Functions script
 source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
