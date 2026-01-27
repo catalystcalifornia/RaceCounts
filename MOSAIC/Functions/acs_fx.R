@@ -111,7 +111,7 @@ clean_data$geolevel <- case_when(                                # add geolevel 
   
   colnames(df_wide) <- tolower(colnames(df_wide))
   
-  source(".//Functions//rdashared_functions.R")
+  source(".//Functions//rdashared_functions.R")  # source for clean_data{}
   df_wide <- df_wide %>% 
     mutate(geoname = name) %>%
     clean_geo_names() %>%
@@ -635,7 +635,7 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     x_long$name <- str_remove(x_long$name,  "\\s*\\(.*\\)\\s*")
     x_long$name <- gsub("; California", "", x_long$name)
   
-  ### Coefficient of Variation (CV) CALCS ###
+  ### Coefficient of Variation (CV) CALCS #####
 
   ### calc cv's
   ## Calculate CV values for all rates - store in columns as cv_[race]_rate
@@ -646,7 +646,6 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   df <- x_long %>%
     filter(!if_all(where(is.numeric), is.na))  # drop rows where ALL numeric values are NA
   
-  ############## PRE-CALCULATION POPULATION AND/OR CV CHECKS ##############
   ############## PRE-CALCULATION POPULATION AND/OR CV CHECKS ##############
   if (!is.na(pop_threshold) & is.na(cv_threshold)) {
     # if pop_threshold ex_longists and cv_threshold is NA, do pop check but no CV check (doesn't apply to any at this time, may need to add _raw screens later.)

@@ -94,22 +94,24 @@ county_table <- d[d$geolevel == 'county', ]
 city_table <- d[d$geolevel == 'place', ]
 
 #calculate STATE z-scores
-state_table <- calc_state_z(state_table) %>% dplyr::select(-c(geolevel))
+state_table <- calc_state_z(state_table) %>% dplyr::select(-c(geolevel, total_rate))
 View(state_table)
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table) 
 
-## Calc county ranks##
-county_table <- calc_ranks(county_table) %>% dplyr::select(-c(geolevel))
-View(county_table)
+## Calc county ranks## These fx don't work bc total_rate is NA
+# county_table <- calc_ranks(county_table) 
+county_table <- county_table %>% dplyr::select(-c(geolevel, total_rate))
+# View(county_table)
 
 #calculate CITY z-scores
 city_table <- calc_z(city_table)
 
 ## Calc city ranks##
-city_table <- calc_ranks(city_table) %>% dplyr::select(-c(geolevel))
-View(city_table)
+# city_table <- calc_ranks(city_table)
+city_table <- city_table %>% dplyr::select(-c(geolevel, total_rate))
+#View(city_table)
 
 #rename geoid to state_id, county_id, city_id
 colnames(state_table)[1:2] <- c("state_id", "state_name")
