@@ -1,4 +1,5 @@
 ### MOSAIC-related functions for ACS data ###
+##### Adapted from: W:/Project/RACE COUNTS/2025_v7/RC_Github/LF/RaceCounts/Functions/rdashared_functions.R
 
 #install packages if not already installed
 packages <- c("readr", "tidyr", "dplyr", "DBI", "RPostgres", "tidycensus", "tidyverse", "stringr", "usethis", "httr", "rlang")
