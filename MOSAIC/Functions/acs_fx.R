@@ -85,7 +85,7 @@ clean_data$geoid <- str_replace(clean_data$GEO_ID, ".*US", "")  # clean geoids
 clean_data$geolevel <- case_when(                                # add geolevel bc it's a multigeo table
   nchar(clean_data$geoid) == 2 ~ 'state',
   nchar(clean_data$geoid) == 5 ~ 'county',
-  .default = 'city'
+  .default = 'place'
 )
 
   clean_data <- clean_data %>%
@@ -198,7 +198,7 @@ send_to_mosaic <- function(acs_table, df_list, table_schema){
 
 
 ##### Prep ACS tables for RC fx #####
-prep_acs <- function(x, table_code, cv_threshold, pop_threshold) {
+prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   
   # SQL query to retrieve column names and comments: The query uses the pg_catalog.col_description function
   
@@ -304,6 +304,8 @@ prep_acs <- function(x, table_code, cv_threshold, pop_threshold) {
     table_046_code = paste0(table_code, "_046_")
     table_047_code = paste0(table_code, "_047_")
     table_048_code = paste0(table_code, "_048_")
+    table_072_code = paste0(table_code, "_072_")
+    table_073_code = paste0(table_code, "_073_")
     table_075_code = paste0(table_code, "_075_")
     table_076_code = paste0(table_code, "_076_")
     table_081_code = paste0(table_code, "_081_")
@@ -344,6 +346,7 @@ prep_acs <- function(x, table_code, cv_threshold, pop_threshold) {
     names(x) <- gsub(table_046_code, "sri_lankan_aoic", names(x))
     names(x) <- gsub(table_047_code, "thai_aoic", names(x))
     names(x) <- gsub(table_048_code, "vietnamese_aoic", names(x))
+    names(x) <- gsub(table_072_code, "bhutanese", names(x))
     names(x) <- gsub(table_073_code, "burmese", names(x))
     names(x) <- gsub(table_075_code, "mongolian", names(x))
     names(x) <- gsub(table_076_code, "nepalese", names(x))
@@ -499,14 +502,15 @@ prep_acs <- function(x, table_code, cv_threshold, pop_threshold) {
   }
   
   if(endsWith(table_code, "b25003")) {  # HAVE ONLY EDITED THIS TABLE SO FAR
-    names(x) <- gsub("001e", "_pop", names(x))
-    names(x) <- gsub("001m", "_pop_moe", names(x))
-    
-    names(x) <- gsub("002e", "_raw", names(x))
-    names(x) <- gsub("002m", "_raw_moe", names(x))
+    # names(x) <- gsub("001e", "_pop", names(x))
+    # names(x) <- gsub("001m", "_pop_moe", names(x))
+    # 
+    # names(x) <- gsub("002e", "_raw", names(x))
+    # names(x) <- gsub("002m", "_raw_moe", names(x))
     
     x <- x %>% select(-contains("003")) %>%   # drop cols for renter hh's
-      select(geoid, name, geolevel, ends_with("001e"), everything())
+      select(geoid, name, geolevel, everything())
+    
     # pivot longer
     x_long <- x %>%
       pivot_longer(
@@ -618,101 +622,62 @@ prep_acs <- function(x, table_code, cv_threshold, pop_threshold) {
   }
   
   # Finish up data cleaning
-  # make colnames lower case
-  
-  x_wide <- pivot_wider(x_long,
-                        names_from = ethnic_group,
-                        values_from = c(pop, pop_moe, raw, raw_moe, rate, rate_moe))
-  
-  #### PICK UP HERE FOR TABLE B25003
-  colnames(x) <- tolower(colnames(x))
-  
-  # Clean geo names
-  x$name <- gsub(", California", "", x$name)
-  x$name <- gsub(" County", "", x$name)
-  x$name <- gsub(" city", "", x$name)
-  x$name <- gsub(" town", "", x$name)
-  x$name <- gsub(" CDP", "", x$name)
-  x$name <- str_remove(x$name,  "\\s*\\(.*\\)\\s*")
-  x$name <- gsub("; California", "", x$name)
-  
+    # make colnames lower case
+    colnames(x_long) <- tolower(colnames(x_long))
+    
+    # Clean geo names
+    x_long$name <- gsub(", California", "", x_long$name)
+    x_long$name <- gsub(" County", "", x_long$name)
+    x_long$name <- gsub(" city", "", x_long$name)
+    x_long$name <- gsub(" town", "", x_long$name)
+    x_long$name <- gsub(" CDP", "", x_long$name)
+    x_long$name <- str_remove(x_long$name,  "\\s*\\(.*\\)\\s*")
+    x_long$name <- gsub("; California", "", x_long$name)
   
   ### Coefficient of Variation (CV) CALCS ###
-  df <- x
-  
+
   ### calc cv's
   ## Calculate CV values for all rates - store in columns as cv_[race]_rate
   if (!is.na(cv_threshold)){
-    df$total_rate_cv <- ifelse(df$total_rate==0, NA, df$total_rate_moe/1.645/df$total_rate*100)
-    df$asian_rate_cv <- ifelse(df$asian_rate==0, NA, df$asian_rate_moe/1.645/df$asian_rate*100)
-    df$black_rate_cv <- ifelse(df$black_rate==0, NA, df$black_rate_moe/1.645/df$black_rate*100)
-    df$nh_white_rate_cv <- ifelse(df$nh_white_rate==0, NA, df$nh_white_rate_moe/1.645/df$nh_white_rate*100)
-    df$latino_rate_cv <- ifelse(df$latino_rate==0, NA, df$latino_rate_moe/1.645/df$latino_rate*100)
-    df$other_rate_cv <- ifelse(df$other_rate==0, NA, df$other_rate_moe/1.645/df$other_rate*100)
-    df$pacisl_rate_cv <- ifelse(df$pacisl_rate==0, NA, df$pacisl_rate_moe/1.645/df$pacisl_rate*100)
-    df$twoormor_rate_cv <- ifelse(df$twoormor_rate==0, NA, df$twoormor_rate_moe/1.645/df$twoormor_rate*100)
-    df$aian_rate_cv <- ifelse(df$aian_rate==0, NA, df$aian_rate_moe/1.645/df$aian_rate*100)
-    
+    x_long$rate_cv <- ifelse(x_long$rate==0, NA, x_long$rate_moe/1.645/x_long$rate*100)
   }
   
+  df <- x_long %>%
+    filter(!if_all(where(is.numeric), is.na))  # drop rows where ALL numeric values are NA
+  
+  ############## PRE-CALCULATION POPULATION AND/OR CV CHECKS ##############
   ############## PRE-CALCULATION POPULATION AND/OR CV CHECKS ##############
   if (!is.na(pop_threshold) & is.na(cv_threshold)) {
-    # if pop_threshold exists and cv_threshold is NA, do pop check but no CV check (doesn't apply to any at this time, may need to add _raw screens later.)
+    # if pop_threshold ex_longists and cv_threshold is NA, do pop check but no CV check (doesn't apply to any at this time, may need to add _raw screens later.)
     ## Screen out low populations
-    df$total_rate <- ifelse(df$total_pop < pop_threshold, NA, df$total_rate)
-    df$asian_rate <- ifelse(df$asian_pop < pop_threshold, NA, df$asian_rate)
-    df$black_rate <- ifelse(df$black_pop < pop_threshold, NA, df$black_rate)
-    df$nh_white_rate <- ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_rate)
-    df$latino_rate <- ifelse(df$latino_pop < pop_threshold, NA, df$latino_rate)
-    df$other_rate <- ifelse(df$other_pop < pop_threshold, NA, df$other_rate)
-    df$pacisl_rate <- ifelse(df$pacisl_pop < pop_threshold, NA, df$pacisl_rate)
-    df$twoormor_rate <- ifelse(df$twoormor_pop < pop_threshold, NA, df$twoormor_rate)
-    df$aian_rate <- ifelse(df$aian_pop < pop_threshold, NA, df$aian_rate)
+    df$rate <- ifelse(df$pop < pop_threshold, NA, df$rate)
     
   } else if (is.na(pop_threshold) & !is.na(cv_threshold)){
-    # if pop_threshold is NA and cv_threshold exists, check cv only (i.e. only B19301). As of now, the only table that uses this does not have _raw values, may need to add _raw screens later.
+    # if pop_threshold is NA and cv_threshold ex_longists, check cv only (i.e. only B19301). As of now, the only table that uses this does not have _raw values, may need to add _raw screens later.
     ## Screen out rates with high CVs
-    df$total_rate <- ifelse(df$total_rate_cv > cv_threshold, NA, df$total_rate)
-    df$asian_rate <- ifelse(df$asian_rate_cv > cv_threshold, NA, df$asian_rate)
-    df$black_rate <- ifelse(df$black_rate_cv > cv_threshold, NA, df$black_rate)
-    df$nh_white_rate <- ifelse(df$nh_white_rate_cv > cv_threshold, NA, df$nh_white_rate)
-    df$latino_rate <- ifelse(df$latino_rate_cv > cv_threshold, NA, df$latino_rate)
-    df$other_rate <- ifelse(df$other_rate_cv > cv_threshold, NA, df$other_rate)
-    df$pacisl_rate <- ifelse(df$pacisl_rate_cv > cv_threshold, NA, df$pacisl_rate)
-    df$twoormor_rate <- ifelse(df$twoormor_rate_cv > cv_threshold, NA, df$twoormor_rate)
-    df$aian_rate <- ifelse(df$aian_rate_cv > cv_threshold, NA, df$aian_rate)
+    df$rate <- ifelse(df$rate_cv > cv_threshold, NA, df$rate)
     
   } else if (!is.na(pop_threshold) & !is.na(cv_threshold)){
-    # if pop_threshold exists and cv_threshold exists, check population and cv (i.e. B25003, S2301, S2802, S2701, B25014)
+    # if pop_threshold ex_longists and cv_threshold ex_longists, check population and cv (i.e. B25003, S2301, S2802, S2701, B25014)
     ## Screen out rates with high CVs and low populations
-    df$total_rate <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_rate))
-    df$asian_rate <- ifelse(df$asian_rate_cv > cv_threshold, NA, ifelse(df$asian_pop < pop_threshold, NA, df$asian_rate))
-    df$black_rate <- ifelse(df$black_rate_cv > cv_threshold, NA, ifelse(df$black_pop < pop_threshold, NA, df$black_rate))
-    df$nh_white_rate <- ifelse(df$nh_white_rate_cv > cv_threshold, NA, ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_rate))
-    df$latino_rate <- ifelse(df$latino_rate_cv > cv_threshold, NA, ifelse(df$latino_pop < pop_threshold, NA, df$latino_rate))
-    df$other_rate <- ifelse(df$other_rate_cv > cv_threshold, NA, ifelse(df$other_pop < pop_threshold, NA, df$other_rate))
-    df$pacisl_rate <- ifelse(df$pacisl_rate_cv > cv_threshold, NA, ifelse(df$pacisl_pop < pop_threshold, NA, df$pacisl_rate))
-    df$twoormor_rate <- ifelse(df$twoormor_rate_cv > cv_threshold, NA, ifelse(df$twoormor_pop < pop_threshold, NA, df$twoormor_rate))
-    df$aian_rate <- ifelse(df$aian_rate_cv > cv_threshold, NA, ifelse(df$aian_pop < pop_threshold, NA, df$aian_rate))
-    df$total_raw <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_raw))
-    df$asian_raw <- ifelse(df$asian_rate_cv > cv_threshold, NA, ifelse(df$asian_pop < pop_threshold, NA, df$asian_raw))
-    df$black_raw <- ifelse(df$black_rate_cv > cv_threshold, NA, ifelse(df$black_pop < pop_threshold, NA, df$black_raw))
-    df$nh_white_raw <- ifelse(df$nh_white_rate_cv > cv_threshold, NA, ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_raw))
-    df$latino_raw <- ifelse(df$latino_rate_cv > cv_threshold, NA, ifelse(df$latino_pop < pop_threshold, NA, df$latino_raw))
-    df$other_raw <- ifelse(df$other_rate_cv > cv_threshold, NA, ifelse(df$other_pop < pop_threshold, NA, df$other_raw))
-    df$pacisl_raw <- ifelse(df$pacisl_rate_cv > cv_threshold, NA, ifelse(df$pacisl_pop < pop_threshold, NA, df$pacisl_raw))
-    df$twoormor_raw <- ifelse(df$twoormor_rate_cv > cv_threshold, NA, ifelse(df$twoormor_pop < pop_threshold, NA, df$twoormor_raw))
-    df$aian_raw <- ifelse(df$aian_rate_cv > cv_threshold, NA, ifelse(df$aian_pop < pop_threshold, NA, df$aian_raw))  
+    df$rate <- ifelse(df$rate_cv > cv_threshold, NA, ifelse(df$pop < pop_threshold, NA, df$rate))
+    df$raw <- ifelse(df$rate_cv > cv_threshold, NA, ifelse(df$pop < pop_threshold, NA, df$raw))
     
   } else {
     # Only DP05 should hit this condition
     # Will use to change population values < 0 to NA (negative values are Census annotations)
     pop_columns <- colnames(dplyr::select(df, ends_with("_pop")))
-    df[,pop_columns] <- sapply(df[,pop_columns], function(x) ifelse(x<0, NA, x))
+    df[,pop_columns] <- sapply(df[,pop_columns], function(x_long) ifelse(x_long<0, NA, x_long))
     
   }
   
+  df_wide <- pivot_wider(df,
+                         names_from = ethnic_group,
+                         values_from = c(pop, pop_moe, raw, raw_moe, rate, rate_moe, rate_cv),
+                         names_glue = "{ethnic_group}_{.value}")
   
-  return(df)
+  df_wide$total_rate <- NA   # add dummy total_rate col so RC_Functions work as-is
+  
+  return(df_wide)
 }
 
