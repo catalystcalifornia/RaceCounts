@@ -55,7 +55,7 @@ df <- rbind(total_df, asian_df)
 #run the rest of CHIS prep including formatting column names, screen using flags, adding geonames, etc.
 source("./MOSAIC/Functions/CHIS_Functions.R")
 
-df <- fix_colnames(df)
+df <- fix_colnames(df) # this wasn't necessary in other CHIS scripts but is necessary here for some reason
 df_subset <- prep_chis(df)
 View(df_subset)
 
@@ -66,6 +66,7 @@ d <- df_subset
 source("./Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
+d$geolevel = case_when(d$geoname == "California" ~ "state", .default = "county")
 
 d <- count_values(d) #calculate number of "_rate" values
 d <- calc_best(d) #calculate best rates -- be sure to update $asbest line of code accordingly before running this function.
@@ -96,12 +97,11 @@ county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
 ###info for postgres tables - automatically updates###
-county_table_name <- paste0("arei_demo_voter_engagement_county_",yr)
-state_table_name <- paste0("arei_demo_voter_engagement_state_",yr)
-indicator <- paste0("Created on ", Sys.Date(), ". Voter engagement in national, state, and local elections - US Citizens (%)")
+county_table_name <- paste0("asian_demo_voter_engagement_county_",yr)
+state_table_name <- paste0("asian_demo_voter_engagement_state_",yr)
+indicator <- paste0("Created on ", Sys.Date(), ". Voter engagement in national, state, and local elections - US Citizens (%) Asian Ethnic Groups ONLY")
 source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates. ", dwnld_url, " QA doc: ", qa_filepath)
 
 #send tables to postgres
-#to_postgres(county_table,state_table)
+#to_postgres(county_table,state_table,"mosaic")
 
-dbDisconnect(con)
