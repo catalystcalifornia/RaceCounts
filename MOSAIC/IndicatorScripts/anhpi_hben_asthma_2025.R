@@ -32,7 +32,7 @@ chis_dir <- ("W:/Data/Health/CHIS/")
 
 
 #get data for Total population - NOTE: We only pull in this data to make CHIS fx work, we drop this data at the end
-total_df = read.xlsx(paste0(chis_dir, "Asthma/2011_23/Asthma_total.xlsx"), sheet=1, startRow=5, rows=c(5:8))
+total_df = read.xlsx(paste0(chis_dir, "Asthma/2017_24/Asthma_total.xlsx"), sheet=1, startRow=5, rows=c(5:8))
 
 #format row headers
 total_df_rownames <- c("measure","total_yes", "total_no")
@@ -61,7 +61,6 @@ View(df_subset)
 d <- df_subset
 
 #set source for RC Functions script
-#source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 source("./MOSAIC/Functions/RC_Functions.R")
 
 d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
@@ -99,7 +98,7 @@ View(county_table)
 county_table_name <- paste0("asian_hben_asthma_county_",yr)
 state_table_name <- paste0("asian_hben_asthma_state_",yr)
 indicator <- paste0("Created on ", Sys.Date(), ". People ever Diagnosed with Asthma (%)")
-source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url)
+source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url, ". QA doc: ", qa_filepath)
 
 #send tables to postgres
 to_postgres(county_table,state_table,"mosaic")
