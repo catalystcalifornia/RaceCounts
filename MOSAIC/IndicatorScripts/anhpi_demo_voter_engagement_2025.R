@@ -26,7 +26,7 @@ curr_yr <- "2019_24"  # must keep same format
 dwnld_url <- "https://ask.chis.ucla.edu/"
 rc_schema <- "v7"
 yr <- "2025"
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Democracy\\QA_Voting - MOSAIC.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Democracy\\QA_Voter_Engagement - MOSAIC.docx"
 
 chis_dir <- ("W:/Data/Democracy/CHIS/")
 
