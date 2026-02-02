@@ -205,7 +205,7 @@ city_table_name <- paste0(tolower(race_name), "_", issue, "_", ind_name, "_city_
 start_yr <- curr_yr-4
 
 indicator <- paste0("Owner-Occupied Housing Units (%) ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
-source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table B25003, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
+source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table ", str_to_title(table_code), " https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## NHPI: SEND TO POSTGRES #######
 to_postgres(county_table,state_table, 'mosaic')
