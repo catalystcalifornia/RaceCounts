@@ -104,7 +104,7 @@ state_table <- state_table %>% select(-c(starts_with("total")))
 ###info for postgres tables - automatically updates###
 county_table_name <- paste0("asian_hlth_usual_source_of_care_county_",yr)
 state_table_name <- paste0("asian_hlth_usual_source_of_care_state_",yr)
-indicator <- paste0("Created on ", Sys.Date(), ". Usual Source of Care (%) including Dr Office, Community or Govt Clinic, or Community Hospital, Asian Ethnic Groups ONLY")
+indicator <- "Usual Source of Care (%) including Dr Office, Community or Govt Clinic, or Community Hospital, Asian Ethnic Groups ONLY"
 source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url)
 
 #send tables to postgres
