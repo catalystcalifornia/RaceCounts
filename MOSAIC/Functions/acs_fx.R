@@ -18,11 +18,11 @@ for(pkg in packages){
 } 
 
 
-#### Automate writing API calls and pull ACS SPT detailed Asian & NHPI race tables for city/county/state ####
+#### For SPT Tables: Automate writing API calls and pull ACS SPT detailed Asian & NHPI race tables for city/county/state ####
 get_detailed_race <- function(table, race, year = 2021) {
   # race = for MOSAIC, either 'asian' or 'nhpi', case-insensitive
   # table = ACS table name, eg: "B25003" or "S2701", case-insensitive
-  # year = ACS data year, defaults to 2021 if none specified
+  # year = ACS data year, defaults to 2021 if other not specified
   
   race_code <- case_when(
     str_detect(race, regex('asian', ignore_case = TRUE)) ~ '-04',
@@ -35,7 +35,7 @@ get_detailed_race <- function(table, race, year = 2021) {
        return(print("This function doesn't pull data for the race you selected. Please select either Asian or NHPI or talk to Leila about adding an additional race."))
    }
 
-  table_name <- toupper(table)
+  table_name <- as.character(toupper(table))
   
   city_api_call <- sprintf(
     "https://api.census.gov/data/%s/acs/acs5/spt?get=group(%s)&POPGROUP=pseudo(%s)&ucgid=pseudo(0400000US06$1600000)",
@@ -95,13 +95,13 @@ clean_data$geolevel <- case_when(                                # add geolevel 
   # reformat clean data
   df_wide <- clean_data %>%
     pivot_longer(
-      cols = starts_with("B25003"),
+      cols = starts_with(table),
       names_to = "orig_col",
       values_to = "value"
     ) %>%
     mutate(
-      suffix = str_remove(orig_col, "^B25003_?"),
-      new_col = paste0("B25003_", POPGROUP, "_", suffix)
+      suffix = str_remove(orig_col, paste0("^", table_name, "_?")),
+      new_col = paste0(table_name, "_", POPGROUP, "_", suffix)
     ) %>%
     select(NAME, geoid, geolevel, new_col, value) %>%
     pivot_wider(
@@ -125,14 +125,15 @@ clean_data$geolevel <- case_when(                                # add geolevel 
                  values_to = "raw")
   
   metadata <- metadata %>%
-    select(POPGROUP, POPGROUP_LABEL, var) %>%
+    select(POPGROUP, any_of("POPGROUP_LABEL"), any_of("POPGROUP_TTL"), var) %>%
     unique() %>%
+    rename(POPGROUP_LABEL = any_of("POPGROUP_TTL")) %>%   # rename 2010 colname to 2021 colname
     mutate(var_suff = sub(".*_", "", var),
            generic_var = gsub(("E|M"), "", var),
            new_var = tolower(paste0(table_code, "_", POPGROUP, "_", var_suff)))
                                               
   # load variable names
-  v21 <- load_variables(2021, "acs5", cache = TRUE)
+  v21 <- load_variables(year, "acs5", cache = TRUE)
   table_vars <- v21 %>% filter(grepl(table_name, name))
   
   # join variable names to metadata
@@ -153,7 +154,9 @@ clean_data$geolevel <- case_when(                                # add geolevel 
   
   metadata_final <- rbind(new_rows, metadata_)
 
-data_list <- list(df_wide, metadata_final)
+pop_grps <- metadata  
+
+data_list <- list(df_wide, metadata_final, pop_grps)
 
 names(data_list) <- c(paste0(race,"_df"), "metadata")
 
@@ -198,7 +201,7 @@ send_to_mosaic <- function(acs_table, df_list, table_schema){
 # Profile Tables: https://api.census.gov/data/2022/acs/acs5/profile/groups/DP05.html
 
 
-##### Prep ACS tables for RC fx #####
+##### For SPT Tables: Prep ACS tables for RC fx #####
 prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   
   # SQL query to retrieve column names and comments: The query uses the pg_catalog.col_description function
@@ -228,7 +231,7 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   #	print(column_metadata)  # this df was used to create the renaming rules below
   
   # renaming rules will change depending on type of census table
-  if (startsWith(table_code, "b") && startsWith(table_name, "nhpi")) {
+  if (startsWith(table_code, "b") && startsWith(table_name, "nhpi")) {  # UPDATED FROM REGULAR RC VERSION
     table_051_code = paste0(table_code, "_051_")
     table_052_code = paste0(table_code, "_052_")
     table_053_code = paste0(table_code, "_053_")
@@ -498,19 +501,31 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     
   }
   
-  if(endsWith(table_code, "b19301")) {
+  if(endsWith(table_code, "b19301")) { # UPDATED FROM REGULAR RC VERSION
     
-    names(x) <- gsub("001e", "_rate", names(x))
-    names(x) <- gsub("001m", "_rate_moe", names(x))
+    # pivot longer
+    x_long <- x %>%
+      pivot_longer(
+        cols = -c(geoid, name, geolevel),
+        names_to = c("ethnic_group", "line", "stat"),
+        names_pattern = "^(.*?)(001)(e|m)$",
+        values_to = "value"
+      ) %>%
+      mutate(
+        measure = case_when(
+          line == "001" & stat == "e" ~ "rate",
+          line == "001" & stat == "m" ~ "rate_moe"
+        )
+      ) %>%
+      select(-line, -stat) %>%
+      pivot_wider(
+        names_from = measure,
+        values_from = value
+      )
   }
   
-  if(endsWith(table_code, "b25003")) {  # HAVE ONLY EDITED THIS TABLE SO FAR
-    # names(x) <- gsub("001e", "_pop", names(x))
-    # names(x) <- gsub("001m", "_pop_moe", names(x))
-    # 
-    # names(x) <- gsub("002e", "_raw", names(x))
-    # names(x) <- gsub("002m", "_raw_moe", names(x))
-    
+  if(endsWith(table_code, "b25003")) {  # UPDATED FROM REGULAR RC VERSION
+
     x <- x %>% select(-contains("003")) %>%   # drop cols for renter hh's
       select(geoid, name, geolevel, everything())
     
@@ -673,9 +688,17 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     
   }
   
+
+  
   df_wide <- pivot_wider(df,
                          names_from = ethnic_group,
-                         values_from = c(pop, pop_moe, raw, raw_moe, rate, rate_moe, rate_cv),
+                         # use any_of() bc B19301 Per Capita Inc does not have pop/raw values
+                         values_from = any_of(c(
+                           "pop", "pop_moe",
+                           "raw", "raw_moe",
+                           "rate", "rate_moe",
+                           "rate_cv"
+                         )),
                          names_glue = "{ethnic_group}_{.value}")
   
   df_wide$total_rate <- NA   # add dummy total_rate col so RC_Functions work as-is
