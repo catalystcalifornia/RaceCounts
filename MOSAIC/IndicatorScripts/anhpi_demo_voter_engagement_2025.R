@@ -104,7 +104,7 @@ state_table <- state_table %>% select(-c(starts_with("total")))
 ###info for postgres tables - automatically updates###
 county_table_name <- paste0("asian_demo_voter_engagement_county_",yr)
 state_table_name <- paste0("asian_demo_voter_engagement_state_",yr)
-indicator <- paste0("Created on ", Sys.Date(), ". Voter engagement in national, state, and local elections - US Citizens (%) Asian Ethnic Groups ONLY")
+indicator <- "Voter engagement in national, state, and local elections - US Citizens (%) Asian Ethnic Groups ONLY"
 source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates. ", dwnld_url, " QA doc: ", qa_filepath)
 
 #send tables to postgres
