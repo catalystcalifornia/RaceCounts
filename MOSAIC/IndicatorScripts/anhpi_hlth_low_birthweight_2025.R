@@ -1,7 +1,7 @@
 ### MOSAIC: Low Birthweight RC v7 ###
 
 ##install packages if not already installed ------------------------------
-packages <- c("readr","dplyr","tidyr","RPostgres","tidycensus","tidyverse","here","usethis")
+packages <- c("RPostgres","tidycensus","tidyverse","here","usethis", "janitor")
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -23,169 +23,68 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 
 
 # update each year
-curr_yr <- '2016-2023'     # Birthweight data yrs
+curr_yr <- '2016-2024'     # Birthweight data yrs
 cdc_dir <- paste0("W://Data//Health//Births//CDC//", curr_yr,"//")
 rc_schema <- 'v7'
 rc_yr <- '2025'
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Health Access\\QA_Sheet_Low_Birthweight.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Health Access\\QA_Sheet_Low_Birthweight_MOSAIC.docx"
 
+#test <- read.csv("W:\\Data\\Health\\Births\\CDC\\2016-2024\\Natality, 2016-2024 state Births asian.csv", colClasses = c("NULL",rep("character",4), "numeric")) %>% clean_names() %>% 
+#filter(!mother_s_birth_country =="")
+# Function to read State data --------------------------------------------
 
-# Functions to read State data --------------------------------------------
-
-read_state_data <- function(x, group) {
-  y <- read_delim(file = x, delim = "\t", col_types = cols(
-    Notes = col_character(),
-    `State of Residence` = col_character(),
-    `State of Residence Code` = col_character(),
-    Births = col_integer()))
+read_state_data_asian_nhpi <- function(x, y) {
+  asian <- read.csv(file = x, colClasses = c("NULL",rep("character",4), "numeric")) %>% clean_names() %>%
+    filter(!mother_s_birth_country =="")
   
-  y <- rename(y, county_name = `State of Residence`, #will rename after rbind
-              county_id = `State of Residence Code`) #will rename after rbind
+  asian$Notes <- str_to_title(asian$mother_s_birth_country)
   
+  asian_ <- asian %>% select(Notes, state_of_residence, state_of_residence_code, births) %>% 
+    filter(!is.na(state_of_residence_code))
   
-  ##### for nh races #### 
-  if(is.null(group)) {
-    
-    y$Notes <- y$`Mother's Single Race 6`
-    y$Notes <- gsub('White', 'nh_white', y$Notes)
-    y$Notes <- gsub('Black or African American', 'nh_black', y$Notes)
-    y$Notes <- gsub('Asian', 'nh_asian', y$Notes)
-    y$Notes <- gsub('More than one race', 'nh_twoormor', y$Notes)
-    
-    
-    y <- y[,-c(4:5)]
-    
-    y <- y %>% filter(!is.na(Notes))
-    
-    
-    return(y)
-    
-  }
-  else {
-    
-    ### for total and latino
-    
-    y$Notes <- group	
-    y <- y %>% filter(!is.na(county_name))
-    
-    
-    return(y)
-    
-  }
+  nhpi <- read.csv(file = y, colClasses = c("NULL",rep("character",4), "numeric")) %>% clean_names() %>%
+    filter(!mother_s_birth_country =="")
   
-}
-read_state_data_aian_nhpi <- function(x, y) {
-  aian <- read_delim(file = x, delim = "\t", col_types = cols(
-    Notes = col_character(),
-    `State of Residence` = col_character(),
-    `State of Residence Code` = col_character(),
-    Births = col_integer()))
+  nhpi$Notes <- str_to_title(nhpi$mother_s_birth_country)
   
-  aian$Notes <- 'aian'
+  nhpi_ <- nhpi %>% select(Notes, state_of_residence, state_of_residence_code, births) %>% 
+    filter(!is.na(state_of_residence_code))
   
-  aian_ <- aian %>% select(Notes, `State of Residence`, `State of Residence Code`, Births) %>% filter(!is.na(`State of Residence Code`))
-  
-  pacisl <- read_delim(file = y, delim = "\t", col_types = cols(
-    Notes = col_character(),
-    `State of Residence` = col_character(),
-    `State of Residence Code` = col_character(),
-    Births = col_integer()))
-  
-  pacisl$Notes <- 'pacisl'
-  
-  pacisl_ <- pacisl %>% select(Notes, `State of Residence`, `State of Residence Code`, Births) %>%
-    filter(!is.na(`State of Residence Code`))
-  
-  
-  z <- rbind(aian_, pacisl_) %>%				# put all aian and pacisl data together
-    rename(county_name = `State of Residence`,    
-           county_id = `State of Residence Code`)
+  z <- rbind(asian_, nhpi_) %>%				# put all asian and nhpi data together
+    rename(county_name = state_of_residence,    
+           county_id = state_of_residence_code)
   
   return(z)
 }
 
 
-# Functions to read County data --------------------------------------------
+# Function to read County data --------------------------------------------
 
-read_county_data <- function(x, group) {
+read_county_data_asian_nhpi <- function(x, y) {
   
-  y <- read_delim(file = x, delim = "\t", col_types = cols(
-    Notes = col_character(),
-    `County of Residence` = col_character(),
-    `County of Residence Code`= col_character(),
-    Births = col_integer()))
+  asian <- read.csv(file = x, colClasses = c("NULL",rep("character",4), "numeric")) %>% clean_names() %>%
+    filter(!mother_s_birth_country =="")
   
-  y <- rename(y, county_name = `County of Residence`,
-              county_id = `County of Residence Code`)
+  asian$Notes <- str_to_title(asian$mother_s_birth_country)
   
-  ##### for nh races #### 
+  asian <- asian %>% filter(county_of_residence != "Unidentified Counties, CA")
   
-  if(is.null(group)) {
-    
-    y$Notes <- y$`Mother's Single Race 6`
-    y$Notes <- gsub('White', 'nh_white', y$Notes)
-    y$Notes <- gsub('Black or African American', 'nh_black', y$Notes)
-    y$Notes <- gsub('Asian', 'nh_asian', y$Notes)
-    y$Notes <- gsub('More than one race', 'nh_twoormor', y$Notes)    
-    y <- y[,-c(4:5)]
-    
-    y <- y %>% filter(!is.na(Notes))
-    
-    y <- y %>% filter(county_name != "Unidentified Counties, CA")
-    
-    
-    return(y)
-    
-  }
+  asian_ <- asian %>% select(Notes, county_of_residence, county_of_residence_code, births) %>%
+    filter(!is.na(county_of_residence_code))
   
-  else
-    
-    ### for total and latino ###
-    
-  {
-    
-    y$Notes <- group
-    
-    y <- y %>% filter(!is.na(county_name))
-    
-    y <- y %>% filter(county_name != "Unidentified Counties, CA")
-    
-    return(y)
-  }
+  nhpi <- read.csv(file = y, colClasses = c("NULL",rep("character",4), "numeric")) %>% clean_names() %>%
+    filter(!mother_s_birth_country =="")
   
+  nhpi$Notes <- str_to_title(nhpi$mother_s_birth_country)
   
-}
-read_county_data_aian_nhpi <- function(x, y) {
+  nhpi <- nhpi %>% filter(county_of_residence != "Unidentified Counties, CA")
   
-  aian <- read_delim(file = x, delim = "\t", col_types = cols(
-    Notes = col_character(),
-    `County of Residence` = col_character(),
-    `County of Residence Code` = col_character(),
-    Births = col_integer()))
+  nhpi_ <- nhpi %>% select(Notes, county_of_residence, county_of_residence_code, births) %>%
+    filter(!is.na(county_of_residence_code))
   
-  aian$Notes <- 'aian'
-  
-  aian <- aian %>% filter(`County of Residence` != "Unidentified Counties, CA")
-  
-  aian_ <- aian %>% select(Notes, `County of Residence`, `County of Residence Code`, Births) %>%
-    filter(!is.na(`County of Residence Code`))
-  
-  pacisl <- read_delim(file = y, delim = "\t", col_types = cols(
-    Notes = col_character(),
-    `County of Residence` = col_character(),
-    `County of Residence Code` = col_character(),
-    Births = col_integer()))
-  
-  pacisl$Notes <- 'pacisl'
-  
-  pacisl <- pacisl %>% filter(`County of Residence` != "Unidentified Counties, CA")
-  
-  pacisl_ <- pacisl %>% select(Notes, `County of Residence`, `County of Residence Code`, Births) %>%
-    filter(!is.na(`County of Residence Code`))
-  
-  z <- rbind(aian_,pacisl_) %>%
-    rename(county_name = `County of Residence`,    
-           county_id = `County of Residence Code`)
+  z <- rbind(asian_,nhpi_) %>%
+    rename(county_name = county_of_residence,    
+           county_id = county_of_residence_code)
   
   return(z)
   
@@ -193,69 +92,33 @@ read_county_data_aian_nhpi <- function(x, y) {
 
 # Read Birth Data ---------------------------------------------------------
 ## Data downloaded from: https://wonder.cdc.gov/natality-expanded-current.html
-state_births_total <- read_state_data(paste0(cdc_dir, "Natality, ",curr_yr," state Births total.txt"), "total") # Get State Total Births
 
-county_births_total <- read_county_data(paste0(cdc_dir, "Natality, ",curr_yr," county Births total.txt"), "total") # Get County Total Births
+state_births_asian_nhpi <- read_state_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," state Births asian.csv"),paste0(cdc_dir, "Natality, ",curr_yr," state Births nhpi.csv")) # Get State ASIAN / NHPI Births
 
-state_births_latino <- read_state_data(paste0(cdc_dir, "Natality, ",curr_yr," state Births latino.txt"), "latino") %>% filter(!duplicated(county_name)) %>% select(Notes, county_name, county_id, Births) # Get State Latino Births
-
-county_births_latino <- read_county_data(paste0(cdc_dir, "Natality, ",curr_yr," county Births latino.txt"), "latino") %>% filter(!duplicated(county_name)) %>% select(Notes, county_name, county_id, Births) # Get County Latino Births
-
-state_births_aian_nhpi <- read_state_data_aian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," state Births all aian.txt"),paste0(cdc_dir, "Natality, ",curr_yr," state Births all nhpi.txt")) # Get State All AIAN / NHPI Births
-
-county_births_aian_nhpi <- read_county_data_aian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," county Births all aian.txt"),paste0(cdc_dir, "Natality, ",curr_yr," county Births all nhpi.txt")) # Get County All AIAN / NHPI Births
-
-state_births_nh_races <- read_state_data(paste0(cdc_dir, "Natality, ",curr_yr," state Births nh races.txt"),group = NULL) # Get State NH Races Births for Asian, Black, White, Two or More Races
-
-county_births_nh_races <- read_county_data(paste0(cdc_dir, "Natality, ",curr_yr," county Births nh races.txt"),group = NULL) # Get County NH Races Births for Asian, Black, White, Two or More Races
-
-state_births_swana <- read_state_data(paste0(cdc_dir, "Natality, ",curr_yr," state Births all swana.txt"), "swana") # Get State SWANA Births
-
-county_births_swana <- read_county_data(paste0(cdc_dir, "Natality, ",curr_yr," county Births all swana.txt"), "swana") # Get County SWANA Births
+county_births_asian_nhpi <- read_county_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," county Births asian.csv"),paste0(cdc_dir, "Natality, ",curr_yr," county Births nhpi.csv")) # Get County ASIAN / NHPI Births
 
 
 # Read Low Birth Weight Data ---------------------------------------------------------
 
-state_lbw_total <- read_state_data(paste0(cdc_dir, "Natality, ",curr_yr," state LBW total.txt"), "total") # Get State Total LBW
+state_lbw_asian_nhpi <- read_state_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," state LBW asian.csv"), paste0(cdc_dir, "Natality, ",curr_yr," state LBW nhpi.csv")) # Get State ASIAN / NHPI LBW
 
-county_lbw_total <- read_county_data(paste0(cdc_dir, "Natality, ",curr_yr," county LBW total.txt"), "total") # Get County Total LBW
-
-state_lbw_latino <- read_state_data(paste0(cdc_dir, "Natality, ",curr_yr," state LBW latino.txt"), "latino") %>% select(-c(4:5)) %>% slice(1) # Get State Latino LBW
-
-county_lbw_latino <- read_county_data(paste0(cdc_dir, "Natality, ",curr_yr," county LBW latino.txt"), "latino")  %>% filter(!duplicated(county_name)) %>%  select(Notes, county_name, county_id, Births) # Get County Latino LBW
-
-state_lbw_aian_nhpi <- read_state_data_aian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," state LBW all aian.txt"), paste0(cdc_dir, "Natality, ",curr_yr," state LBW all nhpi.txt")) # Get State All AIAN / NHPI LBW
-
-county_lbw_aian_nhpi <- read_county_data_aian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," county LBW all aian.txt"), paste0(cdc_dir, "Natality, ",curr_yr," county LBW all nhpi.txt")) # Get County All AIAN / NHPI LBW
-
-state_lbw_nh_races <- read_state_data(paste0(cdc_dir, "Natality, ",curr_yr," state LBW nh races.txt"),group = NULL) # Get State NH Races LBW for Asian, Black, White, Two or More Races
-
-county_lbw_nh_races <- read_county_data(paste0(cdc_dir, "Natality, ",curr_yr," county LBW nh races.txt"),group = NULL) # Get County NH Races LBW for Asian, Black, White, Two or More Races
-
-state_lbw_swana <- read_state_data(paste0(cdc_dir, "Natality, ",curr_yr," state LBW all swana.txt"), "swana") # Get State SWANA LBW
-
-county_lbw_swana <- read_county_data(paste0(cdc_dir, "Natality, ",curr_yr," county LBW all swana.txt"), "swana") # Get County SWANA LBW
+county_lbw_asian_nhpi <- read_county_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," county LBW asian.csv"), paste0(cdc_dir, "Natality, ",curr_yr," county LBW nhpi.csv")) # Get County ASIAN / NHPI LBW
 
 
 # Bind Data Together ---------------------------------------------------------
 
 ## births
 
-births <- rbind(county_births_total, county_births_latino, county_births_nh_races, county_births_aian_nhpi, county_births_swana,
-                state_births_total, state_births_latino, state_births_nh_races, state_births_aian_nhpi, state_births_swana)
-
-births <- rename(births, births = "Births")
-
+births <- rbind(county_births_asian_nhpi, state_births_asian_nhpi)
 
 ## lbw
-lbw <- rbind(county_lbw_total, county_lbw_latino, county_lbw_nh_races, county_lbw_aian_nhpi, county_lbw_swana,
-             state_lbw_total, state_lbw_latino, state_lbw_nh_races, state_lbw_aian_nhpi, state_lbw_swana )
+lbw <- rbind(county_lbw_asian_nhpi, state_lbw_asian_nhpi)
 
-lbw <- rename(lbw, lbw = "Births")
+lbw <- rename(lbw, lbw = "births")
 
 ## bind birth and lbw together
-df <- left_join(lbw, births) %>% mutate(county_name = gsub(" County, CA", "", county_name)) %>%
-  relocate(county_id, .before = county_name)
+df <- merge(lbw, births, by = c("Notes","county_id"), all.x = TRUE) %>% mutate(county_name = gsub(" County, CA", "", county_name.x)) %>%
+  relocate(county_id, .before = county_name) %>% select(-county_name.x, -county_name.y)
 
 #calculate Rate ---------------------------------------------------------
 df <- mutate(df, rate = lbw/births*100)
