@@ -116,9 +116,9 @@ lbw <- rbind(county_lbw_asian_nhpi, state_lbw_asian_nhpi)
 
 lbw <- rename(lbw, lbw = "births")
 
-## bind birth and lbw together
-df <- merge(lbw, births, by = c("Notes","county_id"), all.x = TRUE) %>% mutate(county_name = gsub(" County, CA", "", county_name.x)) %>%
-  relocate(county_id, .before = county_name) %>% select(-county_name.x, -county_name.y)
+## bind birth and lbw together - this appears to drop countries with fewer than ten (suppressed to zero) LBW births, e.g., Brunei
+df <- left_join(lbw, births) %>% mutate(county_name = gsub(" County, CA", "", county_name)) %>%
+  relocate(county_id, .before = county_name)
 
 #calculate Rate ---------------------------------------------------------
 df <- mutate(df, rate = lbw/births*100)
@@ -132,13 +132,19 @@ df_wide <- df %>% pivot_wider(names_from = Notes, names_glue = "{Notes}_{.value}
 df_wide <- df_wide %>% rename(geoid = county_id, geoname = county_name)
 df_wide$geolevel <- ifelse(df_wide$geoname == 'California', 'state', 'county')
 
-d <- df_wide
-View(d)
 
-############## CALC RACE COUNTS STATS ##############
+############## CALC ASIAN RACE COUNTS STATS ##############
 ############ To use the following RC Functions, 'd' will need the following columns at minimum: 
 ############ geoid and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
+# remove NHPI columns leaving Asian columns
+d <- df_wide %>% select(!matches("Fiji|Marshall Islands|Micronesia|Palau|Samoa|Tonga")) %>%
+  
+  # calculate totals for RC stats
+  rowwise() %>% mutate(total_raw = sum(c_across(contains("_raw")), na.rm = TRUE)) %>% ungroup() %>%
+  rowwise() %>% mutate(total_births = sum(c_across(contains("_births")), na.rm = TRUE)) %>% ungroup() %>%
+  mutate(total_rate = total_raw/total_births*100)
+  
 #set source for RC Functions script
 source(".\\Functions\\RC_Functions.R")
 
@@ -172,11 +178,11 @@ county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
 ###info for postgres tables will auto-update based on variables at top of script###
-county_table_name <- paste0("arei_hlth_low_birthweight_county_",rc_yr)
-state_table_name <- paste0("arei_hlth_low_birthweight_state_",rc_yr)
+county_table_name <- paste0("asian_hlth_low_birthweight_county_",rc_yr)
+state_table_name <- paste0("asian_hlth_low_birthweight_state_",rc_yr)
 
-indicator <- paste0("Percentage of infants born at low birthweight (less than 2,500 grams or about 5lbs. 5oz) of all live births, by race/ethnicity of mother. This data is")
-source <- paste0("US Department of Health and Human Services, Centers for Disease Control and Prevention (CDC), National Center for Health Statistics, Division of Vital Statistics, CDC WONDER Online Database (",curr_yr,"): https://wonder.cdc.gov/natality-expanded-current.html. Races include: Total, All AIAN, All NHPI, All SWANA, Latinx of any race, NH Black Alone, NH White Alone, NH Asian Alone, NH Two or More Races. SWANA includes only foreign-born birthing parents. SWANA mothers birth country selected based on W:\\RDA Team\\R\\Github\\RDA Functions\\main\\RDA-Functions\\SWANA_Ancestry_List.R. QA doc: ", qa_filepath)
+indicator <- paste0("Percentage of infants born at low birthweight (less than 2,500 grams or about 5lbs. 5oz) of all live births, by Asian country of birth of mother. This data is")
+source <- paste0("US Department of Health and Human Services, Centers for Disease Control and Prevention (CDC), National Center for Health Statistics, Division of Vital Statistics, CDC WONDER Online Database (",curr_yr,"): https://wonder.cdc.gov/natality-expanded-current.html. Mothers birth country selected based on W:\\Data\\Health\\Births\\CDC\\Asian and NHPI countries.xlsx. QA doc: ", qa_filepath)
 
 #send tables to postgres
-# to_postgres(county_table, state_table)
+# to_postgres(county_table,state_table,"mosaic")
