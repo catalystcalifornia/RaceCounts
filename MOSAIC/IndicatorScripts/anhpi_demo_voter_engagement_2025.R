@@ -96,6 +96,11 @@ county_table <- calc_ranks(county_table)
 county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
+# DROP TOTAL AND TOTAL RATE-DERIVED COLS
+county_table <- county_table %>% select(-c(starts_with("total"), starts_with("performance"), "quadrant"))
+state_table <- state_table %>% select(-c(starts_with("total")))
+
+
 ###info for postgres tables - automatically updates###
 county_table_name <- paste0("asian_demo_voter_engagement_county_",yr)
 state_table_name <- paste0("asian_demo_voter_engagement_state_",yr)
@@ -103,5 +108,5 @@ indicator <- paste0("Created on ", Sys.Date(), ". Voter engagement in national, 
 source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates. ", dwnld_url, " QA doc: ", qa_filepath)
 
 #send tables to postgres
-#to_postgres(county_table,state_table,"mosaic")
+to_postgres(county_table,state_table,"mosaic")
 
