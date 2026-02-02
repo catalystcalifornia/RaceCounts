@@ -103,7 +103,7 @@ state_table <- state_table %>% select(-c(starts_with("total")))
 ###info for postgres tables - automatically updates###
 county_table_name <- paste0("asian_crim_perception_of_safety_county_",yr)
 state_table_name <- paste0("asian_crim_perception_of_safety_state_",yr)
-indicator <- paste0("Adults who Feel Safe in Their Neighborhood (%) Asian Ethnic Groups ONLY")
+indicator <- "Adults who Feel Safe in Their Neighborhood (%) Asian Ethnic Groups ONLY"
 source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url, ". QA doc: ", qa_filepath)
 
 
