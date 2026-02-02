@@ -2,7 +2,7 @@
 
 # Set up workspace --------------------------------------------------------
 # Install packages if not already installed
-packages <- c("data.table", "stringr", "dplyr", "RPostgres", "dbplyr", "srvyr", "tidycensus", "rpostgis",  "tidyr", "sf", "DBI", "usethis") 
+packages <- c("data.table", "stringr", "dplyr", "RPostgres", "dbplyr", "srvyr", "tidycensus", "rpostgis",  "tidyr", "here", "sf", "DBI", "usethis") 
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
 
@@ -23,23 +23,15 @@ options(scipen = 100) # disable scientific notation
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
-source("./Functions/pums_fx.R")  # MOSAIC-specific PUMS fx
-
 
 # update QA doc filepath
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Living_Wage_ANHPI.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Living_Wage.docx"
 
 # define variables used throughout - update each year
 curr_yr <- 2023 
 rc_yr <- '2025'
 rc_schema <- 'v7'
 lw <- 15.50    # update living wage value as needed
-
-## CHECK FOR UPDATES EACH YEAR
-source("W://RDA Team//R//Github//RDA Functions//LF//RDA-Functions//Asian_NHPI_Ancestry_List.R")
-### Ancestries pulled from: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
-# pi_ancestry <- c("Polynesian", "Hawaiian", "Samoan", "Tongan", "Micronesian", "Guamanian", "Chamorro", "Marshallese", "Fijian", "Pacific Islander", "Other Pacific")
-# aa_ancestry <- c("")
 
 ### define common inputs for calc_pums{} and pums_screen{}
 indicator = 'living_wage'         # name of column that contains indicator data, eg: 'living_wage' which contains values 'livable' and 'not livable'
@@ -85,7 +77,7 @@ ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE, se
              colClasses = list(character = c("PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH", 
                                              "ADJINC", "WAGP", "COW", "WKHP", "ESR", "WRK", "WKWN")))
 
-# Add state_geoid to ppl, add state_geoid to PUMA id, so it aligns with puma-county xwalk
+# Add state_geoid to ppl, add state_geoid to PUMA id, so it aligns with crosswalks.puma_county_2020
 ppl$state_geoid <- "06"
 ppl$puma_id <- paste0(ppl$state_geoid, ppl$PUMA)
 
@@ -95,6 +87,28 @@ repwlist = rep(paste0("PWGTP", 1:80))
 # save copy of original data
 orig_data <- ppl
 
+##### Reclassify Race/Ethnicity ########
+source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/PUMS_Functions_new.R")    # temporarily directed to LF folder #
+# check how many records there are for RACAIAN (AIAN alone/combo) versus RAC1P (AIAN alone) and same for NHPI
+#View(subset(ppl, RACAIAN =="1"))
+#View(subset(ppl, RAC1P >= 3 & ppl$RAC1P <=5))
+#View(subset(ppl, RACNH =="1" | RACPI =="1"))
+#View(subset(ppl, RAC1P == 7))
+
+# latino includes all races. AIAN is AIAN alone/combo latino/non-latino, NHPI is alone/combo latino/non-latino, SWANA includes all races and latino/non-latino
+ppl <- race_reclass(orig_data, start_yr, curr_yr)
+
+
+# review data 
+#View(ppl[c("HISP","latino","RAC1P","race","RAC2P","RAC3P","ANC1P","ANC2P", "aian", "pacisl", "swana")])
+# table(ppl$race, useNA = "always")
+# table(ppl$race, ppl$latino, useNA = "always")
+# table(ppl$race, ppl$aian, useNA = "always")
+# table(ppl$race, ppl$pacisl, useNA = "always")
+# table(ppl$race, ppl$swana, useNA = "always")
+# table(ppl$aian, useNA = "always")
+# table(ppl$pacisl, useNA = "always")
+# table(ppl$swana, useNA = "always")
 
 ####### Subset Data for Living Wage ########
 # Adjust wage or salary income in past 12 months: WAGP (adjust with ADJINC)----
@@ -162,6 +176,7 @@ table(ppl$living_wage, useNA = "always")
 # join county crosswalk to data
 ppl_cs <- left_join(ppl, county_crosswalk, by=c("puma_id" = "puma"))   # join FILTERED county-puma crosswalk
 
+
 # join assm crosswalk to data
 ppl_assm <- left_join(ppl, assm_crosswalk, by=c("puma_id" = "puma")) 
 ## Add geonames
@@ -179,6 +194,7 @@ names(assm_name) <- c("geoid", "geoname")
 
 # add geonames to data
 ppl_assm <- merge(x=assm_name,y=ppl_assm, by="geoid", all=T)
+
 
 # join sen crosswalk to data
 ppl_sen <- left_join(ppl, sen_crosswalk, by=c("puma_id" = "puma")) 
@@ -198,133 +214,104 @@ names(sen_name) <- c("geoid", "geoname")
 # add geonames to WA
 ppl_sen <- merge(x=sen_name,y=ppl_sen, by="geoid", all=T)
 
+
 # prep state df
 ppl_state <- ppl %>% rename(geoid = state_geoid) %>% mutate(geoname = 'California')
 
-# put all geolevel dfs into 1 list
-ppl_list <- list(ppl_cs = ppl_cs, ppl_assm = ppl_assm, ppl_sen = ppl_sen, ppl_state = ppl_state)
+
+#### Run PUMS Calcs ####
+rc_county <- calc_pums(d = ppl_cs, indicator, indicator_val, weight)   # Calc county
+rc_county$geolevel <- 'county'
+View(rc_county)
+
+rc_assm <- calc_pums(d = ppl_assm, indicator, indicator_val, weight)    # Calc assembly
+rc_assm$geolevel <- 'sldl'
+View(rc_assm)
+
+rc_sen <- calc_pums(d = ppl_sen, indicator, indicator_val, weight)      # Calc senate
+rc_sen$geolevel <- 'sldu'
+View(rc_sen)
+
+rc_state <- calc_pums(d = ppl_state, indicator, indicator_val, weight)  # Calc state
+rc_state$geolevel <- 'state'
+View(rc_state)
+
+############ COMBINE & SCREEN COUNTY/STATE DATA ############# 
+rc_all <- rbind(rc_state, rc_county, rc_assm, rc_sen) %>%        # combine all geolevel df's before screening
+  select(-c(starts_with("count_moe"), starts_with("count_cv")))  # drop fields not needed for RC tables
+
+colnames(rc_all) <- sub("count", "num", colnames(rc_all))  # rename some cols to RC colnames
+
+screened <- pums_screen(rc_all, cv_threshold, raw_rate_threshold, pop_threshold, indicator_val)
+View(screened)
+
+d <- screened
 
 
+############## CALC RACE COUNTS STATS ##############
+#set source for RC Functions script
+source("./Functions/RC_Functions.R")
 
-### CALC NHPI ## -------------------------------------------------------------------------
-# reclassify select ancestries
-disagg_nhpi <- lapply(ppl_list, anhpi_reclass, curr_yr, nhpi_ancestry)   # in 2023, 11 nhpi ancestries present
+d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
 
-# run pums calcs
-disagg_nhpi_calc <- lapply(disagg_nhpi, calc_anhpi_pums, indicator, indicator_val, weight)
+d <- count_values(d) #calculate number of "_rate" values
+d <- calc_best(d) #calculate best rates -- be sure to update previous line of code accordingly before running this function.
+d <- calc_diff(d) #calculate difference from best
+d <- calc_avg_diff(d) #calculate (row wise) mean difference from best
+d <- calc_p_var(d) #calculate (row wise) population or sample variance. be sure to use calc_s_var for sample data or calc_p_var for population data.
+d <- calc_id(d) #calculate index of disparity
+View(d)
 
-# combine all geolevel calcs and screen
-nhpi_all <- rbindlist(disagg_nhpi_calc) %>%         # combine all geolevel df's before screening
-  select(-starts_with("count_moe"), -starts_with("count_cv"))   # drop fields not needed for RC tables
+#split STATE into separate table
+state_table <- d[d$geolevel == 'state', ]
 
-colnames(nhpi_all) <- sub("count", "num", colnames(nhpi_all))         # rename some cols to RC colnames
+#calculate STATE z-scores
+state_table <- calc_state_z(state_table)
+View(state_table)
 
-#nhpi_screened <- pums_screen(nhpi_all, cv_threshold, raw_rate_threshold, pop_threshold, indicator_val)
-### insert code to screen nhpi_all
+#split COUNTY into separate table
+county_table <- d[d$geolevel == 'county', ]
 
-# get list of subgroups in the data
-nhpi_grps <- nhpi_all %>%
-  select(starts_with("rate"), -contains("moe"), -contains("cv")) %>%
-  colnames() %>%
-  gsub("rate_", "", .)
+#calculate COUNTY z-scores
+county_table <- calc_z(county_table)
+county_table <- calc_ranks(county_table)
+View(county_table)
 
-nhpi_grps
+#split LEG DIST into separate tables
+upper_table <- d[d$geolevel == 'sldu', ]
+lower_table <- d[d$geolevel == 'sldl', ]
 
-#View(nhpi_screened)
+#calculate SLDU z-scores and ranks
+upper_table <- calc_z(upper_table)
 
-# reclassify select ancestries
-disagg_asian <- lapply(ppl_list, aapi_reclass, curr_yr, asian_ancestry) # in 2023, 29 asian ancestries present
+upper_table <- calc_ranks(upper_table)
+#View(upper_table)
 
-disagg_asian_calc <- lapply(disagg_asian, calc_anhpi_pums, indicator, indicator_val, weight)
+#calculate SLDL z-scores and ranks
+lower_table <- calc_z(lower_table)
 
-asian_all <- rbindlist(disagg_asian_calc) %>%         # combine all geolevel df's before screening
-  select(-starts_with("count_moe"), -starts_with("count_cv"))   # drop fields not needed for RC tables
+lower_table <- calc_ranks(lower_table)
+#View(lower_table)
 
-colnames(asian_all) <- sub("count", "num", colnames(asian_all))        # rename some cols to RC colnames
+## Bind sldu and sldl tables into one leg_table##
+leg_table <- rbind(upper_table, lower_table)
+View(leg_table)
 
-# get list of subgroups in the data
-asian_grps <- asian_all %>%
-  select(starts_with("rate"), -contains("moe"), -contains("cv")) %>%
-  colnames() %>%
-  gsub("rate_", "", .)
-
-asian_grps
-
-# aa_screened <- pums_screen(aa_all, cv_threshold, raw_rate_threshold, pop_threshold, indicator_val)
-# View(aa_screened)
-
-
-
-#d <- screened
+state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
+county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
+leg_table <- leg_table %>% dplyr::rename("leg_name" = "geoname", "leg_id" = "geoid")
 
 
-# ############## CALC RACE COUNTS STATS ##############
-# #set source for RC Functions script
-# source("./Functions/RC_Functions.R")
-# 
-# d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
-# 
-# d <- count_values(d) #calculate number of "_rate" values
-# d <- calc_best(d) #calculate best rates -- be sure to update previous line of code accordingly before running this function.
-# d <- calc_diff(d) #calculate difference from best
-# d <- calc_avg_diff(d) #calculate (row wise) mean difference from best
-# d <- calc_s_var(d) #calculate (row wise) population or sample variance. be sure to use calc_s_var for sample data or calc_p_var for population data.
-# d <- calc_id(d) #calculate index of disparity
-# View(d)
-# 
-# #split STATE into separate table
-# state_table <- d[d$geolevel == 'state', ]
-# 
-# #calculate STATE z-scores
-# state_table <- calc_state_z(state_table)
-# View(state_table)
-# 
-# #split COUNTY into separate table
-# county_table <- d[d$geolevel == 'county', ]
-# 
-# #calculate COUNTY z-scores
-# county_table <- calc_z(county_table)
-# county_table <- calc_ranks(county_table)
-# View(county_table)
-# 
-# #split LEG DIST into separate tables
-# upper_table <- d[d$geolevel == 'sldu', ]
-# lower_table <- d[d$geolevel == 'sldl', ]
-# 
-# #calculate SLDU z-scores and ranks
-# upper_table <- calc_z(upper_table)
-# 
-# upper_table <- calc_ranks(upper_table)
-# #View(upper_table)
-# 
-# #calculate SLDL z-scores and ranks
-# lower_table <- calc_z(lower_table)
-# 
-# lower_table <- calc_ranks(lower_table)
-# #View(lower_table)
-# 
-# ## Bind sldu and sldl tables into one leg_table##
-# leg_table <- rbind(upper_table, lower_table)
-# View(leg_table)
-# 
-# state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
-# county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
-# leg_table <- leg_table %>% dplyr::rename("leg_name" = "geoname", "leg_id" = "geoid")
-# 
-# 
-# ###update info for postgres tables###
-# leg_table_name <- paste0("aapi_econ_living_wage_leg_", rc_yr)
-# county_table_name <- paste0("aapi_econ_living_wage_county_", rc_yr)
-# state_table_name <- paste0("aapi_econ_living_wage_state_", rc_yr)
-# indicator <- paste0("Percent of workers earning above living wage (", lw, "). Includes workers ages 18-64 who were at work last week or were employed but not at work. Excludes those with zero earnings and self-employed or unpaid family workers. PUMAs are assigned to counties and leg districts based on Geocorr 2022 crosswalks. We also screened by pop (400) and CV (30%). Asian is one race alone and Latinx-exclusive. NHPI and all disaggregated subgroups include one race alone (Asian or NHPI) and in combo and Latinx. QA Doc:", qa_filepath, ". This data is")
-# source <- paste0("ACS PUMS (", start_yr, "-", curr_yr, ")")
-# 
-# #send tables to postgres
-# ################# INSERT CODE TO SEND TO MOSAIC DB #######################
-# con2 <- connect_to_db("mosaic")
-# #to_postgres()
-# #leg_to_postgres()
-# 
-# #close connection
-# dbDisconnect(con)
-# dbDisconnect(con2)
+###update info for postgres tables###
+leg_table_name <- paste0("arei_econ_living_wage_leg_", rc_yr)
+county_table_name <- paste0("arei_econ_living_wage_county_", rc_yr)
+state_table_name <- paste0("arei_econ_living_wage_state_", rc_yr)
+indicator <- paste0("Percent of workers earning above living wage (", lw, "). Includes workers ages 18-64 who were at work last week or were employed but not at work. Excludes those with zero earnings and self-employed or unpaid family workers. PUMAs are assigned to counties and leg districts based on Geocorr 2022 crosswalks. We also screened by pop (400) and CV (30%). White, Black, Asian, Other are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN, NHPI, SWANA are Latinx-inclusive so they are also included in Latinx counts. AIAN, NHPI, and SWANA include AIAN, NHPI, and SWANA Alone and in combo, so non-Latinx AIAN, NHPI, SWANA in combo are also included in Two or More. QA Doc:", qa_filepath, ". This data is")
+source <- paste0("ACS PUMS (", start_yr, "-", curr_yr, ")")
+
+#send tables to postgres
+to_postgres()
+leg_to_postgres()
+
+#close connection
+dbDisconnect(con)
