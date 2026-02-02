@@ -34,22 +34,23 @@ qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Homeownership - M
 cv_threshold = 40         
 pop_threshold = 100       
 asbest = 'max'            
-schema = 'housing'
-table_code = 'b25003'    # Select relevant indicator table name
+issue = 'hous'             # rc table issue prefix, eg: hous, econ, etc.
+ind_name = 'homeownership' # rc table indicator name, eg: per_capita_income, homeownership
+table_code = 'b25003'      # Select relevant indicator table name
 
 
 # CREATE RAW DATA TABLES -------------------------------------------------------------------------
 ## Only run this section if the raw data tables have not been created yet ##
 # race <- "asian"
-# asian_list <- get_detailed_race(table_code, race, 2021)
+# asian_list <- get_detailed_race(table_code, race, curr_yr)
 # # check race col names which are created in fx
-# #unique(asian_list[[2]]$POPGROUP_LABEL)
-# 
+# unique(asian_list[[3]]$POPGROUP_LABEL)
+
 # race <- "nhpi"
-# nhpi_list <- get_detailed_race(table_code, race, 2021)
+# nhpi_list <- get_detailed_race(table_code, race, curr_yr)
 # # check race col names which are created in fx
-# #unique(nhpi_list[[2]]$POPGROUP_LABEL)
-# 
+# unique(nhpi_list[[3]]$POPGROUP_LABEL)
+
 # # Send table to postgres
 # send_to_mosaic(table_code, asian_list, rc_schema)
 # send_to_mosaic(table_code, nhpi_list, rc_schema)
@@ -122,19 +123,18 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
 ############## ASIAN: COUNTY, STATE, CITY METADATA  ##############
 
 ###update info for postgres tables###
-county_table_name <- paste0(tolower(race_name), "_hous_homeownership_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
-state_table_name <- paste0(tolower(race_name), "_hous_homeownership_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
-city_table_name <- paste0(tolower(race_name), "_hous_homeownership_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
+county_table_name <- paste0(tolower(race_name), "_", issue, "_", ind_name, "_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
+state_table_name <- paste0(tolower(race_name), "_", issue, "_", ind_name, "_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
+city_table_name <- paste0(tolower(race_name), "_", issue, "_", ind_name, "_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
 start_yr <- curr_yr-4
 
 indicator <- paste0("Owner-Occupied Housing Units (%) ", str_to_title(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
-source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table B25003, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
+source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table ", str_to_title(table_code), " https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## ASIAN: SEND TO POSTGRES #######
 to_postgres(county_table,state_table, 'mosaic')
 city_to_postgres(city_table, 'mosaic')
 
-dbDisconnect(con)
 
 
 
@@ -179,7 +179,7 @@ county_table <- calc_z(county_table)
 
 ## Calc county ranks## These fx don't work bc total_rate is NA
 # county_table <- calc_ranks(county_table) 
-county_table <- county_table %>% dplyr::select(-c(geolevel, total_rate))
+county_table <- county_table %>% dplyr::select(-c(geolevel, total_rate, performance_z))
 # View(county_table)
 
 #calculate CITY z-scores
@@ -187,7 +187,7 @@ city_table <- calc_z(city_table)
 
 ## Calc city ranks##
 # city_table <- calc_ranks(city_table)
-city_table <- city_table %>% dplyr::select(-c(geolevel, total_rate))
+city_table <- city_table %>% dplyr::select(-c(geolevel, total_rate, performance_z))
 #View(city_table)
 
 #rename geoid to state_id, county_id, city_id
@@ -199,9 +199,9 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
 ############## NHPI: COUNTY, STATE, CITY METADATA  ##############
 
 ###update info for postgres tables###
-county_table_name <- paste0(tolower(race_name), "_hous_homeownership_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
-state_table_name <- paste0(tolower(race_name), "_hous_homeownership_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
-city_table_name <- paste0(tolower(race_name), "_hous_homeownership_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
+county_table_name <- paste0(tolower(race_name), "_", issue, "_", ind_name, "_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
+state_table_name <- paste0(tolower(race_name), "_", issue, "_", ind_name, "_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
+city_table_name <- paste0(tolower(race_name), "_", issue, "_", ind_name, "_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
 start_yr <- curr_yr-4
 
 indicator <- paste0("Owner-Occupied Housing Units (%) ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
