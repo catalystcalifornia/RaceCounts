@@ -95,8 +95,8 @@ county_table <- calc_ranks(county_table)
 county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
-# DROP TOTAL ROWS
-county_table <- county_table %>% select(-c(starts_with("total")))
+# DROP TOTAL AND TOTAL RATE-DERIVED COLS
+county_table <- county_table %>% select(-c(starts_with("total"), starts_with("performance"), "quadrant"))
 state_table <- state_table %>% select(-c(starts_with("total")))
 
 
@@ -109,6 +109,3 @@ source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url, ". QA doc
 
 #send tables to postgres
 to_postgres(county_table,state_table,"mosaic")
-
-dbDisconnect(con)
-
