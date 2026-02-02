@@ -95,20 +95,17 @@ county_table <- calc_ranks(county_table)
 county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
-# DROP TOTAL ROWS
-county_table <- county_table %>% select(-c(starts_with("total")))
+# DROP TOTAL AND TOTAL RATE-DERIVED COLS
+county_table <- county_table %>% select(-c(starts_with("total"), starts_with("performance"), "quadrant"))
 state_table <- state_table %>% select(-c(starts_with("total")))
 
 
 ###info for postgres tables - automatically updates###
 county_table_name <- paste0("asian_crim_perception_of_safety_county_",yr)
 state_table_name <- paste0("asian_crim_perception_of_safety_state_",yr)
-indicator <- paste0("Adults who Feel Safe in Their Neighborhood (%) Asian Ethnic Groups ONLY")
+indicator <- "Adults who Feel Safe in Their Neighborhood (%) Asian Ethnic Groups ONLY"
 source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url, ". QA doc: ", qa_filepath)
 
 
 #send tables to postgres
 to_postgres(county_table,state_table,"mosaic")
-
-dbDisconnect(con)
-

@@ -1,7 +1,7 @@
-### MOSAIC: Voter Engagement RC v7 ### 
+### MOSIAC: Got Help RC v7 ### 
 
 #install packages if not already installed
-packages <- c("tidyr", "dplyr", "sf", "tidycensus", "tidyverse", "usethis", "openxlsx", "RPostgres", "data.table")  
+packages <- c("tidyr", "dplyr", "sf", "tidycensus", "tidyverse", "usethis", "openxlsx", "RPostgres")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -22,16 +22,17 @@ for(pkg in packages){
 source("W:\\RDA Team\\R\\credentials_source.R")
 
 # define variables used in several places that must be updated each year
-curr_yr <- "2019_24"  # must keep same format
+curr_yr <- "2017_24"  # must keep same format
 dwnld_url <- "https://ask.chis.ucla.edu/"
 rc_schema <- "v7"
 yr <- "2025"
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Democracy\\QA_Voter_Engagement - MOSAIC.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Health Access\\QA_Sheet_Got_Help - MOSAIC.docx"
 
-chis_dir <- ("W:/Data/Democracy/CHIS/")
+chis_dir <- ("W:/Data/Health/CHIS/")
 
-#get data for Total population
-total_df = read.xlsx(paste0(chis_dir,"/Voter_Engagement/2019_23/AskCHIStotal.xlsx"), sheet=1, startRow=5, rows=c(5:8)) 
+
+#get data for Total population - NOTE: We only pull in this data to make CHIS fx work, we drop this data at the end
+total_df = read.xlsx(paste0(chis_dir, "Got_Help/2011_23/GotHelp_total.xlsx"), sheet=1, startRow=5, rows=c(5:8))
 
 #format row headers
 total_df_rownames <- c("measure","total_yes", "total_no")
@@ -39,7 +40,7 @@ total_df[1:3,1] <- total_df_rownames[1:3]
 
 
 #get data for Asian subgroups
-asian_df = read.xlsx(paste0(chis_dir,"/Voter_Engagement/",curr_yr,"/Voter_asian7.xlsx"), sheet=1, startRow=8, rows=c(8,10:23))
+asian_df = read.xlsx(paste0(chis_dir, "Got_Help/",curr_yr,"/GotHelp_asian7.xlsx"), sheet=1, startRow=8, rows=c(8,10:23))
 
 #format row headers
 asian_rownames <- c("chinese_yes", "japanese_yes", "korean_yes", "filipino_yes", "south_asian_yes", "vietnamese_yes", "other_asian_yes", 
@@ -54,8 +55,6 @@ df <- rbind(total_df, asian_df)
 
 #run the rest of CHIS prep including formatting column names, screen using flags, adding geonames, etc.
 source("./MOSAIC/Functions/CHIS_Functions.R")
-
-df <- fix_colnames(df) # this wasn't necessary in other CHIS scripts but is necessary here for some reason
 df_subset <- prep_chis(df)
 View(df_subset)
 
@@ -102,11 +101,12 @@ state_table <- state_table %>% select(-c(starts_with("total")))
 
 
 ###info for postgres tables - automatically updates###
-county_table_name <- paste0("asian_demo_voter_engagement_county_",yr)
-state_table_name <- paste0("asian_demo_voter_engagement_state_",yr)
-indicator <- "Voter engagement in national, state, and local elections - US Citizens (%) Asian Ethnic Groups ONLY"
-source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates. ", dwnld_url, " QA doc: ", qa_filepath)
+county_table_name <- paste0("asian_hlth_got_help_county_",yr)
+state_table_name <- paste0("asian_hlth_got_help_state_",yr)
+indicator <- "Adults who Got Help for Mental/Emotional or Alcohol/Drug Issues (%) Asian Ethnic Groups ONLY"
+source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url)
 
 #send tables to postgres
 to_postgres(county_table,state_table,"mosaic")
+
 
