@@ -325,10 +325,10 @@ calc_ranks <- function(x) {
 
 
 #####send city, county, state and leg district tables to postgres#####
-to_postgres <- function(x,y, conn = "racecounts") {
+to_postgres <- function(x,y) {
                       # create connection for rda database
                       source("W:\\RDA Team\\R\\credentials_source.R")
-                      con <- connect_to_db(conn)   # connect to user-defined db or racecounts if none specified
+                      con <- connect_to_db("racecounts")
 
                       #STATE TABLE
                       state_table <- as.data.frame(state_table)
@@ -398,12 +398,12 @@ to_postgres <- function(x,y, conn = "racecounts") {
 return(x)
 }
 
-city_to_postgres <- function(x, conn = "racecounts") {
+city_to_postgres <- function(x) {
 
                       # create connection for rda database
                       source("W:\\RDA Team\\R\\credentials_source.R")
-                      con <- connect_to_db(conn)   # connect to user-defined db or racecounts if none specified
-  
+                      con <- connect_to_db("racecounts")
+
                       #CITY TABLE
                       city_table <- as.data.frame(city_table)
 
@@ -438,11 +438,11 @@ city_to_postgres <- function(x, conn = "racecounts") {
   return(x)
  }
 
-leg_to_postgres <- function(x, conn = "racecounts") {
+leg_to_postgres <- function(x) {
                       # create connection for rda database
                       source("W:\\RDA Team\\R\\credentials_source.R")
-                      con <- connect_to_db(conn)   # connect to user-defined db or racecounts if none specified
-  
+                      con <- connect_to_db("racecounts")
+
                       #STATE TABLE
                       leg_table <- as.data.frame(leg_table)
 
