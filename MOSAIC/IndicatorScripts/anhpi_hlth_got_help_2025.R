@@ -104,7 +104,7 @@ state_table <- state_table %>% select(-c(starts_with("total")))
 county_table_name <- paste0("asian_hlth_got_help_county_",yr)
 state_table_name <- paste0("asian_hlth_got_help_state_",yr)
 indicator <- "Adults who Got Help for Mental/Emotional or Alcohol/Drug Issues (%) Asian Ethnic Groups ONLY"
-source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url)
+source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates ", dwnld_url, " QA doc: ", qa_filepath)
 
 #send tables to postgres
 to_postgres(county_table,state_table,"mosaic")
