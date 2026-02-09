@@ -1,4 +1,4 @@
-### MOSAIC: Low Birthweight RC v7 ###
+### MOSAIC: Disaggregated Asian/NHPI Low Birthweight RC v7 ###
 
 ##install packages if not already installed ------------------------------
 packages <- c("RPostgres","tidycensus","tidyverse","here","usethis", "janitor")
@@ -29,80 +29,82 @@ rc_schema <- 'v7'
 rc_yr <- '2025'
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Health Access\\QA_Sheet_Low_Birthweight_MOSAIC.docx"
 
-#test <- read.csv("W:\\Data\\Health\\Births\\CDC\\2016-2024\\Natality, 2016-2024 state Births asian.csv", colClasses = c("NULL",rep("character",4), "numeric")) %>% clean_names() %>% 
-#filter(!mother_s_birth_country =="")
-# Function to read State data --------------------------------------------
+# test <- read.csv("W:\\Data\\Health\\Births\\CDC\\2016-2024\\Natality, 2016-2024 state Births all asian.csv", colClasses = c("NULL",rep("character",4), "numeric")) %>% clean_names() %>%
+# filter(!mother_s_birth_country =="")
 
-read_state_data_asian_nhpi <- function(x, y) {
-  asian <- read.csv(file = x, colClasses = c("NULL",rep("character",4), "numeric")) %>% clean_names() %>%
-    filter(!mother_s_birth_country =="")
+# List of Asian and NHPI Birth Countries -----------------------------------
+birth_countries <- read_excel("W:\\Data\\Health\\Births\\CDC\\Asian and NHPI countries.xlsx", range = "A1:B304") %>%
+  filter(Asian_or_NHPI %in% c("Asian", "NHPI")) %>%
+  mutate(country = toupper(CDC_Country))
+
+
+
+# Function to read birth data --------------------------------------------
+read_data_asian_nhpi <- function(x, y) {  # x = cdc birth or lbw data, y = birth country data
+  cdc_data <- read.csv(file = x)
+  colnames(cdc_data) <- tolower(gsub("\\.", "_", colnames(cdc_data)))     # clean col names
+  cdc_data$births <- as.numeric(gsub("Suppressed", NA, cdc_data$births))  # make 'births' numeric
+  cdc_data <- cdc_data %>%
+    mutate(
+      state_of_residence_code = if ("state_of_residence_code" %in% names(.))    # clean geoid
+        paste0("0",state_of_residence_code)
+      else
+        NULL
+    )
+  cdc_data <- cdc_data %>%
+    mutate(
+      county_of_residence_code = if ("county_of_residence_code" %in% names(.))   # clean geoid
+        paste0("0",county_of_residence_code)
+      else
+        NULL
+    )
   
-  asian$Notes <- str_to_title(asian$mother_s_birth_country)
+  cdc_data <- cdc_data %>% select(-(notes))                               # drop unneeded col
   
-  asian_ <- asian %>% select(Notes, state_of_residence, state_of_residence_code, births) %>% 
-    filter(!is.na(state_of_residence_code))
+  # join to (filter) Asian/NHPI birth country list
+  cdc_data <- right_join(cdc_data, birth_countries, by = c("mother_s_birth_country" = "country"))
   
-  nhpi <- read.csv(file = y, colClasses = c("NULL",rep("character",4), "numeric")) %>% clean_names() %>%
-    filter(!mother_s_birth_country =="")
-  
-  nhpi$Notes <- str_to_title(nhpi$mother_s_birth_country)
-  
-  nhpi_ <- nhpi %>% select(Notes, state_of_residence, state_of_residence_code, births) %>% 
-    filter(!is.na(state_of_residence_code))
-  
-  z <- rbind(asian_, nhpi_) %>%				# put all asian and nhpi data together
-    rename(county_name = state_of_residence,    
-           county_id = state_of_residence_code)
-  
+return(cdc_data)
+}
+
+
+# Function to clean birth data -----------------------------------
+clean_data <- function(z){
+  z <- z %>%
+    rename_with(~ tolower(.x)) %>%   # colnames: replace "." with "_" and make lower case
+    rename_with(
+      ~ dplyr::case_when(
+        grepl("residence_code$", .x) ~ "geoid",
+        grepl("residence$", .x)      ~ "geoname",
+        TRUE                         ~ .x
+      )
+    ) %>%
+    filter(!is.na(geoid)) %>%
+    filter(geoid != '06999') %>%         
+    filter(!mother_s_birth_country =="") %>%
+    mutate(cdc_country = tolower(gsub(" ", "_", cdc_country))) %>%
+    mutate(cdc_country = tolower(gsub(",", "", cdc_country))) %>%
+    mutate(cdc_country = ifelse(grepl("micronesia", cdc_country), "micronesia", cdc_country)) %>%
+    mutate(geoname = gsub(" County, CA", "", geoname)) %>%
+    select(geoid, geoname, cdc_country, births, asian_or_nhpi) %>%
+    relocate(geoid, .before = geoname) 
   return(z)
 }
 
 
-# Function to read County data --------------------------------------------
-
-read_county_data_asian_nhpi <- function(x, y) {
-  
-  asian <- read.csv(file = x, colClasses = c("NULL",rep("character",4), "numeric")) %>% clean_names() %>%
-    filter(!mother_s_birth_country =="")
-  
-  asian$Notes <- str_to_title(asian$mother_s_birth_country)
-  
-  asian <- asian %>% filter(county_of_residence != "Unidentified Counties, CA")
-  
-  asian_ <- asian %>% select(Notes, county_of_residence, county_of_residence_code, births) %>%
-    filter(!is.na(county_of_residence_code))
-  
-  nhpi <- read.csv(file = y, colClasses = c("NULL",rep("character",4), "numeric")) %>% clean_names() %>%
-    filter(!mother_s_birth_country =="")
-  
-  nhpi$Notes <- str_to_title(nhpi$mother_s_birth_country)
-  
-  nhpi <- nhpi %>% filter(county_of_residence != "Unidentified Counties, CA")
-  
-  nhpi_ <- nhpi %>% select(Notes, county_of_residence, county_of_residence_code, births) %>%
-    filter(!is.na(county_of_residence_code))
-  
-  z <- rbind(asian_,nhpi_) %>%
-    rename(county_name = county_of_residence,    
-           county_id = county_of_residence_code)
-  
-  return(z)
-  
-}
-
-# Read Birth Data ---------------------------------------------------------
+# Read & Clean Birth Data ---------------------------------------------------------
 ## Data downloaded from: https://wonder.cdc.gov/natality-expanded-current.html
+state_births_asian_nhpi <- read_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," state expanded all.csv"), birth_countries) %>% # Get State ASIAN / NHPI Births
+  clean_data()
 
-state_births_asian_nhpi <- read_state_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," state Births asian.csv"),paste0(cdc_dir, "Natality, ",curr_yr," state Births nhpi.csv")) # Get State ASIAN / NHPI Births
+state_lbw_asian_nhpi <- read_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," state expanded lbw.csv"), birth_countries) %>% # Get State ASIAN / NHPI LBW
+  clean_data()
 
-county_births_asian_nhpi <- read_county_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," county Births asian.csv"),paste0(cdc_dir, "Natality, ",curr_yr," county Births nhpi.csv")) # Get County ASIAN / NHPI Births
+county_births_asian_nhpi <- read_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," county expanded all.csv"), birth_countries) %>% # Get county ASIAN / NHPI Births
+  clean_data()
 
-
-# Read Low Birth Weight Data ---------------------------------------------------------
-
-state_lbw_asian_nhpi <- read_state_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," state LBW asian.csv"), paste0(cdc_dir, "Natality, ",curr_yr," state LBW nhpi.csv")) # Get State ASIAN / NHPI LBW
-
-county_lbw_asian_nhpi <- read_county_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," county LBW asian.csv"), paste0(cdc_dir, "Natality, ",curr_yr," county LBW nhpi.csv")) # Get County ASIAN / NHPI LBW
+county_lbw_asian_nhpi <- read_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," county expanded lbw.csv"), birth_countries) %>% # Get county ASIAN / NHPI LBW
+  clean_data()
 
 
 # Bind Data Together ---------------------------------------------------------
@@ -113,38 +115,42 @@ births <- rbind(county_births_asian_nhpi, state_births_asian_nhpi)
 
 ## lbw
 lbw <- rbind(county_lbw_asian_nhpi, state_lbw_asian_nhpi)
+lbw <- rename(lbw, raw = "births")
 
-lbw <- rename(lbw, lbw = "births")
+## Births & LBW final clean up & rate calc
+final_data <- left_join(lbw, births) %>%
+  # calculate lbw rate
+  mutate(rate = raw/births * 100,
+         geolevel = ifelse(geoname == 'California', 'state', 'county')) %>%
+  select(geoid, geoname, cdc_country, asian_or_nhpi, births, raw, rate, geolevel)
+  
+# unique(final_data$cdc_country)  # list of birth countries included, n = 67
 
-## bind birth and lbw together - this appears to drop countries with fewer than ten (suppressed to zero) LBW births, e.g., Brunei
-df <- left_join(lbw, births) %>% mutate(county_name = gsub(" County, CA", "", county_name)) %>%
-  relocate(county_id, .before = county_name)
+asian_wide <- final_data %>% 
+  filter(asian_or_nhpi == 'Asian') %>%
+  pivot_wider(names_from = cdc_country, 
+              names_glue = "{cdc_country}_{.value}", 
+              values_from = c(births, raw, rate)) %>%
+  remove_empty("cols") %>%       # drop 11 rate cols where all vals are NA
+  mutate(total_rate = NA) %>%    # add dummy total_rate for RC calcs
+  select(-asian_or_nhpi)
+  
 
-#calculate Rate ---------------------------------------------------------
-df <- mutate(df, rate = lbw/births*100)
-
-#Format and Pivot wider ---------------------------------------------------------
-#update raw col name for RC fx
-df <- rename(df, raw = "lbw")
-
-#pivot
-df_wide <- df %>% pivot_wider(names_from = Notes, names_glue = "{Notes}_{.value}", values_from = c(raw, births, rate))
-df_wide <- df_wide %>% rename(geoid = county_id, geoname = county_name)
-df_wide$geolevel <- ifelse(df_wide$geoname == 'California', 'state', 'county')
-
+nhpi_wide <- final_data %>% 
+  filter(asian_or_nhpi == 'NHPI') %>%
+  pivot_wider(names_from = cdc_country, 
+              names_glue = "{cdc_country}_{.value}", 
+              values_from = c(births, raw, rate)) %>%
+  remove_empty("cols") %>%       # drop 22 rate cols where all vals are NA
+  mutate(total_rate = NA) %>%    # add dummy total_rate for RC calcs
+  select(-asian_or_nhpi)  
 
 ############## CALC ASIAN RACE COUNTS STATS ##############
 ############ To use the following RC Functions, 'd' will need the following columns at minimum: 
 ############ geoid and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
-# remove NHPI columns leaving Asian columns
-d <- df_wide %>% select(!matches("Fiji|Marshall Islands|Micronesia|Palau|Samoa|Tonga")) %>%
-  
-  # calculate totals for RC stats
-  rowwise() %>% mutate(total_raw = sum(c_across(contains("_raw")), na.rm = TRUE)) %>% ungroup() %>%
-  rowwise() %>% mutate(total_births = sum(c_across(contains("_births")), na.rm = TRUE)) %>% ungroup() %>%
-  mutate(total_rate = total_raw/total_births*100)
-  
+d <- asian_wide 
+
 #set source for RC Functions script
 source(".\\Functions\\RC_Functions.R")
 
@@ -172,7 +178,6 @@ county_table<- d[d$geoname != 'California', ]
 
 #calculate COUNTY z-scores
 county_table<- calc_z(county_table)
-county_table<- calc_ranks(county_table)
 
 county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
@@ -192,13 +197,7 @@ source <- paste0("US Department of Health and Human Services, Centers for Diseas
 ############ To use the following RC Functions, 'd' will need the following columns at minimum: 
 ############ geoid and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
-# remove NHPI columns leaving Asian columns
-d <- df_wide %>% select(geoid, geoname, geolevel, matches("Fiji|Marshall Islands|Micronesia|Palau|Samoa|Tonga")) %>%
-  
-  # calculate totals for RC stats
-  rowwise() %>% mutate(total_raw = sum(c_across(contains("_raw")), na.rm = TRUE)) %>% ungroup() %>%
-  rowwise() %>% mutate(total_births = sum(c_across(contains("_births")), na.rm = TRUE)) %>% ungroup() %>%
-  mutate(total_rate = total_raw/total_births*100)
+d <- nhpi_wide
 
 #set source for RC Functions script
 source(".\\Functions\\RC_Functions.R")
@@ -220,6 +219,7 @@ state_table<- d[d$geoname == 'California', ]
 state_table<- calc_state_z(state_table)
 
 state_table<- rename(state_table, state_id = geoid, state_name = geoname)
+state_table <- state_table %>% select(-total_rate)
 View(state_table)
 
 #remove state from county table
@@ -227,9 +227,9 @@ county_table<- d[d$geoname != 'California', ]
 
 #calculate COUNTY z-scores
 county_table<- calc_z(county_table)
-county_table<- calc_ranks(county_table)
 
 county_table <- rename(county_table, county_id = geoid, county_name = geoname)
+county_table <- county_table %>% select(-total_rate)
 View(county_table)
 
 ###info for postgres tables will auto-update based on variables at top of script###
