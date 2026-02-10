@@ -1,7 +1,7 @@
 ### MOSAIC: Disaggregated Asian/NHPI Low Birthweight RC v7 ###
 
 ##install packages if not already installed ------------------------------
-packages <- c("RPostgres","tidycensus","tidyverse","here","usethis", "janitor")
+packages <- c("RPostgres","tidycensus","tidyverse","here","usethis","janitor","readxl")
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -29,8 +29,11 @@ rc_schema <- 'v7'
 rc_yr <- '2025'
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Health Access\\QA_Sheet_Low_Birthweight_MOSAIC.docx"
 
-# test <- read.csv("W:\\Data\\Health\\Births\\CDC\\2016-2024\\Natality, 2016-2024 state Births all asian.csv", colClasses = c("NULL",rep("character",4), "numeric")) %>% clean_names() %>%
-# filter(!mother_s_birth_country =="")
+# there are many county-country combos with zero low birthweight births and up to 64 births that get zero rates,
+# this also removes top two rates as well. Removing the lbw_threshold only would keep the top two. 
+lbw_threshold = 11
+birth_threshold = 65
+
 
 # List of Asian and NHPI Birth Countries -----------------------------------
 birth_countries <- read_excel("W:\\Data\\Health\\Births\\CDC\\Asian and NHPI countries.xlsx", range = "A1:B304") %>%
@@ -100,11 +103,23 @@ state_births_asian_nhpi <- read_data_asian_nhpi(paste0(cdc_dir, "Natality, ",cur
 state_lbw_asian_nhpi <- read_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," state expanded lbw.csv"), birth_countries) %>% # Get State ASIAN / NHPI LBW
   clean_data()
 
+state_births <- read.csv(paste0(cdc_dir, "Natality, ",curr_yr," state all.csv"), nrows = 1, colClasses = c(rep("character",3), "numeric")) %>% # Get State total births
+  clean_names() %>% select(-notes) %>% rename(geoname = state_of_residence, geoid = state_of_residence_code) %>% select(geoid, everything())
+
+state_lbw <- read.csv(paste0(cdc_dir, "Natality, ",curr_yr," state lbw.csv"), nrows = 1, colClasses = c(rep("character",3), "numeric")) %>% # Get State total births
+  clean_names() %>% select(-notes) %>% rename(geoname = state_of_residence, geoid = state_of_residence_code, raw = births) %>% select(geoid, everything())
+
 county_births_asian_nhpi <- read_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," county expanded all.csv"), birth_countries) %>% # Get county ASIAN / NHPI Births
   clean_data()
 
 county_lbw_asian_nhpi <- read_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," county expanded lbw.csv"), birth_countries) %>% # Get county ASIAN / NHPI LBW
   clean_data()
+
+county_births <- read.csv(paste0(cdc_dir, "Natality, ",curr_yr," county all.csv"), nrows = 35, colClasses = c(rep("character",3), "numeric")) %>% # Get State total births
+  clean_names() %>% select(-notes) %>% rename(geoname = county_of_residence, geoid = county_of_residence_code) %>% select(geoid, everything())
+
+county_lbw <- read.csv(paste0(cdc_dir, "Natality, ",curr_yr," county lbw.csv"), nrows = 35, colClasses = c(rep("character",3), "numeric")) %>% # Get State total births
+  clean_names() %>% select(-notes) %>% rename(geoname = county_of_residence, geoid = county_of_residence_code, raw = births) %>% select(geoid, everything())
 
 
 # Bind Data Together ---------------------------------------------------------
@@ -122,9 +137,19 @@ final_data <- left_join(lbw, births) %>%
   # calculate lbw rate
   mutate(rate = raw/births * 100,
          geolevel = ifelse(geoname == 'California', 'state', 'county')) %>%
-  select(geoid, geoname, cdc_country, asian_or_nhpi, births, raw, rate, geolevel)
+  select(geoid, geoname, cdc_country, asian_or_nhpi, births, raw, rate, geolevel) %>%
+  # filter records >= lbw and birth thresholds
+  filter(raw >= lbw_threshold & births >= birth_threshold)
   
-# unique(final_data$cdc_country)  # list of birth countries included, n = 67
+# unique(final_data$cdc_country)  # list of birth countries included, n = 30
+
+# add totals
+total_births <- rbind(state_births, county_births)
+total_lbw <- rbind(state_lbw, county_lbw)
+total_rate <- total_births %>% left_join(total_lbw %>% select(-geoname), by="geoid") %>%
+  mutate(total_rate = raw/births * 100) %>% select(geoid, total_rate)
+final_data <- final_data %>% left_join(total_rate, by="geoid")
+
 
 asian_wide <- final_data %>% 
   filter(asian_or_nhpi == 'Asian') %>%
@@ -132,7 +157,6 @@ asian_wide <- final_data %>%
               names_glue = "{cdc_country}_{.value}", 
               values_from = c(births, raw, rate)) %>%
   remove_empty("cols") %>%       # drop 11 rate cols where all vals are NA
-  mutate(total_rate = NA) %>%    # add dummy total_rate for RC calcs
   select(-asian_or_nhpi)
   
 
@@ -142,7 +166,6 @@ nhpi_wide <- final_data %>%
               names_glue = "{cdc_country}_{.value}", 
               values_from = c(births, raw, rate)) %>%
   remove_empty("cols") %>%       # drop 22 rate cols where all vals are NA
-  mutate(total_rate = NA) %>%    # add dummy total_rate for RC calcs
   select(-asian_or_nhpi)  
 
 ############## CALC ASIAN RACE COUNTS STATS ##############
@@ -219,7 +242,7 @@ state_table<- d[d$geoname == 'California', ]
 state_table<- calc_state_z(state_table)
 
 state_table<- rename(state_table, state_id = geoid, state_name = geoname)
-state_table <- state_table %>% select(-total_rate)
+state_table <- state_table
 View(state_table)
 
 #remove state from county table
@@ -229,7 +252,7 @@ county_table<- d[d$geoname != 'California', ]
 county_table<- calc_z(county_table)
 
 county_table <- rename(county_table, county_id = geoid, county_name = geoname)
-county_table <- county_table %>% select(-total_rate)
+county_table <- county_table
 View(county_table)
 
 ###info for postgres tables will auto-update based on variables at top of script###
