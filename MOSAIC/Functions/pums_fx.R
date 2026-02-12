@@ -1,5 +1,42 @@
 ##### Reclassify Asian and NHPI Ancestries ########  Note: Ancestry lists sourced at top of indicator script
-anhpi_reclass <- function(x, acs_yr, ancestry_list) {
+
+##### Reclassify Asian and NHPI RAC3P ########
+anhpi_reclass <- function(x) {
+  # x = df with PUMS data, eg: anhpi_pop
+  # separate asian and nhpi data
+  asian_pop <- x %>% filter(RACASN == 1)    # Asian alone or AOIC
+  nhpi_pop <- x %>% filter(RACNH == 1) %>%  # Nat Haw alone or AOIC
+    rbind(x %>% filter(RACPI == 1))         # Pac Isl alone or AOIC
+  
+  # get unique asian and nhpi subgroup codes/descr.
+  asian_subgroups <- unique(asian_pop[c("RAC3P", "anhpi_subgroup")])
+  nhpi_subgroups <- unique(nhpi_pop[c("RAC3P", "anhpi_subgroup")])
+  print("Displaying all the Asian or NHPI subgroups actually present in the data as asian_subgroups and nhpi_subgroups dfs.")
+  View(asian_subgroups)
+  View(nhpi_subgroups)
+  
+  # code subgroups - Pulled Asian/NHPI subgroups from RAC2P
+  subgroups <- c(# Asian
+                 "Chinese", "Hmong", "Japanese", "Korean", "Mongolian", "Taiwanese", "Burmese", "Cambodian", "Filipino", "Indonesian", "Laotian", 
+                 "Malaysian", "Mien", "Thai", "Vietnamese", "Asian Indian", "Bangladeshi", "Bhutanese", "Nepalese", "Pakistani", "Sikh", "Sri Lankan",
+                 "Kazakh", "Uzbek", "Other Asian",
+                 # NHPI
+                 "Native Hawaiian", "Samoan", "Tongan", "Chamorro", "Chuukese", "Guamanian", "Marshallese", "Fijian", "Other Pacific Islander")
+  
+  for (sg in subgroups) {
+    x[[tolower(gsub(" ", "_", sg))]] <- ifelse(
+      grepl(sg, x$anhpi_subgroup),
+      1, 0
+    )
+  }
+  
+ return(x)
+}
+
+
+
+
+anhpi_reclass_v1 <- function(x, acs_yr, ancestry_list) {  # used in MOSAIC Living Wage test
   ## import PUMS codes
   url <- paste0("https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_", start_yr, "-", curr_yr, ".csv")
   pums_vars_ <- read.csv(url, header=FALSE, na = "NA")   # read in data dictionary without headers bc some cols do not have names
