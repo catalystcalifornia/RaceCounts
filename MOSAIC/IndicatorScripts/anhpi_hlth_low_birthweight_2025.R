@@ -203,6 +203,8 @@ county_table<- d[d$geoname != 'California', ]
 county_table<- calc_z(county_table)
 
 county_table <- rename(county_table, county_id = geoid, county_name = geoname)
+county_table <- county_table %>%
+  remove_empty("cols") # drop 20 cols where all vals are NA
 View(county_table)
 
 ###info for postgres tables will auto-update based on variables at top of script###
@@ -252,7 +254,8 @@ county_table<- d[d$geoname != 'California', ]
 county_table<- calc_z(county_table)
 
 county_table <- rename(county_table, county_id = geoid, county_name = geoname)
-county_table <- county_table
+county_table <- county_table %>%
+  remove_empty("cols") # drop 14 cols where all vals are NA
 View(county_table)
 
 ###info for postgres tables will auto-update based on variables at top of script###
