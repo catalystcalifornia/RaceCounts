@@ -23,12 +23,20 @@ con <- connect_to_db("rda_shared_data")
 
 
 # update QA doc filepath
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Living_Wage_MOSAIC.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\QA_Sheet_ANHPI_Pop_PUMS.docx"
 
 # define variables used throughout - update each year
 curr_yr <- 2023 
 rc_yr <- '2025'
 rc_schema <- 'v7'
+root <- "W:/Data/Demographics/PUMS/"
+data_dict <- paste0(root, "CA_2019_2023/PUMS_Data_Dictionary_2019-2023.csv")
+
+
+## CHECK FOR UPDATES EACH YEAR
+source("W://RDA Team//R//Github//RDA Functions//LF//RDA-Functions//Asian_NHPI_Ancestry_List.R")
+### Ancestries pulled from ANC1P/ANC2P: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
+
 
 ##### GET PUMA CROSSWALKS ######
 crosswalk <- dbGetQuery(con, "select county_id AS geoid, county_name AS geoname, geo_id AS puma, num_county, afact, afact2 from crosswalks.puma_2022_county_2020")
@@ -51,60 +59,58 @@ sen_crosswalk <- dbGetQuery(con, "select geo_id AS puma, sldu24 AS geoid, num_di
 
 
 #### Step 1: load the data ####
-
-# PUMS Data
-root <- "W:/Data/Demographics/PUMS/"
 indicator_name <- "Disaggregated Asian-NHPI Alone and AOIC"
 start_yr <- curr_yr - 4  # autogenerate start yr of 5yr estimates
+weight = 'PWGTP'         # PWGTP for person-level (psam_p06.csv) or WGTP for housing unit-level (psam_h06.csv) analysis
 
-# Load the people PUMS data
-people <- fread(paste0(root, "CA_2023/psam_p06.csv"), header = TRUE, data.table = FALSE,
-                colClasses = list(character = c("PUMA", "RACASN", "RACNH", "RACPI", "RAC3P")))
+# Load ONLY the PUMS columns needed for this indicator
+cols <- colnames(fread(paste0(root, "CA_2023/psam_p06.csv"), nrows=0))    # get all PUMS cols 
+cols_wts <- grep(paste0("^", weight, "*"), cols, value = TRUE)            # filter for PUMS weight colnames
 
+ppl <- fread(paste0(root, "CA_2023/psam_p06.csv"), header = TRUE, data.table = FALSE, select = c(cols_wts, "RT", "SERIALNO", "PUMA",
+                                                                                         "RAC1P", "RAC2P", "HISP", "ANC1P", "ANC2P", "RACASN", "RACPI", "RACNH"),
+             colClasses = list(character = c("PUMA", "RAC1P", "RAC2P", "HISP", "ANC1P", "ANC2P", "RACASN", "RACPI", "RACNH")))
 
-## Select Asian/NHPI people
-pums_data <- people %>% 
-  
-  #filtering for universe
-  filter(RACASN == 1 | RACNH == 1 | RACPI == 1)
+# Add state_geoid to ppl, add state_geoid to PUMA id, so it aligns with same vintage county-puma xwalk
+ppl$state_geoid <- "06"
+ppl$puma_id <- paste0(ppl$state_geoid, ppl$PUMA)
 
-# Add state_geoid to ppl, add state_geoid to PUMA id, so it aligns with puma-county xwalk
-pums_data$state_geoid <- "06"
-pums_data$puma_id <- paste0(pums_data$state_geoid, pums_data$PUMA)
+# create list of replicate weights
+repwlist = rep(paste0(weight, 1:80))
 
-#pull in PUMS data dictionary codes for RAC2P
-race_codes <- read_excel(paste0("W:/Data/Demographics/PUMS/CA_", start_yr, "_", curr_yr, "/PUMS_Data_Dictionary_", start_yr, "-", curr_yr, "_RAC3P.xlsx")) %>% 
-  mutate_all(as.character) # created this excel document separate by opening PUMS Data Dictionary in excel and deleting everything but RAC3P
-race_codes$RAC3P <- race_codes$Code_1
-race_codes <- race_codes %>% select(RAC3P, Description)
-
-anhpi_pop <- left_join(pums_data, race_codes, by=("RAC3P")) %>% rename(anhpi_subgroup=Description)# clarify column we'll group by and set final dataset
-
-# checking alternate way of recoding subgroups
-## also there are many variations that may not be what we're looking for, eg: 'and/or Asian groups' 'Other Asian 
-# x <- left_join(pums_data, race_codes, by=("RAC3P")) %>% rename(anhpi_subgroup=Description)# clarify column we'll group by and set final dataset
-# x <- x %>%
-#   separate(
-#     anhpi_subgroup,
-#     into = paste0("subgroup", 1:10),  # adjust max number if needed
-#     sep = ";",
-#     fill = "right",
-#     extra = "drop",
-#     remove = FALSE
-#   ) %>%
-#   mutate(across(starts_with("subgroup"), str_trim))
-# View(x)
-
-# run reclass fx to create a new col for each asian/nhpi subgroup, assign 1 for yes and 0 for no
-anhpi_pop <- anhpi_reclass(anhpi_pop)
-
-# check all subgroup cols have value of 0, meaning each record has a 1 for at least 1 subgroup
-# anhpi_pop %>%
-#   dplyr::select(chinese:last_col()) %>%
-#   summarise(across(everything(), ~ sum(is.na(.))))
+# save copy of original data
+orig_data <- ppl
 
 
-#### Step 2: join data to crosswalks ####
+
+##### Step 2: Reclassify Race/Ethnicity ########
+source("./MOSAIC/Functions/pums_fx.R")
+# check how many records there are for RACAIAN (AIAN alone/combo) versus RAC1P (AIAN alone) and same for NHPI
+#View(subset(ppl, RACASN =="1"))
+#View(subset(ppl, RAC1P >= 3 & ppl$RAC1P <=5))
+#View(subset(ppl, RACNH =="1" | RACPI =="1"))
+#View(subset(ppl, RAC1P == 7))
+
+# Prep ANC Data Dictionary
+anc_codes <- read.csv(data_dict, skip = 1807, nrows = 234,      # open file in Excel and filter for ANC1P to get correct filters
+                      header = FALSE, colClasses = "character", 
+                      col.names = c("1", "2", "3", "4", "ANC1P", "6", "anc_descr")) %>% 
+  select(5, 7)
+
+# Prep RAC2P Data Dictionary -- can add this if we want to populate 
+# rac2p_19 <- read.csv(data_dict, skip = 1807, nrows = 234,      # open file in Excel and filter for RAC2P to get correct filters
+#                      header = FALSE, colClasses = "character", 
+#                      col.names = c("1", "2", "3", "4", "ANC1P", "6", "anc_descr")) %>% 
+#   select(5, 7)
+
+
+# Classify ANC1P/ANC2P values as Asian or NHPI, and as Alone or AOIC
+ppl <- race_reclass(anhpi_reclass)
+
+
+
+
+#### Step 3: join data to crosswalks ####
 
 # join county crosswalk to data
 ppl_cs <- left_join(anhpi_pop, county_crosswalk, by=c("puma_id" = "puma"))   # join FILTERED county-puma crosswalk
