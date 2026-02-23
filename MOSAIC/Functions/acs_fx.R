@@ -95,13 +95,13 @@ clean_data$geolevel <- case_when(                                # add geolevel 
   # reformat clean data
   df_wide <- clean_data %>%
     pivot_longer(
-      cols = starts_with("B25003"),
+      cols = starts_with(table_name),
       names_to = "orig_col",
       values_to = "value"
     ) %>%
     mutate(
-      suffix = str_remove(orig_col, "^B25003_?"),
-      new_col = paste0("B25003_", POPGROUP, "_", suffix)
+      suffix = str_remove(orig_col, paste0("^", table_name, "_?")),
+      new_col = paste0(table_name, "_", POPGROUP, "_", suffix)
     ) %>%
     select(NAME, geoid, geolevel, new_col, value) %>%
     pivot_wider(
@@ -132,7 +132,7 @@ clean_data$geolevel <- case_when(                                # add geolevel 
            new_var = tolower(paste0(table_code, "_", POPGROUP, "_", var_suff)))
                                               
   # load variable names
-  v21 <- load_variables(2021, "acs5", cache = TRUE)
+  v21 <- load_variables(year, "acs5", cache = TRUE)
   table_vars <- v21 %>% filter(grepl(table_name, name))
   
   # join variable names to metadata

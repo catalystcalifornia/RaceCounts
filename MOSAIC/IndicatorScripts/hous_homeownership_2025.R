@@ -41,12 +41,12 @@ table_code = 'b25003'    # Select relevant indicator table name
 # CREATE RAW DATA TABLES -------------------------------------------------------------------------
 ## Only run this section if the raw data tables have not been created yet ##
 # race <- "asian"
-# asian_list <- get_detailed_race(table_code, race, 2021)
+# asian_list <- get_detailed_race(table_code, race, curr_yr)
 # # check race col names which are created in fx
 # #unique(asian_list[[2]]$POPGROUP_LABEL)
 # 
 # race <- "nhpi"
-# nhpi_list <- get_detailed_race(table_code, race, 2021)
+# nhpi_list <- get_detailed_race(table_code, race, curr_yr)
 # # check race col names which are created in fx
 # #unique(nhpi_list[[2]]$POPGROUP_LABEL)
 # 
