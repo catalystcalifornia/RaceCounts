@@ -74,6 +74,205 @@ anhpi_reclass_v1 <- function(x, acs_yr, ancestry_list) {  # used in MOSAIC Livin
 
 
 
+
+
+############### PUMS COUNT/RATE CALCS ################ Adapted from: W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/PUMS_Functions_new.R
+calc_pums <- function(d, indicator, indicator_val, weight) {
+  # d = PUMS dataframe, must contain geoid, geoname, RAC2P, subgroup fields
+  # indicator = name of column that contains indicator data, eg: 'living_wage' which contains values 'livable' and 'not livable'
+  # indicator_val = desired indicator value, eg: 'livable' (not 'not livable')        
+  # weight = PWGTP for person-level (psam_p06.csv) or WGTP for housing unit-level (psam_h06.csv) analysis
+  
+  # create survey design  for indicator by county
+  x <- d %>%               
+    as_survey_rep(
+      variables = c(geoid, geoname, race, latino, aian, pacisl, swana, !!sym(indicator)),   # select grouping variables
+      weights = weight,                       # person or housing unit weight, must be defined in indicator script
+      repweights = repwlist,                  # list of replicate weights
+      combined_weights = TRUE,                # tells the function that replicate weights are included in the data
+      mse =TRUE,                              # tells the function to calc mse
+      type="other",                           # statistical method
+      scale=4/80,                             # scaling set by ACS
+      rscale=rep(1,80)                        # setting specific to ACS-scaling
+    ) %>%
+    filter(!is.na(indicator))			  	  # drop rows where indicator is null
+  
+  
+  ###### Summarize Data
+  
+  # calculate by latino 
+  indicator_latino <- x %>%
+    group_by(geoid, geoname, latino, !!sym(indicator)) %>%
+    summarise(
+      count = survey_total(na.rm=T),         							  # get the (survey weighted) count for the numerator
+      rate = survey_mean()) %>%            								  # get the (survey weighted) proportion for the numerator
+    
+    left_join(x %>%                                        				  # left join in the denominators 
+                group_by(geoid, geoname, latino) %>%                       
+                summarise(pop = survey_total(na.rm=T))) %>%               # get the (survey weighted) universe aka denominator
+    mutate(rate = rate * 100,                                             # get the rate as a %
+           rate_moe = rate_se * 1.645 * 100,                              # calculate the derived margin of error for the rate
+           rate_cv = ((rate_moe/1.645)/rate) * 100,                       # calculate the coefficient of variation for the rate
+           count_moe = count_se*1.645,                                    # calculate moe for numerator count based on se provided by the output  
+           count_cv = ((count_moe/1.645)/count) * 100)                    # calculate cv for numerator count
+  
+  print(head(indicator_latino))
+  
+  # calculate by aian 
+  indicator_aian <- x %>%
+    group_by(geoid, geoname, aian, !!sym(indicator)) %>%
+    summarise(
+      count = survey_total(na.rm=T),         							  # get the (survey weighted) count for the numerator
+      rate = survey_mean()) %>%            								  # get the (survey weighted) proportion for the numerator
+    
+    left_join(x %>%                                        				  # left join in the denominators 
+                group_by(geoid, geoname, aian) %>%                       
+                summarise(pop = survey_total(na.rm=T))) %>%               # get the (survey weighted) universe aka denominator
+    mutate(rate = rate * 100,                                             # get the rate as a %
+           rate_moe = rate_se * 1.645 * 100,                              # calculate the derived margin of error for the rate
+           rate_cv = ((rate_moe/1.645)/rate) * 100,                       # calculate the coefficient of variation for the rate
+           count_moe = count_se*1.645,                                    # calculate moe for numerator count based on se provided by the output  
+           count_cv = ((count_moe/1.645)/count) * 100)                    # calculate cv for numerator count
+  
+  print(head(indicator_aian))
+  
+  # calculate by pacisl 
+  indicator_pacisl <- x %>%
+    group_by(geoid, geoname, pacisl, !!sym(indicator)) %>%
+    summarise(
+      count = survey_total(na.rm=T),         							  # get the (survey weighted) count for the numerator
+      rate = survey_mean()) %>%            								  # get the (survey weighted) proportion for the numerator
+    
+    left_join(x %>%                                        				  # left join in the denominators 
+                group_by(geoid, geoname, pacisl) %>%                       
+                summarise(pop = survey_total(na.rm=T))) %>%               # get the (survey weighted) universe aka denominator
+    mutate(rate = rate * 100,                                             # get the rate as a %
+           rate_moe = rate_se * 1.645 * 100,                              # calculate the derived margin of error for the rate
+           rate_cv = ((rate_moe/1.645)/rate) * 100,                       # calculate the coefficient of variation for the rate
+           count_moe = count_se*1.645,                                    # calculate moe for numerator count based on se provided by the output  
+           count_cv = ((count_moe/1.645)/count) * 100)                    # calculate cv for numerator count
+  
+  print(head(indicator_pacisl))
+  
+  # calculate by swana 
+  indicator_swana <- x %>%
+    group_by(geoid, geoname, swana, !!sym(indicator)) %>%
+    summarise(
+      count = survey_total(na.rm=T),         							  # get the (survey weighted) count for the numerator
+      rate = survey_mean()) %>%            								  # get the (survey weighted) proportion for the numerator
+    
+    left_join(x %>%                                        				  # left join in the denominators 
+                group_by(geoid, geoname, swana) %>%                       
+                summarise(pop = survey_total(na.rm=T))) %>%               # get the (survey weighted) universe aka denominator
+    mutate(rate = rate * 100,                                             # get the rate as a %
+           rate_moe = rate_se * 1.645 * 100,                              # calculate the derived margin of error for the rate
+           rate_cv = ((rate_moe/1.645)/rate) * 100,                       # calculate the coefficient of variation for the rate
+           count_moe = count_se*1.645,                                    # calculate moe for numerator count based on se provided by the output  
+           count_cv = ((count_moe/1.645)/count) * 100)                    # calculate cv for numerator count
+  
+  
+  #swana_geos <- distinct(d, geoid, geoname)							  # get geonames for SWANA only
+  #indicator_swana <- indicator_swana %>%
+  # left_join(swana_geos, by = 'geoid')								      # join geonames to SWANA data only  
+  
+  print(head(indicator_swana))
+  
+  ### calc by non-latinx race
+  indicator_race <- x %>%
+    group_by(geoid, geoname, race, !!sym(indicator)) %>%
+    summarise(
+      count = survey_total(na.rm=T),         							  # get the (survey weighted) count for the numerator
+      rate = survey_mean()) %>%            								  # get the (survey weighted) proportion for the numerator
+    
+    left_join(x %>%                                        				  # left join in the denominators 
+                group_by(geoid, geoname, race) %>%                       
+                summarise(pop = survey_total(na.rm=T))) %>%               # get the (survey weighted) universe aka denominator
+    mutate(rate = rate * 100,                                             # get the rate as a %
+           rate_moe = rate_se * 1.645 * 100,                              # calculate the derived margin of error for the rate
+           rate_cv = ((rate_moe/1.645)/rate) * 100,                       # calculate the coefficient of variation for the rate
+           count_moe = count_se*1.645,                                    # calculate moe for numerator count based on se provided by the output  
+           count_cv = ((count_moe/1.645)/count) * 100)                    # calculate cv for numerator count
+  
+  print(head(indicator_race))
+  
+  ###### calc for total
+  indicator_total <- x %>%
+    group_by(geoid, geoname, !!sym(indicator)) %>%  
+    summarise(
+      count = survey_total(na.rm=T),										  # get the (survey weighted) count for the numerator
+      rate = survey_mean()) %>%											  # get the (survey weighted) proportion for the numerator      
+    
+    left_join(x %>%														  # left join in the denominators													
+                group_by(geoid, geoname) %>%                            
+                summarise(pop = survey_total(na.rm=T))) %>%						  # get the (survey weighted) universe aka denominator 
+    mutate(rate = rate * 100,                                      		  # get the rate as a %
+           rate_moe = rate_se * 1.645 * 100,							  # calculate the derived margin of error for the rate   
+           rate_cv = ((rate_moe/1.645)/rate) * 100,						  # calculate the coefficient of variation for the rate
+           count_moe = count_se*1.645,                                    # calculate moe for numerator count based on se provided by the output  
+           count_cv = ((count_moe/1.645)/count) * 100,                    # calculate cv for numerator count
+           raceeth = "total")											  # add raceeth col, set value to 'total'
+  
+  print(head(indicator_total))
+  
+  
+  ##### Combine the data frames into one
+  # First code consistent race/eth col to prep for join
+  indicator_race$raceeth <- as.character(indicator_race$race) 			  			 	# add new raceeth col, convert factor to character
+  indicator_latino$raceeth <- as.character(indicator_latino$latino)
+  indicator_aian$raceeth <- as.character(indicator_aian$aian)
+  indicator_pacisl$raceeth <- as.character(indicator_pacisl$pacisl)
+  indicator_swana$raceeth <- as.character(indicator_swana$swana)
+  
+  
+  indicator_df <- 												
+    bind_rows(
+      indicator_race %>% 
+        filter(!raceeth %in% c("white", "asian", "black", "other", "twoormor")),      	# keep only non-latinx/aian/pacisl/swana race groups
+      indicator_latino %>% 
+        filter(raceeth =="latino"), 
+      indicator_aian %>% 
+        filter(raceeth =="aian"), 
+      indicator_pacisl %>% 
+        filter(raceeth =="pacisl"), 
+      indicator_swana %>% 
+        select(-swana) %>% 
+        filter(raceeth =="swana"),
+      indicator_total)
+  
+  indicator_df <- data.frame(indicator_df) %>% select(-race, -latino, -aian, -pacisl, -swana)  # drop unneeded columns, for some reason doing in the prev. step like in state_pums didn't work
+  
+  # review combined table
+  print(head(indicator_df, 10))
+  
+  
+  ########4. Prepare final df
+  ### get the count of non-NA values
+  indicator_ <- indicator_df %>% 
+    filter(!!sym(indicator) == !!indicator_val) %>%				    # filter only records for desired ppl$indicator value
+    filter(!is.na(raceeth)) %>%										# filter out records where raceeth is NULL
+    group_by(geoid, geoname) %>%									# group by county and county name
+    as.data.frame()
+  
+  # convert long format to wide
+  rc_indicator <- indicator_ %>% 
+    pivot_wider(id_cols = c(geoid, geoname),						# convert to wide format
+                names_from = raceeth,
+                values_from = c("count", "pop", "rate", "rate_moe", "rate_cv", "count_moe", "count_cv")) %>%  
+    as.data.frame()
+  
+  # drop rows where geoid = NA
+  rc_indicator <- rc_indicator %>% drop_na(geoid)
+  
+  return(rc_indicator)
+}
+
+
+
+
+
+
+
+
 #### Run PUMS Calcs ####
 calc_anhpi_pums <- function(d, indicator, indicator_val, weight) {
   # d = PUMS dataframe, must contain geoid, geoname, var_code, val_label, indicator fields

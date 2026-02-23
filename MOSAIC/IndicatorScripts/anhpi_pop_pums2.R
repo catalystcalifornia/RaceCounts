@@ -36,7 +36,7 @@ data_dict <- paste0(root, "PUMS_Data_Dictionary_2019-2023_RAC3P.xlsx")
 
 # set survey components
 weight <- 'PWGTP'  # person weight
-repwlist = rep(paste0("PWGTP", 1:80)) # replicate weights
+repwlist = rep(paste0(weight, 1:80)) # replicate weights
 
 
 ##### GET PUMA CROSSWALKS ######
@@ -60,52 +60,40 @@ sen_crosswalk <- dbGetQuery(con, "select geo_id AS puma, sldu24 AS geoid, num_di
 ##### GET PUMS DATA ######
 people <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE,
                 colClasses = list(character = c("PUMA", "RAC1P", "RAC3P", "RAC2P19", "RAC2P23", "HISP")))
-tmp_file <- tempfile(fileext = ".rds") # generate temporary filepath
-saveRDS(people, file = tmp_file)       # save the df to temporary filepath, in case need original data again
+orig_data <- people
+# tmp_file <- tempfile(fileext = ".rds") # generate temporary filepath
+# saveRDS(people, file = tmp_file)       # save the df to temporary filepath, in case need original data again
 # orig_data <- readRDS(tmp_file)       # load original data if needed
 
-# Check that RAC2P codes are consistent throughout all records (2019-2023)
-## In the csv Data Dictionary it includes a different set of 2019 and 2023 codes
-## W:\Data\Demographics\PUMS\CA_2019_2023\PUMS_Data_Dictionary_2019-2023.csv
-# rac2p <- as.data.frame(c(unique(people$RAC2P19), unique(people$RAC2P23)))   # see list of unique RAC2P codes in data, n = 130
+# add nhpi value
+people$RACNHPI <- case_when(
+  people$RACNH == 1 | people$RACPI ==1 ~ 1,
+  TRUE ~ 0
+)
 
+#### Step 1: Join subbroup descriptions to data ####
 
-#### Step 1: Join race descriptions to data ####
-
-# pull in RAC2P descriptions
-# race_codes <- read_excel(data_dict) %>% 
-#   # created this excel document separate by opening PUMS Data Dictionary in excel and deleting everything but both vintages of RAC2P, deleting old header rows, adding new header row at top
-#   mutate_all(as.character)
-
-# pull in RAC3P descriptions
-race_codes3 <- read_excel(data_dict) #%>% 
+# pull in RAC3P metadata - adapted from W:\Data\Demographics\PUMS\CA_2019_2023\PUMS_Data_Dictionary_2019-2023.csv
+race_codes3 <- read_excel(data_dict)  
 
 # get unique list of RAC3P descriptions
-rac3p_unique <- as.data.frame(c(unique(race_codes3$Description1), unique(race_codes3$Description2), unique(race_codes3$Description3), 
-                                unique(race_codes3$Description4), unique(race_codes3$Description5), unique(race_codes3$Description6))) %>%
-  unique() %>%
-  na.omit()
+# rac3p_unique <- as.data.frame(c(unique(race_codes3$Description1), unique(race_codes3$Description2), unique(race_codes3$Description3), 
+#                                 unique(race_codes3$Description4), unique(race_codes3$Description5), unique(race_codes3$Description6))) %>%
+#   unique() %>%
+#   na.omit()
+# View(rac3p_unique)
 
 # join race descriptions to data
-people1 <- left_join(people, race_codes3 %>% select(-var, -starts_with("Description")), by="RAC3P") %>%
+people <- left_join(people, race_codes3 %>% select(-var, -starts_with("Description"), "Description"), by="RAC3P") %>%
   #rename(subgroup=Description) %>% # clarify column we'll group by and set final dataset
-  select(RAC3P, starts_with("Description"), everything())
+  select(RAC3P, indian, chinese, filipino, japanese, korean, vietnamese, oth_asian, nat_hawaiian, chamorro, samoan, oth_nhpi, everything())
 
 
-# join race descriptions to data
-people <- people %>%
-  mutate(RAC2P = case_when(
-    people$RAC2P19 == -9 & people$RAC2P23 == -999 ~ NA, # when 19/23 are both NA, NA
-    people$RAC2P19 == -9 ~ people$RAC2P23,              # when 19 is NA, then 23
-    people$RAC2P23 == -999 ~ people$RAC2P19,            # when 23 is NA, then 19
-    TRUE ~ NA))                                         # else, NA
-
-# nrow(people %>% filter(is.na(RAC2P)))  # check how many rows are NA
-# unique(people$RAC2P)                   # check unique values, should be 128 bc it excludes the NA values
-
-people <- left_join(people, race_codes %>% select(RAC2P, Description), by="RAC2P") %>%
-  rename(subgroup=Description) %>% # clarify column we'll group by and set final dataset
-  select(RAC2P, subgroup, everything())
+# check join
+View(people[c("HISP","RAC1P","RACNHPI","ANC1P","ANC2P","Description","indian","chinese","filipino","japanese","korean","vietnamese","oth_asian","nat_hawaiian","chamorro","samoan","oth_nhpi")])
+# table(people$indian, useNA = "always")
+# table(people$chamorro, useNA = "always")
+# table(people$oth_asian, useNA = "always")
 
 
 #### Step 2: Join crosswalks to data ####
@@ -165,7 +153,7 @@ ppl_list <- list(ppl_cs = ppl_cs, ppl_assm = ppl_assm, ppl_sen = ppl_sen, ppl_st
 
 anhpi_survey <- x %>%   
   as_survey_rep(
-    variables = c(geoid, geoname, RAC2P, subgroup),  # dplyr::select grouping variables
+    variables = c(geoid, geoname, RAC3P, subgroup),  # dplyr::select grouping variables
     weights = weight,                       # person weight
     repweights = repwlist,                  # list of replicate weights
     combined_weights = TRUE,                # tells the function that replicate weights are included in the data
