@@ -78,7 +78,7 @@ anhpi_reclass_v1 <- function(x, acs_yr, ancestry_list) {  # used in MOSAIC Livin
 
 
 
-pums_pop_srvy_denom <- function(d, weight, repwlist){
+pums_pop_srvy_denom <- function(d, weight, repwlist){ # prep denominators & survey for PUMS pop calcs
   # d = pums dataframe, e.g. ppl_state
   # weight and repwlist are defined at top of script
   anhpi_svry <- d %>%      
