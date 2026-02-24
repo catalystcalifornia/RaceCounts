@@ -40,14 +40,15 @@ df <- prep_acs(df_wide_multigeo, table_code, cv_threshold, pop_threshold)
 
 df_screened <- dplyr::select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"), -ends_with("_cv"))
 
+df_screened$name <- gsub("State Senate", "Senate", df_screened$name)  # clean Sen geonames
+
+d <- df_screened
 
 ############## CALC RACE COUNTS STATS ##############
 
 #set source for RC Functions script
 #source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 source(".\\Functions\\RC_Functions.R")
-
-d <- df_screened
 
 # Adds asbest value for RC Functions
 d$asbest = asbest

@@ -64,19 +64,23 @@ print(dp05_curr)
 # Get Raced Pop ----------------------------------------------------------
 table_code = 'dp05'
 DP05 <- dbGetQuery(con, paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state', 'sldu', 'sldl')")) # import rda_shared_data table
-DP05$name <- str_remove(DP05$name,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
 
 # Clean geo names by removing type of geo and state name from name fields
-  DP05$name <- str_remove(DP05$name, ", California")
-  DP05$name <- str_remove(DP05$name, " city")
-  DP05$name <- str_remove(DP05$name, " CDP")
-  DP05$name <- str_remove(DP05$name, " town")
-  DP05$name <- gsub(" County)", ")", DP05$name)
-  DP05$name <- gsub("; California", "", DP05$name)
-  DP05$name <- gsub("State ", "", DP05$name)
-  
+DP05 <- DP05 %>%
+  mutate(name = case_when (
+    geolevel == 'county' ~ gsub("County", "", name),
+    geolevel == 'sldu' ~ str_remove(name,  "\\s*\\(.*\\)\\s*"),
+    geolevel == 'sldl' ~ str_remove(name,  "\\s*\\(.*\\)\\s*"),
+    geolevel == 'place' ~ gsub(" CDP| town| city", "", name),
+    geolevel == 'state' ~ name)
+  ) %>%
+  mutate(name = case_when (
+    geolevel == 'sldu' ~ gsub("State ", "", name), # 2nd cleaning of Sen names
+    TRUE ~ name)
+    ) %>%
+  mutate(name = gsub(", California|; California", "", name)) # last cleaning of all names
 
-cols_to_select <- tolower((paste0(c(vars_list_acs),"e")))  # format colnames to match postgres table colnames
+cols_to_select <- tolower((paste0(c(dp05_curr$name),"e")))  # format colnames to match postgres table colnames
 
 ## Clean and join pop tables
 races_df <- select(DP05, geoid, name, geolevel, all_of(cols_to_select))
@@ -148,6 +152,7 @@ pop_df <- pop_df %>%
   relocate(swana_pop, .after = nh_twoormor_pop) %>%
   relocate(swanasa_pop, .after = swana_pop) %>%
   select(-soasian_pop)
+
 
 ############### SEND COUNTY, STATE, CITY POP TO POSTGRES ##############
 

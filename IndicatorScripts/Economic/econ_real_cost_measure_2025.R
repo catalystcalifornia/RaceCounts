@@ -159,7 +159,8 @@ d_assm <- rcm_assm_subset %>% select(geoid, ends_with("_pop"), ends_with("_raw")
   nh_other_rate = nh_other_raw /  nh_other_pop * 100) %>%
   
   mutate(geolevel="sldl",
-         geoname=paste("Assembly District", substr(geoid, 4, 5))) %>%
+         dist = as.numeric(substr(geoid, 4, 5)),
+         geoname=paste("Assembly District", dist)) %>%
   select(geoid, geoname, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate")) %>%
   
   # replace zeros with nas
@@ -242,7 +243,8 @@ d_sen <- rcm_sen_subset %>% select(geoid, ends_with("_pop"), ends_with("_raw")) 
          nh_other_rate = nh_other_raw /  nh_other_pop * 100) %>%
   
   mutate(geolevel="sldu",
-         geoname=paste("State Senate District", substr(geoid, 4, 5))) %>%
+         dist = as.numeric(substr(geoid, 4, 5)),
+         geoname=paste("Senate District", dist)) %>%
   select(geoid, geoname, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"))  %>%
   
   # replace zeros with nas
