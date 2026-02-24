@@ -1,9 +1,9 @@
-# Disaggregated Asian / NHPI Pop
+# Disaggregated Asian and NHPI from PUMS
 
 # Data Dictionary: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
 
 # Install packages if not already installed
-packages <- c("tidyverse","data.table","readxl","tidycensus","srvyr","stringr","openxlsx","dplyr") 
+packages <- c("tidyverse", "data.table", "readxl","tidycensus", "srvyr","stringr", "openxlsx", "dplyr") 
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
 if(length(install_packages) > 0) {
@@ -18,24 +18,26 @@ for(pkg in packages){
 
 #SOURCE from the script that has: styling, packages, dbconnection, colors
 source("W:\\RDA Team\\R\\credentials_source.R")
-source("MOSAIC/Functions/pums_fx.R")  # MOSAIC-specific PUMS fx
+source("./MOSAIC/Functions/pums_fx.R")
 con <- connect_to_db("rda_shared_data")
+con2 <- connect_to_db("mosaic")
 
-
-# update QA doc filepath
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\QA_Sheet_ANHPI_Pop_PUMS.docx"
 
-# define variables used throughout - update each year
-curr_yr <- 2023 
-rc_yr <- '2025'
-rc_schema <- 'v7'
-root <- "W:/Data/Demographics/PUMS/"
-data_dict <- paste0(root, "CA_2019_2023/PUMS_Data_Dictionary_2019-2023.csv")
+#### Step 1: load the data ####
 
+# PUMS Data
+root <- "W:/Data/Demographics/PUMS/CA_2019_2023/"
+indicator_name <- "Disaggregated Asian"
+curr_yr <- 2023
+start_yr <- curr_yr - 4
+# created this excel document separate by opening PUMS Data Dictionary in excel and deleting everything but RAC3P, 
+## updating col names, using text-to-columns to split description into separate cols. Adding binary cols for each subgroup.
+data_dict <- paste0(root, "PUMS_Data_Dictionary_2019-2023_RAC3P.xlsx")
 
-## CHECK FOR UPDATES EACH YEAR
-source("W://RDA Team//R//Github//RDA Functions//LF//RDA-Functions//Asian_NHPI_Ancestry_List.R")
-### Ancestries pulled from ANC1P/ANC2P: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
+# set survey components
+weight <- 'PWGTP'  # person weight
+repwlist = rep(paste0(weight, 1:80)) # replicate weights
 
 
 ##### GET PUMA CROSSWALKS ######
@@ -51,194 +53,140 @@ dupe_pumas <- crosswalk %>%
 county_crosswalk <- crosswalk %>%   
   subset(!(puma %in% dupe_pumas$puma)) # remove only counties that have only 1 PUMA that is shared with another county with only 1 PUMA
 
-# length(unique(county_crosswalk$geoid))  # this number should be lower bc it is filtered xwalk
-# length(unique(crosswalk$geoid))         # this number should be higher bc it is unfiltered xwalk
 
 assm_crosswalk <- dbGetQuery(con, "select geo_id AS puma, sldl24 AS geoid, num_dist AS num_assm from crosswalks.puma_2020_state_assembly_2024")
 sen_crosswalk <- dbGetQuery(con, "select geo_id AS puma, sldu24 AS geoid, num_dist AS num_sen from crosswalks.puma_2020_state_senate_2024")
 
 
-#### Step 1: load the data ####
-indicator_name <- "Disaggregated Asian-NHPI Alone and AOIC"
-start_yr <- curr_yr - 4  # autogenerate start yr of 5yr estimates
-weight = 'PWGTP'         # PWGTP for person-level (psam_p06.csv) or WGTP for housing unit-level (psam_h06.csv) analysis
+##### GET PUMS DATA ######
+people <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE,
+                colClasses = list(character = c("PUMA", "RAC1P", "RAC3P", "RAC2P19", "RAC2P23", "HISP")))
+orig_data <- people
+# tmp_file <- tempfile(fileext = ".rds") # generate temporary filepath
+# saveRDS(people, file = tmp_file)       # save the df to temporary filepath, in case need original data again
+# orig_data <- readRDS(tmp_file)       # load original data if needed
 
-# Load ONLY the PUMS columns needed for this indicator
-cols <- colnames(fread(paste0(root, "CA_2023/psam_p06.csv"), nrows=0))    # get all PUMS cols 
-cols_wts <- grep(paste0("^", weight, "*"), cols, value = TRUE)            # filter for PUMS weight colnames
+# add nhpi value
+people$RACNHPI <- case_when(
+  people$RACNH == 1 | people$RACPI ==1 ~ 1,
+  TRUE ~ 0
+)
 
-ppl <- fread(paste0(root, "CA_2023/psam_p06.csv"), header = TRUE, data.table = FALSE, select = c(cols_wts, "RT", "SERIALNO", "PUMA",
-                                                                                         "RAC1P", "RAC2P", "HISP", "ANC1P", "ANC2P", "RACASN", "RACPI", "RACNH"),
-             colClasses = list(character = c("PUMA", "RAC1P", "RAC2P", "HISP", "ANC1P", "ANC2P", "RACASN", "RACPI", "RACNH")))
+#### Step 1: Join subgroup descriptions to data ####
 
-# Add state_geoid to ppl, add state_geoid to PUMA id, so it aligns with same vintage county-puma xwalk
-ppl$state_geoid <- "06"
-ppl$puma_id <- paste0(ppl$state_geoid, ppl$PUMA)
+# pull in RAC3P metadata - adapted from W:\Data\Demographics\PUMS\CA_2019_2023\PUMS_Data_Dictionary_2019-2023.csv
+race_codes3 <- read_excel(data_dict)  
 
-# create list of replicate weights
-repwlist = rep(paste0(weight, 1:80))
+# get unique list of RAC3P descriptions
+# rac3p_unique <- as.data.frame(c(unique(race_codes3$Description1), unique(race_codes3$Description2), unique(race_codes3$Description3), 
+#                                 unique(race_codes3$Description4), unique(race_codes3$Description5), unique(race_codes3$Description6))) %>%
+#   unique() %>%
+#   na.omit()
+# View(rac3p_unique)
 
-# save copy of original data
-orig_data <- ppl
-
-
-
-##### Step 2: Reclassify Race/Ethnicity ########
-source("./MOSAIC/Functions/pums_fx.R")
-# check how many records there are for RACAIAN (AIAN alone/combo) versus RAC1P (AIAN alone) and same for NHPI
-#View(subset(ppl, RACASN =="1"))
-#View(subset(ppl, RAC1P >= 3 & ppl$RAC1P <=5))
-#View(subset(ppl, RACNH =="1" | RACPI =="1"))
-#View(subset(ppl, RAC1P == 7))
-
-# Prep ANC Data Dictionary
-anc_codes <- read.csv(data_dict, skip = 1807, nrows = 234,      # open file in Excel and filter for ANC1P to get correct filters
-                      header = FALSE, colClasses = "character", 
-                      col.names = c("1", "2", "3", "4", "ANC1P", "6", "anc_descr")) %>% 
-  select(5, 7)
-
-# Prep RAC2P Data Dictionary -- can add this if we want to populate 
-# rac2p_19 <- read.csv(data_dict, skip = 1807, nrows = 234,      # open file in Excel and filter for RAC2P to get correct filters
-#                      header = FALSE, colClasses = "character", 
-#                      col.names = c("1", "2", "3", "4", "ANC1P", "6", "anc_descr")) %>% 
-#   select(5, 7)
+# join race descriptions to data
+people <- left_join(people, race_codes3 %>% select(-var, -starts_with("Description"), "Description"), by="RAC3P") %>%
+  #rename(subgroup=Description) %>% # clarify column we'll group by and set final dataset
+  select(RAC3P, indian, chinese, filipino, japanese, korean, vietnamese, oth_asian, nat_hawaiian, chamorro, samoan, oth_nhpi, everything())
 
 
-# Classify ANC1P/ANC2P values as Asian or NHPI, and as Alone or AOIC
-ppl <- race_reclass(anhpi_reclass)
+# check join
+View(people[c("HISP","RAC1P","RACNHPI","ANC1P","ANC2P","Description","indian","chinese","filipino","japanese","korean","vietnamese","oth_asian","nat_hawaiian","chamorro","samoan","oth_nhpi")])
+# table(people$indian, useNA = "always")
+# table(people$chamorro, useNA = "always")
+# table(people$oth_asian, useNA = "always")
 
 
+#### Step 2: Join crosswalks to data ####
 
-
-#### Step 3: join data to crosswalks ####
+# Add state_geoid to people, add state_geoid to PUMA id, so it aligns with same vintage county-puma xwalk
+people$state_geoid <- "06"
+people$puma_id <- paste0(people$state_geoid, people$PUMA)
 
 # join county crosswalk to data
-ppl_cs <- left_join(anhpi_pop, county_crosswalk, by=c("puma_id" = "puma"))   # join FILTERED county-puma crosswalk
+ppl_cs <- left_join(people, county_crosswalk, by=c("puma_id" = "puma"))   # join FILTERED county-puma crosswalk
 
-# join assm crosswalk to data
-ppl_assm <- left_join(anhpi_pop, assm_crosswalk, by=c("puma_id" = "puma")) 
-## Add geonames
-census_api_key(census_key1, overwrite=TRUE)
-assm_name <- get_acs(geography = "State Legislative District (Lower Chamber)", 
-                     variables = c("B01001_001"), 
-                     state = "CA", 
-                     year = curr_yr)
-
-assm_name <- assm_name[,1:2]
-assm_name$NAME <- str_remove(assm_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
-assm_name$NAME <- gsub("; California", "", assm_name$NAME)
-names(assm_name) <- c("geoid", "geoname")
-# View(assm_name)
-
-# add geonames to data
-ppl_assm <- merge(x=assm_name,y=ppl_assm, by="geoid", all=T)
-
-# join sen crosswalk to data
-ppl_sen <- left_join(anhpi_pop, sen_crosswalk, by=c("puma_id" = "puma")) 
-## Add geonames
+# # join assm crosswalk to data
+# ppl_assm <- left_join(people, assm_crosswalk, by=c("puma_id" = "puma")) 
+# ## Add geonames
 # census_api_key(census_key1, overwrite=TRUE)
-sen_name <- get_acs(geography = "State Legislative District (Upper Chamber)", 
-                    variables = c("B01001_001"), 
-                    state = "CA", 
-                    year = curr_yr)
-
-sen_name <- sen_name[,1:2]
-sen_name$NAME <- str_remove(sen_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
-sen_name$NAME <- gsub("; California", "", sen_name$NAME)
-names(sen_name) <- c("geoid", "geoname")
-# View(sen_name)
-
-# add geonames to WA
-ppl_sen <- merge(x=sen_name,y=ppl_sen, by="geoid", all=T)
+# assm_name <- get_acs(geography = "State Legislative District (Lower Chamber)", 
+#                      variables = c("B01001_001"), 
+#                      state = "CA", 
+#                      year = curr_yr)
+# 
+# assm_name <- assm_name[,1:2]
+# assm_name$NAME <- str_remove(assm_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
+# assm_name$NAME <- gsub("; California", "", assm_name$NAME)
+# names(assm_name) <- c("geoid", "geoname")
+# # View(assm_name)
+# 
+# # add geonames to data
+# ppl_assm <- merge(x=assm_name,y=ppl_assm, by="geoid", all=T)
+# 
+# # join sen crosswalk to data
+# ppl_sen <- left_join(people, sen_crosswalk, by=c("puma_id" = "puma")) 
+# ## Add geonames
+# # census_api_key(census_key1, overwrite=TRUE)
+# sen_name <- get_acs(geography = "State Legislative District (Upper Chamber)", 
+#                     variables = c("B01001_001"), 
+#                     state = "CA", 
+#                     year = curr_yr)
+# 
+# sen_name <- sen_name[,1:2]
+# sen_name$NAME <- str_remove(sen_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
+# sen_name$NAME <- gsub("; California", "", sen_name$NAME)
+# names(sen_name) <- c("geoid", "geoname")
+# # View(sen_name)
+# 
+# # add geonames to WA
+# ppl_sen <- merge(x=sen_name,y=ppl_sen, by="geoid", all=T)
 
 # prep state df
-ppl_state <- anhpi_pop %>% rename(geoid = state_geoid) %>% mutate(geoname = 'California')
+ppl_state <- people %>% rename(geoid = state_geoid) %>% mutate(geoname = 'California')
 
 # put all geolevel dfs into 1 list
 ppl_list <- list(ppl_cs = ppl_cs, ppl_assm = ppl_assm, ppl_sen = ppl_sen, ppl_state = ppl_state)
 
 
-#### Step 3: Set up survey ####
 
-weight <- 'PWGTP'  # weight
-repwlist = rep(paste0("PWGTP", 1:80)) # replicate weights
+#### Step 3: Set up for PUMS calc fx ####
+# list subgroup variables for calcs
+vars <- c("indian","chinese","filipino","japanese","korean","vietnamese","oth_asian","nat_hawaiian","chamorro","samoan","oth_nhpi")
 
-# set survey components
-anhpi_svry <- anhpi_pop %>%               
-  as_survey_rep(
-    variables = c(geoid, anhpi_subgroup),   # dplyr::select grouping variables
-    weights = weight,                       # person weight
-    repweights = repwlist,                  # list of replicate weights
-    combined_weights = TRUE,                # tells the function that replicate weights are included in the data
-    mse = TRUE,                             # tells the function to calc mse
-    type="other",                           # statistical method
-    scale=4/80,                             # scaling set by ACS
-    rscale=rep(1,80)                        # setting specific to ACS-scaling
-  )
+## STATE
+# run fx to create survey and calc pop rate denominators
+state_list <- pums_pop_srvy_denom(ppl_state, weight, repwlist)
 
+# add list elements to Environment - these df's are used in calc_pums_pop fx
+list2env(state_list, envir = .GlobalEnv)
 
-###### Asian/NHPI subgroups, alone and AOIC ######
-anhpi_subgroups_table <- anhpi_svry %>%
-  group_by(geoid, anhpi_subgroup) %>%   # group by asian subgroup description
-  summarise(
-    num = survey_total(na.rm=T), # get the (survey weighted) count for the numerators
-    rate = survey_mean()) %>%        # get the (survey weighted) proportion for the numerator
-  left_join(anhpi_svry %>%                                        # left join in the denominators
-              group_by(geoid) %>%                                     # group by geo
-              summarise(pop = survey_total(na.rm=T))) %>%              # get the weighted total for overall geo
-  mutate(rate=rate*100,
-         rate_moe = rate_se*1.645*100,    # calculate the margin of error for the rate based on se
-         rate_cv = ((rate_moe/1.645)/rate) * 100, # calculate cv for rate
-         count_moe = num_se*1.645, # calculate moe for numerator count based on se
-         count_cv = ((count_moe/1.645)/num) * 100)  # calculate cv for numerator count
+# run PUMS calcs
+pop_table_state <- map_dfr(vars, calc_pums_pop)
 
-# recode rates under 1% and create a list for recoding
-other_list<-anhpi_subgroups_table%>%filter(rate<1)%>%ungroup()%>%select(anhpi_subgroup)
-other_list<-other_list$anhpi_subgroup
+View(state_list[[den_nhpi]])
+
+## COUNTY
+# run fx to create survey and calc pop rate denominators
+county_list <- pums_pop_srvy_denom(ppl_cs, weight, repwlist)
+
+# add list elements to Environment - these df's are used in calc_pums_pop fx
+list2env(county_list, envir = .GlobalEnv)
+
+# run PUMS calcs
+pop_table_county <- map_dfr(vars, calc_pums_pop)
+
+asian_pop <- bind_rows(pop_table_state %>% filter(group == 'asian'), pop_table_county %>% filter(group == 'asian'))
+nhpi_pop <- bind_rows(pop_table_state %>% filter(group == 'nhpi'), pop_table_county %>% filter(group == 'nhpi'))
 
 
-anhpi_youth<-anhpi_youth%>%
-  mutate(anhpi_subgroup=ifelse(anhpi_subgroup %in% other_list, 'Another Asian Identity Alone',anhpi_subgroup)) 
 
-anhpi_svry <- anhpi_youth %>%               
-  as_survey_rep(
-    variables = c(geoid, anhpi_subgroup),   # dplyr::select grouping variables
-    weights = weight,                       # person weight
-    repweights = repwlist,                  # list of replicate weights
-    combined_weights = TRUE,                # tells the function that replicate weights are included in the data
-    mse = TRUE,                             # tells the function to calc mse
-    type="other",                           # statistical method
-    scale=4/80,                             # scaling set by ACS
-    rscale=rep(1,80)                        # setting specific to ACS-scaling
-  )
+# ASIAN: Upload to Postgres  ####
+table_name <- 'asian_pop'
+indicator <- "Disaggregated Asian Subgroup Population"
+source <- paste0("American Community Survey 2019-2023 5-year PUMS estimates for Asian & Asian subgroups AOIC, Latinx-Inclusive (RAC3P). QA doc: ", qa_filepath)
 
-
-###### Asian subgroups, Asian alone ######
-anhpi_subgroups_table_re <- anhpi_svry %>%
-  group_by(geoid, anhpi_subgroup) %>%   # group by asian subgroup description
-  summarise(
-    num = survey_total(na.rm=T), # get the (survey weighted) count for the numerators
-    rate = survey_mean()) %>%        # get the (survey weighted) proportion for the numerator
-  left_join(anhpi_svry %>%                                        # left join in the denominators
-              group_by(geoid) %>%                                     # group by geo
-              summarise(pop = survey_total(na.rm=T))) %>%              # get the weighted total for overall geo
-  mutate(rate=rate*100,
-         rate_moe = rate_se*1.645*100,    # calculate the margin of error for the rate based on se
-         rate_cv = ((rate_moe/1.645)/rate) * 100, # calculate cv for rate
-         count_moe = num_se*1.645, # calculate moe for numerator count based on se
-         count_cv = ((count_moe/1.645)/num) * 100)  # calculate cv for numerator count
-
-
-#Upload to Postgres  ####
-# set the connection to pgadmin
-con3 <- connect_to_db("bold_vision")
-table_name <- "demo_disaggregated_asian"
-schema <- 'bv_2023'
-
-indicator <- "Disaggregated Asian Youth"
-source <- "American Community Survey 2017-2021 5-year PUMS estimates. See QA doc for details: W:\\Project\\OSI\\Bold Vision\\BV 2023\\Documentation\\QA_Demo_Asian.docx"
-
-dbWriteTable(con3, c(schema, table_name), anhpi_subgroups_table_re,
+dbWriteTable(con2, c(schema, table_name), asian_subgroups,
              overwrite = TRUE, row.names = FALSE)
 
 #comment on table and columns
@@ -246,10 +194,33 @@ comment <- paste0("COMMENT ON TABLE ", schema, ".", table_name,  " IS '", indica
                   COMMENT ON COLUMN ", schema, ".", table_name, ".geoid IS 'County fips';
                   COMMENT ON COLUMN ", schema, ".", table_name, ".rate IS 'indicator rate';
                   COMMENT ON COLUMN ", schema, ".", table_name, ".pop IS 'total population';
-                  COMMENT ON COLUMN ", schema, ".", table_name, ".num IS 'number of people by disaggregated non-Hispanic Asian Identity';
+                  COMMENT ON COLUMN ", schema, ".", table_name, ".num IS 'number of people by disaggregated Asian Identity';
                   COMMENT ON COLUMN ", schema, ".", table_name, ".rate_cv IS 'cv of indicator rate';")
 print(comment)
-dbSendQuery(con3, comment)
+dbSendQuery(con2, comment)
+
+
+
+# NHPI: Upload to Postgres  ####
+table_name <- 'nhpi_pop'
+indicator <- "Disaggregated Asian Subgroup Population"
+source <- paste0("American Community Survey 2019-2023 5-year PUMS estimates for Asian & Asian subgroups AOIC, Latinx-Inclusive (RAC3P). QA doc: ", qa_filepath)
+
+dbWriteTable(con2, c(schema, table_name), nhpi_subgroups,
+             overwrite = TRUE, row.names = FALSE)
+
+#comment on table and columns
+comment <- paste0("COMMENT ON TABLE ", schema, ".", table_name,  " IS '", indicator, " from ", source, ".';
+                  COMMENT ON COLUMN ", schema, ".", table_name, ".geoid IS 'County fips';
+                  COMMENT ON COLUMN ", schema, ".", table_name, ".rate IS 'indicator rate';
+                  COMMENT ON COLUMN ", schema, ".", table_name, ".pop IS 'total population';
+                  COMMENT ON COLUMN ", schema, ".", table_name, ".num IS 'number of people by disaggregated Asian Identity';
+                  COMMENT ON COLUMN ", schema, ".", table_name, ".rate_cv IS 'cv of indicator rate';")
+print(comment)
+dbSendQuery(con2, comment)
+
+
+
 
 #disconnect
-dbDisconnect(con3)
+dbDisconnect(con2)

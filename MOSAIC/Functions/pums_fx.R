@@ -76,6 +76,107 @@ anhpi_reclass_v1 <- function(x, acs_yr, ancestry_list) {  # used in MOSAIC Livin
 
 
 
+
+
+pums_pop_srvy_denom <- function(d, weight, repwlist){
+  # d = pums dataframe, e.g. ppl_state
+  # weight and repwlist are defined at top of script
+  anhpi_svry <- d %>%      
+    as_survey_rep(
+      variables = c(geoid, geoname, RACASN, RACNHPI, indian, chinese, filipino, japanese, korean, vietnamese, oth_asian, nat_hawaiian, chamorro, samoan, oth_nhpi),   # dplyr::select grouping variables
+      weights = weight,                       # person weight
+      repweights = repwlist,                  # list of replicate weights
+      combined_weights = TRUE,                # tells the function that replicate weights are included in the data
+      mse = TRUE,                             # tells the function to calc mse
+      type="other",                           # statistical method
+      scale=4/80,                             # scaling set by ACS
+      rscale=rep(1,80)                        # setting specific to ACS-scaling
+    )
+  
+  # pre-calc pop denominators to speed up subgroup calc fx
+  den_asian <- anhpi_svry %>%
+    filter(RACASN == 1) %>%
+    group_by(geoid, geoname) %>%
+    summarise(pop = survey_total(na.rm = TRUE), .groups = "drop")
+  
+  den_nhpi <- anhpi_svry %>%
+    filter(RACNHPI == 1) %>%
+    group_by(geoid, geoname) %>%
+    summarise(pop = survey_total(na.rm = TRUE), .groups = "drop")
+  
+  den_total <- anhpi_svry %>%
+    group_by(geoid, geoname) %>%
+    summarise(pop = survey_total(na.rm = TRUE), .groups = "drop")
+  
+return(list(anhpi_svry = anhpi_svry, den_asian = den_asian, den_nhpi = den_nhpi, den_total = den_total))
+  
+}
+
+calc_pums_pop <- function(var_name) {
+# Adapted somewhat from: https://github.com/catalystcalifornia/boldvision_2023/blob/main/demographics/demo_asian_disagg.R
+# Must declare vector of variable names in your script, e.g. vars = c("indian", "chamorro")
+# You must also calc the denominators in your script. See: W:/Project/RACE COUNTS/2025_v7/RC_Github/LF/RaceCounts/MOSAIC/IndicatorScripts/anhpi_pop_pums.R
+### Then run something like this: pop_table <- map_dfr(vars, calc_pums_pop)
+
+  # Determine race group
+  den_group <- case_when( # used to determine which pop denominator to use for rate calcs
+    var_name %in% c("nat_hawaiian","chamorro","samoan","oth_nhpi") ~ "RACNHPI",
+    var_name %in% c("indian","chinese","filipino","japanese",
+                    "korean","vietnamese","oth_asian") ~ "RACASN"
+  )
+  
+  race_group <- case_when( # used to differentiate asian / nhpi rows
+    var_name %in% c("nat_hawaiian","chamorro","samoan","oth_nhpi") ~ "nhpi",
+    var_name %in% c("indian","chinese","filipino","japanese",
+                    "korean","vietnamese","oth_asian") ~ "asian"
+  )
+  
+  # Select appropriate denominator (already computed in indicator script!)
+  pop_df <- switch(
+    den_group,
+    "RACASN" = den_asian,
+    "RACNHPI"  = den_nhpi
+  )
+  
+  # Numerator
+  num_df <- anhpi_svry %>%
+    filter(.data[[den_group]] == 1) %>%
+    group_by(geoid, geoname) %>%
+    summarise(
+      num  = survey_total(.data[[var_name]] == 1, na.rm = TRUE),
+      rate = survey_mean(.data[[var_name]] == 1, na.rm = TRUE),
+      #num  = survey_total(na.rm = TRUE),
+      #rate = survey_mean(na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  # Join + metrics
+  num_df %>%
+    left_join(pop_df, by = c("geoid", "geoname")) %>%
+    mutate(
+      subgroup  = var_name,
+      group     = race_group,
+      rate      = rate * 100,
+      #rate_se   = (num_se / pop),              # delta method (approx)
+      rate_moe  = rate_se * 1.645 * 100,
+      rate_cv   = ifelse(rate > 0, (rate_se / rate) * 100, NA_real_),
+      count_moe = num_se * 1.645,
+      count_cv  = ifelse(num > 0, (num_se / num) * 100, NA_real_)
+    )
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 ############### PUMS COUNT/RATE CALCS ################ Adapted from: W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/PUMS_Functions_new.R
 calc_pums <- function(d, indicator, indicator_val, weight) {
   # d = PUMS dataframe, must contain geoid, geoname, RAC2P, subgroup fields
