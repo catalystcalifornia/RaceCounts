@@ -300,15 +300,13 @@ city_table_name <- paste0(tolower(race_name), "_econ_internet_city_", rc_yr)    
 start_yr <- curr_yr-4
 
 indicator <- paste0("Internet access (Any kind of broadband) ", str_to_title(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
-source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table B25003, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
+source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table B28002, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## ASIAN: SEND TO POSTGRES #######
 to_postgres(county_table,state_table, 'mosaic')
 city_to_postgres(city_table, 'mosaic')
 
 dbDisconnect(con)
-
-
 
 
 #### NHPI: Pre-RC CALCS ##############
@@ -371,13 +369,13 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
 ############## NHPI: COUNTY, STATE, CITY METADATA  ##############
 
 ###update info for postgres tables###
-county_table_name <- paste0(tolower(race_name), "_hous_homeownership_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
-state_table_name <- paste0(tolower(race_name), "_hous_homeownership_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
-city_table_name <- paste0(tolower(race_name), "_hous_homeownership_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
+county_table_name <- paste0(tolower(race_name), "_econ_internet_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
+state_table_name <- paste0(tolower(race_name), "_econ_internet_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
+city_table_name <- paste0(tolower(race_name), "_econ_internet_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
 start_yr <- curr_yr-4
 
-indicator <- paste0("Owner-Occupied Housing Units (%) ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
-source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table B25003, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
+indicator <- paste0("Internet access (Broadband of any kind) ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
+source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table B28002, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## NHPI: SEND TO POSTGRES #######
 to_postgres(county_table,state_table, 'mosaic')
