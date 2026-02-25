@@ -505,12 +505,6 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   }
   
   if(endsWith(table_code, "b25003")) {  # HAVE ONLY EDITED THIS TABLE SO FAR
-    # names(x) <- gsub("001e", "_pop", names(x))
-    # names(x) <- gsub("001m", "_pop_moe", names(x))
-    # 
-    # names(x) <- gsub("002e", "_raw", names(x))
-    # names(x) <- gsub("002m", "_raw_moe", names(x))
-    
     x <- x %>% select(-contains("003")) %>%   # drop cols for renter hh's
       select(geoid, name, geolevel, everything())
     
