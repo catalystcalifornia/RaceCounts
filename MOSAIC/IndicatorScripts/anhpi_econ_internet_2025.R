@@ -63,28 +63,28 @@ asian_meta_filter<-asian_meta %>%
   mutate(after_third = str_split_i(new_label, "!!", 4)) %>%
   count(after_third, sort = TRUE)
 
-# scrolling through the different internet sub-variables and consulting with the internet methodology (https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html#Internet_Access) 
-# for RC I am going to select the variables 'Broadband of any type' and 'Broadband such as cable, fiber optic or DSL' to push to postgres.
-# I think for the purposes of analysis it seems we want to look at 'Broadband such as cable, fiber optic or DSL' but will push both for now
-# in case we actually want 'Broadband of any type' 
-
-# Filter asian_list only for 'Broadband such as cable, fiber optic or DSL' and 'Broadband of any type' variables to limit columns in order to be able to push this table to postgres
-# Also need to filter for all the population total estimate values
-
-
-# Identify which variables to keep
+# # scrolling through the different internet sub-variables and consulting with the internet methodology (https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html#Internet_Access) 
+# # for RC I am going to select the variables 'Broadband of any type' and 'Broadband such as cable, fiber optic or DSL' to push to postgres.
+# # I think for the purposes of analysis it seems we want to look at 'Broadband such as cable, fiber optic or DSL' but will push both for now
+# # in case we actually want 'Broadband of any type' 
+# 
+# # Filter asian_list only for 'Broadband such as cable, fiber optic or DSL' and 'Broadband of any type' variables to limit columns in order to be able to push this table to postgres
+# # Also need to filter for all the population total estimate values
+# 
+# 
+# # Identify which variables to keep: after talking to LF we are just using 'broadband of any type' 
 asian_list_keep <- str_detect(
   asian_list[[2]]$new_label,
   "Broadband of any type"
-) | 
-  str_detect(
-    asian_list[[2]]$new_label,
-    "Broadband such as cable, fiber optic or DSL"
-  )| # keep the total and moe of population estimates
+) |
+  # str_detect(
+  #   asian_list[[2]]$new_label,
+  #   "Broadband such as cable, fiber optic or DSL"
+  # )| # keep the total and moe of population estimates
 str_detect(
   asian_list[[2]]$new_label,
   "^(Estimate|MOE)!!Total:[^!]*$"
-)| 
+)|
   str_detect(
     asian_list[[2]]$new_var,
     "geoid"
@@ -92,6 +92,10 @@ str_detect(
   str_detect(
     asian_list[[2]]$new_var,
     "geolevel"
+  )|
+  str_detect(
+    asian_list[[2]]$new_var,
+    "name"
   )
 
 
@@ -114,11 +118,11 @@ asian_filtered_meta <- asian_list_filtered[[2]] # scrolled through this and look
 nhpi_list_keep <- str_detect(
   nhpi_list[[2]]$new_label,
   "Broadband of any type"
-) | 
-  str_detect(
-    nhpi_list[[2]]$new_label,
-    "Broadband such as cable, fiber optic or DSL"
-  )|
+) |
+  # str_detect(
+  #   nhpi_list[[2]]$new_label,
+  #   "Broadband such as cable, fiber optic or DSL"
+  # )|
   str_detect(
     nhpi_list[[2]]$new_label,
     "^(Estimate|MOE)!!Total:[^!]*$"
@@ -130,6 +134,10 @@ nhpi_list_keep <- str_detect(
   str_detect(
     nhpi_list[[2]]$new_var,
     "geolevel"
+  )|
+  str_detect(
+    nhpi_list[[2]]$new_var,
+    "name"
   )
 
 
@@ -165,7 +173,69 @@ nhpi_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.nhpi_acs_5yr_%s_multigeo_
 
 #### ASIAN: Pre-RC CALCS ##############
 
+# NOTE: Moving forward with the 004 sub-internet variable: Broadband of any kind
+
 asian_df <- prep_acs(asian_data, 'asian', table_code, cv_threshold, pop_threshold)
+
+#####test for prep_acs#################
+
+asian_housing <- dbGetQuery(con, "SELECT * FROM v7.asian_acs_5yr_b25003_multigeo_2021")
+
+asian_data_long <- asian_data %>%
+  pivot_longer(
+    cols = -c(geoid, name, geolevel),
+    names_to = c("ethnic_group", "line", "stat"),
+    names_pattern = "^(.*?)(001|004)(e|m)$",
+    values_to = "value"
+  )%>%
+  mutate(
+    measure = case_when(
+      line == "001" & stat == "e" ~ "pop",
+      line == "001" & stat == "m" ~ "pop_moe",
+      line == "004" & stat == "e" ~ "raw",
+      line == "004" & stat == "m" ~ "raw_moe"
+    )
+  )%>%
+  select(-line, -stat) %>%
+  pivot_wider(
+    names_from = measure,
+    values_from = value
+  )
+
+# calc raced rates
+asian_data_long <- asian_data_long %>%
+  mutate(rate = ifelse(pop <= 0, NA, raw / pop * 100),
+         rate_moe = moe_prop(raw, pop, raw_moe, pop_moe)*100)
+
+####
+
+asian_housing_long <- asian_housing %>%
+  pivot_longer(
+    cols = -c(geoid, name, geolevel),
+    names_to = c("ethnic_group", "line", "stat"),
+    names_pattern = "^(.*?)(001|002)(e|m)$",
+    values_to = "value"
+  ) %>%
+  mutate(
+    measure = case_when(
+      line == "001" & stat == "e" ~ "pop",
+      line == "001" & stat == "m" ~ "pop_moe",
+      line == "002" & stat == "e" ~ "raw",
+      line == "002" & stat == "m" ~ "raw_moe"
+    )
+  ) %>%
+  select(-line, -stat) %>%
+  pivot_wider(
+    names_from = measure,
+    values_from = value
+  )
+
+# calc raced rates
+asian_housing_long <- asian_housing_long %>%
+  mutate(rate = ifelse(pop <= 0, NA, raw / pop * 100),
+         rate_moe = moe_prop(raw, pop, raw_moe, pop_moe)*100)
+
+#########################
 
 asian_df_screened <- dplyr::select(asian_df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_cv"))
 
@@ -224,12 +294,12 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
 ############## ASIAN: COUNTY, STATE, CITY METADATA  ##############
 
 ###update info for postgres tables###
-county_table_name <- paste0(tolower(race_name), "_hous_homeownership_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
-state_table_name <- paste0(tolower(race_name), "_hous_homeownership_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
-city_table_name <- paste0(tolower(race_name), "_hous_homeownership_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
+county_table_name <- paste0(tolower(race_name), "_econ_internet_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
+state_table_name <- paste0(tolower(race_name), "_econ_internet_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
+city_table_name <- paste0(tolower(race_name), "_econ_internet_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
 start_yr <- curr_yr-4
 
-indicator <- paste0("Owner-Occupied Housing Units (%) ", str_to_title(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
+indicator <- paste0("Internet access (Any kind of broadband) ", str_to_title(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
 source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table B25003, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## ASIAN: SEND TO POSTGRES #######
