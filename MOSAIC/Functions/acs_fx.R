@@ -129,7 +129,7 @@ clean_data$geolevel <- case_when(                                # add geolevel 
     unique() %>%
     mutate(var_suff = sub(".*_", "", var),
            generic_var = gsub(("E|M"), "", var),
-           new_var = tolower(paste0(table_code, "_", POPGROUP, "_", var_suff)))
+           new_var = tolower(paste0(table, "_", POPGROUP, "_", var_suff)))
                                               
   # load variable names
   v21 <- load_variables(year, "acs5", cache = TRUE)
