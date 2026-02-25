@@ -37,37 +37,20 @@ anhpi_reclass <- function(x) {
 
 
 anhpi_reclass_v1 <- function(x, acs_yr, ancestry_list) {  # used in MOSAIC Living Wage test
-  ## import PUMS codes
-  url <- paste0("https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_", start_yr, "-", curr_yr, ".csv")
-  pums_vars_ <- read.csv(url, header=FALSE, na = "NA")   # read in data dictionary without headers bc some cols do not have names
-  head(pums_vars_)
-  anc_codes <- pums_vars_ %>% mutate(V6 = ifelse(V6=="", "col_6", V6), V7 = ifelse(V7=="", "val_label", V7))   # manually add names of cols w missing names
-  colnames(anc_codes) <- as.character(unlist(anc_codes[1,]))												       # set first row values as col names
-  anc_codes <- anc_codes %>% rename(var_code = 'Record Type')
-  anc_codes <- anc_codes %>% filter(RT == 'ANC1P' | RT == 'ANC2P')											   # filter RT col for ancestry rows
-  anc_codes <- anc_codes %>% select(var_code, val_label) %>% unique()										   # keep only code and label cols, remove dupes
-  head(anc_codes)
-  print("Added missing column names to anc_codes. Check console to ensure colnames are correct.")
+  ## import ANC1P/ANC2P codes/labels pulled from https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
+  anc_codes <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\Asian_NHPI_Ancestry.xlsx", sheet = "ancestry") %>%
+    mutate(anc_label = tolower(gsub(" ", "_", anc_label)))
+  View(anc_codes)
   
-  #View(anc_codes)
-  
-  ## filter PUMS codes for descriptions based on specified ancestry_list
-  all_anc_codes <- anc_codes %>% filter(val_label %in% ancestry_list$anc) %>% arrange(val_label) %>% mutate(val_label = gsub(" ", "_", tolower(val_label)))
-  print("Displaying ancestry codes filtered by specified ancestry_list as all_anc_codes df.")
-  View(all_anc_codes)
-  
-  aapi_incl1 <- x %>% select(ANC1P) %>% inner_join(all_anc_codes, by =c("ANC1P" = "var_code")) %>% unique() %>% rename(anc = ANC1P) # get list of AA or PI ancestries actually in CA PUMS data
-  aapi_incl2 <- x %>% select(ANC2P) %>% inner_join(all_anc_codes, by =c("ANC2P" = "var_code")) %>% unique() %>% rename(anc = ANC2P) # get list of AA or PI ancestries actually in CA PUMS data
-  aapi_incl <- rbind(aapi_incl1, aapi_incl2) %>% unique() %>% arrange(val_label)
+  # get list of AA or PI ancestries actually in CA PUMS data
+  aapi_incl <- x %>% select(ANC1P) %>% 
+    unique() %>%
+    inner_join(anc_codes %>% filter((asian == 1 | nhpi ==1)), by ="ANC1P") %>%
+    arrange(anc_label)
   print("Displaying all the AA or PI ancestries actually present in the data as aapi_incl df.")
   View(aapi_incl)
-  
-  
-  # code subgroups
-  x$var_code = as.factor(ifelse(x$ANC1P == all_anc_codes$var_code[1], all_anc_codes$var_code[1],
-                                  NA))
-  
-  x <- x %>% right_join(all_anc_codes)
+
+  x <- x %>% left_join(anc_codes)
   
   return(x)
 }
