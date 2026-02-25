@@ -150,45 +150,52 @@ ppl_puma <- left_join(people, county_crosswalk %>% select(puma, puma_name), by=c
 
 
 #### Step 3: Set up for PUMS calc fx ####
-# list subgroup variables for calcs
+# list subgroup col names for calcs
 vars <- c("indian","chinese","filipino","japanese","korean","vietnamese","oth_asian","nat_hawaiian","chamorro","samoan","oth_nhpi")
 
 ## STATE
-# run fx to create survey and calc pop rate denominators
-state_list <- pums_pop_srvy_denom(ppl_state, weight, repwlist)
+  # run fx to create survey and calc pop rate denominators
+  state_list <- pums_pop_srvy_denom(ppl_state, weight, repwlist)
+  
+  # add list elements to Environment - these df's are used in calc_pums_pop fx
+  list2env(state_list, envir = .GlobalEnv)
+  
+  # run PUMS calcs
+  pop_table_state <- map_dfr(vars, calc_pums_pop)
 
-# add list elements to Environment - these df's are used in calc_pums_pop fx
-list2env(state_list, envir = .GlobalEnv)
-
-# run PUMS calcs
-pop_table_state <- map_dfr(vars, calc_pums_pop)
-
-#View(state_list[[den_nhpi]])
 
 ## COUNTY
-# run fx to create survey and calc pop rate denominators
-county_list <- pums_pop_srvy_denom(ppl_cs, weight, repwlist)
-
-# add list elements to Environment - these df's are used in calc_pums_pop fx
-list2env(county_list, envir = .GlobalEnv)
-
-# run PUMS calcs
-pop_table_county <- map_dfr(vars, calc_pums_pop)
+  # run fx to create survey and calc pop rate denominators
+  county_list <- pums_pop_srvy_denom(ppl_cs, weight, repwlist)
+  
+  # add list elements to Environment - these df's are used in calc_pums_pop fx
+  list2env(county_list, envir = .GlobalEnv)
+  
+  # run PUMS calcs
+  pop_table_county <- map_dfr(vars, calc_pums_pop)
 
 
 ## PUMA
-# run fx to create survey and calc pop rate denominators
-puma_list <- pums_pop_srvy_denom(ppl_puma, weight, repwlist)
+  # run fx to create survey and calc pop rate denominators
+  puma_list <- pums_pop_srvy_denom(ppl_puma, weight, repwlist)
+  
+  # add list elements to Environment - these df's are used in calc_pums_pop fx
+  list2env(puma_list, envir = .GlobalEnv)
+  
+  # run PUMS calcs
+  pop_table_puma <- map_dfr(vars, calc_pums_pop)
 
-asian_pop <- bind_rows(pop_table_state %>% filter(group == 'asian'), pop_table_county %>% filter(group == 'asian'))
-nhpi_pop <- bind_rows(pop_table_state %>% filter(group == 'nhpi'), pop_table_county %>% filter(group == 'nhpi'))
+
+
+asian_pop <- bind_rows(pop_table_state %>% filter(group == 'asian'), pop_table_county %>% filter(group == 'asian'), pop_table_puma %>% filter(group == 'asian'))
+nhpi_pop <- bind_rows(pop_table_state %>% filter(group == 'nhpi'), pop_table_county %>% filter(group == 'nhpi'), pop_table_puma %>% filter(group == 'nhpi'))
 
 
 
 # ASIAN: Upload to Postgres  ####
 table_name <- 'asian_pop'
 indicator <- "Disaggregated Asian Subgroup Population"
-source <- paste0("American Community Survey 2019-2023 5-year PUMS estimates for Asian & Asian subgroups AOIC, Latinx-Inclusive (RAC3P). QA doc: ", qa_filepath)
+source <- paste0("American Community Survey 2019-2023 5-year PUMS estimates for Asian & Asian subgroups AOIC, Latinx-Inclusive (RAC3P) at state, county, PUMA level. QA doc: ", qa_filepath)
 
 dbWriteTable(con2, c(schema, table_name), asian_subgroups,
              overwrite = TRUE, row.names = FALSE)
@@ -208,7 +215,7 @@ dbSendQuery(con2, comment)
 # NHPI: Upload to Postgres  ####
 table_name <- 'nhpi_pop'
 indicator <- "Disaggregated Asian Subgroup Population"
-source <- paste0("American Community Survey 2019-2023 5-year PUMS estimates for Asian & Asian subgroups AOIC, Latinx-Inclusive (RAC3P). QA doc: ", qa_filepath)
+source <- paste0("American Community Survey 2019-2023 5-year PUMS estimates for Asian & Asian subgroups AOIC, Latinx-Inclusive (RAC3P) at state, county, PUMA level. QA doc: ", qa_filepath)
 
 dbWriteTable(con2, c(schema, table_name), nhpi_subgroups,
              overwrite = TRUE, row.names = FALSE)

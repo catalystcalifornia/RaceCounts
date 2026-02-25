@@ -75,9 +75,6 @@ anhpi_reclass_v1 <- function(x, acs_yr, ancestry_list) {  # used in MOSAIC Livin
 
 
 
-
-
-
 pums_pop_srvy_denom <- function(d, weight, repwlist){ # prep denominators & survey for PUMS pop calcs
   # d = pums dataframe, e.g. ppl_state
   # weight and repwlist are defined at top of script
@@ -157,7 +154,6 @@ calc_pums_pop <- function(var_name) {
       subgroup  = var_name,
       group     = race_group,
       rate      = rate * 100,
-      #rate_se   = (num_se / pop),              # delta method (approx)
       rate_moe  = rate_se * 1.645 * 100,
       rate_cv   = ifelse(rate > 0, (rate_se / rate) * 100, NA_real_),
       count_moe = num_se * 1.645,
