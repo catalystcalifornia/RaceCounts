@@ -31,12 +31,13 @@ rc_schema ="v7"     # you MUST UPDATE each year
 schema = 'v7'
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Internet - MOSAIC.docx"
 
+# set these thresholds to match methodology for internet access for RC: https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html#Internet_Access
+
 cv_threshold = 40         
 pop_threshold = 100       
 asbest = 'max'            
 schema = 'economic'
 table_code = 'b28002'    # Select relevant indicator table name
-
 
 # CREATE RAW DATA TABLES -------------------------------------------------------------------------
 ## Only run this section if the raw data tables have not been created yet ##
@@ -56,18 +57,99 @@ unique(nhpi_list[[2]]$POPGROUP_LABEL) # this is NULL is that right? But when I r
 asian_meta <- asian_list[[2]]
 nhpi_meta <- nhpi_list[[2]]
 
-# further filter down what the actual differnet internet indicators there are in the metadata
+# further filter down what the actual different internet indicators there are in the metadata
 
-test<-asian_meta %>%
+asian_meta_filter<-asian_meta %>%
   mutate(after_third = str_split_i(new_label, "!!", 4)) %>%
   count(after_third, sort = TRUE)
 
+# scrolling through the different internet sub-variables and consulting with the internet methodology (https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html#Internet_Access) 
+# for RC I am going to select the variables 'Broadband of any type' and 'Broadband such as cable, fiber optic or DSL' to push to postgres.
+# I think for the purposes of analysis it seems we want to look at 'Broadband such as cable, fiber optic or DSL' but will push both for now
+# in case we actually want 'Broadband of any type' 
+
+# Filter asian_list only for 'Broadband such as cable, fiber optic or DSL' and 'Broadband of any type' variables to limit columns in order to be able to push this table to postgres
+# Also need to filter for all the population total estimate values
 
 
+# Identify which variables to keep
+asian_list_keep <- str_detect(
+  asian_list[[2]]$new_label,
+  "Broadband of any type"
+) | 
+  str_detect(
+    asian_list[[2]]$new_label,
+    "Broadband such as cable, fiber optic or DSL"
+  )| # keep the total and moe of population estimates
+str_detect(
+  asian_list[[2]]$new_label,
+  "^(Estimate|MOE)!!Total:[^!]*$"
+)| 
+  str_detect(
+    asian_list[[2]]$new_var,
+    "geoid"
+  )|
+  str_detect(
+    asian_list[[2]]$new_var,
+    "geolevel"
+  )
 
 
+# Filter both parts of the list
+asian_list_filtered <- list(
+  asian_list[[1]][, asian_list_keep, drop = FALSE],
+  asian_list[[2]][asian_list_keep, ]
+)
+
+# Preserve the original names
+names(asian_list_filtered) <- names(asian_list)
+
+# Check that worked:
+
+asian_filtered_meta <- asian_list_filtered[[2]] # scrolled through this and looks good
+
+# Repeat steps for nhpi_list
+
+# Identify which variables to keep
+nhpi_list_keep <- str_detect(
+  nhpi_list[[2]]$new_label,
+  "Broadband of any type"
+) | 
+  str_detect(
+    nhpi_list[[2]]$new_label,
+    "Broadband such as cable, fiber optic or DSL"
+  )|
+  str_detect(
+    nhpi_list[[2]]$new_label,
+    "^(Estimate|MOE)!!Total:[^!]*$"
+  )|
+  str_detect(
+    nhpi_list[[2]]$new_var,
+    "geoid"
+  )|
+  str_detect(
+    nhpi_list[[2]]$new_var,
+    "geolevel"
+  )
 
 
+# Filter both parts of the list
+nhpi_list_filtered <- list(
+  nhpi_list[[1]][, nhpi_list_keep, drop = FALSE],
+  nhpi_list[[2]][nhpi_list_keep, ]
+)
+
+# Preserve the original names
+names(nhpi_list_filtered) <- names(nhpi_list)
+
+# Check that worked:
+
+nhpi_filtered_meta <- nhpi_list_filtered[[2]] # scrolled through this and looks good
+
+# reassign filtered list name to just list_name for function syntax
+
+asian_list<-asian_list_filtered
+nhpi_list<-nhpi_list_filtered
 
 # Send revised tables only with necessary columns to postgres
 send_to_mosaic(table_code, asian_list, rc_schema)
@@ -82,6 +164,7 @@ nhpi_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.nhpi_acs_5yr_%s_multigeo_
                                      rc_schema, tolower(table_code), curr_yr))
 
 #### ASIAN: Pre-RC CALCS ##############
+
 asian_df <- prep_acs(asian_data, 'asian', table_code, cv_threshold, pop_threshold)
 
 asian_df_screened <- dplyr::select(asian_df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_cv"))

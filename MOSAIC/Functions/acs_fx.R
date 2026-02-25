@@ -182,7 +182,7 @@ send_to_mosaic <- function(acs_table, df_list, table_schema){
   # send table to postgres
   dbWriteTable(con, 
                Id(schema = table_schema, table = table_name), 
-               df_list[[1]], overwrite = FALSE)
+               df_list[[1]], overwrite = TRUE)
   
   # comment on table and columns
   add_table_comments(con, table_schema, table_name, indicator, source, qa_filepath, column_names, column_comments)
@@ -562,6 +562,48 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     x <- x %>%
       rename_with(~ new_names[which(old_names == .x)], .cols = old_names)
   }
+  
+  if(endsWith(table_code, "b28002")) {  # JZ adding  code for internet indicator
+    names(x) <- gsub("001e", "_pop", names(x))
+    names(x) <- gsub("001m", "_pop_moe", names(x))
+
+    names(x) <- gsub("007e", "_broadband_cable", names(x))
+    names(x) <- gsub("007m", "_broadband_cable", names(x))
+    
+    
+    names(x) <- gsub("004e", "_broadband_any", names(x))
+    names(x) <- gsub("004m", "_broadband_any", names(x))
+    
+    
+    # pivot longer
+    x_long <- x %>%
+      pivot_longer(
+        cols = -c(geoid, geolevel),
+        names_to = c("ethnic_group", "line", "stat"),
+        names_pattern = "^(.*?)(001|002)(e|m)$",
+        values_to = "value"
+      ) %>%
+      mutate(
+        measure = case_when(
+          line == "001" & stat == "e" ~ "pop",
+          line == "001" & stat == "m" ~ "pop_moe",
+          line == "002" & stat == "e" ~ "raw",
+          line == "002" & stat == "m" ~ "raw_moe"
+        )
+      ) %>%
+      select(-line, -stat) %>%
+      pivot_wider(
+        names_from = measure,
+        values_from = value
+      )
+    
+    # calc raced rates
+    x_long <- x_long %>%
+      mutate(rate = ifelse(pop <= 0, NA, raw / pop * 100),
+             rate_moe = moe_prop(raw, pop, raw_moe, pop_moe)*100)
+    
+  }
+  
   
   if (startsWith(table_code, "s2301")) {
     old_names <- colnames(x)[-(1:3)]
