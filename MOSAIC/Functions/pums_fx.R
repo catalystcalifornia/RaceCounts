@@ -1,7 +1,7 @@
 ##### Reclassify Asian and NHPI Ancestries ########  Note: Ancestry lists sourced at top of indicator script
 
 ##### Reclassify Asian and NHPI RAC3P ########
-anhpi_reclass <- function(x) {
+anhpi_reclass_old <- function(x) {
   # x = df with PUMS data, eg: anhpi_pop
   # separate asian and nhpi data
   asian_pop <- x %>% filter(RACASN == 1)    # Asian alone or AOIC
@@ -36,12 +36,13 @@ anhpi_reclass <- function(x) {
 
 
 
-anhpi_reclass_v1 <- function(x, acs_yr, ancestry_list) {  # used in MOSAIC Living Wage test
+anhpi_reclass <- function(x, acs_yr) {  # used in MOSAIC Living Wage test
   ## import ANC1P/ANC2P codes/labels pulled from https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
-  anc_codes <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\Asian_NHPI_Ancestry.xlsx", sheet = "ancestry") %>%
+  ancestry_list <- "W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\Asian_NHPI_Ancestry.xlsx"
+  print(paste0("Adding ancestry labels from:", ancestry_list))
+  anc_codes <- read_excel(ancestry_list, sheet = "ancestry") %>%
     mutate(anc_label = tolower(gsub(" ", "_", anc_label)))
-  View(anc_codes)
-  
+
   # get list of AA or PI ancestries actually in CA PUMS data
   aapi_incl <- x %>% select(ANC1P) %>% 
     unique() %>%
@@ -51,6 +52,8 @@ anhpi_reclass_v1 <- function(x, acs_yr, ancestry_list) {  # used in MOSAIC Livin
   View(aapi_incl)
 
   x <- x %>% left_join(anc_codes)
+  x <- x %>% left_join(anc_codes %>% select(ANC1P, anc_label), by = c("ANC2P" = "ANC1P"))
+  
   
   return(x)
 }

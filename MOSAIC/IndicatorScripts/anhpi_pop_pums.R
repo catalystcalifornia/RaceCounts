@@ -21,7 +21,7 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 source("./MOSAIC/Functions/pums_fx.R")
 con <- connect_to_db("rda_shared_data")
 con2 <- connect_to_db("mosaic")
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\QA_Sheet_ANHPI_Pop_PUMS.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\QA_Sheet_MOSAIC_Pop_PUMS.docx"
 
 #### Step 1: Define Variables ####
 
@@ -58,12 +58,17 @@ county_crosswalk <- crosswalk %>%
 
 
 ##### Step 3: GET PUMS DATA ######
+# Load ONLY the PUMS columns needed for this indicator
+cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0))    # get all PUMS cols 
+cols_wts <- grep(paste0("^", weight, "*"), cols, value = TRUE)    # filter for PUMS weight colnames
+
 people <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE,
-                colClasses = list(character = c("PUMA", "RAC1P", "RAC3P", "RAC2P19", "RAC2P23", "HISP", "ANC1P", "ANC2P")))
+                select = c(cols_wts, "RT", "SERIALNO", "PUMA", "RAC1P", "RAC3P", "RAC2P19", "RAC2P23", "HISP", "ANC1P", "ANC2P", "RACASN", "RACNH", "RACPI"),
+                colClasses = list(character = c("PUMA", "RAC1P", "RAC3P", "RAC2P19", "RAC2P23", "HISP", "ANC1P", "ANC2P", "RACASN", "RACNH", "RACPI")))
 orig_data <- people
 # tmp_file <- tempfile(fileext = ".rds") # generate temporary filepath
 # saveRDS(people, file = tmp_file)       # save the df to temporary filepath, in case need original data again
-# orig_data <- readRDS(tmp_file)       # load original data if needed
+# orig_data <- readRDS(tmp_file)         # load original data if needed
 
 # add nhpi value
 people$RACNHPI <- case_when(
@@ -72,30 +77,7 @@ people$RACNHPI <- case_when(
 )
 
 #### Step 4: Join subgroup descriptions to data ####
-
-# pull in RAC3P metadata - adapted from W:\Data\Demographics\PUMS\CA_2019_2023\PUMS_Data_Dictionary_2019-2023.csv
-#race_codes3 <- read_excel(data_dict)  
-
-# get unique list of RAC3P descriptions
-# rac3p_unique <- as.data.frame(c(unique(race_codes3$Description1), unique(race_codes3$Description2), unique(race_codes3$Description3), 
-#                                 unique(race_codes3$Description4), unique(race_codes3$Description5), unique(race_codes3$Description6))) %>%
-#   unique() %>%
-#   na.omit()
-# View(rac3p_unique)
-
-# join race descriptions to data
-# people <- left_join(people, race_codes3 %>% select(-var, -starts_with("Description"), "Description"), by="RAC3P") %>%
-#   #rename(subgroup=Description) %>% # clarify column we'll group by and set final dataset
-#   select(RAC3P, indian, chinese, filipino, japanese, korean, vietnamese, oth_asian, nat_hawaiian, chamorro, samoan, oth_nhpi, everything())
-
-
-# check join
-#View(people[c("HISP","RAC1P","RACNHPI","ANC1P","ANC2P","Description","indian","chinese","filipino","japanese","korean","vietnamese","oth_asian","nat_hawaiian","chamorro","samoan","oth_nhpi")])
-# table(people$indian, useNA = "always")
-# table(people$chamorro, useNA = "always")
-# table(people$oth_asian, useNA = "always")
-
-# 
+people <- anhpi_reclass(people, curr_yr)
 
 
 #### Step 5: Join crosswalks to data ####
@@ -111,43 +93,6 @@ ppl_state <- people %>% rename(geoid = state_geoid) %>% mutate(geoname = 'Califo
 
 ppl_puma <- left_join(people, county_crosswalk %>% select(puma, puma_name), by=c("puma_id" = "puma")) %>%  # join puma names
   rename(geoid = puma_id, geoname = puma_name)
-
-# # join assm crosswalk to data
-# ppl_assm <- left_join(people, assm_crosswalk, by=c("puma_id" = "puma")) 
-# ## Add geonames
-# census_api_key(census_key1, overwrite=TRUE)
-# assm_name <- get_acs(geography = "State Legislative District (Lower Chamber)", 
-#                      variables = c("B01001_001"), 
-#                      state = "CA", 
-#                      year = curr_yr)
-# 
-# assm_name <- assm_name[,1:2]
-# assm_name$NAME <- str_remove(assm_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
-# assm_name$NAME <- gsub("; California", "", assm_name$NAME)
-# names(assm_name) <- c("geoid", "geoname")
-# # View(assm_name)
-# 
-# # add geonames to data
-# ppl_assm <- merge(x=assm_name,y=ppl_assm, by="geoid", all=T)
-# 
-# # join sen crosswalk to data
-# ppl_sen <- left_join(people, sen_crosswalk, by=c("puma_id" = "puma")) 
-# ## Add geonames
-# # census_api_key(census_key1, overwrite=TRUE)
-# sen_name <- get_acs(geography = "State Legislative District (Upper Chamber)", 
-#                     variables = c("B01001_001"), 
-#                     state = "CA", 
-#                     year = curr_yr)
-# 
-# sen_name <- sen_name[,1:2]
-# sen_name$NAME <- str_remove(sen_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
-# sen_name$NAME <- gsub("; California", "", sen_name$NAME)
-# names(sen_name) <- c("geoid", "geoname")
-# # View(sen_name)
-# 
-# # add geonames to WA
-# ppl_sen <- merge(x=sen_name,y=ppl_sen, by="geoid", all=T)
-
 
 
 #### Step 3: Set up for PUMS calc fx ####
