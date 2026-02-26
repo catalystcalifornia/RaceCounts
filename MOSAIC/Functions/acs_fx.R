@@ -182,7 +182,7 @@ send_to_mosaic <- function(acs_table, df_list, table_schema){
   # send table to postgres
   dbWriteTable(con, 
                Id(schema = table_schema, table = table_name), 
-               df_list[[1]], overwrite = TRUE)
+               df_list[[1]], overwrite = FALSE)
   
   # comment on table and columns
   add_table_comments(con, table_schema, table_name, indicator, source, qa_filepath, column_names, column_comments)
