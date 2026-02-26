@@ -44,12 +44,12 @@ table_code = 'b28002'    # Select relevant indicator table name
 race <- "asian"
 asian_list <- get_detailed_race(table_code, race, curr_yr)
 # check race col names which are created in fx
-unique(asian_list[[2]]$POPGROUP_LABEL) # this is NULL is that right? But when I run get_detailed_above, I see 'API request successful' Also clicking the list object asian_list and nhpi_list it does seem like columns and data were pulled so I think this is OK
+# unique(asian_list[[2]]$new_label) 
 
 race <- "nhpi"
 nhpi_list <- get_detailed_race(table_code, race, curr_yr)
 # check race col names which are created in fx
-unique(nhpi_list[[2]]$POPGROUP_LABEL) # this is NULL is that right? But when I run get_detailed_above, I see 'API request successful' Also clicking the list object asian_list and nhpi_list it does seem like columns and data were pulled so I think this is OK
+# unique(nhpi_list[[2]]$new_label)
 
 # These lists asian_list and nhpi_list have too many rows, so need to explore the columns and drop what isn't needed
 
@@ -63,24 +63,15 @@ asian_meta_filter<-asian_meta %>%
   mutate(after_third = str_split_i(new_label, "!!", 4)) %>%
   count(after_third, sort = TRUE)
 
-# # scrolling through the different internet sub-variables and consulting with the internet methodology (https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html#Internet_Access) 
-# # for RC I am going to select the variables 'Broadband of any type' and 'Broadband such as cable, fiber optic or DSL' to push to postgres.
-# # I think for the purposes of analysis it seems we want to look at 'Broadband such as cable, fiber optic or DSL' but will push both for now
-# # in case we actually want 'Broadband of any type' 
-# 
-# # Filter asian_list only for 'Broadband such as cable, fiber optic or DSL' and 'Broadband of any type' variables to limit columns in order to be able to push this table to postgres
-# # Also need to filter for all the population total estimate values
-# 
-# 
-# # Identify which variables to keep: after talking to LF we are just using 'broadband of any type' 
+# scrolling through the different internet sub-variables and consulting with the internet methodology (https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html#Internet_Access)
+# for RC I am going to select the variable 'Broadband of any type' and push to postgres.
+# Also need to filter for all the population total estimate values
+#
+# Identify which variables to keep: after talking to LF we are just using 'broadband of any type'
 asian_list_keep <- str_detect(
   asian_list[[2]]$new_label,
   "Broadband of any type"
 ) |
-  # str_detect(
-  #   asian_list[[2]]$new_label,
-  #   "Broadband such as cable, fiber optic or DSL"
-  # )| # keep the total and moe of population estimates
 str_detect(
   asian_list[[2]]$new_label,
   "^(Estimate|MOE)!!Total:[^!]*$"
@@ -109,7 +100,6 @@ asian_list_filtered <- list(
 names(asian_list_filtered) <- names(asian_list)
 
 # Check that worked:
-
 asian_filtered_meta <- asian_list_filtered[[2]] # scrolled through this and looks good
 
 # Repeat steps for nhpi_list
@@ -119,10 +109,6 @@ nhpi_list_keep <- str_detect(
   nhpi_list[[2]]$new_label,
   "Broadband of any type"
 ) |
-  # str_detect(
-  #   nhpi_list[[2]]$new_label,
-  #   "Broadband such as cable, fiber optic or DSL"
-  # )|
   str_detect(
     nhpi_list[[2]]$new_label,
     "^(Estimate|MOE)!!Total:[^!]*$"
@@ -151,11 +137,9 @@ nhpi_list_filtered <- list(
 names(nhpi_list_filtered) <- names(nhpi_list)
 
 # Check that worked:
-
 nhpi_filtered_meta <- nhpi_list_filtered[[2]] # scrolled through this and looks good
 
 # reassign filtered list name to just list_name for function syntax
-
 asian_list<-asian_list_filtered
 nhpi_list<-nhpi_list_filtered
 
@@ -176,66 +160,6 @@ nhpi_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.nhpi_acs_5yr_%s_multigeo_
 # NOTE: Moving forward with the 004 sub-internet variable: Broadband of any kind
 
 asian_df <- prep_acs(asian_data, 'asian', table_code, cv_threshold, pop_threshold)
-
-#####test for prep_acs#################
-
-asian_housing <- dbGetQuery(con, "SELECT * FROM v7.asian_acs_5yr_b25003_multigeo_2021")
-
-asian_data_long <- asian_data %>%
-  pivot_longer(
-    cols = -c(geoid, name, geolevel),
-    names_to = c("ethnic_group", "line", "stat"),
-    names_pattern = "^(.*?)(001|004)(e|m)$",
-    values_to = "value"
-  )%>%
-  mutate(
-    measure = case_when(
-      line == "001" & stat == "e" ~ "pop",
-      line == "001" & stat == "m" ~ "pop_moe",
-      line == "004" & stat == "e" ~ "raw",
-      line == "004" & stat == "m" ~ "raw_moe"
-    )
-  )%>%
-  select(-line, -stat) %>%
-  pivot_wider(
-    names_from = measure,
-    values_from = value
-  )
-
-# calc raced rates
-asian_data_long <- asian_data_long %>%
-  mutate(rate = ifelse(pop <= 0, NA, raw / pop * 100),
-         rate_moe = moe_prop(raw, pop, raw_moe, pop_moe)*100)
-
-####
-
-asian_housing_long <- asian_housing %>%
-  pivot_longer(
-    cols = -c(geoid, name, geolevel),
-    names_to = c("ethnic_group", "line", "stat"),
-    names_pattern = "^(.*?)(001|002)(e|m)$",
-    values_to = "value"
-  ) %>%
-  mutate(
-    measure = case_when(
-      line == "001" & stat == "e" ~ "pop",
-      line == "001" & stat == "m" ~ "pop_moe",
-      line == "002" & stat == "e" ~ "raw",
-      line == "002" & stat == "m" ~ "raw_moe"
-    )
-  ) %>%
-  select(-line, -stat) %>%
-  pivot_wider(
-    names_from = measure,
-    values_from = value
-  )
-
-# calc raced rates
-asian_housing_long <- asian_housing_long %>%
-  mutate(rate = ifelse(pop <= 0, NA, raw / pop * 100),
-         rate_moe = moe_prop(raw, pop, raw_moe, pop_moe)*100)
-
-#########################
 
 asian_df_screened <- dplyr::select(asian_df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_cv"))
 
@@ -300,7 +224,7 @@ city_table_name <- paste0(tolower(race_name), "_econ_internet_city_", rc_yr)    
 start_yr <- curr_yr-4
 
 indicator <- paste0("Internet access (Any kind of broadband) ", str_to_title(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
-source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table B28002, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
+source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table ", toupper(table_code), ", https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## ASIAN: SEND TO POSTGRES #######
 to_postgres(county_table,state_table, 'mosaic')
@@ -375,7 +299,7 @@ city_table_name <- paste0(tolower(race_name), "_econ_internet_city_", rc_yr)    
 start_yr <- curr_yr-4
 
 indicator <- paste0("Internet access (Broadband of any kind) ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
-source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table B28002, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
+source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table ", toupper(table_code), ", https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## NHPI: SEND TO POSTGRES #######
 to_postgres(county_table,state_table, 'mosaic')

@@ -129,7 +129,7 @@ clean_data$geolevel <- case_when(                                # add geolevel 
     unique() %>%
     mutate(var_suff = sub(".*_", "", var),
            generic_var = gsub(("E|M"), "", var),
-           new_var = tolower(paste0(table_code, "_", POPGROUP, "_", var_suff)))
+           new_var = tolower(paste0(table, "_", POPGROUP, "_", var_suff)))
                                               
   # load variable names
   v21 <- load_variables(year, "acs5", cache = TRUE)
@@ -504,13 +504,7 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     names(x) <- gsub("001m", "_rate_moe", names(x))
   }
   
-  if(endsWith(table_code, "b25003")) {  # HAVE ONLY EDITED THIS TABLE SO FAR
-    # names(x) <- gsub("001e", "_pop", names(x))
-    # names(x) <- gsub("001m", "_pop_moe", names(x))
-    # 
-    # names(x) <- gsub("002e", "_raw", names(x))
-    # names(x) <- gsub("002m", "_raw_moe", names(x))
-    
+  if(endsWith(table_code, "b25003")) {  # LF edited Homeownership
     x <- x %>% select(-contains("003")) %>%   # drop cols for renter hh's
       select(geoid, name, geolevel, everything())
     
@@ -593,7 +587,6 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
              rate_moe = moe_prop(raw, pop, raw_moe, pop_moe)*100)
     
   }
-  
   
   if (startsWith(table_code, "s2301")) {
     old_names <- colnames(x)[-(1:3)]
