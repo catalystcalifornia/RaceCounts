@@ -172,7 +172,7 @@ city_table <- d[d$geolevel == 'place', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table) %>% dplyr::select(-c(geolevel))
-View(state_table)
+# View(state_table)
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table) 
@@ -199,9 +199,9 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
 ############## NHPI: COUNTY, STATE, CITY METADATA  ##############
 
 ###update info for postgres tables###
-county_table_name <- paste0(tolower(race_name), "_hous_homeownership_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
-state_table_name <- paste0(tolower(race_name), "_hous_homeownership_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
-city_table_name <- paste0(tolower(race_name), "_hous_homeownership_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
+county_table_name <- paste0(tolower(race_name), "_econ_employment_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
+state_table_name <- paste0(tolower(race_name), "_econ_employment_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
+city_table_name <- paste0(tolower(race_name), "_econ_employment_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
 start_yr <- curr_yr-4
 
 indicator <- paste0("Employment Status (%) ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
