@@ -1,4 +1,4 @@
-# Disaggregated Asian and NHPI from PUMS
+# Disaggregated Asian and NHPI Pop from PUMS
 
 # Data Dictionary: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
 
@@ -22,6 +22,7 @@ source("./MOSAIC/Functions/pums_fx.R")
 con <- connect_to_db("rda_shared_data")
 con2 <- connect_to_db("mosaic")
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\QA_Sheet_MOSAIC_Pop_PUMS.docx"
+ancestry_list <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\Asian_NHPI_Ancestry.xlsx", sheet = "ancestry") # list of ANHPI ANC1P/ANC2P codes
 
 #### Step 1: Define Variables ####
 
@@ -76,16 +77,57 @@ people$RACNHPI <- case_when(
   TRUE ~ 0
 )
 
-#### Step 4: Join subgroup descriptions to data ####
-people <- anhpi_reclass(people, curr_yr)
-
-
-#### Step 5: Join crosswalks to data ####
-
 # Add state_geoid to people, add state_geoid to PUMA id, so it aligns with same vintage county-puma xwalk
 people$state_geoid <- "06"
 people$puma_id <- paste0(people$state_geoid, people$PUMA)
 
+#### Step 4: Join subgroup descriptions to data ####
+people <- anhpi_reclass(people, curr_yr, ancestry_list)  # returns list containing people (reclassified pums data) and aapi_incl
+list2env(people, .GlobalEnv)
+
+# Add a new column for each anc_label, populated with 1 or 0
+for (label in aapi_incl$anc_label) {
+  people[[label]] <- as.integer(people$anc_label.x == label | people$anc_label.y == label)
+}
+
+# Add a new column for asian and nhpi, populated with 1 or 0
+# Create a named lookup vector: anc_label -> asian value
+asian_lookup <- setNames(aapi_incl$asian, aapi_incl$anc_label)
+
+# Populate the new 'asian' column
+people$asian <- as.integer(
+  (people$anc_label.x %in% names(asian_lookup[asian_lookup == 1])) |
+    (people$anc_label.y %in% names(asian_lookup[asian_lookup == 1]))
+)
+
+# Create a named lookup vector: anc_label -> nhpi value
+nhpi_lookup <- setNames(aapi_incl$nhpi, aapi_incl$anc_label)
+
+# Populate the new 'nhpi' column
+people$nhpi <- as.integer(
+  (people$anc_label.x %in% names(nhpi_lookup[nhpi_lookup == 1])) |
+    (people$anc_label.y %in% names(nhpi_lookup[nhpi_lookup == 1]))
+)
+
+
+## check a few of the new ancestry & asian/nhpi cols
+table(chinese = people$chinese, asian_race = people$RACASN)
+table(chinese = people$chinese, asian_anc = people$asian)
+table(asian_anc = people$asian, asian_race = people$RACASN)  # 4452 people w/ asian ancestry who are not coded race = Asian
+#         asian_race
+# asian_anc       0       1
+#         0 1481976   79536
+#         1    4452  287465
+
+table(samoan = people$samoan, nhpi_race = people$RACNHPI)
+table(samoan = people$samoan, nhpi_anc = people$nhpi)
+table(nhpi_anc = people$nhpi, nhpi_race = people$RACNHPI)    # 941 people w/ nhpi ancestry who are not coded race = NHPI
+#       nhpi_race
+# nhpi_anc       0       1
+#       0 1838025    7536
+#       1     941    6927
+
+#### Step 5: Join crosswalks to data ####
 # join county crosswalk to data: county, puma, state
 ppl_cs <- left_join(people, county_crosswalk, by=c("puma_id" = "puma"))   # join FILTERED county-puma crosswalk
 
@@ -95,9 +137,11 @@ ppl_puma <- left_join(people, county_crosswalk %>% select(puma, puma_name), by=c
   rename(geoid = puma_id, geoname = puma_name)
 
 
+
+
 #### Step 3: Set up for PUMS calc fx ####
-# list subgroup col names for calcs
-vars <- c("indian","chinese","filipino","japanese","korean","vietnamese","oth_asian","nat_hawaiian","chamorro","samoan","oth_nhpi")
+# # list subgroup col names for calcs
+# vars <- c("indian","chinese","filipino","japanese","korean","vietnamese","oth_asian","nat_hawaiian","chamorro","samoan","oth_nhpi")
 
 ## STATE
   # run fx to create survey and calc pop rate denominators

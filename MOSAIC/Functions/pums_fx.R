@@ -1,46 +1,11 @@
-##### Reclassify Asian and NHPI Ancestries ########  Note: Ancestry lists sourced at top of indicator script
-
-##### Reclassify Asian and NHPI RAC3P ########
-anhpi_reclass_old <- function(x) {
-  # x = df with PUMS data, eg: anhpi_pop
-  # separate asian and nhpi data
-  asian_pop <- x %>% filter(RACASN == 1)    # Asian alone or AOIC
-  nhpi_pop <- x %>% filter(RACNH == 1) %>%  # Nat Haw alone or AOIC
-    rbind(x %>% filter(RACPI == 1))         # Pac Isl alone or AOIC
-  
-  # get unique asian and nhpi subgroup codes/descr.
-  asian_subgroups <- unique(asian_pop[c("RAC3P", "anhpi_subgroup")])
-  nhpi_subgroups <- unique(nhpi_pop[c("RAC3P", "anhpi_subgroup")])
-  print("Displaying all the Asian or NHPI subgroups actually present in the data as asian_subgroups and nhpi_subgroups dfs.")
-  View(asian_subgroups)
-  View(nhpi_subgroups)
-  
-  # code subgroups - Pulled Asian/NHPI subgroups from RAC2P
-  subgroups <- c(# Asian
-                 "Chinese", "Hmong", "Japanese", "Korean", "Mongolian", "Taiwanese", "Burmese", "Cambodian", "Filipino", "Indonesian", "Laotian", 
-                 "Malaysian", "Mien", "Thai", "Vietnamese", "Asian Indian", "Bangladeshi", "Bhutanese", "Nepalese", "Pakistani", "Sikh", "Sri Lankan",
-                 "Kazakh", "Uzbek", "Other Asian",
-                 # NHPI
-                 "Native Hawaiian", "Samoan", "Tongan", "Chamorro", "Chuukese", "Guamanian", "Marshallese", "Fijian", "Other Pacific Islander")
-  
-  for (sg in subgroups) {
-    x[[tolower(gsub(" ", "_", sg))]] <- ifelse(
-      grepl(sg, x$anhpi_subgroup),
-      1, 0
-    )
-  }
-  
- return(x)
-}
-
-
-
-
-anhpi_reclass <- function(x, acs_yr) {  # used in MOSAIC Living Wage test
+##### Reclassify Asian and NHPI Ancestries ######## 
+anhpi_reclass <- function(x, acs_yr, ancestry_list) {  # used in MOSAIC Living Wage test
+  # x = pums dataframe
+  # acs_yr = last year of ACS 5y estimates
+  # ancestry_list = dataframe containing all PUMS ANC1P/ANC2P codes and labels, plus 1 binary column for asian and 1 for nhpi
   ## import ANC1P/ANC2P codes/labels pulled from https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
-  ancestry_list <- "W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\Asian_NHPI_Ancestry.xlsx"
   print(paste0("Adding ancestry labels from:", ancestry_list))
-  anc_codes <- read_excel(ancestry_list, sheet = "ancestry") %>%
+  anc_codes <- ancestry_list %>%
     mutate(anc_label = tolower(gsub(" ", "_", anc_label)))
 
   # get list of AA or PI ancestries actually in CA PUMS data
@@ -51,17 +16,17 @@ anhpi_reclass <- function(x, acs_yr) {  # used in MOSAIC Living Wage test
   print("Displaying all the AA or PI ancestries actually present in the data as aapi_incl df.")
   View(aapi_incl)
 
-  x <- x %>% left_join(anc_codes)
+  x <- x %>% left_join(anc_codes %>% select(ANC1P, anc_label))
   x <- x %>% left_join(anc_codes %>% select(ANC1P, anc_label), by = c("ANC2P" = "ANC1P"))
+  reclass_list <- list(people = x, aapi_incl = aapi_incl)
   
-  
-  return(x)
+return(reclass_list)
 }
 
 
 
-
-pums_pop_srvy_denom <- function(d, weight, repwlist){ # prep denominators & survey for PUMS pop calcs
+##### Prep denominators & survey for ANHPI PUMS pop calcs ######## 
+pums_pop_srvy_denom <- function(d, weight, repwlist){
   # d = pums dataframe, e.g. ppl_state
   # weight and repwlist are defined at top of script
   anhpi_svry <- d %>%      
@@ -95,6 +60,7 @@ return(list(anhpi_svry = anhpi_svry, den_asian = den_asian, den_nhpi = den_nhpi,
   
 }
 
+##### Calc ANHPI PUMS pop ######## 
 calc_pums_pop <- function(var_name) {
 # Adapted somewhat from: https://github.com/catalystcalifornia/boldvision_2023/blob/main/demographics/demo_asian_disagg.R
 # Must declare vector of variable names in your script, e.g. vars = c("indian", "chamorro")
@@ -159,7 +125,7 @@ calc_pums_pop <- function(var_name) {
 
 
 
-############### PUMS COUNT/RATE CALCS ################ Adapted from: W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/PUMS_Functions_new.R
+############### ANHPI PUMS INDICATOR CALCS ################ Adapted from: W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/PUMS_Functions_new.R
 calc_pums <- function(d, indicator, indicator_val, weight) {
   # d = PUMS dataframe, must contain geoid, geoname, RAC2P, subgroup fields
   # indicator = name of column that contains indicator data, eg: 'living_wage' which contains values 'livable' and 'not livable'
@@ -452,4 +418,39 @@ calc_anhpi_pums <- function(d, indicator, indicator_val, weight) {
 #   
 #   return(screened)
 #   
+# }
+
+
+
+##### Reclassify Asian and NHPI RAC3P ########
+# anhpi_reclass_old <- function(x) {
+#   # x = df with PUMS data, eg: anhpi_pop
+#   # separate asian and nhpi data
+#   asian_pop <- x %>% filter(RACASN == 1)    # Asian alone or AOIC
+#   nhpi_pop <- x %>% filter(RACNH == 1) %>%  # Nat Haw alone or AOIC
+#     rbind(x %>% filter(RACPI == 1))         # Pac Isl alone or AOIC
+#   
+#   # get unique asian and nhpi subgroup codes/descr.
+#   asian_subgroups <- unique(asian_pop[c("RAC3P", "anhpi_subgroup")])
+#   nhpi_subgroups <- unique(nhpi_pop[c("RAC3P", "anhpi_subgroup")])
+#   print("Displaying all the Asian or NHPI subgroups actually present in the data as asian_subgroups and nhpi_subgroups dfs.")
+#   View(asian_subgroups)
+#   View(nhpi_subgroups)
+#   
+#   # code subgroups - Pulled Asian/NHPI subgroups from RAC2P
+#   subgroups <- c(# Asian
+#                  "Chinese", "Hmong", "Japanese", "Korean", "Mongolian", "Taiwanese", "Burmese", "Cambodian", "Filipino", "Indonesian", "Laotian", 
+#                  "Malaysian", "Mien", "Thai", "Vietnamese", "Asian Indian", "Bangladeshi", "Bhutanese", "Nepalese", "Pakistani", "Sikh", "Sri Lankan",
+#                  "Kazakh", "Uzbek", "Other Asian",
+#                  # NHPI
+#                  "Native Hawaiian", "Samoan", "Tongan", "Chamorro", "Chuukese", "Guamanian", "Marshallese", "Fijian", "Other Pacific Islander")
+#   
+#   for (sg in subgroups) {
+#     x[[tolower(gsub(" ", "_", sg))]] <- ifelse(
+#       grepl(sg, x$anhpi_subgroup),
+#       1, 0
+#     )
+#   }
+#   
+#  return(x)
 # }
