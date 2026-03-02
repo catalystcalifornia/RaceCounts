@@ -31,8 +31,7 @@ rc_schema ="v7"     # you MUST UPDATE each year
 schema = 'v7'
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Overcrowded_Housing - MOSAIC.docx"
 
-# set these thresholds to match methodology for internet access for RC: https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html#Internet_Access
-
+# set these thresholds to match methodology for overcrowded housing for RC: https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html#Overcrowded_Housing
 cv_threshold = 40         # YOU MUST UPDATE based on most recent Indicator Methodology
 pop_threshold = 100       # YOU MUST UPDATE based on most recent Indicator Methodology or set to NA B19301
 asbest = 'min'  
@@ -57,91 +56,85 @@ nhpi_list <- get_detailed_race(table_code, race, curr_yr)
 asian_meta <- asian_list[[2]]
 nhpi_meta <- nhpi_list[[2]]
 
-# further filter down what the actual different internet indicators there are in the metadata
-# 
-# asian_meta_filter<-asian_meta %>%
-#   mutate(after_third = str_split_i(new_label, "!!", 4)) %>%
-#   count(after_third, sort = TRUE)
-# 
-# # scrolling through the different internet sub-variables and consulting with the internet methodology (https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html#Internet_Access)
-# # for RC I am going to select the variable 'Broadband of any type' and push to postgres.
-# # Also need to filter for all the population total estimate values
+
+# # scrolling through the different overcrowded housing sub-variables and consulting with the RC methodology (https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html#Overcrowded_Housing
+# # I am going to select: 001, 005, 006, 007, 011, 012, 013 subvariables to push to postgres
 # #
-# # Identify which variables to keep: after talking to LF we are just using 'broadband of any type'
-# asian_list_keep <- str_detect(
-#   asian_list[[2]]$new_label,
-#   "Broadband of any type"
-# ) |
-# str_detect(
-#   asian_list[[2]]$new_label,
-#   "^(Estimate|MOE)!!Total:[^!]*$"
-# )|
-#   str_detect(
-#     asian_list[[2]]$new_var,
-#     "geoid"
-#   )|
-#   str_detect(
-#     asian_list[[2]]$new_var,
-#     "geolevel"
-#   )|
-#   str_detect(
-#     asian_list[[2]]$new_var,
-#     "name"
-#   )
-# 
-# 
-# # Filter both parts of the list
-# asian_list_filtered <- list(
-#   asian_list[[1]][, asian_list_keep, drop = FALSE],
-#   asian_list[[2]][asian_list_keep, ]
-# )
-# 
-# # Preserve the original names
-# names(asian_list_filtered) <- names(asian_list)
-# 
-# # Check that worked:
-# asian_filtered_meta <- asian_list_filtered[[2]] # scrolled through this and looks good
-# 
-# # Repeat steps for nhpi_list
-# 
-# # Identify which variables to keep
-# nhpi_list_keep <- str_detect(
-#   nhpi_list[[2]]$new_label,
-#   "Broadband of any type"
-# ) |
-#   str_detect(
-#     nhpi_list[[2]]$new_label,
-#     "^(Estimate|MOE)!!Total:[^!]*$"
-#   )|
-#   str_detect(
-#     nhpi_list[[2]]$new_var,
-#     "geoid"
-#   )|
-#   str_detect(
-#     nhpi_list[[2]]$new_var,
-#     "geolevel"
-#   )|
-#   str_detect(
-#     nhpi_list[[2]]$new_var,
-#     "name"
-#   )
-# 
-# 
-# # Filter both parts of the list
-# nhpi_list_filtered <- list(
-#   nhpi_list[[1]][, nhpi_list_keep, drop = FALSE],
-#   nhpi_list[[2]][nhpi_list_keep, ]
-# )
-# 
-# # Preserve the original names
-# names(nhpi_list_filtered) <- names(nhpi_list)
-# 
-# # Check that worked:
-# nhpi_filtered_meta <- nhpi_list_filtered[[2]] # scrolled through this and looks good
-# 
-# # reassign filtered list name to just list_name for function syntax
-# asian_list<-asian_list_filtered
-# nhpi_list<-nhpi_list_filtered
+# # Identify which variables to keep: 
+asian_list_keep <- str_detect(
+    asian_list[[2]]$new_var,
+    "^.*_[^_]+_0(01|05|06|07|11|12|13)"
+  )|
+str_detect(
+  asian_list[[2]]$new_label,
+  "^(Estimate|MOE)!!Total:[^!]*$"
+)|
+  str_detect(
+    asian_list[[2]]$new_var,
+    "geoid"
+  )|
+  str_detect(
+    asian_list[[2]]$new_var,
+    "geolevel"
+  )|
+  str_detect(
+    asian_list[[2]]$new_var,
+    "name"
+  )
+
+
+# Filter both parts of the list
+asian_list_filtered <- list(
+  asian_list[[1]][, asian_list_keep, drop = FALSE],
+  asian_list[[2]][asian_list_keep, ]
+)
+
+# Preserve the original names
+names(asian_list_filtered) <- names(asian_list)
+
+# Check that worked:
+asian_filtered_meta <- asian_list_filtered[[2]] # scrolled through this and looks good
+
+#  Repeat steps for nhpi_list
+
+# Identify which variables to keep
+nhpi_list_keep <- str_detect(
+ nhpi_list[[2]]$new_var,
+  "^.*_[^_]+_0(01|05|06|07|11|12|13)"
+)|
+  str_detect(
+    nhpi_list[[2]]$new_label,
+    "^(Estimate|MOE)!!Total:[^!]*$"
+  )|
+  str_detect(
+    nhpi_list[[2]]$new_var,
+    "geoid"
+  )|
+  str_detect(
+    nhpi_list[[2]]$new_var,
+    "geolevel"
+  )|
+  str_detect(
+    nhpi_list[[2]]$new_var,
+    "name"
+  )
+
+
+# Filter both parts of the list
+nhpi_list_filtered <- list(
+  nhpi_list[[1]][, nhpi_list_keep, drop = FALSE],
+  nhpi_list[[2]][nhpi_list_keep, ]
+)
+
+# Preserve the original names
+names(nhpi_list_filtered) <- names(nhpi_list)
+
+# Check that worked:
+nhpi_filtered_meta <- nhpi_list_filtered[[2]] # scrolled through this and looks good
+
+# reassign filtered list name to just list_name for function syntax
+asian_list<-asian_list_filtered
+nhpi_list<-nhpi_list_filtered
 
 # Send revised tables only with necessary columns to postgres
 send_to_mosaic(table_code, asian_list, rc_schema)
@@ -157,9 +150,155 @@ nhpi_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.nhpi_acs_5yr_%s_multigeo_
 
 #### ASIAN: Pre-RC CALCS ##############
 
-# NOTE: Moving forward with the 004 sub-internet variable: Broadband of any kind
-
 asian_df <- prep_acs(asian_data, 'asian', table_code, cv_threshold, pop_threshold)
+
+#########ACS PREP FX TEST############
+
+
+# Overcrowded Housing #
+## Occupants per Room
+names(asian_data) <- gsub("001e", "_pop", names(asian_data))
+names(asian_data) <- gsub("001m", "_pop_moe", names(asian_data))
+
+## total data (more disaggregated than raced values so different prep needed)
+
+### Extract total values to perform the various calculations needed
+totals <- asian_data %>%
+  select(geoid, geolevel, starts_with("total"))
+
+totals <- totals %>% pivot_longer(total005e:total013e, names_to="var_name", values_to = "estimate")
+totals <- totals %>% pivot_longer(total005m:total013m, names_to="var_name2", values_to = "moe")
+totals$var_name <- substr(totals$var_name, 1, nchar(totals$var_name)-1)
+totals$var_name2 <- substr(totals$var_name2, 1, nchar(totals$var_name2)-1)
+totals <- totals[totals$var_name == totals$var_name2, ]
+totals <- select(totals, -c(var_name, var_name2))
+
+### sum the numerator columns 005e-013e (total_raw):
+total_raw_values <- totals %>%
+  select(geoid, geolevel, estimate) %>%
+  group_by(geoid, geolevel) %>%
+  summarise(total_raw = sum(estimate))
+
+#### join these calculations back to x
+x <- left_join(x, total_raw_values, by = c("geoid", "geolevel"))
+
+### calculate the total_raw_moe using moe_sum (need to sort MOE values first to make sure highest MOE is used in case of multiple zero estimates)
+### methodology source is text under table on slide 52 here: https://www.census.gov/content/dam/Census/programs-surveys/acs/guidance/training-presentations/20180418_MOE.pdf
+total_raw_moes <- totals %>%
+  select(geoid, geolevel, estimate, moe) %>%
+  group_by(geoid, geolevel) %>%
+  arrange(desc(moe), .by_group = TRUE) %>%
+  summarise(total_raw_moe = moe_sum(moe, estimate, na.rm=TRUE))   # https://walker-data.com/tidycensus/reference/moe_sum.html
+
+#### join these calculations back to x
+x <- left_join(x, total_raw_moes, by = c("geoid", "geolevel"))
+
+### calculate total_rate
+total_rates <- left_join(total_raw_values, totals[, 1:3])
+total_rates$total_rate <- total_rates$total_raw/total_rates$total_pop*100
+total_rates <- total_rates %>%
+  select(geoid, geolevel, total_rate) %>%
+  distinct()
+
+#### join these calculations back to x
+x <- left_join(x, total_rates, by = c("geoid", "geolevel"))
+
+### calculate the moe for total_rate
+total_pop_data <- totals %>%
+  select(geoid, geolevel, total_pop, total_pop_moe) %>%
+  distinct()
+total_rate_moes <- left_join(total_raw_values, total_raw_moes, by = c("geoid", "geolevel")) %>%
+  left_join(., total_pop_data, by = c("geoid", "geolevel"))
+total_rate_moes$total_rate_moe <- moe_prop(total_rate_moes$total_raw,    # https://walker-data.com/tidycensus/reference/moe_prop.html
+                                           total_rate_moes$total_pop, 
+                                           total_rate_moes$total_raw_moe, 
+                                           total_rate_moes$total_pop_moe)*100
+total_rate_moes <- total_rate_moes %>%
+  select(geoid, geolevel, total_rate_moe)
+
+#### join these calculations back to x
+x <- left_join(x, total_rate_moes, by = c("geoid", "geolevel"))
+
+## raced data (raw values don't need aggregation like total values do)
+
+### calculate raced rates
+x$asian_rate <- ifelse(x$asian_pop <= 0, NA, x$asian_raw/x$asian_pop*100)
+x$black_rate <- ifelse(x$black_pop <= 0, NA, x$black_raw/x$black_pop*100)
+x$nh_white_rate <- ifelse(x$nh_white_pop <= 0, NA, x$nh_white_raw/x$nh_white_pop*100)
+x$latino_rate <- ifelse(x$latino_pop <= 0, NA, x$latino_raw/x$latino_pop*100)
+x$other_rate <- ifelse(x$other_pop <= 0, NA, x$other_raw/x$other_pop*100)
+x$pacisl_rate <- ifelse(x$pacisl_pop <= 0, NA, x$pacisl_raw/x$pacisl_pop*100)
+x$twoormor_rate <- ifelse(x$twoormor_pop <= 0, NA, x$twoormor_raw/x$twoormor_pop*100)
+x$aian_rate <- ifelse(x$aian_pop <= 0, NA, x$aian_raw/x$aian_pop*100)
+
+
+### calculate moes for raced rates
+x$asian_rate_moe <- moe_prop(x$asian_raw,
+                             x$asian_pop,
+                             x$asian_raw_moe,
+                             x$asian_pop_moe)*100
+
+x$black_rate_moe <- moe_prop(x$black_raw,
+                             x$black_pop,
+                             x$black_raw_moe,
+                             x$black_pop_moe)*100
+
+x$nh_white_rate_moe <- moe_prop(x$nh_white_raw,
+                                x$nh_white_pop,
+                                x$nh_white_raw_moe,
+                                x$nh_white_pop_moe)*100
+
+x$latino_rate_moe <- moe_prop(x$latino_raw,
+                              x$latino_pop,
+                              x$latino_raw_moe,
+                              x$latino_pop_moe)*100
+
+x$other_rate_moe <- moe_prop(x$other_raw,
+                             x$other_pop,
+                             x$other_raw_moe,
+                             x$other_pop_moe)*100
+
+x$pacisl_rate_moe <- moe_prop(x$pacisl_raw,
+                              x$pacisl_pop,
+                              x$pacisl_raw_moe,
+                              x$pacisl_pop_moe)*100
+
+x$twoormor_rate_moe <- moe_prop(x$twoormor_raw,
+                                x$twoormor_pop,
+                                x$twoormor_raw_moe,
+                                x$twoormor_pop_moe)*100
+
+x$aian_rate_moe <- moe_prop(x$aian_raw,
+                            x$aian_pop,
+                            x$aian_raw_moe,
+                            x$aian_pop_moe)*100
+
+
+### Convert any NaN to NA
+x <- x %>% 
+  mutate_all(function(x) ifelse(is.nan(x), NA, x))
+
+### drop the total006-013 e and m columns and pop_moe cols
+x <- x %>%
+  select(-starts_with("total0"), -ends_with("_pop_moe"))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###############
 
 asian_df_screened <- dplyr::select(asian_df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_cv"))
 
