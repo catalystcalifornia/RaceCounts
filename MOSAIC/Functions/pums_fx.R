@@ -30,6 +30,7 @@ pums_pop_srvy_denom <- function(d, weight, repwlist, vars){
   # d = pums dataframe, e.g. ppl_state
   # weight and repwlist are defined at top of script
   # vars is the list of asian and nhpi subgroups
+  # After running this and creating resulting list elements as df's in your environment, run calc_pums_pop{} below.
   anhpi_srvy <- d %>%      
     as_survey_rep(
       variables = c(geoid, geoname, asian, nhpi, vars),   # dplyr::select grouping variables. any asian ancestry, any nhpi ancestry, vars = asian and nhpi subgroups
@@ -68,7 +69,7 @@ pums_pop_srvy_denom <- function(d, weight, repwlist, vars){
 calc_pums_pop <- function(var_name) {
   # Adapted somewhat from: https://github.com/catalystcalifornia/boldvision_2023/blob/main/demographics/demo_asian_disagg.R
   # vars is the list of asian and nhpi subgroups
-  # You must also calc the denominators in your script. See: W:/Project/RACE COUNTS/2025_v7/RC_Github/LF/RaceCounts/MOSAIC/IndicatorScripts/anhpi_pop_pums.R
+  # You must also calc the denominators in your script using pums_pop_srvy_denom{} above. See: W:/Project/RACE COUNTS/2025_v7/RC_Github/LF/RaceCounts/MOSAIC/IndicatorScripts/anhpi_pop_pums.R
   ### Then run something like this: pop_table <- map_dfr(vars, calc_pums_pop)
   
   # Assign ancestry group, used to determine which pop denominator to use for rate calcs
