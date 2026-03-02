@@ -30,115 +30,115 @@ rc_yr = '2025'      # you MUST UPDATE each year
 rc_schema ="v7"     # you MUST UPDATE each year
 schema = 'v7'
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Overcrowded_Housing - MOSAIC.docx"
-
-# set these thresholds to match methodology for overcrowded housing for RC: https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html#Overcrowded_Housing
+# 
+# # set these thresholds to match methodology for overcrowded housing for RC: https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html#Overcrowded_Housing
 cv_threshold = 40         # YOU MUST UPDATE based on most recent Indicator Methodology
 pop_threshold = 100       # YOU MUST UPDATE based on most recent Indicator Methodology or set to NA B19301
-asbest = 'min'  
+asbest = 'min'
 schema = 'housing'
 table_code = "b25014"     # YOU MUST UPDATE based on most recent Indicator Methodology or most recent RC Workflow/Cnty-State Indicator Tracking
 
-# CREATE RAW DATA TABLES -------------------------------------------------------------------------
-## Only run this section if the raw data tables have not been created yet ##
-race <- "asian"
-asian_list <- get_detailed_race(table_code, race, curr_yr)
-# check race col names which are created in fx
-# unique(asian_list[[2]]$new_label) 
-
-race <- "nhpi"
-nhpi_list <- get_detailed_race(table_code, race, curr_yr)
-# check race col names which are created in fx
-# unique(nhpi_list[[2]]$new_label)
-
-# These lists asian_list and nhpi_list have too many rows, so need to explore the columns and drop what isn't needed
-
-# pull out metadata for each list as a df
-asian_meta <- asian_list[[2]]
-nhpi_meta <- nhpi_list[[2]]
-
-
-# # scrolling through the different overcrowded housing sub-variables and consulting with the RC methodology (https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html#Overcrowded_Housing
-# # I am going to select: 001, 005, 006, 007, 011, 012, 013 subvariables to push to postgres
-# #
-# # Identify which variables to keep: 
-asian_list_keep <- str_detect(
-    asian_list[[2]]$new_var,
-    "^.*_[^_]+_0(01|05|06|07|11|12|13)"
-  )|
-str_detect(
-  asian_list[[2]]$new_label,
-  "^(Estimate|MOE)!!Total:[^!]*$"
-)|
-  str_detect(
-    asian_list[[2]]$new_var,
-    "geoid"
-  )|
-  str_detect(
-    asian_list[[2]]$new_var,
-    "geolevel"
-  )|
-  str_detect(
-    asian_list[[2]]$new_var,
-    "name"
-  )
-
-
-# Filter both parts of the list
-asian_list_filtered <- list(
-  asian_list[[1]][, asian_list_keep, drop = FALSE],
-  asian_list[[2]][asian_list_keep, ]
-)
-
-# Preserve the original names
-names(asian_list_filtered) <- names(asian_list)
-
-# Check that worked:
-asian_filtered_meta <- asian_list_filtered[[2]] # scrolled through this and looks good
-
-#  Repeat steps for nhpi_list
-
-# Identify which variables to keep
-nhpi_list_keep <- str_detect(
- nhpi_list[[2]]$new_var,
-  "^.*_[^_]+_0(01|05|06|07|11|12|13)"
-)|
-  str_detect(
-    nhpi_list[[2]]$new_label,
-    "^(Estimate|MOE)!!Total:[^!]*$"
-  )|
-  str_detect(
-    nhpi_list[[2]]$new_var,
-    "geoid"
-  )|
-  str_detect(
-    nhpi_list[[2]]$new_var,
-    "geolevel"
-  )|
-  str_detect(
-    nhpi_list[[2]]$new_var,
-    "name"
-  )
-
-
-# Filter both parts of the list
-nhpi_list_filtered <- list(
-  nhpi_list[[1]][, nhpi_list_keep, drop = FALSE],
-  nhpi_list[[2]][nhpi_list_keep, ]
-)
-
-# Preserve the original names
-names(nhpi_list_filtered) <- names(nhpi_list)
-
-# Check that worked:
-nhpi_filtered_meta <- nhpi_list_filtered[[2]] # scrolled through this and looks good
-
-# reassign filtered list name to just list_name for function syntax
-asian_list<-asian_list_filtered
-nhpi_list<-nhpi_list_filtered
-
-# Send revised tables only with necessary columns to postgres
-send_to_mosaic(table_code, asian_list, rc_schema)
-send_to_mosaic(table_code, nhpi_list, rc_schema)
+# # CREATE RAW DATA TABLES -------------------------------------------------------------------------
+# ## Only run this section if the raw data tables have not been created yet ##
+# race <- "asian"
+# asian_list <- get_detailed_race(table_code, race, curr_yr)
+# # check race col names which are created in fx
+# # unique(asian_list[[2]]$new_label) 
+# 
+# race <- "nhpi"
+# nhpi_list <- get_detailed_race(table_code, race, curr_yr)
+# # check race col names which are created in fx
+# # unique(nhpi_list[[2]]$new_label)
+# 
+# # These lists asian_list and nhpi_list have too many rows, so need to explore the columns and drop what isn't needed
+# 
+# # pull out metadata for each list as a df
+# asian_meta <- asian_list[[2]]
+# nhpi_meta <- nhpi_list[[2]]
+# 
+# 
+# # # scrolling through the different overcrowded housing sub-variables and consulting with the RC methodology (https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html#Overcrowded_Housing
+# # # I am going to select: 001, 005, 006, 007, 011, 012, 013 subvariables to push to postgres
+# # #
+# # # Identify which variables to keep: 
+# asian_list_keep <- str_detect(
+#     asian_list[[2]]$new_var,
+#     "^.*_[^_]+_0(01|05|06|07|11|12|13)"
+#   )|
+# str_detect(
+#   asian_list[[2]]$new_label,
+#   "^(Estimate|MOE)!!Total:[^!]*$"
+# )|
+#   str_detect(
+#     asian_list[[2]]$new_var,
+#     "geoid"
+#   )|
+#   str_detect(
+#     asian_list[[2]]$new_var,
+#     "geolevel"
+#   )|
+#   str_detect(
+#     asian_list[[2]]$new_var,
+#     "name"
+#   )
+# 
+# 
+# # Filter both parts of the list
+# asian_list_filtered <- list(
+#   asian_list[[1]][, asian_list_keep, drop = FALSE],
+#   asian_list[[2]][asian_list_keep, ]
+# )
+# 
+# # Preserve the original names
+# names(asian_list_filtered) <- names(asian_list)
+# 
+# # Check that worked:
+# asian_filtered_meta <- asian_list_filtered[[2]] # scrolled through this and looks good
+# 
+# #  Repeat steps for nhpi_list
+# 
+# # Identify which variables to keep
+# nhpi_list_keep <- str_detect(
+#  nhpi_list[[2]]$new_var,
+#   "^.*_[^_]+_0(01|05|06|07|11|12|13)"
+# )|
+#   str_detect(
+#     nhpi_list[[2]]$new_label,
+#     "^(Estimate|MOE)!!Total:[^!]*$"
+#   )|
+#   str_detect(
+#     nhpi_list[[2]]$new_var,
+#     "geoid"
+#   )|
+#   str_detect(
+#     nhpi_list[[2]]$new_var,
+#     "geolevel"
+#   )|
+#   str_detect(
+#     nhpi_list[[2]]$new_var,
+#     "name"
+#   )
+# 
+# 
+# # Filter both parts of the list
+# nhpi_list_filtered <- list(
+#   nhpi_list[[1]][, nhpi_list_keep, drop = FALSE],
+#   nhpi_list[[2]][nhpi_list_keep, ]
+# )
+# 
+# # Preserve the original names
+# names(nhpi_list_filtered) <- names(nhpi_list)
+# 
+# # Check that worked:
+# nhpi_filtered_meta <- nhpi_list_filtered[[2]] # scrolled through this and looks good
+# 
+# # reassign filtered list name to just list_name for function syntax
+# asian_list<-asian_list_filtered
+# nhpi_list<-nhpi_list_filtered
+# 
+# # Send revised tables only with necessary columns to postgres
+# send_to_mosaic(table_code, asian_list, rc_schema)
+# send_to_mosaic(table_code, nhpi_list, rc_schema)
 
 
 # IMPORT RAW DATA FROM POSTGRES -------------------------------------------
@@ -160,13 +160,12 @@ asian_df <- prep_acs(asian_data, 'asian', table_code, cv_threshold, pop_threshol
 names(asian_data) <- gsub("001e", "_pop", names(asian_data))
 names(asian_data) <- gsub("001m", "_pop_moe", names(asian_data))
 
-## total data (more disaggregated than raced values so different prep needed)
-
 ### Extract total values to perform the various calculations needed
-totals <- asian_data %>%
-  select(geoid, geolevel, starts_with("total"))
 
-totals <- totals %>% pivot_longer(total005e:total013e, names_to="var_name", values_to = "estimate")
+totals <- asian_data %>%
+  select(geoid, geolevel,   matches("_(005|006|007|011|012|013)e$"))
+
+totals <- totals %>% pivot_longer(3:248, names_to="var_name", values_to = "estimate")
 totals <- totals %>% pivot_longer(total005m:total013m, names_to="var_name2", values_to = "moe")
 totals$var_name <- substr(totals$var_name, 1, nchar(totals$var_name)-1)
 totals$var_name2 <- substr(totals$var_name2, 1, nchar(totals$var_name2)-1)
