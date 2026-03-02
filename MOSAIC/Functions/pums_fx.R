@@ -66,40 +66,36 @@ pums_pop_srvy_denom <- function(d, weight, repwlist, vars){
 
 ##### Calc ANHPI PUMS pop ######## 
 calc_pums_pop <- function(var_name) {
-# Adapted somewhat from: https://github.com/catalystcalifornia/boldvision_2023/blob/main/demographics/demo_asian_disagg.R
-# Must declare vector of variable names in your script, e.g. vars = c("indian", "chamorro")
-# You must also calc the denominators in your script. See: W:/Project/RACE COUNTS/2025_v7/RC_Github/LF/RaceCounts/MOSAIC/IndicatorScripts/anhpi_pop_pums.R
-### Then run something like this: pop_table <- map_dfr(vars, calc_pums_pop)
-
-  # Determine race group
-  den_group <- case_when( # used to determine which pop denominator to use for rate calcs
-    var_name %in% c("nat_hawaiian","chamorro","samoan","oth_nhpi") ~ "RACNHPI",
-    var_name %in% c("indian","chinese","filipino","japanese",
-                    "korean","vietnamese","oth_asian") ~ "RACASN"
+  # Adapted somewhat from: https://github.com/catalystcalifornia/boldvision_2023/blob/main/demographics/demo_asian_disagg.R
+  # vars is the list of asian and nhpi subgroups
+  # You must also calc the denominators in your script. See: W:/Project/RACE COUNTS/2025_v7/RC_Github/LF/RaceCounts/MOSAIC/IndicatorScripts/anhpi_pop_pums.R
+  ### Then run something like this: pop_table <- map_dfr(vars, calc_pums_pop)
+  
+  # Assign ancestry group, used to determine which pop denominator to use for rate calcs
+  den_group <- case_when( 
+    var_name %in% (aapi_incl %>% filter(nhpi == 1) %>% pull(anc_label)) ~ "nhpi",
+    var_name %in% (aapi_incl %>% filter(asian == 1) %>% pull(anc_label)) ~ "asian"
   )
   
-  race_group <- case_when( # used to differentiate asian / nhpi rows
-    var_name %in% c("nat_hawaiian","chamorro","samoan","oth_nhpi") ~ "nhpi",
-    var_name %in% c("indian","chinese","filipino","japanese",
-                    "korean","vietnamese","oth_asian") ~ "asian"
-  )
-  
-  # Select appropriate denominator (already computed in indicator script!)
+  # Select appropriate denominator & survey (already computed in indicator script!)
   pop_df <- switch(
     den_group,
-    "RACASN" = den_asian,
-    "RACNHPI"  = den_nhpi
+    "asian" = den_asian,
+    "nhpi"  = den_nhpi
+  )
+  
+  srvy_subset <- switch(den_group,
+                        "asian" = asian_srvy,
+                        "nhpi"  = nhpi_srvy
   )
   
   # Numerator
-  num_df <- anhpi_srvy %>%
-    filter(.data[[den_group]] == 1) %>%
+  num_df <- srvy_subset %>%
+    #filter(!!sym(den_group) == 1) %>%
     group_by(geoid, geoname) %>%
     summarise(
       num  = survey_total(.data[[var_name]] == 1, na.rm = TRUE),
-      rate = survey_mean(.data[[var_name]] == 1, na.rm = TRUE),
-      #num  = survey_total(na.rm = TRUE),
-      #rate = survey_mean(na.rm = TRUE),
+      rate = survey_mean(.data[[var_name]] == 1, na.rm = TRUE)
       .groups = "drop"
     )
   
@@ -108,7 +104,7 @@ calc_pums_pop <- function(var_name) {
     left_join(pop_df, by = c("geoid", "geoname")) %>%
     mutate(
       subgroup  = var_name,
-      group     = race_group,
+      group     = den_group,
       rate      = rate * 100,
       rate_moe  = rate_se * 1.645 * 100,
       rate_cv   = ifelse(rate > 0, (rate_se / rate) * 100, NA_real_),
