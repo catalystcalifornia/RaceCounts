@@ -34,6 +34,8 @@ start_yr <- curr_yr - 4
 # created this excel document separate by opening PUMS Data Dictionary in excel and deleting everything but RAC3P, 
 ## updating col names, using text-to-columns to split description into separate cols. Adding binary cols for each subgroup.
 data_dict <- paste0(root, "PUMS_Data_Dictionary_2019-2023_RAC3P.xlsx")
+cv_threshold <- 30     # taken from Liv Wage
+pop_threshold <- 400   # taken from Liv Wage
 
 # set survey components
 weight <- 'PWGTP'  # person weight
@@ -111,41 +113,75 @@ people$nhpi <- as.integer(
 
 
 ## check a few of the new ancestry & asian/nhpi cols
-table(chinese = people$chinese, asian_race = people$RACASN)
-table(chinese = people$chinese, asian_anc = people$asian)
-table(asian_anc = people$asian, asian_race = people$RACASN)  # 4452 people w/ asian ancestry who are not coded race = Asian
+table(chinese = people$chinese, asian_race = people$RACASN)  # check how many chinese ancestry rows are also marked Asian race
+table(chinese = people$chinese, asian_anc = people$asian)    # check that all chinese ancestry rows are also marked asian ancestry
+table(asian_anc = people$asian, asian_race = people$RACASN)  # 4,452 people w/ asian ancestry who are not coded race = Asian
 #         asian_race
 # asian_anc       0       1
 #         0 1481976   79536
 #         1    4452  287465
 
-table(samoan = people$samoan, nhpi_race = people$RACNHPI)
-table(samoan = people$samoan, nhpi_anc = people$nhpi)
+table(samoan = people$samoan, nhpi_race = people$RACNHPI)    # check how many samoan ancestry rows are also marked NHPI race
+table(samoan = people$samoan, nhpi_anc = people$nhpi)        # check that all samoan ancestry rows are also marked nhpi ancestry
 table(nhpi_anc = people$nhpi, nhpi_race = people$RACNHPI)    # 941 people w/ nhpi ancestry who are not coded race = NHPI
 #       nhpi_race
 # nhpi_anc       0       1
 #       0 1838025    7536
 #       1     941    6927
 
+# For this analysis, we consider anyone with an Asian ancestry and anyone with an NHPI ancestry, regardless of race.
+## E.g. For NHPI, we include all records where nhpi == 1 regardless of RACNHPI value.
+
+
+##### SCREENING EXPORATION (STATE DATA) #####
+
+  # Method 1: Try ERI screening method, suppress data where subgroup has <100 unweighted responses
+  aapi_filtered <- ppl_state %>% filter(asian == 1 | nhpi == 1)
+  
+  screen_unw_count <- full_join(
+    aapi_filtered %>% count(anc_label = anc_label.x),
+    aapi_filtered %>% count(anc_label = anc_label.y),
+    by = "anc_label"
+  ) %>%
+    transmute(
+      anc_label,
+      tot_count = rowSums(cbind(n.x, n.y), na.rm = TRUE)
+    ) %>%
+    right_join(aapi_incl, by = "anc_label") %>%
+    arrange(tot_count)
+  # there are 3 groups not meeting ERI's screening threshold: bhutanese (17), micronesian (70), marshallese (71)
+  
+  rm(aapi_filtered)
+  
+  # Method 2: Try RC screening method, suppress data where rate_cv > cv_threshold OR num < pop_threshold (see top of script for values)
+  screen_rate_cv_pop <- pop_table_state %>%
+    mutate(rate_cv_flag = ifelse(rate_cv > cv_threshold, 1, 0), 
+           pop_flag = ifelse(num < pop_threshold, 1, 0)) %>%
+    arrange(desc(rate_cv), desc(num))
+  # there are 0 groups not meeting rate_cv threshold. there is 1 group not meeting pop_threshold: Bhutanese (pop is 212)
+
+
+
 #### Step 5: Join crosswalks to data ####
 # join county crosswalk to data: county, puma, state
 ppl_cs <- left_join(people, county_crosswalk, by=c("puma_id" = "puma"))   # join FILTERED county-puma crosswalk
 
-ppl_state <- people %>% rename(geoid = state_geoid) %>% mutate(geoname = 'California')
+ppl_state <- people %>% rename(geoid = state_geoid) %>%
+  mutate(geoname = 'California')
 
-ppl_puma <- left_join(people, county_crosswalk %>% select(puma, puma_name), by=c("puma_id" = "puma")) %>%  # join puma names
+ppl_puma <- left_join(people, county_crosswalk %>%
+  select(puma, puma_name), by=c("puma_id" = "puma")) %>%  # join puma names
   rename(geoid = puma_id, geoname = puma_name)
 
 
-
-
-#### Step 3: Set up for PUMS calc fx ####
-# # list subgroup col names for calcs
-# vars <- c("indian","chinese","filipino","japanese","korean","vietnamese","oth_asian","nat_hawaiian","chamorro","samoan","oth_nhpi")
+#### Step 6: Set up for PUMS calc fx ####
+# get list of subgroups for calcs based on aapi_incl
+vars <- aapi_incl %>% pull(anc_label)
+vars
 
 ## STATE
   # run fx to create survey and calc pop rate denominators
-  state_list <- pums_pop_srvy_denom(ppl_state, weight, repwlist)
+  state_list <- pums_pop_srvy_denom(ppl_state, weight, repwlist, vars)
   
   # add list elements to Environment - these df's are used in calc_pums_pop fx
   list2env(state_list, envir = .GlobalEnv)

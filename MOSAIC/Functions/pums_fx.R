@@ -26,12 +26,13 @@ return(reclass_list)
 
 
 ##### Prep denominators & survey for ANHPI PUMS pop calcs ######## 
-pums_pop_srvy_denom <- function(d, weight, repwlist){
+pums_pop_srvy_denom <- function(d, weight, repwlist, vars){
   # d = pums dataframe, e.g. ppl_state
   # weight and repwlist are defined at top of script
-  anhpi_svry <- d %>%      
+  # vars is the list of asian and nhpi subgroups
+  anhpi_srvy <- d %>%      
     as_survey_rep(
-      variables = c(geoid, geoname, RACASN, RACNHPI, indian, chinese, filipino, japanese, korean, vietnamese, oth_asian, nat_hawaiian, chamorro, samoan, oth_nhpi),   # dplyr::select grouping variables
+      variables = c(geoid, geoname, asian, nhpi, vars),   # dplyr::select grouping variables. any asian ancestry, any nhpi ancestry, vars = asian and nhpi subgroups
       weights = weight,                       # person weight
       repweights = repwlist,                  # list of replicate weights
       combined_weights = TRUE,                # tells the function that replicate weights are included in the data
@@ -41,22 +42,25 @@ pums_pop_srvy_denom <- function(d, weight, repwlist){
       rscale=rep(1,80)                        # setting specific to ACS-scaling
     )
   
+  # create separate surveys to speed up calcs later
+  asian_srvy <- anhpi_srvy %>% filter(asian ==1)
+  nhpi_srvy <- anhpi_srvy %>% filter(nhpi ==1)
+  total_srvy <- anhpi_srvy
+  
   # pre-calc pop denominators to speed up subgroup calc fx
-  den_asian <- anhpi_svry %>%
-    filter(RACASN == 1) %>%
+  den_asian <- asian_srvy %>%
     group_by(geoid, geoname) %>%
     summarise(pop = survey_total(na.rm = TRUE), .groups = "drop")
   
-  den_nhpi <- anhpi_svry %>%
-    filter(RACNHPI == 1) %>%
+  den_nhpi <- nhpi_srvy %>%
     group_by(geoid, geoname) %>%
     summarise(pop = survey_total(na.rm = TRUE), .groups = "drop")
   
-  den_total <- anhpi_svry %>%
+  den_total <- total_srvy %>%
     group_by(geoid, geoname) %>%
     summarise(pop = survey_total(na.rm = TRUE), .groups = "drop")
   
-return(list(anhpi_svry = anhpi_svry, den_asian = den_asian, den_nhpi = den_nhpi, den_total = den_total))
+  return(list(asian_srvy = asian_srvy, nhpi_srvy = nhpi_srvy, total_srvy = total_srvy, den_asian = den_asian, den_nhpi = den_nhpi, den_total = den_total))
   
 }
 
@@ -88,7 +92,7 @@ calc_pums_pop <- function(var_name) {
   )
   
   # Numerator
-  num_df <- anhpi_svry %>%
+  num_df <- anhpi_srvy %>%
     filter(.data[[den_group]] == 1) %>%
     group_by(geoid, geoname) %>%
     summarise(
