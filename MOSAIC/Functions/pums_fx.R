@@ -61,15 +61,63 @@ pums_pop_srvy_denom <- function(d, weight, repwlist, vars){
     group_by(geoid, geoname) %>%
     summarise(pop = survey_total(na.rm = TRUE), .groups = "drop")
   
-  return(list(asian_srvy = asian_srvy, nhpi_srvy = nhpi_srvy, total_srvy = total_srvy, den_asian = den_asian, den_nhpi = den_nhpi, den_total = den_total))
+  
+  # Calc Any Asian and NHPI Ancestry
+  # Asian
+  num_df_asian <- total_srvy %>%
+    group_by(geoid, geoname, asian) %>%
+    summarise(
+      num  = survey_total(na.rm = TRUE),
+      rate = survey_mean(na.rm = TRUE)
+    ) %>%
+    
+    # Join + metrics
+    left_join(den_total, by = c("geoid", "geoname")) %>%
+    mutate(
+      subgroup  = 'asian',
+      group     = 'asian',
+      rate      = rate * 100,
+      rate_moe  = rate_se * 1.645 * 100,
+      rate_cv   = ifelse(rate > 0, (rate_se / rate) * 100, NA_real_),
+      count_moe = num_se * 1.645,
+      count_cv  = ifelse(num > 0, (num_se / num) * 100, NA_real_)) %>%
+    filter(asian == 1) %>%
+    select(-asian)
+  
+  # NHPI
+  num_df_nhpi <- total_srvy %>%
+    group_by(geoid, geoname, nhpi) %>%
+    summarise(
+      num  = survey_total(na.rm = TRUE),
+      rate = survey_mean(na.rm = TRUE)
+    ) %>%
+    
+    # Join + metrics
+    left_join(den_total, by = c("geoid", "geoname")) %>%
+    mutate(
+      subgroup  = 'nhpi',
+      group     = 'nhpi',
+      rate      = rate * 100,
+      rate_moe  = rate_se * 1.645 * 100,
+      rate_cv   = ifelse(rate > 0, (rate_se / rate) * 100, NA_real_),
+      count_moe = num_se * 1.645,
+      count_cv  = ifelse(num > 0, (num_se / num) * 100, NA_real_)) %>%
+    filter(nhpi == 1) %>%
+    select(-nhpi)
+  
+  # Combine subgroup and group dfs
+  num_df_group <- rbind(num_df_asian, num_df_nhpi)
+  
+  return(list(num_df_group = num_df_group, asian_srvy = asian_srvy, nhpi_srvy = nhpi_srvy, total_srvy = total_srvy, den_asian = den_asian, den_nhpi = den_nhpi, den_total = den_total))
   
 }
 
 ##### Calc ANHPI PUMS pop ######## 
 calc_pums_pop <- function(var_name) {
   # Adapted somewhat from: https://github.com/catalystcalifornia/boldvision_2023/blob/main/demographics/demo_asian_disagg.R
-  # vars is the list of asian and nhpi subgroups
-  # You must also calc the denominators in your script using pums_pop_srvy_denom{} above. See: W:/Project/RACE COUNTS/2025_v7/RC_Github/LF/RaceCounts/MOSAIC/IndicatorScripts/anhpi_pop_pums.R
+  # You must first calc the denominators in your script using pums_pop_srvy_denom{} above. See: W:/Project/RACE COUNTS/2025_v7/RC_Github/LF/RaceCounts/MOSAIC/IndicatorScripts/anhpi_pop_pums.R
+  ### Inputs used here, created by pums_pop_srvy_denom: num_df_group, den_total, den_asian, den_nhpi, total_srvy, asian_srvy, nhpi_srvy
+  # var_name is the list of asian and nhpi subgroups
   ### Then run something like this: pop_table <- map_dfr(vars, calc_pums_pop)
   
   # Assign ancestry group, used to determine which pop denominator to use for rate calcs
@@ -92,17 +140,15 @@ calc_pums_pop <- function(var_name) {
   
   # Numerator
   num_df <- srvy_subset %>%
-    #filter(!!sym(den_group) == 1) %>%
     group_by(geoid, geoname) %>%
     summarise(
       num  = survey_total(.data[[var_name]] == 1, na.rm = TRUE),
-      rate = survey_mean(.data[[var_name]] == 1, na.rm = TRUE)
+      rate = survey_mean(.data[[var_name]] == 1, na.rm = TRUE),
       .groups = "drop"
-    )
+    ) %>%
   
   # Join + metrics
-  num_df %>%
-    left_join(pop_df, by = c("geoid", "geoname")) %>%
+  left_join(pop_df, by = c("geoid", "geoname")) %>%
     mutate(
       subgroup  = var_name,
       group     = den_group,
@@ -112,6 +158,8 @@ calc_pums_pop <- function(var_name) {
       count_moe = num_se * 1.645,
       count_cv  = ifelse(num > 0, (num_se / num) * 100, NA_real_)
     )
+  
+return(num_df)  
 }
 
 
