@@ -1,8 +1,8 @@
-### AAPI Living Wage RC v7###
+### Disaggregated Asian and NHPI Living Wage RC v7###
 
 # Set up workspace --------------------------------------------------------
 # Install packages if not already installed
-packages <- c("data.table", "stringr", "dplyr", "RPostgres", "dbplyr", "srvyr", "tidycensus", "rpostgis",  "tidyr", "sf", "DBI", "usethis") 
+packages <- c("data.table", "stringr", "dplyr", "RPostgres", "dbplyr", "srvyr", "tidycensus", "rpostgis",  "tidyr", "sf", "DBI", "readxl", "usethis") 
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
 
@@ -22,18 +22,22 @@ options(scipen = 100) # disable scientific notation
 
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
+source("./MOSAIC/Functions/pums_fx.R")
 con <- connect_to_db("rda_shared_data")
-source("./Functions/pums_fx.R")  # MOSAIC-specific PUMS fx
-
+con2 <- connect_to_db("mosaic")
+ancestry_list <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\Asian_NHPI_Ancestry.xlsx", sheet = "ancestry") # list of ANHPI ANC1P/ANC2P codes
 
 # update QA doc filepath
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Living_Wage_MOSAIC.docx"
 
 # define variables used throughout - update each year
-curr_yr <- 2023 
-rc_yr <- '2025'
-rc_schema <- 'v7'
+# PUMS Data
+root <- "W:/Data/Demographics/PUMS/CA_2019_2023/"
+curr_yr <- 2023
+start_yr <- curr_yr - 4
+schema <- 'v7'
 lw <- 15.50    # update living wage value as needed
+
 
 ## CHECK FOR UPDATES EACH YEAR
 source("W://RDA Team//R//Github//RDA Functions//LF//RDA-Functions//Asian_NHPI_Ancestry_List.R")
@@ -65,15 +69,11 @@ county_crosswalk <- crosswalk %>%
 # length(unique(county_crosswalk$geoid))  # this number should be lower bc it is filtered xwalk
 # length(unique(crosswalk$geoid))         # this number should be higher bc it is unfiltered xwalk
 
-assm_crosswalk <- dbGetQuery(con, "select geo_id AS puma, sldl24 AS geoid, num_dist AS num_assm from crosswalks.puma_2020_state_assembly_2024")
-sen_crosswalk <- dbGetQuery(con, "select geo_id AS puma, sldu24 AS geoid, num_dist AS num_sen from crosswalks.puma_2020_state_senate_2024")
-
 
 # Get PUMS Data -----------------------------------------------------------
 # Data Dictionary: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
 # path where my data lives (not pulling pums data from the postgres db, takes too long to run calcs that way) 
 start_yr <- curr_yr - 4  # autogenerate start yr of 5yr estimates
-root <- paste0("W:/Data/Demographics/PUMS/CA_", start_yr, "_", curr_yr, "/")
 
 # Load ONLY the PUMS columns needed for this indicator
 cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0))    # get all PUMS cols 
@@ -95,6 +95,11 @@ repwlist = rep(paste0("PWGTP", 1:80))
 # save copy of original data
 orig_data <- ppl
 
+# add nhpi value
+ppl$RACNHPI <- case_when(
+  ppl$RACNH == 1 | ppl$RACPI ==1 ~ 1,
+  TRUE ~ 0
+)
 
 ####### Subset Data for Living Wage ########
 # Adjust wage or salary income in past 12 months: WAGP (adjust with ADJINC)----
@@ -157,6 +162,62 @@ table(ppl$living_wage, useNA = "always")
 #   group_by(race)%>%
 #   summarize(living_wage=weighted.mean(living_wage_num,PWGTP, na.rm=TRUE))
 ## looks as expected
+
+
+#### Join subgroup labels to data ####
+ppl <- anhpi_reclass(ppl, curr_yr, ancestry_list)  # returns list containing ppl (reclassified pums data) and aapi_incl (list of AAPI ancestries in data)
+list2env(ppl, .GlobalEnv)
+people
+# Add a new column for each anc_label, populated with 1 or 0
+for (label in aapi_incl$anc_label) {
+  ppl[[label]] <- as.integer(ppl$anc_label.x == label | ppl$anc_label.y == label)
+}
+
+# Add a new column for any asian ancestry and same for nhpi, populated with 1 or 0
+# Create a named lookup vector: anc_label -> asian value
+asian_lookup <- setNames(aapi_incl$asian, aapi_incl$anc_label)
+
+# Populate the new 'asian' column
+ppl$asian <- as.integer(
+  (ppl$anc_label.x %in% names(asian_lookup[asian_lookup == 1])) |
+    (ppl$anc_label.y %in% names(asian_lookup[asian_lookup == 1]))
+)
+
+# Create a named lookup vector: anc_label -> nhpi value
+nhpi_lookup <- setNames(aapi_incl$nhpi, aapi_incl$anc_label)
+
+# Populate the new 'nhpi' column
+ppl$nhpi <- as.integer(
+  (ppl$anc_label.x %in% names(nhpi_lookup[nhpi_lookup == 1])) |
+    (ppl$anc_label.y %in% names(nhpi_lookup[nhpi_lookup == 1]))
+)
+
+
+## check a few of the new ancestry & asian/nhpi cols
+table(thai = ppl$thai, asian_race = ppl$RACASN)  # check how many thai ancestry rows are also marked Asian race
+table(thai = ppl$thai, asian_anc = ppl$asian)    # check that all thai ancestry rows are also marked asian ancestry
+table(asian_anc = ppl$asian, asian_race = ppl$RACASN)  # 4,452 people w/ asian ancestry who are not coded race = Asian
+#         asian_race
+# thai         0       1
+#         0 1481976   79536
+#         1    4452  287465
+
+table(fijian = ppl$fijian, nhpi_race = ppl$RACNHPI)    # check how many fijian ancestry rows are also marked NHPI race
+table(fijian = ppl$fijian, nhpi_anc = ppl$nhpi)        # check that all fijian ancestry rows are also marked nhpi ancestry
+table(nhpi_anc = ppl$nhpi, nhpi_race = ppl$RACNHPI)    # 941 people w/ nhpi ancestry who are not coded race = NHPI
+#       nhpi_race
+# fijian        0       1
+#       0 1838025    7536
+#       1     941    6927
+
+# For this analysis, we include anyone with an Asian ancestry and anyone with an NHPI ancestry, regardless of race.
+## E.g. For NHPI, we include all records where nhpi == 1 regardless of RACNHPI value.
+
+
+
+
+
+
 
 ############### CALC LEG DIST, COUNTY, STATE ESTIMATES/CVS ETC. ############### 
 # join county crosswalk to data
