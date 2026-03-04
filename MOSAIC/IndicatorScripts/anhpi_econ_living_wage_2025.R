@@ -80,9 +80,9 @@ cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0))    # get all PUMS
 cols_wts <- grep("^PWGTP*", cols, value = TRUE)                   # filter for PUMS weight colnames
 
 ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE, select = c(cols_wts, "RT", "SERIALNO", "AGEP", "ESR", "SCH", "PUMA",
-                                                                                                   "ANC1P", "ANC2P", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH", 
+                                                                                                   "ANC1P", "ANC2P", "HISP", "RAC1P", "RACASN", "RACPI", "RACNH", 
                                                                                                    "ADJINC", "WAGP", "COW", "WKHP", "WRK", "WKWN"),
-             colClasses = list(character = c("PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RACAIAN", "RACPI", "RACNH", 
+             colClasses = list(character = c("PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RACASN", "RACPI", "RACNH", 
                                              "ADJINC", "WAGP", "COW", "WKHP", "ESR", "WRK", "WKWN")))
 
 # Add state_geoid to ppl, add state_geoid to PUMA id, so it aligns with puma-county xwalk
@@ -165,9 +165,9 @@ table(ppl$living_wage, useNA = "always")
 
 
 #### Join subgroup labels to data ####
-ppl <- anhpi_reclass(ppl, curr_yr, ancestry_list)  # returns list containing ppl (reclassified pums data) and aapi_incl (list of AAPI ancestries in data)
-list2env(ppl, .GlobalEnv)
-people
+ppl_ <- anhpi_reclass(ppl, curr_yr, ancestry_list)  # returns list containing ppl (reclassified pums data) and aapi_incl (list of AAPI ancestries in data)
+list2env(ppl_, .GlobalEnv)
+ppl<- people
 # Add a new column for each anc_label, populated with 1 or 0
 for (label in aapi_incl$anc_label) {
   ppl[[label]] <- as.integer(ppl$anc_label.x == label | ppl$anc_label.y == label)
@@ -197,18 +197,18 @@ ppl$nhpi <- as.integer(
 table(thai = ppl$thai, asian_race = ppl$RACASN)  # check how many thai ancestry rows are also marked Asian race
 table(thai = ppl$thai, asian_anc = ppl$asian)    # check that all thai ancestry rows are also marked asian ancestry
 table(asian_anc = ppl$asian, asian_race = ppl$RACASN)  # 4,452 people w/ asian ancestry who are not coded race = Asian
-#         asian_race
-# thai         0       1
-#         0 1481976   79536
-#         1    4452  287465
+#       asian_race
+# thai         0      1
+#       0 580358 156300
+#       1     17   1376
 
 table(fijian = ppl$fijian, nhpi_race = ppl$RACNHPI)    # check how many fijian ancestry rows are also marked NHPI race
 table(fijian = ppl$fijian, nhpi_anc = ppl$nhpi)        # check that all fijian ancestry rows are also marked nhpi ancestry
 table(nhpi_anc = ppl$nhpi, nhpi_race = ppl$RACNHPI)    # 941 people w/ nhpi ancestry who are not coded race = NHPI
 #       nhpi_race
 # fijian        0       1
-#       0 1838025    7536
-#       1     941    6927
+#       0 732164   5409
+#       1     56    422
 
 # For this analysis, we include anyone with an Asian ancestry and anyone with an NHPI ancestry, regardless of race.
 ## E.g. For NHPI, we include all records where nhpi == 1 regardless of RACNHPI value.
