@@ -28,12 +28,8 @@ ancestry_list <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\As
 
 # PUMS Data
 root <- "W:/Data/Demographics/PUMS/CA_2019_2023/"
-indicator_name <- "Disaggregated Asian"
 curr_yr <- 2023
 start_yr <- curr_yr - 4
-# created this excel document separate by opening PUMS Data Dictionary in excel and deleting everything but RAC3P, 
-## updating col names, using text-to-columns to split description into separate cols. Adding binary cols for each subgroup.
-data_dict <- paste0(root, "PUMS_Data_Dictionary_2019-2023_RAC3P.xlsx")
 cv_threshold <- 30     # taken from Liv Wage
 pop_threshold <- 400   # taken from Liv Wage
 schema <- 'v7'
@@ -112,7 +108,7 @@ table(chinese = people$chinese, asian_race = people$RACASN)  # check how many ch
 table(chinese = people$chinese, asian_anc = people$asian)    # check that all chinese ancestry rows are also marked asian ancestry
 table(asian_anc = people$asian, asian_race = people$RACASN)  # 4,452 people w/ asian ancestry who are not coded race = Asian
 #         asian_race
-# asian_anc       0       1
+# chinese         0       1
 #         0 1481976   79536
 #         1    4452  287465
 
@@ -120,11 +116,11 @@ table(samoan = people$samoan, nhpi_race = people$RACNHPI)    # check how many sa
 table(samoan = people$samoan, nhpi_anc = people$nhpi)        # check that all samoan ancestry rows are also marked nhpi ancestry
 table(nhpi_anc = people$nhpi, nhpi_race = people$RACNHPI)    # 941 people w/ nhpi ancestry who are not coded race = NHPI
 #       nhpi_race
-# nhpi_anc       0       1
+# samoan        0       1
 #       0 1838025    7536
 #       1     941    6927
 
-# For this analysis, we consider anyone with an Asian ancestry and anyone with an NHPI ancestry, regardless of race.
+# For this analysis, we include anyone with an Asian ancestry and anyone with an NHPI ancestry, regardless of race.
 ## E.g. For NHPI, we include all records where nhpi == 1 regardless of RACNHPI value.
 
 
