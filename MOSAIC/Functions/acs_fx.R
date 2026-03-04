@@ -182,7 +182,7 @@ send_to_mosaic <- function(acs_table, df_list, table_schema){
   # send table to postgres
   dbWriteTable(con, 
                Id(schema = table_schema, table = table_name), 
-               df_list[[1]], overwrite = FALSE)
+               df_list[[1]], overwrite = TRUE)
   
   # comment on table and columns
   add_table_comments(con, table_schema, table_name, indicator, source, qa_filepath, column_names, column_comments)
@@ -365,7 +365,7 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   }
   
   
-  if(endsWith(table_code, "b25014")) {
+  if(endsWith(table_code, "b25014")) { # JZ updating for overcrowded housing
     # Overcrowded Housing #
     ## Occupants per Room
     names(x) <- gsub("001e", "_pop", names(x))

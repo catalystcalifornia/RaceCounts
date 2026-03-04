@@ -40,105 +40,105 @@ table_code = "b25014"     # YOU MUST UPDATE based on most recent Indicator Metho
 
 # # CREATE RAW DATA TABLES -------------------------------------------------------------------------
 # ## Only run this section if the raw data tables have not been created yet ##
-# race <- "asian"
-# asian_list <- get_detailed_race(table_code, race, curr_yr)
-# # check race col names which are created in fx
-# # unique(asian_list[[2]]$new_label) 
-# 
-# race <- "nhpi"
-# nhpi_list <- get_detailed_race(table_code, race, curr_yr)
-# # check race col names which are created in fx
-# # unique(nhpi_list[[2]]$new_label)
-# 
-# # These lists asian_list and nhpi_list have too many rows, so need to explore the columns and drop what isn't needed
-# 
-# # pull out metadata for each list as a df
-# asian_meta <- asian_list[[2]]
-# nhpi_meta <- nhpi_list[[2]]
-# 
-# 
-# # # scrolling through the different overcrowded housing sub-variables and consulting with the RC methodology (https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html#Overcrowded_Housing
-# # # I am going to select: 001, 005, 006, 007, 011, 012, 013 subvariables to push to postgres
-# # #
-# # # Identify which variables to keep: 
-# asian_list_keep <- str_detect(
-#     asian_list[[2]]$new_var,
-#     "^.*_[^_]+_0(01|05|06|07|11|12|13)"
-#   )|
-# str_detect(
-#   asian_list[[2]]$new_label,
-#   "^(Estimate|MOE)!!Total:[^!]*$"
-# )|
-#   str_detect(
-#     asian_list[[2]]$new_var,
-#     "geoid"
-#   )|
-#   str_detect(
-#     asian_list[[2]]$new_var,
-#     "geolevel"
-#   )|
-#   str_detect(
-#     asian_list[[2]]$new_var,
-#     "name"
-#   )
-# 
-# 
-# # Filter both parts of the list
-# asian_list_filtered <- list(
-#   asian_list[[1]][, asian_list_keep, drop = FALSE],
-#   asian_list[[2]][asian_list_keep, ]
-# )
-# 
-# # Preserve the original names
-# names(asian_list_filtered) <- names(asian_list)
-# 
-# # Check that worked:
-# asian_filtered_meta <- asian_list_filtered[[2]] # scrolled through this and looks good
-# 
-# #  Repeat steps for nhpi_list
-# 
-# # Identify which variables to keep
-# nhpi_list_keep <- str_detect(
-#  nhpi_list[[2]]$new_var,
-#   "^.*_[^_]+_0(01|05|06|07|11|12|13)"
-# )|
-#   str_detect(
-#     nhpi_list[[2]]$new_label,
-#     "^(Estimate|MOE)!!Total:[^!]*$"
-#   )|
-#   str_detect(
-#     nhpi_list[[2]]$new_var,
-#     "geoid"
-#   )|
-#   str_detect(
-#     nhpi_list[[2]]$new_var,
-#     "geolevel"
-#   )|
-#   str_detect(
-#     nhpi_list[[2]]$new_var,
-#     "name"
-#   )
-# 
-# 
-# # Filter both parts of the list
-# nhpi_list_filtered <- list(
-#   nhpi_list[[1]][, nhpi_list_keep, drop = FALSE],
-#   nhpi_list[[2]][nhpi_list_keep, ]
-# )
-# 
-# # Preserve the original names
-# names(nhpi_list_filtered) <- names(nhpi_list)
-# 
-# # Check that worked:
-# nhpi_filtered_meta <- nhpi_list_filtered[[2]] # scrolled through this and looks good
-# 
-# # reassign filtered list name to just list_name for function syntax
-# asian_list<-asian_list_filtered
-# nhpi_list<-nhpi_list_filtered
-# 
-# # Send revised tables only with necessary columns to postgres
-# send_to_mosaic(table_code, asian_list, rc_schema)
-# send_to_mosaic(table_code, nhpi_list, rc_schema)
+race <- "asian"
+asian_list <- get_detailed_race(table_code, race, curr_yr)
+# check race col names which are created in fx
+# unique(asian_list[[2]]$new_label)
+
+race <- "nhpi"
+nhpi_list <- get_detailed_race(table_code, race, curr_yr)
+# check race col names which are created in fx
+# unique(nhpi_list[[2]]$new_label)
+
+# These lists asian_list and nhpi_list have too many rows, so need to explore the columns and drop what isn't needed
+
+# pull out metadata for each list as a df
+asian_meta <- asian_list[[2]]
+nhpi_meta <- nhpi_list[[2]]
+
+
+# # scrolling through the different overcrowded housing sub-variables and consulting with the RC methodology (https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html#Overcrowded_Housing
+# # I am going to select: 001, 005, 006, 007, 011, 012, 013 subvariables to push to postgres
+# #
+# # Identify which variables to keep:
+asian_list_keep <- str_detect(
+    asian_list[[2]]$new_var,
+    "^.*_[^_]+_0(01|05|06|07|11|12|13)"
+  )|
+str_detect(
+  asian_list[[2]]$new_label,
+  "^(Estimate|MOE)!!Total:[^!]*$"
+)|
+  str_detect(
+    asian_list[[2]]$new_var,
+    "geoid"
+  )|
+  str_detect(
+    asian_list[[2]]$new_var,
+    "geolevel"
+  )|
+  str_detect(
+    asian_list[[2]]$new_var,
+    "name"
+  )
+
+
+# Filter both parts of the list
+asian_list_filtered <- list(
+  asian_list[[1]][, asian_list_keep, drop = FALSE],
+  asian_list[[2]][asian_list_keep, ]
+)
+
+# Preserve the original names
+names(asian_list_filtered) <- names(asian_list)
+
+# Check that worked:
+asian_filtered_meta <- asian_list_filtered[[2]] # scrolled through this and looks good
+
+#  Repeat steps for nhpi_list
+
+# Identify which variables to keep
+nhpi_list_keep <- str_detect(
+ nhpi_list[[2]]$new_var,
+  "^.*_[^_]+_0(01|05|06|07|11|12|13)"
+)|
+  str_detect(
+    nhpi_list[[2]]$new_label,
+    "^(Estimate|MOE)!!Total:[^!]*$"
+  )|
+  str_detect(
+    nhpi_list[[2]]$new_var,
+    "geoid"
+  )|
+  str_detect(
+    nhpi_list[[2]]$new_var,
+    "geolevel"
+  )|
+  str_detect(
+    nhpi_list[[2]]$new_var,
+    "name"
+  )
+
+
+# Filter both parts of the list
+nhpi_list_filtered <- list(
+  nhpi_list[[1]][, nhpi_list_keep, drop = FALSE],
+  nhpi_list[[2]][nhpi_list_keep, ]
+)
+
+# Preserve the original names
+names(nhpi_list_filtered) <- names(nhpi_list)
+
+# Check that worked:
+nhpi_filtered_meta <- nhpi_list_filtered[[2]] # scrolled through this and looks good
+
+# reassign filtered list name to just list_name for function syntax
+asian_list<-asian_list_filtered
+nhpi_list<-nhpi_list_filtered
+
+# Send revised tables only with necessary columns to postgres
+send_to_mosaic(table_code, asian_list, rc_schema)
+send_to_mosaic(table_code, nhpi_list, rc_schema)
 
 
 # IMPORT RAW DATA FROM POSTGRES -------------------------------------------
@@ -152,54 +152,166 @@ nhpi_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.nhpi_acs_5yr_%s_multigeo_
 
 asian_df <- prep_acs(asian_data, 'asian', table_code, cv_threshold, pop_threshold)
 
-#########ACS PREP FX TEST############
+#########ACS PREP FX TEST ASIAN ONLY############
 
+lf_raw <- dbGetQuery(con, paste0("select * from ",schema,".acs_5yr_",table_code,"_multigeo_",curr_yr," WHERE geolevel IN ('place', 'county', 'state', 'sldu', 'sldl')")) # import rda_shared_data table
+
+source(".\\Functions\\rdashared_functions.R")
+
+lf <- prep_acs(lf_raw, table_code, cv_threshold, pop_threshold)
+
+lf_screened <- dplyr::select(df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_moe"), -ends_with("_cv"))
 
 # Overcrowded Housing #
-## Occupants per Room
-names(asian_data) <- gsub("001e", "_pop", names(asian_data))
-names(asian_data) <- gsub("001m", "_pop_moe", names(asian_data))
+# ## Occupants per Room
+# names(asian_data) <- gsub("001e", "_pop", names(asian_data))
+# names(asian_data) <- gsub("001m", "_pop_moe", names(asian_data))
 
-### Extract total values to perform the various calculations needed
+### Because there are so many asian subgroups we are going to do calculations for a portion of them at a time because R keeps crashing
+
+####there are groups 0013 - 085 ---we will do 8 groups of 9 Asian subgroups
+
+### Extract total values:  perform the various calculations needed: ONLY f
 
 totals <- asian_data %>%
-  select(geoid, geolevel,   matches("_(005|006|007|011|012|013)e$"))
+  select(geoid, geolevel,   matches("_(001|005|006|007|011|012|013)e$"))
 
-totals <- totals %>% pivot_longer(3:248, names_to="var_name", values_to = "estimate")
-totals <- totals %>% pivot_longer(total005m:total013m, names_to="var_name2", values_to = "moe")
-totals$var_name <- substr(totals$var_name, 1, nchar(totals$var_name)-1)
-totals$var_name2 <- substr(totals$var_name2, 1, nchar(totals$var_name2)-1)
-totals <- totals[totals$var_name == totals$var_name2, ]
-totals <- select(totals, -c(var_name, var_name2))
+totals <- totals %>% pivot_longer(3:289, names_to="var_name", values_to = "estimate")
 
-### sum the numerator columns 005e-013e (total_raw):
-total_raw_values <- totals %>%
-  select(geoid, geolevel, estimate) %>%
-  group_by(geoid, geolevel) %>%
-  summarise(total_raw = sum(estimate))
+# repeat this step for MOEs
+moe <- asian_data %>%
+  select(geoid, geolevel,   matches("_(001|005|006|007|011|012|013)m$"))
 
-#### join these calculations back to x
-x <- left_join(x, total_raw_values, by = c("geoid", "geolevel"))
+moe <- moe %>% pivot_longer(3:289, names_to="var_name2", values_to = "moe")
+
+totals$var_name <- substr(totals$var_name, 1, nchar(totals$var_name)-1) # remove the e in the variable name
+
+moe$var_name2 <- substr(moe$var_name2, 1, nchar(moe$var_name2)-1) # remove the m in the variable name
+
+# join the total and moe tables together
+
+totals<-totals%>%left_join(moe, by=c("var_name"="var_name2",
+                                   "geoid" = "geoid"))%>%
+  rename("geolevel"="geolevel.x")%>%
+  select(geoid, geolevel, var_name, estimate, moe)
+
+# reformat table even more so that the races are its own columns
+
+# start with a race code table: I took this by copy pasting lines 320-361 into chatgpt
+# from the MOSAIC/Functions/acs_fx.R script and asking chatgpt to format that into the race_lookup tribble so I would not have to manually
+# retype all the coding myself
+
+library(tibble)
+
+race_lookup <- tribble(
+  ~race_code, ~race,
+  "013", "indian",
+  "014", "bangladeshi",
+  "015", "cambodian",
+  "016", "chinese",
+  "017", "chinese_no_taiwan",
+  "018", "taiwanese",
+  "019", "filipino",
+  "020", "hmong",
+  "021", "indonesian",
+  "022", "japanese",
+  "023", "korean",
+  "024", "laotian",
+  "025", "malaysian",
+  "026", "pakistani",
+  "027", "sri_lankan",
+  "028", "thai",
+  "029", "vietnamese",
+  "032", "indian_aoic",
+  "033", "bangladeshi_aoic",
+  "034", "cambodian_aoic",
+  "035", "chinese_aoic",
+  "036", "chinese_no_taiwan_aoic",
+  "037", "taiwanese_aoic",
+  "038", "filipino_aoic",
+  "039", "hmong_aoic",
+  "040", "indonesian_aoic",
+  "041", "japanese_aoic",
+  "042", "korean_aoic",
+  "043", "laotian_aoic",
+  "044", "malaysian_aoic",
+  "045", "pakistani_aoic",
+  "046", "sri_lankan_aoic",
+  "047", "thai_aoic",
+  "048", "vietnamese_aoic",
+  "072", "bhutanese",
+  "073", "burmese",
+  "075", "mongolian",
+  "076", "nepalese",
+  "081", "burmese_aoic",
+  "083", "mongolian_aoic",
+  "084", "nepalese_aoic",
+  "085", "okinawan_aoic"
+)
+
+
+# Join the race lookup to my totals df by extracting and creating a race_code column from var_name
+
+totals_re<-totals%>%
+  mutate(
+    race_code = str_split(var_name, "_", simplify = TRUE)[,2]) %>%
+  left_join(race_lookup, by = "race_code")
+
+
+# 
+# test <- totals[totals$var_name == moe$var_name2, ]
+# totals <- select(totals, -c(var_name, var_name2))
+
+### sum the numerator columns 005e-013e for each race group and geolevel
+
+total_num_values <- totals_re %>%
+  filter(!str_ends(var_name, "_001"))%>%
+  group_by(geoid, geolevel, race) %>%
+  summarise(numerator = sum(estimate))
+
+
+# join tables together so we end up with a column for the numerator and denominator
+
+df<-total_num_values%>%
+  left_join(totals_re%>%filter(str_ends(var_name, "_001")), by=c( "geoid" = "geoid",
+                                                        "geolevel" = "geolevel",
+                                                        "race" = "race"))%>%
+  select(geoid, geolevel, race, var_name,  estimate, numerator, moe)%>%
+  rename("total"="estimate")
 
 ### calculate the total_raw_moe using moe_sum (need to sort MOE values first to make sure highest MOE is used in case of multiple zero estimates)
 ### methodology source is text under table on slide 52 here: https://www.census.gov/content/dam/Census/programs-surveys/acs/guidance/training-presentations/20180418_MOE.pdf
-total_raw_moes <- totals %>%
-  select(geoid, geolevel, estimate, moe) %>%
-  group_by(geoid, geolevel) %>%
+
+total_num_moes <- totals_re %>%
+  # select(geoid, geolevel, estimate, moe) %>%
+  filter(!str_ends(var_name, "_001"))%>% # filter out the population total moes
+  group_by(geoid, geolevel, race) %>%
   arrange(desc(moe), .by_group = TRUE) %>%
-  summarise(total_raw_moe = moe_sum(moe, estimate, na.rm=TRUE))   # https://walker-data.com/tidycensus/reference/moe_sum.html
+  summarise(numerator_moe = moe_sum(moe, estimate, na.rm=TRUE))   # https://walker-data.com/tidycensus/reference/moe_sum.html
 
-#### join these calculations back to x
-x <- left_join(x, total_raw_moes, by = c("geoid", "geolevel"))
+#### join numerator totals and numerator MOEs together to one df
 
-### calculate total_rate
-total_rates <- left_join(total_raw_values, totals[, 1:3])
-total_rates$total_rate <- total_rates$total_raw/total_rates$total_pop*100
-total_rates <- total_rates %>%
-  select(geoid, geolevel, total_rate) %>%
-  distinct()
+df <- df%>%
+  left_join(total_num_moes,  by=c( "geoid" = "geoid",
+                                   "geolevel" = "geolevel",
+                                   "race" = "race"))%>%
+  rename("total_moe"="moe")
 
-#### join these calculations back to x
+### calculate rates
+
+df<-df%>%
+   group_by(geoid, geolevel, race) %>%
+  mutate(rate = numerator/total*100)
+
+# 
+# 
+# total_rates <- left_join(total_raw_values, totals[, 1:3])
+# total_rates$total_rate <- total_rates$total_raw/total_rates$total_pop*100
+# total_rates <- total_rates %>%
+#   select(geoid, geolevel, total_rate) %>%
+#   distinct()
+
+#### join these calculations back to x----WHERE I AM LEAVING OFF 3/3/26
 x <- left_join(x, total_rates, by = c("geoid", "geolevel"))
 
 ### calculate the moe for total_rate
