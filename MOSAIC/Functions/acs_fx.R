@@ -543,9 +543,9 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     
   }
   
-  if(endsWith(table_code, "b23025")) {  # EMPLOYMENT DETAILED TABLE
+  if(endsWith(table_code, "b23025")) {  # MK: EMPLOYMENT DETAILED TABLE
     
-    x <- x %>% select(-contains(c("002", "003","005", "006", "007"))) %>%   # dropping everything but employed and unemployed status
+    x <- x %>% select(-contains(c("002", "003","005", "006", "007"))) %>%   # dropping everything but total and employed
       select(geoid, name, geolevel, everything())
     
     # pivot longer

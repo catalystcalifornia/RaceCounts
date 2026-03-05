@@ -1,4 +1,4 @@
-## MOSAIC: Disaggregated Asian/NHPI Homeownership B25003 ###
+## MOSAIC: Disaggregated Asian/NHPI Employment B23025 ###
 
 #install packages if not already installed
 packages <- c("readr", "tidyr", "dplyr", "DBI", "RPostgres", "tidycensus", "tidyverse", "stringr", "usethis", "httr", "jsonlite", "rlang")
@@ -29,13 +29,13 @@ curr_yr = 2021      # Always 2021 for MOSAIC 2026 project
 rc_yr = '2025'      # you MUST UPDATE each year
 rc_schema ="v7"     # you MUST UPDATE each year
 schema = 'v7'
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Homeownership - MOSAIC.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Employment - MOSAIC.docx"
 
 cv_threshold = 40         
-pop_threshold = 100       
+pop_threshold = 150       
 asbest = 'max'            
-schema = 'housing'
-table_code = 'b25003'    # Select relevant indicator table name
+schema = 'economic' 
+table_code = 'b23025'    # Select relevant indicator table name
 
 
 # CREATE RAW DATA TABLES -------------------------------------------------------------------------
@@ -43,12 +43,12 @@ table_code = 'b25003'    # Select relevant indicator table name
 # race <- "asian"
 # asian_list <- get_detailed_race(table_code, race, curr_yr)
 # # check race col names which are created in fx
-# #unique(asian_list[[2]]$POPGROUP_LABEL)
+# unique(asian_list[[2]]$new_label)
 # 
 # race <- "nhpi"
 # nhpi_list <- get_detailed_race(table_code, race, curr_yr)
 # # check race col names which are created in fx
-# #unique(nhpi_list[[2]]$POPGROUP_LABEL)
+# unique(nhpi_list[[2]]$new_label)
 # 
 # # Send table to postgres
 # send_to_mosaic(table_code, asian_list, rc_schema)
@@ -57,7 +57,7 @@ table_code = 'b25003'    # Select relevant indicator table name
 
 # IMPORT RAW DATA FROM POSTGRES -------------------------------------------
 asian_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.asian_acs_5yr_%s_multigeo_%s",
-                                     rc_schema, tolower(table_code), curr_yr))
+                                      rc_schema, tolower(table_code), curr_yr))
 
 nhpi_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.nhpi_acs_5yr_%s_multigeo_%s",
                                      rc_schema, tolower(table_code), curr_yr))
@@ -95,7 +95,7 @@ city_table <- d[d$geolevel == 'place', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table) %>% dplyr::select(-c(geolevel, total_rate))
-View(state_table)
+# View(state_table)
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table) 
@@ -122,13 +122,13 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
 ############## ASIAN: COUNTY, STATE, CITY METADATA  ##############
 
 ###update info for postgres tables###
-county_table_name <- paste0(tolower(race_name), "_hous_homeownership_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
-state_table_name <- paste0(tolower(race_name), "_hous_homeownership_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
-city_table_name <- paste0(tolower(race_name), "_hous_homeownership_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
+county_table_name <- paste0(tolower(race_name), "_econ_employment_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
+state_table_name <- paste0(tolower(race_name), "_econ_employment_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
+city_table_name <- paste0(tolower(race_name), "_econ_employment_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
 start_yr <- curr_yr-4
 
-indicator <- paste0("Owner-Occupied Housing Units (%) ", str_to_title(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
-source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table B25003, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
+indicator <- paste0("Employment Status (%) ", str_to_title(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
+source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table B23025, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## ASIAN: SEND TO POSTGRES #######
 to_postgres(county_table,state_table, 'mosaic')
@@ -172,7 +172,7 @@ city_table <- d[d$geolevel == 'place', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table) %>% dplyr::select(-c(geolevel))
-View(state_table)
+# View(state_table)
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table) 
@@ -199,13 +199,13 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
 ############## NHPI: COUNTY, STATE, CITY METADATA  ##############
 
 ###update info for postgres tables###
-county_table_name <- paste0(tolower(race_name), "_hous_homeownership_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
-state_table_name <- paste0(tolower(race_name), "_hous_homeownership_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
-city_table_name <- paste0(tolower(race_name), "_hous_homeownership_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
+county_table_name <- paste0(tolower(race_name), "_econ_employment_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
+state_table_name <- paste0(tolower(race_name), "_econ_employment_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
+city_table_name <- paste0(tolower(race_name), "_econ_employment_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
 start_yr <- curr_yr-4
 
-indicator <- paste0("Owner-Occupied Housing Units (%) ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
-source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table B25003, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
+indicator <- paste0("Employment Status (%) ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
+source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table B23025, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## NHPI: SEND TO POSTGRES #######
 to_postgres(county_table,state_table, 'mosaic')
