@@ -537,6 +537,40 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     
   }
   
+  if(endsWith(table_code, "b23025")) {  # MK: EMPLOYMENT DETAILED TABLE
+    
+    x <- x %>% select(-contains(c("002", "003","005", "006", "007"))) %>%   # dropping everything but total and employed
+      select(geoid, name, geolevel, everything())
+    
+    # pivot longer
+    x_long <- x %>%
+      pivot_longer(
+        cols = -c(geoid, name, geolevel),
+        names_to = c("ethnic_group", "line", "stat"),
+        names_pattern = "^(.*?)(001|004)(e|m)$",
+        values_to = "value"
+      ) %>%
+      mutate(
+        measure = case_when(
+          line == "001" & stat == "e" ~ "pop",
+          line == "001" & stat == "m" ~ "pop_moe",
+          line == "004" & stat == "e" ~ "raw",
+          line == "004" & stat == "m" ~ "raw_moe"
+        )
+      ) %>%
+      select(-line, -stat) %>%
+      pivot_wider(
+        names_from = measure,
+        values_from = value
+      )
+    
+    # calc raced rates
+    x_long <- x_long %>%
+      mutate(rate = ifelse(pop <= 0, NA, raw / pop * 100),
+             rate_moe = moe_prop(raw, pop, raw_moe, pop_moe)*100)
+    
+  }
+  
   if (startsWith(table_code, "s2802") | startsWith(table_code, "s2701")) {
     old_names <- colnames(x)[-(1:3)]
     new_names <- c("total_pop", "black_pop", "aian_pop", "asian_pop", "pacisl_pop",
