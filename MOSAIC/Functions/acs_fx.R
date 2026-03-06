@@ -364,139 +364,296 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     stop('The column renaming function did not work for the table you have submitted. Please check your table.')
   }
   
-  
-  if(endsWith(table_code, "b25014")) { # JZ updating for overcrowded housing
+  if(endsWith(table_code, "b25014")) { # JZ updated version 3/6/2026 
+    
     # Overcrowded Housing #
-    ## Occupants per Room
-    names(x) <- gsub("001e", "_pop", names(x))
-    names(x) <- gsub("001m", "_pop_moe", names(x))
+    # ## Occupants per Room
     
-    names(x) <- gsub("003e", "_raw", names(x))
-    names(x) <- gsub("003m", "_raw_moe", names(x))
+    print(str(x))   # DEBUG
     
-    ## total data (more disaggregated than raced values so different prep needed)
+    ### Extract total values: these are our columns of interest we need to combine to define overcrowded housing (units with 1 or more person occupying)  
     
-    ### Extract total values to perform the various calculations needed
     totals <- x %>%
-      select(geoid, geolevel, starts_with("total"))
+      select(name, geoid, geolevel,   matches("_(001|005|006|007|011|012|013)e$"))
     
-    totals <- totals %>% pivot_longer(total005e:total013e, names_to="var_name", values_to = "estimate")
-    totals <- totals %>% pivot_longer(total005m:total013m, names_to="var_name2", values_to = "moe")
-    totals$var_name <- substr(totals$var_name, 1, nchar(totals$var_name)-1)
-    totals$var_name2 <- substr(totals$var_name2, 1, nchar(totals$var_name2)-1)
-    totals <- totals[totals$var_name == totals$var_name2, ]
-    totals <- select(totals, -c(var_name, var_name2))
+    totals <- totals %>% pivot_longer(4:290, names_to="var_name", values_to = "estimate")
     
-    ### sum the numerator columns 005e-013e (total_raw):
-    total_raw_values <- totals %>%
-      select(geoid, geolevel, estimate) %>%
-      group_by(geoid, geolevel) %>%
-      summarise(total_raw = sum(estimate))
+    # repeat this step for MOEs
+    moe <- x %>%
+      select(name, geoid, geolevel,   matches("_(001|005|006|007|011|012|013)m$"))
     
-    #### join these calculations back to x
-    x <- left_join(x, total_raw_values, by = c("geoid", "geolevel"))
+    moe <- moe %>% pivot_longer(4:290, names_to="var_name2", values_to = "moe")
     
-    ### calculate the total_raw_moe using moe_sum (need to sort MOE values first to make sure highest MOE is used in case of multiple zero estimates)
-    ### methodology source is text under table on slide 52 here: https://www.census.gov/content/dam/Census/programs-surveys/acs/guidance/training-presentations/20180418_MOE.pdf
-    total_raw_moes <- totals %>%
-      select(geoid, geolevel, estimate, moe) %>%
-      group_by(geoid, geolevel) %>%
-      arrange(desc(moe), .by_group = TRUE) %>%
-      summarise(total_raw_moe = moe_sum(moe, estimate, na.rm=TRUE))   # https://walker-data.com/tidycensus/reference/moe_sum.html
+    totals$var_name <- substr(totals$var_name, 1, nchar(totals$var_name)-1) # remove the e in the variable name
     
-    #### join these calculations back to x
-    x <- left_join(x, total_raw_moes, by = c("geoid", "geolevel"))
+    moe$var_name2 <- substr(moe$var_name2, 1, nchar(moe$var_name2)-1) # remove the m in the variable name
     
-    ### calculate total_rate
-    total_rates <- left_join(total_raw_values, totals[, 1:3])
-    total_rates$total_rate <- total_rates$total_raw/total_rates$total_pop*100
-    total_rates <- total_rates %>%
-      select(geoid, geolevel, total_rate) %>%
-      distinct()
+    # join the total and moe tables together
     
-    #### join these calculations back to x
-    x <- left_join(x, total_rates, by = c("geoid", "geolevel"))
-    
-    ### calculate the moe for total_rate
-    total_pop_data <- totals %>%
-      select(geoid, geolevel, total_pop, total_pop_moe) %>%
-      distinct()
-    total_rate_moes <- left_join(total_raw_values, total_raw_moes, by = c("geoid", "geolevel")) %>%
-      left_join(., total_pop_data, by = c("geoid", "geolevel"))
-    total_rate_moes$total_rate_moe <- moe_prop(total_rate_moes$total_raw,    # https://walker-data.com/tidycensus/reference/moe_prop.html
-                                               total_rate_moes$total_pop, 
-                                               total_rate_moes$total_raw_moe, 
-                                               total_rate_moes$total_pop_moe)*100
-    total_rate_moes <- total_rate_moes %>%
-      select(geoid, geolevel, total_rate_moe)
-    
-    #### join these calculations back to x
-    x <- left_join(x, total_rate_moes, by = c("geoid", "geolevel"))
-    
-    ## raced data (raw values don't need aggregation like total values do)
-    
-    ### calculate raced rates
-    x$asian_rate <- ifelse(x$asian_pop <= 0, NA, x$asian_raw/x$asian_pop*100)
-    x$black_rate <- ifelse(x$black_pop <= 0, NA, x$black_raw/x$black_pop*100)
-    x$nh_white_rate <- ifelse(x$nh_white_pop <= 0, NA, x$nh_white_raw/x$nh_white_pop*100)
-    x$latino_rate <- ifelse(x$latino_pop <= 0, NA, x$latino_raw/x$latino_pop*100)
-    x$other_rate <- ifelse(x$other_pop <= 0, NA, x$other_raw/x$other_pop*100)
-    x$pacisl_rate <- ifelse(x$pacisl_pop <= 0, NA, x$pacisl_raw/x$pacisl_pop*100)
-    x$twoormor_rate <- ifelse(x$twoormor_pop <= 0, NA, x$twoormor_raw/x$twoormor_pop*100)
-    x$aian_rate <- ifelse(x$aian_pop <= 0, NA, x$aian_raw/x$aian_pop*100)
+    totals<-totals%>%left_join(moe, by=c("var_name"="var_name2",
+                                         "geoid" = "geoid",
+                                         "name" = "name",
+                                         "geolevel" = "geolevel"))%>%
+      select(name, geoid, geolevel, var_name, estimate, moe)
     
     
-    ### calculate moes for raced rates
-    x$asian_rate_moe <- moe_prop(x$asian_raw,
-                                 x$asian_pop,
-                                 x$asian_raw_moe,
-                                 x$asian_pop_moe)*100
+    # Reformat table even more so that the races can be identified with string labels
     
-    x$black_rate_moe <- moe_prop(x$black_raw,
-                                 x$black_pop,
-                                 x$black_raw_moe,
-                                 x$black_pop_moe)*100
+    # start with a race code table: I took this by copy pasting lines 320-361 into chatgpt
+    # from the MOSAIC/Functions/acs_fx.R script and asking chatgpt to format that into the race_lookup tribble so I would not have to manually
+    # retype all the asian variable coding myself
     
-    x$nh_white_rate_moe <- moe_prop(x$nh_white_raw,
-                                    x$nh_white_pop,
-                                    x$nh_white_raw_moe,
-                                    x$nh_white_pop_moe)*100
+    library(tibble)
     
-    x$latino_rate_moe <- moe_prop(x$latino_raw,
-                                  x$latino_pop,
-                                  x$latino_raw_moe,
-                                  x$latino_pop_moe)*100
+    race_lookup <- tribble(
+      ~race_code, ~race,
+      "013", "indian",
+      "014", "bangladeshi",
+      "015", "cambodian",
+      "016", "chinese",
+      "017", "chinese_no_taiwan",
+      "018", "taiwanese",
+      "019", "filipino",
+      "020", "hmong",
+      "021", "indonesian",
+      "022", "japanese",
+      "023", "korean",
+      "024", "laotian",
+      "025", "malaysian",
+      "026", "pakistani",
+      "027", "sri_lankan",
+      "028", "thai",
+      "029", "vietnamese",
+      "032", "indian_aoic",
+      "033", "bangladeshi_aoic",
+      "034", "cambodian_aoic",
+      "035", "chinese_aoic",
+      "036", "chinese_no_taiwan_aoic",
+      "037", "taiwanese_aoic",
+      "038", "filipino_aoic",
+      "039", "hmong_aoic",
+      "040", "indonesian_aoic",
+      "041", "japanese_aoic",
+      "042", "korean_aoic",
+      "043", "laotian_aoic",
+      "044", "malaysian_aoic",
+      "045", "pakistani_aoic",
+      "046", "sri_lankan_aoic",
+      "047", "thai_aoic",
+      "048", "vietnamese_aoic",
+      "072", "bhutanese",
+      "073", "burmese",
+      "075", "mongolian",
+      "076", "nepalese",
+      "081", "burmese_aoic",
+      "083", "mongolian_aoic",
+      "084", "nepalese_aoic",
+      "085", "okinawan_aoic"
+    )
     
-    x$other_rate_moe <- moe_prop(x$other_raw,
-                                 x$other_pop,
-                                 x$other_raw_moe,
-                                 x$other_pop_moe)*100
+    # Join the race lookup to my totals df by extracting and creating a race_code column from var_name
     
-    x$pacisl_rate_moe <- moe_prop(x$pacisl_raw,
-                                  x$pacisl_pop,
-                                  x$pacisl_raw_moe,
-                                  x$pacisl_pop_moe)*100
+    totals_re<-totals%>%
+      mutate(
+        race_code = str_split(var_name, "_", simplify = TRUE)[,2]) %>%
+      left_join(race_lookup, by = "race_code")
     
-    x$twoormor_rate_moe <- moe_prop(x$twoormor_raw,
-                                    x$twoormor_pop,
-                                    x$twoormor_raw_moe,
-                                    x$twoormor_pop_moe)*100
-    
-    x$aian_rate_moe <- moe_prop(x$aian_raw,
-                                x$aian_pop,
-                                x$aian_raw_moe,
-                                x$aian_pop_moe)*100
-    
-    
-    ### Convert any NaN to NA
-    x <- x %>% 
-      mutate_all(function(x) ifelse(is.nan(x), NA, x))
-    
-    ### drop the total006-013 e and m columns and pop_moe cols
-    x <- x %>%
-      select(-starts_with("total0"), -ends_with("_pop_moe"))
+    ### Sum the numerator columns 005e-013e for each race group and geolevel to get our final numerator (units with 1 or more occupant)
+
+     total_num_values<-total_num_values%>%
+      left_join(totals_re%>%filter(str_ends(var_name, "_001")), by=c( "name" = "name",
+                                                                      "geoid" = "geoid",
+                                                                      "geolevel" = "geolevel",
+                                                                      "race" = "race"))%>%
+      select(name, geoid, geolevel, race, var_name,  estimate, raw, moe)%>%
+      rename("pop"="estimate",
+             "pop_moe"="moe")
+     
+     ### calculate the total_raw_moe using moe_sum (need to sort MOE values first to make sure highest MOE is used in case of multiple zero estimates)
+     ### methodology source is text under table on slide 52 here: https://www.census.gov/content/dam/Census/programs-surveys/acs/guidance/training-presentations/20180418_MOE.pdf
+     
+     total_num_moes <- totals_re %>%
+       filter(!str_ends(var_name, "_001"))%>% # filter out the population total moes to calculate only aggregated MOEs
+       group_by(name, geoid, geolevel, race) %>%
+       arrange(desc(moe), .by_group = TRUE) %>%
+       summarise(raw_moe = moe_sum(moe, estimate, na.rm=TRUE))   # https://walker-data.com/tidycensus/reference/moe_sum.html
+     
+     #### join numerator totals and numerator MOEs together to one df
+     
+     df <- total_num_values%>%
+       left_join(total_num_moes,  by=c( "name" = "name",
+                                        "geoid" = "geoid",
+                                        "geolevel" = "geolevel",
+                                        "race" = "race"))
+     
+     ### calculate rates
+     
+     df<-df%>%
+       group_by(name, geoid, geolevel, race) %>%
+       mutate(rate = ifelse(raw <= 0, NA, raw/pop*100)) # set rate == NA if the raw estimate is <=0
+     
+     ### calculate the moe for rates
+     
+     df <- df %>%
+       group_by(name, geoid, geolevel,race)%>%
+       mutate(rate_moe=moe_prop(raw, pop, raw_moe, pop_moe)*100)  # https://walker-data.com/tidycensus/reference/moe_prop.html
+     
+     
+     # Now pivot the table back to wider for RC formatting in order to use subsequent RC functions
+     
+     df_wide<-df%>%
+       select(-var_name) %>%              # drop var_name since I don't need it
+       pivot_wider(
+         id_cols = c(name, geoid, geolevel),    # keep these as identifiers
+         names_from = race,               # pivot based on race
+         values_from = c(pop, raw, pop_moe, raw_moe, rate, rate_moe),
+         names_glue = "{race}_{.value}"   # format column names so that the race value is attached
+       )%>%
+       mutate(total_rate = NA_real_) # for other RC functions to work we need a total_rate column even though for MOSAIC these values will just all be NA
+     
+     ### Convert any NaN to NA
+     df_wide <- df_wide %>% 
+       mutate_all(function(x) ifelse(is.nan(x), NA, x))%>%
+       ungroup()
+     
+     # assign back to asian_data table
+     
+     x<-df_wide
     
   }
+  
+  # if(endsWith(table_code, "b25014")) { # OLD VERSION JZ commenting out for now. See QA doc. 
+  #   # Overcrowded Housing #
+  #   ## Occupants per Room
+  #   names(x) <- gsub("001e", "_pop", names(x))
+  #   names(x) <- gsub("001m", "_pop_moe", names(x))
+  #   
+  #   names(x) <- gsub("003e", "_raw", names(x))
+  #   names(x) <- gsub("003m", "_raw_moe", names(x))
+  #   
+  #   ## total data (more disaggregated than raced values so different prep needed)
+  #   
+  #   ### Extract total values to perform the various calculations needed
+  #   totals <- x %>%
+  #     select(geoid, geolevel, starts_with("total"))
+  #   
+  #   totals <- totals %>% pivot_longer(total005e:total013e, names_to="var_name", values_to = "estimate")
+  #   totals <- totals %>% pivot_longer(total005m:total013m, names_to="var_name2", values_to = "moe")
+  #   totals$var_name <- substr(totals$var_name, 1, nchar(totals$var_name)-1)
+  #   totals$var_name2 <- substr(totals$var_name2, 1, nchar(totals$var_name2)-1)
+  #   totals <- totals[totals$var_name == totals$var_name2, ]
+  #   totals <- select(totals, -c(var_name, var_name2))
+  #   
+  #   ### sum the numerator columns 005e-013e (total_raw):
+  #   total_raw_values <- totals %>%
+  #     select(geoid, geolevel, estimate) %>%
+  #     group_by(geoid, geolevel) %>%
+  #     summarise(total_raw = sum(estimate))
+  #   
+  #   #### join these calculations back to x
+  #   x <- left_join(x, total_raw_values, by = c("geoid", "geolevel"))
+  #   
+  #   ### calculate the total_raw_moe using moe_sum (need to sort MOE values first to make sure highest MOE is used in case of multiple zero estimates)
+  #   ### methodology source is text under table on slide 52 here: https://www.census.gov/content/dam/Census/programs-surveys/acs/guidance/training-presentations/20180418_MOE.pdf
+  #   total_raw_moes <- totals %>%
+  #     select(geoid, geolevel, estimate, moe) %>%
+  #     group_by(geoid, geolevel) %>%
+  #     arrange(desc(moe), .by_group = TRUE) %>%
+  #     summarise(total_raw_moe = moe_sum(moe, estimate, na.rm=TRUE))   # https://walker-data.com/tidycensus/reference/moe_sum.html
+  #   
+  #   #### join these calculations back to x
+  #   x <- left_join(x, total_raw_moes, by = c("geoid", "geolevel"))
+  #   
+  #   ### calculate total_rate
+  #   total_rates <- left_join(total_raw_values, totals[, 1:3])
+  #   total_rates$total_rate <- total_rates$total_raw/total_rates$total_pop*100
+  #   total_rates <- total_rates %>%
+  #     select(geoid, geolevel, total_rate) %>%
+  #     distinct()
+  #   
+  #   #### join these calculations back to x
+  #   x <- left_join(x, total_rates, by = c("geoid", "geolevel"))
+  #   
+  #   ### calculate the moe for total_rate
+  #   total_pop_data <- totals %>%
+  #     select(geoid, geolevel, total_pop, total_pop_moe) %>%
+  #     distinct()
+  #   total_rate_moes <- left_join(total_raw_values, total_raw_moes, by = c("geoid", "geolevel")) %>%
+  #     left_join(., total_pop_data, by = c("geoid", "geolevel"))
+  #   total_rate_moes$total_rate_moe <- moe_prop(total_rate_moes$total_raw,    # https://walker-data.com/tidycensus/reference/moe_prop.html
+  #                                              total_rate_moes$total_pop, 
+  #                                              total_rate_moes$total_raw_moe, 
+  #                                              total_rate_moes$total_pop_moe)*100
+  #   total_rate_moes <- total_rate_moes %>%
+  #     select(geoid, geolevel, total_rate_moe)
+  #   
+  #   #### join these calculations back to x
+  #   x <- left_join(x, total_rate_moes, by = c("geoid", "geolevel"))
+  #   
+  #   ## raced data (raw values don't need aggregation like total values do)
+  #   
+  #   ### calculate raced rates
+  #   x$asian_rate <- ifelse(x$asian_pop <= 0, NA, x$asian_raw/x$asian_pop*100)
+  #   x$black_rate <- ifelse(x$black_pop <= 0, NA, x$black_raw/x$black_pop*100)
+  #   x$nh_white_rate <- ifelse(x$nh_white_pop <= 0, NA, x$nh_white_raw/x$nh_white_pop*100)
+  #   x$latino_rate <- ifelse(x$latino_pop <= 0, NA, x$latino_raw/x$latino_pop*100)
+  #   x$other_rate <- ifelse(x$other_pop <= 0, NA, x$other_raw/x$other_pop*100)
+  #   x$pacisl_rate <- ifelse(x$pacisl_pop <= 0, NA, x$pacisl_raw/x$pacisl_pop*100)
+  #   x$twoormor_rate <- ifelse(x$twoormor_pop <= 0, NA, x$twoormor_raw/x$twoormor_pop*100)
+  #   x$aian_rate <- ifelse(x$aian_pop <= 0, NA, x$aian_raw/x$aian_pop*100)
+  #   
+  #   
+  #   ### calculate moes for raced rates
+  #   x$asian_rate_moe <- moe_prop(x$asian_raw,
+  #                                x$asian_pop,
+  #                                x$asian_raw_moe,
+  #                                x$asian_pop_moe)*100
+  #   
+  #   x$black_rate_moe <- moe_prop(x$black_raw,
+  #                                x$black_pop,
+  #                                x$black_raw_moe,
+  #                                x$black_pop_moe)*100
+  #   
+  #   x$nh_white_rate_moe <- moe_prop(x$nh_white_raw,
+  #                                   x$nh_white_pop,
+  #                                   x$nh_white_raw_moe,
+  #                                   x$nh_white_pop_moe)*100
+  #   
+  #   x$latino_rate_moe <- moe_prop(x$latino_raw,
+  #                                 x$latino_pop,
+  #                                 x$latino_raw_moe,
+  #                                 x$latino_pop_moe)*100
+  #   
+  #   x$other_rate_moe <- moe_prop(x$other_raw,
+  #                                x$other_pop,
+  #                                x$other_raw_moe,
+  #                                x$other_pop_moe)*100
+  #   
+  #   x$pacisl_rate_moe <- moe_prop(x$pacisl_raw,
+  #                                 x$pacisl_pop,
+  #                                 x$pacisl_raw_moe,
+  #                                 x$pacisl_pop_moe)*100
+  #   
+  #   x$twoormor_rate_moe <- moe_prop(x$twoormor_raw,
+  #                                   x$twoormor_pop,
+  #                                   x$twoormor_raw_moe,
+  #                                   x$twoormor_pop_moe)*100
+  #   
+  #   x$aian_rate_moe <- moe_prop(x$aian_raw,
+  #                               x$aian_pop,
+  #                               x$aian_raw_moe,
+  #                               x$aian_pop_moe)*100
+  #   
+  #   
+  #   ### Convert any NaN to NA
+  #   x <- x %>% 
+  #     mutate_all(function(x) ifelse(is.nan(x), NA, x))
+  #   
+  #   ### drop the total006-013 e and m columns and pop_moe cols
+  #   x <- x %>%
+  #     select(-starts_with("total0"), -ends_with("_pop_moe"))
+  #   
+  # }
   
   if(endsWith(table_code, "b19301")) {
     
