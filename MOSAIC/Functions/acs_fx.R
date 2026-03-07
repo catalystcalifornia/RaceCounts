@@ -130,7 +130,7 @@ get_detailed_race <- function(table, race, year = 2021) {
     mutate(var_suff = sub(".*_", "", var),
            generic_var = gsub(("E|M"), "", var),
            new_var = tolower(paste0(table_code, "_", POPGROUP, "_", var_suff)))
-  
+
   # load variable names
   v21 <- load_variables(year, "acs5", cache = TRUE)
   table_vars <- v21 %>% filter(grepl(table_name, name))
@@ -505,13 +505,7 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     names(x) <- gsub("001m", "_rate_moe", names(x))
   }
   
-  if(endsWith(table_code, "b25003")) {  # HAVE ONLY EDITED THIS TABLE SO FAR
-    # names(x) <- gsub("001e", "_pop", names(x))
-    # names(x) <- gsub("001m", "_pop_moe", names(x))
-    # 
-    # names(x) <- gsub("002e", "_raw", names(x))
-    # names(x) <- gsub("002m", "_raw_moe", names(x))
-    
+  if(endsWith(table_code, "b25003")) {  # LF edited Homeownership
     x <- x %>% select(-contains("003")) %>%   # drop cols for renter hh's
       select(geoid, name, geolevel, everything())
     
@@ -544,6 +538,7 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     
   }
   
+
   if (startsWith(table_code, "b27001")) {
     
     x_long <- x %>%
@@ -588,6 +583,7 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   }
   
   if (startsWith(table_code, "s2802")) {
+
     old_names <- colnames(x)[-(1:3)]
     new_names <- c("total_pop", "black_pop", "aian_pop", "asian_pop", "pacisl_pop",
                    "other_pop", "twoormor_pop", "latino_pop", "nh_white_pop", 
@@ -605,6 +601,37 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
                    "nh_white_rate_moe")
     x <- x %>%
       rename_with(~ new_names[which(old_names == .x)], .cols = old_names)
+  }
+  
+  if(endsWith(table_code, "b28002")) {  # JZ updating code for internet indicator using table B28002
+  
+    # pivot longer
+    x_long <- x %>%
+      pivot_longer(
+        cols = -c(geoid, name, geolevel),
+        names_to = c("ethnic_group", "line", "stat"),
+        names_pattern = "^(.*?)(001|004)(e|m)$",
+        values_to = "value"
+      )%>%
+      mutate(
+        measure = case_when(
+          line == "001" & stat == "e" ~ "pop",
+          line == "001" & stat == "m" ~ "pop_moe",
+          line == "004" & stat == "e" ~ "raw",
+          line == "004" & stat == "m" ~ "raw_moe"
+        )
+      )%>%
+      select(-line, -stat) %>%
+      pivot_wider(
+        names_from = measure,
+        values_from = value
+      )
+    
+    # calc raced rates
+    x_long <- x_long %>%
+      mutate(rate = ifelse(pop <= 0, NA, raw / pop * 100),
+             rate_moe = moe_prop(raw, pop, raw_moe, pop_moe)*100)
+    
   }
   
   if (startsWith(table_code, "s2301")) {

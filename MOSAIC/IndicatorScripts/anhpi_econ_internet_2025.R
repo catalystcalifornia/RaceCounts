@@ -1,4 +1,4 @@
-## MOSAIC: Disaggregated Asian/NHPI Homeownership B25003 ###
+## MOSAIC: Disaggregated Asian/NHPI Internet Access B28002 ###
 
 #install packages if not already installed
 packages <- c("readr", "tidyr", "dplyr", "DBI", "RPostgres", "tidycensus", "tidyverse", "stringr", "usethis", "httr", "jsonlite", "rlang")
@@ -29,30 +29,123 @@ curr_yr = 2021      # Always 2021 for MOSAIC 2026 project
 rc_yr = '2025'      # you MUST UPDATE each year
 rc_schema ="v7"     # you MUST UPDATE each year
 schema = 'v7'
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Homeownership - MOSAIC.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Internet - MOSAIC.docx"
+
+# set these thresholds to match methodology for internet access for RC: https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html#Internet_Access
 
 cv_threshold = 40         
 pop_threshold = 100       
 asbest = 'max'            
-schema = 'housing'
-table_code = 'b25003'    # Select relevant indicator table name
-
+schema = 'economic'
+table_code = 'b28002'    # Select relevant indicator table name
 
 # CREATE RAW DATA TABLES -------------------------------------------------------------------------
 ## Only run this section if the raw data tables have not been created yet ##
-# race <- "asian"
-# asian_list <- get_detailed_race(table_code, race, curr_yr)
-# # check race col names which are created in fx
-# #unique(asian_list[[2]]$POPGROUP_LABEL)
-# 
-# race <- "nhpi"
-# nhpi_list <- get_detailed_race(table_code, race, curr_yr)
-# # check race col names which are created in fx
-# #unique(nhpi_list[[2]]$POPGROUP_LABEL)
-# 
-# # Send table to postgres
-# send_to_mosaic(table_code, asian_list, rc_schema)
-# send_to_mosaic(table_code, nhpi_list, rc_schema)
+race <- "asian"
+asian_list <- get_detailed_race(table_code, race, curr_yr)
+# check race col names which are created in fx
+# unique(asian_list[[2]]$new_label) 
+
+race <- "nhpi"
+nhpi_list <- get_detailed_race(table_code, race, curr_yr)
+# check race col names which are created in fx
+# unique(nhpi_list[[2]]$new_label)
+
+# These lists asian_list and nhpi_list have too many rows, so need to explore the columns and drop what isn't needed
+
+# pull out metadata for each list as a df
+asian_meta <- asian_list[[2]]
+nhpi_meta <- nhpi_list[[2]]
+
+# further filter down what the actual different internet indicators there are in the metadata
+
+asian_meta_filter<-asian_meta %>%
+  mutate(after_third = str_split_i(new_label, "!!", 4)) %>%
+  count(after_third, sort = TRUE)
+
+# scrolling through the different internet sub-variables and consulting with the internet methodology (https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html#Internet_Access)
+# for RC I am going to select the variable 'Broadband of any type' and push to postgres.
+# Also need to filter for all the population total estimate values
+#
+# Identify which variables to keep: after talking to LF we are just using 'broadband of any type'
+asian_list_keep <- str_detect(
+  asian_list[[2]]$new_label,
+  "Broadband of any type"
+) |
+str_detect(
+  asian_list[[2]]$new_label,
+  "^(Estimate|MOE)!!Total:[^!]*$"
+)|
+  str_detect(
+    asian_list[[2]]$new_var,
+    "geoid"
+  )|
+  str_detect(
+    asian_list[[2]]$new_var,
+    "geolevel"
+  )|
+  str_detect(
+    asian_list[[2]]$new_var,
+    "name"
+  )
+
+
+# Filter both parts of the list
+asian_list_filtered <- list(
+  asian_list[[1]][, asian_list_keep, drop = FALSE],
+  asian_list[[2]][asian_list_keep, ]
+)
+
+# Preserve the original names
+names(asian_list_filtered) <- names(asian_list)
+
+# Check that worked:
+asian_filtered_meta <- asian_list_filtered[[2]] # scrolled through this and looks good
+
+# Repeat steps for nhpi_list
+
+# Identify which variables to keep
+nhpi_list_keep <- str_detect(
+  nhpi_list[[2]]$new_label,
+  "Broadband of any type"
+) |
+  str_detect(
+    nhpi_list[[2]]$new_label,
+    "^(Estimate|MOE)!!Total:[^!]*$"
+  )|
+  str_detect(
+    nhpi_list[[2]]$new_var,
+    "geoid"
+  )|
+  str_detect(
+    nhpi_list[[2]]$new_var,
+    "geolevel"
+  )|
+  str_detect(
+    nhpi_list[[2]]$new_var,
+    "name"
+  )
+
+
+# Filter both parts of the list
+nhpi_list_filtered <- list(
+  nhpi_list[[1]][, nhpi_list_keep, drop = FALSE],
+  nhpi_list[[2]][nhpi_list_keep, ]
+)
+
+# Preserve the original names
+names(nhpi_list_filtered) <- names(nhpi_list)
+
+# Check that worked:
+nhpi_filtered_meta <- nhpi_list_filtered[[2]] # scrolled through this and looks good
+
+# reassign filtered list name to just list_name for function syntax
+asian_list<-asian_list_filtered
+nhpi_list<-nhpi_list_filtered
+
+# Send revised tables only with necessary columns to postgres
+send_to_mosaic(table_code, asian_list, rc_schema)
+send_to_mosaic(table_code, nhpi_list, rc_schema)
 
 
 # IMPORT RAW DATA FROM POSTGRES -------------------------------------------
@@ -63,6 +156,9 @@ nhpi_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.nhpi_acs_5yr_%s_multigeo_
                                      rc_schema, tolower(table_code), curr_yr))
 
 #### ASIAN: Pre-RC CALCS ##############
+
+# NOTE: Moving forward with the 004 sub-internet variable: Broadband of any kind
+
 asian_df <- prep_acs(asian_data, 'asian', table_code, cv_threshold, pop_threshold)
 
 asian_df_screened <- dplyr::select(asian_df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_cv"))
@@ -122,21 +218,19 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
 ############## ASIAN: COUNTY, STATE, CITY METADATA  ##############
 
 ###update info for postgres tables###
-county_table_name <- paste0(tolower(race_name), "_hous_homeownership_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
-state_table_name <- paste0(tolower(race_name), "_hous_homeownership_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
-city_table_name <- paste0(tolower(race_name), "_hous_homeownership_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
+county_table_name <- paste0(tolower(race_name), "_econ_internet_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
+state_table_name <- paste0(tolower(race_name), "_econ_internet_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
+city_table_name <- paste0(tolower(race_name), "_econ_internet_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
 start_yr <- curr_yr-4
 
-indicator <- paste0("Owner-Occupied Housing Units (%) ", str_to_title(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
-source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table B25003, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
+indicator <- paste0("Internet access (Any kind of broadband) ", str_to_title(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
+source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table ", toupper(table_code), ", https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## ASIAN: SEND TO POSTGRES #######
 to_postgres(county_table,state_table, 'mosaic')
 city_to_postgres(city_table, 'mosaic')
 
 dbDisconnect(con)
-
-
 
 
 #### NHPI: Pre-RC CALCS ##############
@@ -199,16 +293,19 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
 ############## NHPI: COUNTY, STATE, CITY METADATA  ##############
 
 ###update info for postgres tables###
-county_table_name <- paste0(tolower(race_name), "_hous_homeownership_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
-state_table_name <- paste0(tolower(race_name), "_hous_homeownership_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
-city_table_name <- paste0(tolower(race_name), "_hous_homeownership_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
+county_table_name <- paste0(tolower(race_name), "_econ_internet_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
+state_table_name <- paste0(tolower(race_name), "_econ_internet_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
+city_table_name <- paste0(tolower(race_name), "_econ_internet_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
 start_yr <- curr_yr-4
 
-indicator <- paste0("Owner-Occupied Housing Units (%) ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
-source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table B25003, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
+indicator <- paste0("Internet access (Broadband of any kind) ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
+source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table ", toupper(table_code), ", https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## NHPI: SEND TO POSTGRES #######
 to_postgres(county_table,state_table, 'mosaic')
 city_to_postgres(city_table, 'mosaic')
 
 dbDisconnect(con)
+
+
+
