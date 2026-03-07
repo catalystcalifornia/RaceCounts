@@ -28,13 +28,13 @@ get_detailed_race <- function(table, race, year = 2021) {
     str_detect(race, regex('asian', ignore_case = TRUE)) ~ '-04',
     str_detect(race, regex('nhpi', ignore_case = TRUE)) ~ '-05',
     .default = ''
-    )
-
+  )
+  
   # return error if race is not already included in available race_code list
-    if (!(race_code %in% c('-04','-05'))) {
-       return(print("This function doesn't pull data for the race you selected. Please select either Asian or NHPI or talk to Leila about adding an additional race."))
-   }
-
+  if (!(race_code %in% c('-04','-05'))) {
+    return(print("This function doesn't pull data for the race you selected. Please select either Asian or NHPI or talk to Leila about adding an additional race."))
+  }
+  
   table_name <- toupper(table)
   
   city_api_call <- sprintf(
@@ -48,50 +48,50 @@ get_detailed_race <- function(table, race, year = 2021) {
   state_api_call <- sprintf(
     "https://api.census.gov/data/%s/acs/acs5/spt?get=group(%s)&POPGROUP=pseudo(%s)&ucgid=0400000US06",
     year, table_name, race_code)
-
-api_call_list <- c(city_api_call, county_api_call, state_api_call)  
   
-# Loop through API calls
-parsed_list <- list()    # create empty list for loop results
-
-for (i in api_call_list) {
+  api_call_list <- c(city_api_call, county_api_call, state_api_call)  
   
-  response <- GET(i)
-  status_code(response)
+  # Loop through API calls
+  parsed_list <- list()    # create empty list for loop results
   
-  # Check if the request was successful
-  if (status_code(response) == 200) {
-    print("API request successful.")
-  } else {
-    stop("API request failed with status code: ", status_code(response))
+  for (i in api_call_list) {
+    
+    response <- GET(i)
+    status_code(response)
+    
+    # Check if the request was successful
+    if (status_code(response) == 200) {
+      print("API request successful.")
+    } else {
+      stop("API request failed with status code: ", status_code(response))
+    }
+    
+    raw_content <- content(response, "text")   # returns the response body as text
+    parsed_data <- fromJSON(raw_content)
+    
+    parsed_list[[i]] <- parsed_data               # put loop results into a list
+    
   }
   
-  raw_content <- content(response, "text")   # returns the response body as text
-  parsed_data <- fromJSON(raw_content)
+  # clean up data
+  parsed_data <- do.call(rbind, parsed_list) %>% as.data.frame()
+  clean_data <- parsed_data
+  colnames(clean_data) <- clean_data[1, ]  # replace col names with first row values
+  clean_data <- clean_data[, !duplicated(names(clean_data))] # drop any duplicate cols, eg: POPGROUP
+  clean_data <- clean_data %>%
+    mutate(across(contains(table_name), as.numeric))         # assign numeric cols to numeric type
+  clean_data <- clean_data %>%
+    filter(!if_all(where(is.numeric), is.na))                # drop rows where all numeric values are NA, this also removes the extra 'header' rows
+  clean_data$geoid <- str_replace(clean_data$GEO_ID, ".*US", "")  # clean geoids
+  clean_data$geolevel <- case_when(                                # add geolevel bc it's a multigeo table
+    nchar(clean_data$geoid) == 2 ~ 'state',
+    nchar(clean_data$geoid) == 5 ~ 'county',
+    .default = 'place'
+  )
   
-  parsed_list[[i]] <- parsed_data               # put loop results into a list
-  
-}
-
-# clean up data
-parsed_data <- do.call(rbind, parsed_list) %>% as.data.frame()
-clean_data <- parsed_data
-colnames(clean_data) <- clean_data[1, ]  # replace col names with first row values
-clean_data <- clean_data[, !duplicated(names(clean_data))] # drop any duplicate cols, eg: POPGROUP
-clean_data <- clean_data %>%
-  mutate(across(contains(table_name), as.numeric))         # assign numeric cols to numeric type
-clean_data <- clean_data %>%
-  filter(!if_all(where(is.numeric), is.na))                # drop rows where all numeric values are NA, this also removes the extra 'header' rows
-clean_data$geoid <- str_replace(clean_data$GEO_ID, ".*US", "")  # clean geoids
-clean_data$geolevel <- case_when(                                # add geolevel bc it's a multigeo table
-  nchar(clean_data$geoid) == 2 ~ 'state',
-  nchar(clean_data$geoid) == 5 ~ 'county',
-  .default = 'place'
-)
-
   clean_data <- clean_data %>%
     select(where(~!all(is.na(.))))         # drop cols where all vals are NA, eg: X_EA and X_MA the annotation cols
-
+  
   # reformat clean data
   df_wide <- clean_data %>%
     pivot_longer(
@@ -117,7 +117,7 @@ clean_data$geolevel <- case_when(                                # add geolevel 
     clean_geo_names() %>%
     mutate(name = geoname) %>%
     select(-geoname)
-
+  
   # prep metadata
   metadata <- clean_data %>%
     pivot_longer(cols = starts_with("B"),
@@ -130,7 +130,7 @@ clean_data$geolevel <- case_when(                                # add geolevel 
     mutate(var_suff = sub(".*_", "", var),
            generic_var = gsub(("E|M"), "", var),
            new_var = tolower(paste0(table_code, "_", POPGROUP, "_", var_suff)))
-                                              
+  
   # load variable names
   v21 <- load_variables(year, "acs5", cache = TRUE)
   table_vars <- v21 %>% filter(grepl(table_name, name))
@@ -152,14 +152,14 @@ clean_data$geolevel <- case_when(                                # add geolevel 
     new_label = c("","fips code","city, county, state"))
   
   metadata_final <- rbind(new_rows, metadata_)
-
-data_list <- list(df_wide, metadata_final)
-
-names(data_list) <- c(paste0(race,"_df"), "metadata")
-
-return(data_list)
-}
   
+  data_list <- list(df_wide, metadata_final)
+  
+  names(data_list) <- c(paste0(race,"_df"), "metadata")
+  
+  return(data_list)
+}
+
 
 #### Send raw detailed tables to postgres - info for postgres tables automatically updates ####
 send_to_mosaic <- function(acs_table, df_list, table_schema){
@@ -226,9 +226,10 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   # Execute the query and store the results in an R data frame
   #	column_metadata <- dbGetQuery(con, query) %>% filter(grepl("e",column_name)) %>% filter(grepl("001",column_name)) # get unique codes, eg: 051, 052
   #	print(column_metadata)  # this df was used to create the renaming rules below
-  
+
   # renaming rules will change depending on type of census table
-  if (startsWith(table_code, "b") && startsWith(table_name, "nhpi")) {
+  if (startsWith(table_code, "b") && startsWith(table_name, "nhpi") && !startsWith(table_code, "b27001")) {
+    
     table_051_code = paste0(table_code, "_051_")
     table_052_code = paste0(table_code, "_052_")
     table_053_code = paste0(table_code, "_053_")
@@ -251,29 +252,29 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     table_176_code = paste0(table_code, "_176_")
     table_177_code = paste0(table_code, "_177_")
     
-    names(x) <- gsub(table_051_code, "polynesian", names(x))
-    names(x) <- gsub(table_052_code, "nat_hawaii", names(x))
-    names(x) <- gsub(table_053_code, "samoan", names(x))
-    names(x) <- gsub(table_054_code, "tongan", names(x))
-    names(x) <- gsub(table_055_code, "micronesian", names(x))
-    names(x) <- gsub(table_056_code, "guam_chamorro", names(x))
-    names(x) <- gsub(table_057_code, "melanesian", names(x))
-    names(x) <- gsub(table_058_code, "fijian", names(x))	
-    names(x) <- gsub(table_061_code, "polynesian_aoic", names(x))
-    names(x) <- gsub(table_062_code, "nat_hawaii_aoic", names(x))
-    names(x) <- gsub(table_063_code, "samoan_aoic", names(x))
-    names(x) <- gsub(table_064_code, "tongan_aoic", names(x))
-    names(x) <- gsub(table_065_code, "micronesian_aoic", names(x))
-    names(x) <- gsub(table_066_code, "guam_chamorro_aoic", names(x))
-    names(x) <- gsub(table_067_code, "melanesian_aoic", names(x))
-    names(x) <- gsub(table_068_code, "fijian_aoic", names(x))	
-    names(x) <- gsub(table_9z8_code, "chamorro", names(x))
-    names(x) <- gsub(table_9z9_code, "chamorro_aoic", names(x))
-    names(x) <- gsub(table_096_code, "marshallese", names(x))
-    names(x) <- gsub(table_176_code, "marshallese_aoic", names(x))
-    names(x) <- gsub(table_177_code, "palauan_aoic", names(x))
+    names(x) <- gsub(table_051_code, "polynesian",names(x))
+    names(x) <- gsub(table_052_code, "nat_hawaii",names(x))
+    names(x) <- gsub(table_053_code, "samoan",names(x))
+    names(x) <- gsub(table_054_code, "tongan",names(x))
+    names(x) <- gsub(table_055_code, "micronesian",names(x))
+    names(x) <- gsub(table_056_code, "guam_chamorro",names(x))
+    names(x) <- gsub(table_057_code, "melanesian",names(x))
+    names(x) <- gsub(table_058_code, "fijian",names(x))	
+    names(x) <- gsub(table_061_code, "polynesian_aoic",names(x))
+    names(x) <- gsub(table_062_code, "nat_hawaii_aoic",names(x))
+    names(x) <- gsub(table_063_code, "samoan_aoic",names(x))
+    names(x) <- gsub(table_064_code, "tongan_aoic",names(x))
+    names(x) <- gsub(table_065_code, "micronesian_aoic",names(x))
+    names(x) <- gsub(table_066_code, "guam_chamorro_aoic",names(x))
+    names(x) <- gsub(table_067_code, "melanesian_aoic",names(x))
+    names(x) <- gsub(table_068_code, "fijian_aoic",names(x))	
+    names(x) <- gsub(table_9z8_code, "chamorro",names(x))
+    names(x) <- gsub(table_9z9_code, "chamorro_aoic",names(x))
+    names(x) <- gsub(table_096_code, "marshallese",names(x))
+    names(x) <- gsub(table_176_code, "marshallese_aoic",names(x))
+    names(x) <- gsub(table_177_code, "palauan_aoic",names(x))
     
-  } else if (startsWith(table_code, "b") && startsWith(table_name, "asian")) {
+  } else if (startsWith(table_code, "b") && startsWith(table_name, "asian") && !startsWith(table_code, "b27001")) {
     table_013_code = paste0(table_code, "_013_")
     table_014_code = paste0(table_code, "_014_")
     table_015_code = paste0(table_code, "_015_")
@@ -317,51 +318,51 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     table_084_code = paste0(table_code, "_084_")
     table_085_code = paste0(table_code, "_085_")	
     
-    names(x) <- gsub(table_013_code, "indian", names(x))
-    names(x) <- gsub(table_014_code, "bangladeshi", names(x))
-    names(x) <- gsub(table_015_code, "cambodian", names(x))
-    names(x) <- gsub(table_016_code, "chinese", names(x))
-    names(x) <- gsub(table_017_code, "chinese_no_taiwan", names(x))
-    names(x) <- gsub(table_018_code, "taiwanese", names(x))
-    names(x) <- gsub(table_019_code, "filipino", names(x))
-    names(x) <- gsub(table_020_code, "hmong", names(x))
-    names(x) <- gsub(table_021_code, "indonesian", names(x))	
-    names(x) <- gsub(table_022_code, "japanese", names(x))
-    names(x) <- gsub(table_023_code, "korean", names(x))
-    names(x) <- gsub(table_024_code, "laotian", names(x))
-    names(x) <- gsub(table_025_code, "malaysian", names(x))
-    names(x) <- gsub(table_026_code, "pakistani", names(x))
-    names(x) <- gsub(table_027_code, "sri_lankan", names(x))
-    names(x) <- gsub(table_028_code, "thai", names(x))
-    names(x) <- gsub(table_029_code, "vietnamese", names(x))
-    names(x) <- gsub(table_032_code, "indian_aoic", names(x))	
-    names(x) <- gsub(table_033_code, "bangladeshi_aoic", names(x))
-    names(x) <- gsub(table_034_code, "cambodian_aoic", names(x))
-    names(x) <- gsub(table_035_code, "chinese_aoic", names(x))
-    names(x) <- gsub(table_036_code, "chinese_no_taiwan_aoic", names(x))
-    names(x) <- gsub(table_037_code, "taiwanese_aoic", names(x))
-    names(x) <- gsub(table_038_code, "filipino_aoic", names(x))
-    names(x) <- gsub(table_039_code, "hmong_aoic", names(x))
-    names(x) <- gsub(table_040_code, "indonesian_aoic", names(x))
-    names(x) <- gsub(table_041_code, "japanese_aoic", names(x))
-    names(x) <- gsub(table_042_code, "korean_aoic", names(x))
-    names(x) <- gsub(table_043_code, "laotian_aoic", names(x))
-    names(x) <- gsub(table_044_code, "malaysian_aoic", names(x))
-    names(x) <- gsub(table_045_code, "pakistani_aoic", names(x))	
-    names(x) <- gsub(table_046_code, "sri_lankan_aoic", names(x))
-    names(x) <- gsub(table_047_code, "thai_aoic", names(x))
-    names(x) <- gsub(table_048_code, "vietnamese_aoic", names(x))
-    names(x) <- gsub(table_072_code, "bhutanese", names(x))
-    names(x) <- gsub(table_073_code, "burmese", names(x))
-    names(x) <- gsub(table_075_code, "mongolian", names(x))
-    names(x) <- gsub(table_076_code, "nepalese", names(x))
-    names(x) <- gsub(table_081_code, "burmese_aoic", names(x))
-    names(x) <- gsub(table_083_code, "mongolian_aoic", names(x))	
-    names(x) <- gsub(table_084_code, "nepalese_aoic", names(x))
-    names(x) <- gsub(table_085_code, "okinawan_aoic", names(x))
+    names(x) <- gsub(table_013_code, "indian",names(x))
+    names(x) <- gsub(table_014_code, "bangladeshi",names(x))
+    names(x) <- gsub(table_015_code, "cambodian",names(x))
+    names(x) <- gsub(table_016_code, "chinese",names(x))
+    names(x) <- gsub(table_017_code, "chinese_no_taiwan",names(x))
+    names(x) <- gsub(table_018_code, "taiwanese",names(x))
+    names(x) <- gsub(table_019_code, "filipino",names(x))
+    names(x) <- gsub(table_020_code, "hmong",names(x))
+    names(x) <- gsub(table_021_code, "indonesian",names(x))	
+    names(x) <- gsub(table_022_code, "japanese",names(x))
+    names(x) <- gsub(table_023_code, "korean",names(x))
+    names(x) <- gsub(table_024_code, "laotian",names(x))
+    names(x) <- gsub(table_025_code, "malaysian",names(x))
+    names(x) <- gsub(table_026_code, "pakistani",names(x))
+    names(x) <- gsub(table_027_code, "sri_lankan",names(x))
+    names(x) <- gsub(table_028_code, "thai",names(x))
+    names(x) <- gsub(table_029_code, "vietnamese",names(x))
+    names(x) <- gsub(table_032_code, "indian_aoic",names(x))	
+    names(x) <- gsub(table_033_code, "bangladeshi_aoic",names(x))
+    names(x) <- gsub(table_034_code, "cambodian_aoic",names(x))
+    names(x) <- gsub(table_035_code, "chinese_aoic",names(x))
+    names(x) <- gsub(table_036_code, "chinese_no_taiwan_aoic",names(x))
+    names(x) <- gsub(table_037_code, "taiwanese_aoic",names(x))
+    names(x) <- gsub(table_038_code, "filipino_aoic",names(x))
+    names(x) <- gsub(table_039_code, "hmong_aoic",names(x))
+    names(x) <- gsub(table_040_code, "indonesian_aoic",names(x))
+    names(x) <- gsub(table_041_code, "japanese_aoic",names(x))
+    names(x) <- gsub(table_042_code, "korean_aoic",names(x))
+    names(x) <- gsub(table_043_code, "laotian_aoic",names(x))
+    names(x) <- gsub(table_044_code, "malaysian_aoic",names(x))
+    names(x) <- gsub(table_045_code, "pakistani_aoic",names(x))	
+    names(x) <- gsub(table_046_code, "sri_lankan_aoic",names(x))
+    names(x) <- gsub(table_047_code, "thai_aoic",names(x))
+    names(x) <- gsub(table_048_code, "vietnamese_aoic",names(x))
+    names(x) <- gsub(table_072_code, "bhutanese",names(x))
+    names(x) <- gsub(table_073_code, "burmese",names(x))
+    names(x) <- gsub(table_075_code, "mongolian",names(x))
+    names(x) <- gsub(table_076_code, "nepalese",names(x))
+    names(x) <- gsub(table_081_code, "burmese_aoic",names(x))
+    names(x) <- gsub(table_083_code, "mongolian_aoic",names(x))	
+    names(x) <- gsub(table_084_code, "nepalese_aoic",names(x))
+    names(x) <- gsub(table_085_code, "okinawan_aoic",names(x))
     
-  } else {
-    stop('The column renaming function did not work for the table you have submitted. Please check your table.')
+  } else if (!startsWith(table_code, "b27001")) {
+    stop('The column renaming function did not work...')
   }
   
   
@@ -543,7 +544,50 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     
   }
   
-  if (startsWith(table_code, "s2802") | startsWith(table_code, "s2701")) {
+  if (startsWith(table_code, "b27001")) {
+    
+    x_long <- x %>%
+      pivot_longer(
+        cols = -c(geoid, name, geolevel),
+        names_to = c("ethnic_group", "measure"),
+        names_pattern = "^(b27001_[a-z0-9]+)_(pop_moe|raw_moe|pop|raw)$",
+        values_to = "value"
+      ) %>%
+      pivot_wider(names_from = measure, values_from = value) %>%
+      mutate(
+        rate     = ifelse(pop <= 0 | is.na(pop), NA, raw / pop * 100),
+        rate_moe = moe_prop(raw, pop, raw_moe, pop_moe) * 100
+      )
+    # rename ethnic_group codes to labels
+    code_to_label <- c(
+      "b27001_013" = "indian",     "b27001_014" = "bangladeshi",
+      "b27001_015" = "cambodian",  "b27001_016" = "chinese",
+      "b27001_017" = "chinese_no_taiwan", "b27001_018" = "taiwanese",
+      "b27001_019" = "filipino",   "b27001_020" = "hmong",
+      "b27001_021" = "indonesian", "b27001_022" = "japanese",
+      "b27001_023" = "korean",     "b27001_024" = "laotian",
+      "b27001_025" = "malaysian",  "b27001_026" = "pakistani",
+      "b27001_027" = "sri_lankan", "b27001_028" = "thai",
+      "b27001_029" = "vietnamese", "b27001_032" = "indian_aoic",
+      "b27001_033" = "bangladeshi_aoic", "b27001_034" = "cambodian_aoic",
+      "b27001_035" = "chinese_aoic", "b27001_036" = "chinese_no_taiwan_aoic",
+      "b27001_037" = "taiwanese_aoic", "b27001_038" = "filipino_aoic",
+      "b27001_039" = "hmong_aoic", "b27001_040" = "indonesian_aoic",
+      "b27001_041" = "japanese_aoic", "b27001_042" = "korean_aoic",
+      "b27001_043" = "laotian_aoic", "b27001_044" = "malaysian_aoic",
+      "b27001_045" = "pakistani_aoic", "b27001_046" = "sri_lankan_aoic",
+      "b27001_047" = "thai_aoic",  "b27001_048" = "vietnamese_aoic",
+      "b27001_072" = "bhutanese",  "b27001_073" = "burmese",
+      "b27001_075" = "mongolian",  "b27001_076" = "nepalese",
+      "b27001_081" = "burmese_aoic", "b27001_083" = "mongolian_aoic",
+      "b27001_084" = "nepalese_aoic", "b27001_085" = "okinawan_aoic"
+    )
+    
+    x_long <- x_long %>%
+      mutate(ethnic_group = recode(ethnic_group, !!!code_to_label))
+  }
+  
+  if (startsWith(table_code, "s2802")) {
     old_names <- colnames(x)[-(1:3)]
     new_names <- c("total_pop", "black_pop", "aian_pop", "asian_pop", "pacisl_pop",
                    "other_pop", "twoormor_pop", "latino_pop", "nh_white_pop", 
@@ -625,20 +669,20 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   }
   
   # Finish up data cleaning
-    # make colnames lower case
-    colnames(x_long) <- tolower(colnames(x_long))
-    
-    # Clean geo names
-    x_long$name <- gsub(", California", "", x_long$name)
-    x_long$name <- gsub(" County", "", x_long$name)
-    x_long$name <- gsub(" city", "", x_long$name)
-    x_long$name <- gsub(" town", "", x_long$name)
-    x_long$name <- gsub(" CDP", "", x_long$name)
-    x_long$name <- str_remove(x_long$name,  "\\s*\\(.*\\)\\s*")
-    x_long$name <- gsub("; California", "", x_long$name)
+  # make colnames lower case
+  colnames(x_long) <- tolower(colnames(x_long))
+  
+  # Clean geo names
+  x_long$name <- gsub(", California", "", x_long$name)
+  x_long$name <- gsub(" County", "", x_long$name)
+  x_long$name <- gsub(" city", "", x_long$name)
+  x_long$name <- gsub(" town", "", x_long$name)
+  x_long$name <- gsub(" CDP", "", x_long$name)
+  x_long$name <- str_remove(x_long$name,  "\\s*\\(.*\\)\\s*")
+  x_long$name <- gsub("; California", "", x_long$name)
   
   ### Coefficient of Variation (CV) CALCS #####
-
+  
   ### calc cv's
   ## Calculate CV values for all rates - store in columns as cv_[race]_rate
   if (!is.na(cv_threshold)){
@@ -663,14 +707,18 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     # if pop_threshold ex_longists and cv_threshold ex_longists, check population and cv (i.e. B25003, S2301, S2802, S2701, B25014)
     ## Screen out rates with high CVs and low populations
     df$rate <- ifelse(df$rate_cv > cv_threshold, NA, ifelse(df$pop < pop_threshold, NA, df$rate))
-    df$raw <- ifelse(df$rate_cv > cv_threshold, NA, ifelse(df$pop < pop_threshold, NA, df$raw))
-    
+    if (startsWith(table_code, "b27001")) {
+      # for b27001 only suppress raw based on pop threshold, not CV since the cvs are so big for uninsured
+      df$raw <- ifelse(df$pop < pop_threshold, NA, df$raw)
+    } else {
+      df$raw <- ifelse(df$rate_cv > cv_threshold, NA, ifelse(df$pop < pop_threshold, NA, df$raw))
+    }
   } else {
     # Only DP05 should hit this condition
     # Will use to change population values < 0 to NA (negative values are Census annotations)
     pop_columns <- colnames(dplyr::select(df, ends_with("_pop")))
-    df[,pop_columns] <- sapply(df[,pop_columns], function(x_long) ifelse(x_long<0, NA, x_long))
-    
+    # df[,pop_columns] <- sapply(df[,pop_columns], function(x_long) ifelse(x_long<0, NA, x_long))
+    df[,pop_columns] <- sapply(df[,pop_columns], function(val) ifelse(val < 0, NA, val))
   }
   
   df_wide <- pivot_wider(df,
@@ -682,4 +730,3 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   
   return(df_wide)
 }
-
