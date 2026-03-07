@@ -744,8 +744,7 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     # Only DP05 should hit this condition
     # Will use to change population values < 0 to NA (negative values are Census annotations)
     pop_columns <- colnames(dplyr::select(df, ends_with("_pop")))
-    # df[,pop_columns] <- sapply(df[,pop_columns], function(x_long) ifelse(x_long<0, NA, x_long))
-    df[,pop_columns] <- sapply(df[,pop_columns], function(val) ifelse(val < 0, NA, val))
+    df[,pop_columns] <- sapply(df[,pop_columns], function(val) ifelse(val < 0, NA, val)) # confusing if variable is also called x_long so I changed it for clarity
   }
   
   df_wide <- pivot_wider(df,
