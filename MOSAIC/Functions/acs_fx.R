@@ -228,7 +228,8 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   #	print(column_metadata)  # this df was used to create the renaming rules below
   
   # renaming rules will change depending on type of census table
-  if (startsWith(table_code, "b") && startsWith(table_name, "nhpi")) {
+  # JZ 3/9/26: Exclude renaming colunns for table b25014 for overcrowded housing
+  if (startsWith(table_code, "b") && startsWith(table_name, "nhpi") && table_code != "b25014") {
     table_051_code = paste0(table_code, "_051_")
     table_052_code = paste0(table_code, "_052_")
     table_053_code = paste0(table_code, "_053_")
@@ -273,7 +274,8 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     names(x) <- gsub(table_176_code, "marshallese_aoic", names(x))
     names(x) <- gsub(table_177_code, "palauan_aoic", names(x))
     
-  } else if (startsWith(table_code, "b") && startsWith(table_name, "asian")) {
+    # JZ 3/9/26: Exclude renaming colunns for table b25014 for overcrowded housing
+  } else if (startsWith(table_code, "b") && startsWith(table_name, "asian") && table_code != "b25014") {
     table_013_code = paste0(table_code, "_013_")
     table_014_code = paste0(table_code, "_014_")
     table_015_code = paste0(table_code, "_015_")
