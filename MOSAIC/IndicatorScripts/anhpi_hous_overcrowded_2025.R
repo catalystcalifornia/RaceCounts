@@ -195,7 +195,7 @@ totals<-totals%>%left_join(moe, by=c("var_name"="var_name2",
 library(tibble)
 
 race_lookup <- tribble(
-  ~race_code, ~race,
+  ~race_code, ~ethnic_group,
   "013", "indian",
   "014", "bangladeshi",
   "015", "cambodian",
@@ -263,8 +263,6 @@ total_num_values <- totals_re %>%
 # I just looked at the totals_re df and filtered geoid=="0600562" & geolevel=='place' and did a quick sum of estimate where race==indian excluding b25014_013_001 and I got 26 which is what I see in total_num_values
 
 # join tables together so we end up with a column for the numerator and denominator
-
-
 
 total_num_values<-total_num_values%>%
   left_join(totals_re%>%filter(str_ends(var_name, "_001")), by=c( "name" = "name",

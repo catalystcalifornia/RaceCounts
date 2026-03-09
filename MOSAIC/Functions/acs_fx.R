@@ -229,7 +229,9 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   
   # renaming rules will change depending on type of census table
   # JZ 3/9/26: Exclude renaming colunns for table b25014 for overcrowded housing
-  if (startsWith(table_code, "b") && startsWith(table_name, "nhpi") && table_code != "b25014") {
+  if (table_code == "b25014") {
+    # Skip renaming for overcrowded housing table
+  } else if (startsWith(table_code, "b") && startsWith(table_name, "nhpi")) {
     table_051_code = paste0(table_code, "_051_")
     table_052_code = paste0(table_code, "_052_")
     table_053_code = paste0(table_code, "_053_")
@@ -275,7 +277,7 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     names(x) <- gsub(table_177_code, "palauan_aoic", names(x))
     
     # JZ 3/9/26: Exclude renaming colunns for table b25014 for overcrowded housing
-  } else if (startsWith(table_code, "b") && startsWith(table_name, "asian") && table_code != "b25014") {
+  } else if (startsWith(table_code, "b") && startsWith(table_name, "asian")) {
     table_013_code = paste0(table_code, "_013_")
     table_014_code = paste0(table_code, "_014_")
     table_015_code = paste0(table_code, "_015_")
@@ -366,7 +368,7 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     stop('The column renaming function did not work for the table you have submitted. Please check your table.')
   }
   
-  if(endsWith(table_code, "b25014")) { # JZ updated version 3/6/2026 
+  if(endsWith(table_code, "b25014")) { # JZ updated version 3/9/2026 
     
     # Overcrowded Housing #
     # ## Occupants per Room
@@ -461,8 +463,15 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
       left_join(race_lookup, by = "race_code")
     
     ### Sum the numerator columns 005e-013e for each race group and geolevel to get our final numerator (units with 1 or more occupant)
-
-     total_num_values<-total_num_values%>%
+    
+    total_num_values <- totals_re %>%
+      filter(!str_ends(var_name, "_001"))%>% # filter out the population total value this will be our denominator
+      group_by(name, geoid, geolevel, race) %>%
+      summarise(raw = sum(estimate))
+    
+    # join tables together so we end up with a column for the numerator and denominator
+    
+    total_num_values<-total_num_values%>%
       left_join(totals_re%>%filter(str_ends(var_name, "_001")), by=c( "name" = "name",
                                                                       "geoid" = "geoid",
                                                                       "geolevel" = "geolevel",
@@ -470,7 +479,7 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
       select(name, geoid, geolevel, race, var_name,  estimate, raw, moe)%>%
       rename("pop"="estimate",
              "pop_moe"="moe")
-     
+    
      ### calculate the total_raw_moe using moe_sum (need to sort MOE values first to make sure highest MOE is used in case of multiple zero estimates)
      ### methodology source is text under table on slide 52 here: https://www.census.gov/content/dam/Census/programs-surveys/acs/guidance/training-presentations/20180418_MOE.pdf
      
@@ -498,29 +507,32 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
      
      df <- df %>%
        group_by(name, geoid, geolevel,race)%>%
-       mutate(rate_moe=moe_prop(raw, pop, raw_moe, pop_moe)*100)  # https://walker-data.com/tidycensus/reference/moe_prop.html
+       mutate(rate_moe=moe_prop(raw, pop, raw_moe, pop_moe)*100)%>%  # https://walker-data.com/tidycensus/reference/moe_prop.html
+     rename("ethnic_group"="race")   # rename columns so that later functions within acs_prep work
+   
      
      
      # Now pivot the table back to wider for RC formatting in order to use subsequent RC functions
-     
-     df_wide<-df%>%
-       select(-var_name) %>%              # drop var_name since I don't need it
-       pivot_wider(
-         id_cols = c(name, geoid, geolevel),    # keep these as identifiers
-         names_from = race,               # pivot based on race
-         values_from = c(pop, raw, pop_moe, raw_moe, rate, rate_moe),
-         names_glue = "{race}_{.value}"   # format column names so that the race value is attached
-       )%>%
-       mutate(total_rate = NA_real_) # for other RC functions to work we need a total_rate column even though for MOSAIC these values will just all be NA
-     
-     ### Convert any NaN to NA
-     df_wide <- df_wide %>% 
-       mutate_all(function(x) ifelse(is.nan(x), NA, x))%>%
-       ungroup()
+     # 
+     # df_wide<-df%>%
+     #   select(-var_name) %>%              # drop var_name since I don't need it
+     #   pivot_wider(
+     #     id_cols = c(name, geoid, geolevel),    # keep these as identifiers
+     #     names_from = race,               # pivot based on race
+     #     values_from = c(pop, raw, pop_moe, raw_moe, rate, rate_moe),
+     #     names_glue = "{race}_{.value}"   # format column names so that the race value is attached
+     #   )%>%
+     #   mutate(total_rate = NA_real_) # for other RC functions to work we need a total_rate column even though for MOSAIC these values will just all be NA
+     # 
+     # ### Convert any NaN to NA
+     # df_wide <- df_wide %>% 
+     #   mutate_all(function(x) ifelse(is.nan(x), NA, x))%>%
+     #   ungroup()
      
      # assign back to asian_data table
      
-     x<-df_wide
+     x_long<-df%>%
+       ungroup()
     
   }
   
