@@ -227,7 +227,6 @@ nhpi_df <- prep_acs(nhpi_data, 'nhpi', table_code, cv_threshold, pop_threshold)
 
 #### TESTING for NHPI
 
-
 totals <- nhpi_data %>%
   select(name, geoid, geolevel,   matches("_(001|005|006|007|011|012|013)e$"))
 
@@ -248,21 +247,174 @@ moe <- nhpi_data %>%
 moe <- moe %>%
   pivot_longer(
     cols = -c(name, geoid, geolevel),
-    names_to = "var_name",
-    values_to = "estimate"
+    names_to = "var_name2",
+    values_to = "moe"
   )
 
 
+totals$var_name <- substr(totals$var_name, 1, nchar(totals$var_name)-1) # remove the e in the variable name
 
+moe$var_name2 <- substr(moe$var_name2, 1, nchar(moe$var_name2)-1) # remove the m in the variable name
 
+# join the total and moe tables together
 
+totals<-totals%>%left_join(moe, by=c("var_name"="var_name2",
+                                     "geoid" = "geoid",
+                                     "name" = "name",
+                                     "geolevel" = "geolevel"))%>%
+  select(name, geoid, geolevel, var_name, estimate, moe)
 
+library(tibble)
 
+race_lookup <- tribble(
+  ~race_code, ~race,
+  
+  # Asian detailed
+  "013", "indian",
+  "014", "bangladeshi",
+  "015", "cambodian",
+  "016", "chinese",
+  "017", "chinese_no_taiwan",
+  "018", "taiwanese",
+  "019", "filipino",
+  "020", "hmong",
+  "021", "indonesian",
+  "022", "japanese",
+  "023", "korean",
+  "024", "laotian",
+  "025", "malaysian",
+  "026", "pakistani",
+  "027", "sri_lankan",
+  "028", "thai",
+  "029", "vietnamese",
+  
+  # Asian AOIC
+  "032", "indian_aoic",
+  "033", "bangladeshi_aoic",
+  "034", "cambodian_aoic",
+  "035", "chinese_aoic",
+  "036", "chinese_no_taiwan_aoic",
+  "037", "taiwanese_aoic",
+  "038", "filipino_aoic",
+  "039", "hmong_aoic",
+  "040", "indonesian_aoic",
+  "041", "japanese_aoic",
+  "042", "korean_aoic",
+  "043", "laotian_aoic",
+  "044", "malaysian_aoic",
+  "045", "pakistani_aoic",
+  "046", "sri_lankan_aoic",
+  "047", "thai_aoic",
+  "048", "vietnamese_aoic",
+  
+  # Additional Asian
+  "072", "bhutanese",
+  "073", "burmese",
+  "075", "mongolian",
+  "076", "nepalese",
+  
+  # Additional Asian AOIC
+  "081", "burmese_aoic",
+  "083", "mongolian_aoic",
+  "084", "nepalese_aoic",
+  "085", "okinawan_aoic",
+  
+  # NHPI detailed
+  "051", "polynesian",
+  "052", "nat_hawaii",
+  "053", "samoan",
+  "054", "tongan",
+  "055", "micronesian",
+  "056", "guam_chamorro",
+  "057", "melanesian",
+  "058", "fijian",
+  
+  # NHPI AOIC
+  "061", "polynesian_aoic",
+  "062", "nat_hawaii_aoic",
+  "063", "samoan_aoic",
+  "064", "tongan_aoic",
+  "065", "micronesian_aoic",
+  "066", "guam_chamorro_aoic",
+  "067", "melanesian_aoic",
+  "068", "fijian_aoic",
+  
+  # Other NHPI detailed
+  "9z8", "chamorro",
+  "096", "marshallese",
+  
+  # Other NHPI AOIC
+  "9z9", "chamorro_aoic",
+  "176", "marshallese_aoic",
+  "177", "palauan_aoic"
+)
+# Join the race lookup to my totals df by extracting and creating a race_code column from var_name
 
+totals_re<-totals%>%
+  mutate(
+    race_code = str_split(var_name, "_", simplify = TRUE)[,2]) %>%
+  left_join(race_lookup, by = "race_code")
+
+### Sum the numerator columns 005e-013e for each race group and geolevel to get our final numerator (units with 1 or more occupant)
+
+total_num_values <- totals_re %>%
+  filter(!str_ends(var_name, "_001"))%>% # filter out the population total value this will be our denominator
+  group_by(name, geoid, geolevel, race) %>%
+  summarise(raw = sum(estimate))
+
+# join tables together so we end up with a column for the numerator and denominator
+
+total_num_values<-total_num_values%>%
+  left_join(totals_re%>%filter(str_ends(var_name, "_001")), by=c( "name" = "name",
+                                                                  "geoid" = "geoid",
+                                                                  "geolevel" = "geolevel",
+                                                                  "race" = "race"))%>%
+  select(name, geoid, geolevel, race, var_name,  estimate, raw, moe)%>%
+  rename("pop"="estimate",
+         "pop_moe"="moe")
+
+### calculate the total_raw_moe using moe_sum (need to sort MOE values first to make sure highest MOE is used in case of multiple zero estimates)
+### methodology source is text under table on slide 52 here: https://www.census.gov/content/dam/Census/programs-surveys/acs/guidance/training-presentations/20180418_MOE.pdf
+
+total_num_moes <- totals_re %>%
+  filter(!str_ends(var_name, "_001"))%>% # filter out the population total moes to calculate only aggregated MOEs
+  group_by(name, geoid, geolevel, race) %>%
+  arrange(desc(moe), .by_group = TRUE) %>%
+  summarise(raw_moe = moe_sum(moe, estimate, na.rm=TRUE))   # https://walker-data.com/tidycensus/reference/moe_sum.html
+
+#### join numerator totals and numerator MOEs together to one df
+
+df <- total_num_values%>%
+  left_join(total_num_moes,  by=c( "name" = "name",
+                                   "geoid" = "geoid",
+                                   "geolevel" = "geolevel",
+                                   "race" = "race"))
+
+### calculate rates
+
+df<-df%>%
+  group_by(name, geoid, geolevel, race) %>%
+  mutate(rate = ifelse(raw <= 0, NA, raw/pop*100)) # set rate == NA if the raw estimate is <=0
+
+### calculate the moe for rates
+
+df <- df %>%
+  group_by(name, geoid, geolevel,race)%>%
+  mutate(rate_moe=moe_prop(raw, pop, raw_moe, pop_moe)*100)%>%  # https://walker-data.com/tidycensus/reference/moe_prop.html
+  rename("ethnic_group"="race")   # rename columns so that later functions within acs_prep work
+
+df_long<-df%>%select(-var_name)%>%ungroup()
+
+df_long$rate_cv <- ifelse(df_long$rate==0, NA, df_long$rate_moe/1.645/df_long$rate*100)
+
+df_wide <- pivot_wider(df_long,
+                       names_from = ethnic_group,
+                       values_from = c(pop, pop_moe, raw, raw_moe, rate, rate_moe, rate_cv),
+                       names_glue = "{ethnic_group}_{.value}")
 
 #####  screening:
 
-nhpi_df_screened <- dplyr::select(nhpi_df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_cv"))
+nhpi_df_screened <- dplyr::select(df_wide, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_cv"))
 
 d <- nhpi_df_screened
 
@@ -278,6 +430,21 @@ source(".\\Functions\\RC_Functions.R")
 d$asbest = asbest    # Adds asbest value for RC Functions
 
 d <- count_values(d) #calculate number of "_rate" values
+
+names(d)[grepl("_rate$", names(d))]
+
+rates <- d %>%
+  dplyr::select(-ends_with("_no_rate"), -any_of("total_rate")) %>%
+  dplyr::mutate(values_count = rowSums(!is.na(select(., ends_with("_rate"))))) %>%
+  dplyr::select(geoid, geolevel, values_count)
+
+d <- d %>%
+  left_join(rates, by=c("geoid","geolevel"))
+
+
+
+
+
 d <- calc_best(d) #calculate best rates -- be sure to define 'asbest' accordingly before running this function.
 d <- calc_diff(d) #calculate difference from best
 d <- calc_avg_diff(d) #calculate (row wise) mean difference from best

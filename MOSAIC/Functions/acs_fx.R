@@ -373,8 +373,6 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     # Overcrowded Housing #
     # ## Occupants per Room
     
-    print(str(x))   # DEBUG
-    
     ### Extract total values: these are our columns of interest we need to combine to define overcrowded housing (units with 1 or more person occupying)  
     
     totals <- x %>%
@@ -393,7 +391,14 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     moe <- x %>%
       select(name, geoid, geolevel,   matches("_(001|005|006|007|011|012|013)m$"))
     
-    moe <- moe %>% pivot_longer(4:290, names_to="var_name2", values_to = "moe")
+    # moe <- moe %>% pivot_longer(4:290, names_to="var_name2", values_to = "moe")
+    
+    moe <- moe %>%
+      pivot_longer(
+        cols = -c(name, geoid, geolevel),
+        names_to = "var_name2",
+        values_to = "moe"
+      )
     
     totals$var_name <- substr(totals$var_name, 1, nchar(totals$var_name)-1) # remove the e in the variable name
     
