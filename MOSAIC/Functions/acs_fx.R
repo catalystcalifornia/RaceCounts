@@ -380,7 +380,14 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     totals <- x %>%
       select(name, geoid, geolevel,   matches("_(001|005|006|007|011|012|013)e$"))
     
-    totals <- totals %>% pivot_longer(4:290, names_to="var_name", values_to = "estimate")
+    # totals <- totals %>% pivot_longer(4:290, names_to="var_name", values_to = "estimate")
+    
+    totals <- totals %>%
+      pivot_longer(
+        cols = -c(name, geoid, geolevel),
+        names_to = "var_name",
+        values_to = "estimate"
+      )
     
     # repeat this step for MOEs
     moe <- x %>%
@@ -532,6 +539,7 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
      # assign back to asian_data table
      
      x_long<-df%>%
+       select(-var_name)%>% # remove unnecessary variable that messes up the pivot_wider later in the function
        ungroup()
     
   }

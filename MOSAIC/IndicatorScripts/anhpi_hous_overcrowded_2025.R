@@ -152,180 +152,6 @@ nhpi_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.nhpi_acs_5yr_%s_multigeo_
 
 asian_df <- prep_acs(asian_data, 'asian', table_code, cv_threshold, pop_threshold)
 
-#########ACS PREP FX TEST ASIAN ONLY############
-
-# Overcrowded Housing #
-# ## Occupants per Room
-
-
-### Extract total values:  
-
-totals <- asian_data %>%
-  select(name, geoid, geolevel,   matches("_(001|005|006|007|011|012|013)e$"))
-
-totals <- totals %>% pivot_longer(4:290, names_to="var_name", values_to = "estimate")
-
-# repeat this step for MOEs
-moe <- asian_data %>%
-  select(name, geoid, geolevel,   matches("_(001|005|006|007|011|012|013)m$"))
-
-moe <- moe %>% pivot_longer(4:290, names_to="var_name2", values_to = "moe")
-
-totals$var_name <- substr(totals$var_name, 1, nchar(totals$var_name)-1) # remove the e in the variable name
-
-moe$var_name2 <- substr(moe$var_name2, 1, nchar(moe$var_name2)-1) # remove the m in the variable name
-
-# join the total and moe tables together
-
-totals<-totals%>%left_join(moe, by=c("var_name"="var_name2",
-                                   "geoid" = "geoid",
-                                   "name" = "name",
-                                   "geolevel" = "geolevel"))%>%
-  select(name, geoid, geolevel, var_name, estimate, moe)
-
-# Quick QA: Go back to asian_data df and filter for geoid == 0600562 and geolevel== 'place' and look at estimate/moe values for b25014_013_001, b25014_013_005
-# etc. and make sure values match what is in the totals df
-
-# reformat table even more so that the races are its own columns
-
-# start with a race code table: I took this by copy pasting lines 320-361 into chatgpt
-# from the MOSAIC/Functions/acs_fx.R script and asking chatgpt to format that into the race_lookup tribble so I would not have to manually
-# retype all the asian variable coding myself
-
-library(tibble)
-
-race_lookup <- tribble(
-  ~race_code, ~ethnic_group,
-  "013", "indian",
-  "014", "bangladeshi",
-  "015", "cambodian",
-  "016", "chinese",
-  "017", "chinese_no_taiwan",
-  "018", "taiwanese",
-  "019", "filipino",
-  "020", "hmong",
-  "021", "indonesian",
-  "022", "japanese",
-  "023", "korean",
-  "024", "laotian",
-  "025", "malaysian",
-  "026", "pakistani",
-  "027", "sri_lankan",
-  "028", "thai",
-  "029", "vietnamese",
-  "032", "indian_aoic",
-  "033", "bangladeshi_aoic",
-  "034", "cambodian_aoic",
-  "035", "chinese_aoic",
-  "036", "chinese_no_taiwan_aoic",
-  "037", "taiwanese_aoic",
-  "038", "filipino_aoic",
-  "039", "hmong_aoic",
-  "040", "indonesian_aoic",
-  "041", "japanese_aoic",
-  "042", "korean_aoic",
-  "043", "laotian_aoic",
-  "044", "malaysian_aoic",
-  "045", "pakistani_aoic",
-  "046", "sri_lankan_aoic",
-  "047", "thai_aoic",
-  "048", "vietnamese_aoic",
-  "072", "bhutanese",
-  "073", "burmese",
-  "075", "mongolian",
-  "076", "nepalese",
-  "081", "burmese_aoic",
-  "083", "mongolian_aoic",
-  "084", "nepalese_aoic",
-  "085", "okinawan_aoic"
-)
-
-
-# Join the race lookup to my totals df by extracting and creating a race_code column from var_name
-
-totals_re<-totals%>%
-  mutate(
-    race_code = str_split(var_name, "_", simplify = TRUE)[,2]) %>%
-  left_join(race_lookup, by = "race_code")
-
-# Quick QA: Look up metadata in rda dictionary https://www.healthycity.org/rda-dev/pgdatadictionary/ and just 
-# do control+F for race codes lke _017_ or _014_ and see what the metadata in data dictionary is and compare
-# to how it got recoded in totals_re I think looks good. 
-
-### sum the numerator columns 005e-013e for each race group and geolevel
-
-total_num_values <- totals_re %>%
-  filter(!str_ends(var_name, "_001"))%>% # filter out the population total value this will be our denominator
-  group_by(name, geoid, geolevel, race) %>%
-  summarise(raw = sum(estimate))
-
-# Quick QA: 
-# I just looked at the totals_re df and filtered geoid=="0600562" & geolevel=='place' and did a quick sum of estimate where race==indian excluding b25014_013_001 and I got 26 which is what I see in total_num_values
-
-# join tables together so we end up with a column for the numerator and denominator
-
-total_num_values<-total_num_values%>%
-  left_join(totals_re%>%filter(str_ends(var_name, "_001")), by=c( "name" = "name",
-                                                                  "geoid" = "geoid",
-                                                        "geolevel" = "geolevel",
-                                                        "race" = "race"))%>%
-  select(name, geoid, geolevel, race, var_name,  estimate, raw, moe)%>%
-  rename("pop"="estimate",
-         "pop_moe"="moe")
-
-### calculate the total_raw_moe using moe_sum (need to sort MOE values first to make sure highest MOE is used in case of multiple zero estimates)
-### methodology source is text under table on slide 52 here: https://www.census.gov/content/dam/Census/programs-surveys/acs/guidance/training-presentations/20180418_MOE.pdf
-
-total_num_moes <- totals_re %>%
-  filter(!str_ends(var_name, "_001"))%>% # filter out the population total moes to calculate only aggregated MOEs
-  group_by(name, geoid, geolevel, race) %>%
-  arrange(desc(moe), .by_group = TRUE) %>%
-  summarise(raw_moe = moe_sum(moe, estimate, na.rm=TRUE))   # https://walker-data.com/tidycensus/reference/moe_sum.html
-
-#### join numerator totals and numerator MOEs together to one df
-
-df <- total_num_values%>%
-  left_join(total_num_moes,  by=c( "name" = "name",
-                                   "geoid" = "geoid",
-                                   "geolevel" = "geolevel",
-                                   "race" = "race"))
-
-### calculate rates
-
-df<-df%>%
-   group_by(name, geoid, geolevel, race) %>%
-  mutate(rate = ifelse(raw <= 0, NA, raw/pop*100)) # set rate == NA if the raw estimate is <=0
-
-### calculate the moe for rates
-
-df <- df %>%
-  group_by(name, geoid, geolevel,race)%>%
-  mutate(rate_moe=moe_prop(raw, pop, raw_moe, pop_moe)*100)  # https://walker-data.com/tidycensus/reference/moe_prop.html
-  
-
-# Now pivot the table back to wider for RC formatting in order to use subsequent RC functions
-
-df_wide<-df%>%
-  select(-var_name) %>%              # drop var_name since I don't need it
-  pivot_wider(
-    id_cols = c(name, geoid, geolevel),    # keep these as identifiers
-    names_from = race,               # pivot based on race
-    values_from = c(pop, raw, pop_moe, raw_moe, rate, rate_moe),
-    names_glue = "{race}_{.value}"   # format column names so that the race value is attached
-  )%>%
-  mutate(total_rate = NA_real_) # for other RC functions to work we need a total_rate column even though for MOSAIC these values will just all be NA
-
-### Convert any NaN to NA
-df_wide <- df_wide %>% 
-  mutate_all(function(x) ifelse(is.nan(x), NA, x))%>%
-  ungroup()
-
-# assign as asian_df for subsequent functions
-
-asian_df<-df_wide
-
-############### MOVE ON TO SCREENING 
-
 asian_df_screened <- dplyr::select(asian_df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_cv"))
 
 d <- asian_df_screened
@@ -383,23 +209,58 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
 ############## ASIAN: COUNTY, STATE, CITY METADATA  ##############
 
 ###update info for postgres tables###
-county_table_name <- paste0(tolower(race_name), "_econ_internet_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
-state_table_name <- paste0(tolower(race_name), "_econ_internet_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
-city_table_name <- paste0(tolower(race_name), "_econ_internet_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
+county_table_name <- paste0(tolower(race_name), "_hous_overcrowded_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
+state_table_name <- paste0(tolower(race_name), "_hous_overcrowded_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
+city_table_name <- paste0(tolower(race_name), "_hous_overcrowded_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
 start_yr <- curr_yr-4
 
-indicator <- paste0("Internet access (Any kind of broadband) ", str_to_title(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
+indicator <- paste0("Overcrowded housing (defined as 1/room in a unit) ", str_to_title(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
 source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table ", toupper(table_code), ", https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## ASIAN: SEND TO POSTGRES #######
 to_postgres(county_table,state_table, 'mosaic')
 city_to_postgres(city_table, 'mosaic')
 
-dbDisconnect(con)
-
 
 #### NHPI: Pre-RC CALCS ##############
 nhpi_df <- prep_acs(nhpi_data, 'nhpi', table_code, cv_threshold, pop_threshold)
+
+#### TESTING for NHPI
+
+
+totals <- nhpi_data %>%
+  select(name, geoid, geolevel,   matches("_(001|005|006|007|011|012|013)e$"))
+
+
+
+totals <- totals %>%
+  pivot_longer(
+    cols = -c(name, geoid, geolevel),
+    names_to = "var_name",
+    values_to = "estimate"
+  )
+
+moe <- nhpi_data %>%
+  select(name, geoid, geolevel,   matches("_(001|005|006|007|011|012|013)m$"))
+
+# moe <- moe %>% pivot_longer(4:290, names_to="var_name2", values_to = "moe")
+
+moe <- moe %>%
+  pivot_longer(
+    cols = -c(name, geoid, geolevel),
+    names_to = "var_name",
+    values_to = "estimate"
+  )
+
+
+
+
+
+
+
+
+
+#####  screening:
 
 nhpi_df_screened <- dplyr::select(nhpi_df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_cv"))
 
