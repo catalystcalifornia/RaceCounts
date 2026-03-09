@@ -44,19 +44,6 @@ count_values <- function(x) {
   return(x)
 }
 
-#####calculate number of non-NA raced "_rate" values: JZ VERSION 3/9/26#####
-count_values_jz <- function(x) {
-  rates <- x %>%
-    dplyr::select(geoid, geolevel, ends_with("_rate"), -ends_with("_no_rate"), -any_of("total_rate")) %>%
-    dplyr::mutate(values_count = rowSums(!is.na(select(., ends_with("_rate"))))) %>%
-    dplyr::select(geoid, geolevel, values_count)
-  
-  x <- x %>%
-    left_join(rates, by=c("geoid","geolevel"))
-  
-  return(x)
-}
-
 #####calculate best rate#####
 calc_best <- function(x) {
   # disable scientific notation

@@ -420,9 +420,10 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     # retype all the asian variable coding myself
     
     library(tibble)
-    
     race_lookup <- tribble(
       ~race_code, ~race,
+      
+      # Asian detailed
       "013", "indian",
       "014", "bangladeshi",
       "015", "cambodian",
@@ -440,6 +441,8 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
       "027", "sri_lankan",
       "028", "thai",
       "029", "vietnamese",
+      
+      # Asian AOIC
       "032", "indian_aoic",
       "033", "bangladeshi_aoic",
       "034", "cambodian_aoic",
@@ -457,16 +460,48 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
       "046", "sri_lankan_aoic",
       "047", "thai_aoic",
       "048", "vietnamese_aoic",
+      
+      # Additional Asian
       "072", "bhutanese",
       "073", "burmese",
       "075", "mongolian",
       "076", "nepalese",
+      
+      # Additional Asian AOIC
       "081", "burmese_aoic",
       "083", "mongolian_aoic",
       "084", "nepalese_aoic",
-      "085", "okinawan_aoic"
+      "085", "okinawan_aoic",
+      
+      # NHPI detailed
+      "051", "polynesian",
+      "052", "nat_hawaii",
+      "053", "samoan",
+      "054", "tongan",
+      "055", "micronesian",
+      "056", "guam_chamorro",
+      "057", "melanesian",
+      "058", "fijian",
+      
+      # NHPI AOIC
+      "061", "polynesian_aoic",
+      "062", "nat_hawaii_aoic",
+      "063", "samoan_aoic",
+      "064", "tongan_aoic",
+      "065", "micronesian_aoic",
+      "066", "guam_chamorro_aoic",
+      "067", "melanesian_aoic",
+      "068", "fijian_aoic",
+      
+      # Other NHPI detailed
+      "9z8", "chamorro",
+      "096", "marshallese",
+      
+      # Other NHPI AOIC
+      "9z9", "chamorro_aoic",
+      "176", "marshallese_aoic",
+      "177", "palauan_aoic"
     )
-    
     # Join the race lookup to my totals df by extracting and creating a race_code column from var_name
     
     totals_re<-totals%>%
@@ -521,31 +556,15 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
        group_by(name, geoid, geolevel,race)%>%
        mutate(rate_moe=moe_prop(raw, pop, raw_moe, pop_moe)*100)%>%  # https://walker-data.com/tidycensus/reference/moe_prop.html
      rename("ethnic_group"="race")   # rename columns so that later functions within acs_prep work
-   
-     
-     
-     # Now pivot the table back to wider for RC formatting in order to use subsequent RC functions
-     # 
-     # df_wide<-df%>%
-     #   select(-var_name) %>%              # drop var_name since I don't need it
-     #   pivot_wider(
-     #     id_cols = c(name, geoid, geolevel),    # keep these as identifiers
-     #     names_from = race,               # pivot based on race
-     #     values_from = c(pop, raw, pop_moe, raw_moe, rate, rate_moe),
-     #     names_glue = "{race}_{.value}"   # format column names so that the race value is attached
-     #   )%>%
-     #   mutate(total_rate = NA_real_) # for other RC functions to work we need a total_rate column even though for MOSAIC these values will just all be NA
-     # 
-     # ### Convert any NaN to NA
-     # df_wide <- df_wide %>% 
-     #   mutate_all(function(x) ifelse(is.nan(x), NA, x))%>%
-     #   ungroup()
-     
+
      # assign back to asian_data table
      
      x_long<-df%>%
        select(-var_name)%>% # remove unnecessary variable that messes up the pivot_wider later in the function
        ungroup()
+     
+     x_long$total_rate <- NA   # add dummy total_rate col so RC_Functions work as-is
+     
     
   }
   
