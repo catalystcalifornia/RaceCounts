@@ -78,6 +78,11 @@ people$puma_id <- paste0(people$state_geoid, people$PUMA)
 people <- anhpi_reclass(people, curr_yr, ancestry_list)  # returns list containing people (reclassified pums data) and aapi_incl (list of AAPI ancestries in data)
 list2env(people, .GlobalEnv)
 
+# Add a new column for each anc_label, populated with 1 or 0
+for (label in aapi_incl$anc_label) {
+  people[[label]] <- as.integer(people$anc_label.x == label | people$anc_label.y == label)
+}
+
 # check reclass worked
 ## ancestry code 603 = Bangladeshi ancestry. See: page 50 in https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
 check_reclass <- people %>%
@@ -87,8 +92,31 @@ check_reclass <- people %>%
 nrow(check_reclass) == nrow(check_reclass %>% filter(ANC1P == '603' | ANC2P == '603')) # check ancestry label columns against anc codes
 nrow(check_reclass %>% filter(bangladeshi != 1 & (ANC1P == '603' | ANC2P == '603')))   # check bangladeshi binary column against anc codes
 
-#### Step 4.1: Check race/ancestry relationships ####
+# Add a new column for any asian ancestry and same for nhpi, populated with 1 or 0
+# Create a named lookup vector: anc_label -> asian value
+asian_lookup <- setNames(aapi_incl$asian, aapi_incl$anc_label)
 
+# Populate the new 'asian' column
+people$asian <- as.integer(
+  (people$anc_label.x %in% names(asian_lookup[asian_lookup == 1])) |
+    (people$anc_label.y %in% names(asian_lookup[asian_lookup == 1]))
+)
+
+people$asian[people$ANC1P == '999' & people$ANC2P == '999'] <- NA # recode ancestry Not Reported to NA from 0
+
+# Create a named lookup vector: anc_label -> nhpi value
+nhpi_lookup <- setNames(aapi_incl$nhpi, aapi_incl$anc_label)
+
+# Populate the new 'nhpi' column
+people$nhpi <- as.integer(
+  (people$anc_label.x %in% names(nhpi_lookup[nhpi_lookup == 1])) |
+    (people$anc_label.y %in% names(nhpi_lookup[nhpi_lookup == 1]))
+)
+
+people$nhpi[people$ANC1P == '999' & people$ANC2P == '999'] <- NA  # recode ancestry Not Reported to NA from 0
+
+
+#### Step 4.1: Check race/ancestry relationships ####
 # check records where ancestry is Not Reported
 check_anc_nr <- people %>%
   filter((ANC1P == '999') &
@@ -126,40 +154,12 @@ check_anc_nr2 <- people %>%
                 # 'Multiracial', 16% have no ancestry data, lower than avg. we know many NHPI are in this group.
  
 # what % of Asian AOIC and NHPI AOIC (unweighted) have no ancestry data?
-
-
 table(check_anc_nr = check_anc_nr$RACASN) %>%
   setNames(c('Not Asian', 'Asian AOIC')) # 1 = Asian AOIC, 0 = Not Asian race. 62,864 Asian AOIC have no anc data.
 table(check_anc_nr = check_anc_nr$RACNHPI) %>%
   setNames(c('Not NHPI', 'NHPI AOIC'))   # 1 = NHPI AOIC, 0 = Not NHPI race. 3,318 NHPI AOIC have no anc data.
 
-# Add a new column for each anc_label, populated with 1 or 0
-for (label in aapi_incl$anc_label) {
-  people[[label]] <- as.integer(people$anc_label.x == label | people$anc_label.y == label)
-}
 
-# Add a new column for any asian ancestry and same for nhpi, populated with 1 or 0
-# Create a named lookup vector: anc_label -> asian value
-asian_lookup <- setNames(aapi_incl$asian, aapi_incl$anc_label)
-
-# Populate the new 'asian' column
-people$asian <- as.integer(
-  (people$anc_label.x %in% names(asian_lookup[asian_lookup == 1])) |
-    (people$anc_label.y %in% names(asian_lookup[asian_lookup == 1]))
-)
-
-people$asian[people$ANC1P == '999' & people$ANC2P == '999'] <- NA # recode ancestry Not Reported to NA from 0
-
-# Create a named lookup vector: anc_label -> nhpi value
-nhpi_lookup <- setNames(aapi_incl$nhpi, aapi_incl$anc_label)
-
-# Populate the new 'nhpi' column
-people$nhpi <- as.integer(
-  (people$anc_label.x %in% names(nhpi_lookup[nhpi_lookup == 1])) |
-    (people$anc_label.y %in% names(nhpi_lookup[nhpi_lookup == 1]))
-)
-
-people$nhpi[people$ANC1P == '999' & people$ANC2P == '999'] <- NA  # recode ancestry Not Reported to NA from 0
 
 # check how many Asian and NHPI ancestry are Multiracial
 asian_multir <- people %>% select(asian, RAC1P) %>% 
