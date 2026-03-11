@@ -27,7 +27,7 @@ source("./Functions/pums_fx.R")  # MOSAIC-specific PUMS fx
 
 
 # update QA doc filepath
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Living_Wage_ANHPI.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Living_Wage_MOSAIC.docx"
 
 # define variables used throughout - update each year
 curr_yr <- 2023 
