@@ -7,7 +7,7 @@ anhpi_reclass <- function(x, acs_yr, ancestry_list) {  # used in MOSAIC Living W
   print(paste0("Adding ancestry labels from:", ancestry_list))
   anc_codes <- ancestry_list %>%
     mutate(anc_label = tolower(gsub(" ", "_", anc_label)))
-
+  
   # get list of AA or PI ancestries actually in CA PUMS data
   aapi_incl <- x %>% select(ANC1P) %>% 
     unique() %>%
@@ -15,12 +15,12 @@ anhpi_reclass <- function(x, acs_yr, ancestry_list) {  # used in MOSAIC Living W
     arrange(anc_label)
   print("Displaying all the AA or PI ancestries actually present in the data as aapi_incl df.")
   View(aapi_incl)
-
+  
   x <- x %>% left_join(anc_codes %>% select(ANC1P, anc_label))
   x <- x %>% left_join(anc_codes %>% select(ANC1P, anc_label), by = c("ANC2P" = "ANC1P"))
   reclass_list <- list(people = x, aapi_incl = aapi_incl)
   
-return(reclass_list)
+  return(reclass_list)
 }
 
 
@@ -162,7 +162,125 @@ calc_pums_pop <- function(var_name) {
 return(num_df)  
 }
 
+##### Calc ANHPI PUMS pop ######## 
+calc_pums_ind <- function(d, weight, repwlist, vars, indicator) {
+  # d = dataframe
+  # weight = defined earlier in script. PWGTP for person-level (psam_p06.csv) or WGTP for housing unit-level (psam_h06.csv) analysis
+  # repwlist = defined earlier in script.
+  # vars = the list of asian and nhpi subgroups (aapi_incl$anc_label)
+  # indicator = name of column that contains indicator data, eg: 'living_wage' which contains values 'livable' and 'not livable'
+  ### Then run something like this: pop_table <- map(vars, ppl_state)   |> list_rbind()
 
+  library(purrr)
+  library(readr)
+  
+  start_time <- Sys.time()  # start timer
+  
+  # ── 1. Build survey & denominators ONCE ─────────────────────────────────────
+  message("Building survey object...")
+  
+  anhpi_srvy <- d %>%
+    as_survey_rep(
+      variables        = c(geoid, geoname, asian, nhpi, all_of(vars), !!sym(indicator)),
+      weights          = !!sym(weight),
+      repweights       = all_of(repwlist),
+      combined_weights = TRUE,
+      mse              = TRUE,
+      type             = "other",
+      scale            = 4/80,
+      rscale           = rep(1, 80)
+    ) %>%
+    filter(!is.na(!!sym(indicator)))   # filter out rows where indicator is NA
+  
+  asian_srvy <- anhpi_srvy %>% filter(asian == 1)
+  nhpi_srvy  <- anhpi_srvy %>% filter(nhpi  == 1)
+  
+  # ── 2. Overall population denominators (for asian/nhpi group-level stats) ────
+  den_total <- anhpi_srvy %>%
+    group_by(geoid, geoname) %>%
+    summarise(pop = survey_total(na.rm = TRUE), .groups = "drop")
+  
+  # ── 3. Helper: compute metrics from num/rate SE columns ──────────────────────
+  add_metrics <- function(df, den_df, group_label, subgroup_label) {
+    df %>%
+      left_join(den_df, by = c("geoid", "geoname")) %>%
+      mutate(
+        group     = group_label,
+        subgroup  = subgroup_label,
+        rate_moe  = rate_se * 1.645 * 100,
+        rate_cv   = ifelse(rate > 0, (rate_se / rate) * 100, NA_real_),
+        rate      = rate * 100,
+        count_moe = num_se * 1.645,
+        count_cv  = ifelse(num   > 0, (num_se  / num)  * 100, NA_real_)
+      )
+  }
+  
+  # ── 4. GROUP-LEVEL: asian & nhpi, denominator = overall population ───────────
+  # Estimates/rates for records where asian == 1 or nhpi == 1,
+  # grouped by indicator value, denominator = all anhpi records
+  message("Calculating group-level stats (asian, nhpi)...")
+  
+  calc_group <- function(srvy, group_label, group_label) {
+    srvy %>%
+      group_by(geoid, geoname, !!sym(indicator)) %>%
+      summarise(
+        num  = survey_total(na.rm = TRUE),
+        rate = survey_mean(na.rm = TRUE),
+        .groups = "drop"
+      ) %>%
+      add_metrics(den_total, group_label)
+  }
+  
+  df_asian <- calc_group(asian_srvy, "asian")
+  df_nhpi  <- calc_group(nhpi_srvy, "nhpi")
+  
+  df_group <- bind_rows(df_asian, df_nhpi)
+  
+  # ── 5. SUBGROUP-LEVEL: each var in vars, denominator = var == 1 ──────────────
+  # Estimates/rates grouped by indicator value,
+  # denominator = all records where that var == 1
+  calc_one_subgroup <- function(var_name) {
+    message(paste0("  Calculating subgroup: ", var_name))
+    
+    # Determine ancestry group to pick correct survey & denominator
+    den_group <- case_when(
+      var_name %in% (aapi_incl %>% filter(nhpi  == 1) %>% pull(anc_label)) ~ "nhpi",
+      var_name %in% (aapi_incl %>% filter(asian == 1) %>% pull(anc_label)) ~ "asian"
+    )
+    
+    srvy_subset <- switch(den_group, "asian" = asian_srvy, "nhpi" = nhpi_srvy)
+    
+    # Denominator: all records in this subgroup (var == 1)
+    den_var <- srvy_subset %>%
+      filter(.data[[var_name]] == 1) %>%
+      group_by(geoid, geoname) %>%
+      summarise(pop = survey_total(na.rm = TRUE), .groups = "drop")
+    
+    # Numerator: subgroup records grouped by indicator value
+    srvy_subset %>%
+      filter(.data[[var_name]] == 1) %>%
+      group_by(geoid, geoname, !!sym(indicator)) %>%
+      summarise(
+        num  = survey_total(na.rm = TRUE),
+        rate = survey_mean(na.rm = TRUE),
+        .groups = "drop"
+      ) %>%
+      add_metrics(den_var, den_group, var_name)
+  }
+  
+  # ── 6. Run subgroup calcs sequentially (survey too large for parallel export) ─
+  message("Running subgroup calculations...")
+  
+  num_df_subgroups <- map(vars, calc_one_subgroup) |> list_rbind()
+  
+  # ── 7. Combine & return ──────────────────────────────────────────────────────
+  result <- bind_rows(df_group, num_df_subgroups)
+  
+  elapsed <- round(difftime(Sys.time(), start_time, units = "mins"), 2)
+  message(paste0("Done! calc_pums_ind completed in ", elapsed, " minutes."))
+  
+return(result)
+}
 
 
 

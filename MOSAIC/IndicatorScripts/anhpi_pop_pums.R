@@ -75,7 +75,7 @@ people$state_geoid <- "06"
 people$puma_id <- paste0(people$state_geoid, people$PUMA)
 
 #### Step 4: Join subgroup labels to data ####
-people <- anhpi_reclass(people, curr_yr, ancestry_list)  # returns list containing people (reclassified pums data) and aapi_incl (list of AAPI ancestries in data)
+people <- anhpi_reclass(people, ancestry_list)  # returns list containing people (reclassified pums data) and aapi_incl (list of AAPI ancestries in data)
 list2env(people, .GlobalEnv)
 
 # Add a new column for each anc_label, populated with 1 or 0
@@ -106,7 +106,7 @@ people$nhpi <- as.integer(
 ## check a few of the new ancestry & asian/nhpi cols
 table(chinese = people$chinese, asian_race = people$RACASN)  # check how many chinese ancestry rows are also marked Asian race
 table(chinese = people$chinese, asian_anc = people$asian)    # check that all chinese ancestry rows are also marked asian ancestry
-table(asian_anc = people$asian, asian_race = people$RACASN)  # 4,452 people w/ asian ancestry who are not coded race = Asian
+table(asian_anc = people$asian, asian_race = people$RACASN)  # 4,452 responses w/ asian ancestry who are not coded race = Asian
 #         asian_race
 # chinese         0       1
 #         0 1481976   79536
@@ -114,7 +114,7 @@ table(asian_anc = people$asian, asian_race = people$RACASN)  # 4,452 people w/ a
 
 table(samoan = people$samoan, nhpi_race = people$RACNHPI)    # check how many samoan ancestry rows are also marked NHPI race
 table(samoan = people$samoan, nhpi_anc = people$nhpi)        # check that all samoan ancestry rows are also marked nhpi ancestry
-table(nhpi_anc = people$nhpi, nhpi_race = people$RACNHPI)    # 941 people w/ nhpi ancestry who are not coded race = NHPI
+table(nhpi_anc = people$nhpi, nhpi_race = people$RACNHPI)    # 941 responses w/ nhpi ancestry who are not coded race = NHPI
 #       nhpi_race
 # samoan        0       1
 #       0 1838025    7536
@@ -211,11 +211,11 @@ pop_table_county <- map_dfr(vars, calc_pums_pop) %>%
   oth_asian_srvy <- ppl_state %>%
     mutate(subgroup = case_when(
       bhutanese == 1 | other_asian == 1 ~ 'other_asian',  # recode bhutanese as oth_asian
-      TRUE ~ 'total')) %>%                            # recode non-bhutanese as total
+      TRUE ~ 'total')) %>%                                # recode non-bhutanese as total
     as_survey_rep(
       variables = c(geoid, geoname, subgroup), # dplyr::select grouping variables.
       weights = weight,                       # person weight
-      repweights = repwlist,                  # list of replicate weights
+      repweights = all_of(repwlist),          # list of replicate weights
       combined_weights = TRUE,                # tells the function that replicate weights are included in the data
       mse = TRUE,                             # tells the function to calc mse
       type="other",                           # statistical method
@@ -237,9 +237,9 @@ pop_table_county <- map_dfr(vars, calc_pums_pop) %>%
     mutate(
       subgroup  = 'other_asian',
       group     = 'asian',
-      rate      = rate * 100,
       rate_moe  = rate_se * 1.645 * 100,
       rate_cv   = ifelse(rate > 0, (rate_se / rate) * 100, NA_real_),
+      rate      = rate * 100,
       count_moe = num_se * 1.645,
       count_cv  = ifelse(num > 0, (num_se / num) * 100, NA_real_)
     )
