@@ -1,10 +1,10 @@
 ##### Reclassify Asian and NHPI Ancestries ######## 
-anhpi_reclass <- function(x, acs_yr, ancestry_list) {  # used in MOSAIC Living Wage test
+anhpi_reclass <- function(x, ancestry_list) {  
   # x = pums dataframe
   # acs_yr = last year of ACS 5y estimates
   # ancestry_list = dataframe containing all PUMS ANC1P/ANC2P codes and labels, plus 1 binary column for asian and 1 for nhpi
   ## import ANC1P/ANC2P codes/labels pulled from https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
-  print(paste0("Adding ancestry labels from:", ancestry_list))
+  message("Adding ancestry labels from your selected ancestry_list")
   anc_codes <- ancestry_list %>%
     mutate(anc_label = tolower(gsub(" ", "_", anc_label)))
   
@@ -13,7 +13,7 @@ anhpi_reclass <- function(x, acs_yr, ancestry_list) {  # used in MOSAIC Living W
     unique() %>%
     inner_join(anc_codes %>% filter((asian == 1 | nhpi ==1)), by ="ANC1P") %>%
     arrange(anc_label)
-  print("Displaying all the AA or PI ancestries actually present in the data as aapi_incl df.")
+  message("Displaying all the AA or PI ancestries actually present in the data as aapi_incl df.")
   View(aapi_incl)
   
   x <- x %>% left_join(anc_codes %>% select(ANC1P, anc_label))
@@ -220,7 +220,7 @@ calc_pums_ind <- function(d, weight, repwlist, vars, indicator) {
   # grouped by indicator value, denominator = all anhpi records
   message("Calculating group-level stats (asian, nhpi)...")
   
-  calc_group <- function(srvy, group_label, group_label) {
+  calc_group <- function(srvy, group_label) {
     srvy %>%
       group_by(geoid, geoname, !!sym(indicator)) %>%
       summarise(
@@ -228,13 +228,14 @@ calc_pums_ind <- function(d, weight, repwlist, vars, indicator) {
         rate = survey_mean(na.rm = TRUE),
         .groups = "drop"
       ) %>%
-      add_metrics(den_total, group_label)
+      add_metrics(den_total, group_label, group_label)
   }
   
+  df_total <- calc_group(anhpi_srvy, "total")
   df_asian <- calc_group(asian_srvy, "asian")
   df_nhpi  <- calc_group(nhpi_srvy, "nhpi")
   
-  df_group <- bind_rows(df_asian, df_nhpi)
+  df_group <- bind_rows(df_total, df_asian, df_nhpi)
   
   # ── 5. SUBGROUP-LEVEL: each var in vars, denominator = var == 1 ──────────────
   # Estimates/rates grouped by indicator value,

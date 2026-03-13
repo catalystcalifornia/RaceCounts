@@ -32,6 +32,7 @@ qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Living_Wage_MOSA
 
 #### Step 1: Define Variables ####
 root <- "W:/Data/Demographics/PUMS/CA_2019_2023/"
+rc_yr = '2025'      # you MUST UPDATE each year
 curr_yr <- 2023
 start_yr <- curr_yr - 4
 rc_schema <- 'v7'
@@ -340,23 +341,23 @@ geo_subgroup_combos <- table_screened %>%
   summarise(unique_subgroups = n_distinct(subgroup))  # max = 43. 40 subgroups, 2 groups, 1 total
 
 table_screened <- table_screened %>%
-  select(-c(num_se, rate_se, pop_se))     # drop unneeded cols
+  select(-c(num_se, rate_se, pop_se)) %>%    # drop unneeded cols
+  mutate(geolevel = ifelse(geoid == '06', 'state', 'county'))
   
-table_final <- table_screened %>%
-  pivot_wider(id_cols = c(geoid, geoname),
+
+############## ASIAN: CALC RACE COUNTS STATS ##############
+race_name <- 'asian'  # this var is used to create the RC table name
+
+d <- table_screened %>% filter(group %in% c(race_name, "total"))
+
+d <- d %>%
+  pivot_wider(id_cols = c(geoid, geoname, geolevel),
               names_from = subgroup,
               values_from = c(num, rate, pop, rate_moe, rate_cv, count_moe, count_cv),
               names_glue = "{subgroup}_{.value}") %>%
-  select(where(~!all(is.na(.)))) %>%  # drop cols where all values are NA
-  mutate(geolevel = ifelse(geoid == '06', 'state', 'county'))
+  select(where(~!all(is.na(.))))      # drop cols where all values are NA
 
 
-
-
-
-
-
-############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
 source("./Functions/RC_Functions.R")
 
@@ -391,14 +392,74 @@ county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "count
 
 
 ###update info for postgres tables###
-county_table_name <- paste0("aapi_econ_living_wage_county_", rc_yr)
-state_table_name <- paste0("aapi_econ_living_wage_state_", rc_yr)
-indicator <- paste0("Percent of workers earning above living wage (", lw, ")  for Asian & NHPI Ancestry at state and county level. Includes workers ages 18-64 who were at work last week or were employed but not at work. Excludes those with zero earnings and self-employed or unpaid family workers. PUMAs are assigned to counties based on Geocorr 2022 crosswalks. We also screened by pop (400) and CV (30%). QA Doc:", qa_filepath, ". This data is")
+county_table_name <- paste0(race_name, "_econ_living_wage_county_", rc_yr)
+state_table_name <- paste0(race_name, "_econ_living_wage_state_", rc_yr)
+indicator <- paste0("Percent of workers earning above living wage (", lw, ") for ", race_name, " Ancestry at state and county level. Includes workers ages 18-64 who were at work last week or were employed but not at work. Excludes those with zero earnings and self-employed or unpaid family workers. PUMAs are assigned to counties based on Geocorr 2022 crosswalks. We also screened by pop (400) and CV (30%). QA Doc:", qa_filepath, ". This data is")
 source <- paste0("ACS PUMS (", start_yr, "-", curr_yr, ")")
 
 #send tables to postgres
 to_postgres(county_table,state_table,"mosaic")
-#leg_to_postgres()
+
+
+
+
+############## NHPI: CALC RACE COUNTS STATS ##############
+race_name <- 'nhpi'  # this var is used to create the RC table name
+
+d <- table_screened %>% filter(group %in% c(race_name, "total"))
+
+d <- d %>%
+  pivot_wider(id_cols = c(geoid, geoname, geolevel),
+              names_from = subgroup,
+              values_from = c(num, rate, pop, rate_moe, rate_cv, count_moe, count_cv),
+              names_glue = "{subgroup}_{.value}") %>%
+  select(where(~!all(is.na(.))))      # drop cols where all values are NA
+
+
+#set source for RC Functions script
+source("./Functions/RC_Functions.R")
+
+d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
+
+d <- count_values(d) #calculate number of "_rate" values
+d <- calc_best(d) #calculate best rates -- be sure to update previous line of code accordingly before running this function.
+d <- calc_diff(d) #calculate difference from best
+d <- calc_avg_diff(d) #calculate (row wise) mean difference from best
+d <- calc_s_var(d) #calculate (row wise) population or sample variance. be sure to use calc_s_var for sample data or calc_p_var for population data.
+d <- calc_id(d) #calculate index of disparity
+View(d)
+
+#split STATE into separate table
+state_table <- d[d$geolevel == 'state', ]
+
+#calculate STATE z-scores
+state_table <- calc_state_z(state_table)
+View(state_table)
+
+#split COUNTY into separate table
+county_table <- d[d$geolevel == 'county', ]
+
+#calculate COUNTY z-scores
+county_table <- calc_z(county_table)
+county_table <- calc_ranks(county_table)
+View(county_table)
+
+state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
+county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid") %>%
+  select(where(~!all(is.na(.))))    # drop cols where all values are NA
+
+
+###update info for postgres tables###
+county_table_name <- paste0(race_name, "_econ_living_wage_county_", rc_yr)
+state_table_name <- paste0(race_name, "_econ_living_wage_state_", rc_yr)
+indicator <- paste0("Percent of workers earning above living wage (", lw, ") for ", race_name, " Ancestry at state and county level. Includes workers ages 18-64 who were at work last week or were employed but not at work. Excludes those with zero earnings and self-employed or unpaid family workers. PUMAs are assigned to counties based on Geocorr 2022 crosswalks. We also screened by pop (400) and CV (30%). QA Doc:", qa_filepath, ". This data is")
+source <- paste0("ACS PUMS (", start_yr, "-", curr_yr, ")")
+
+#send tables to postgres
+to_postgres(county_table,state_table,"mosaic")
+
+
+
 
 # #close connection
 # dbDisconnect(con)
