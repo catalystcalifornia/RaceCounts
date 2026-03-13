@@ -328,7 +328,7 @@ table_cs <- rbind(table_state, table_county) %>%
 # RC screening method (CV and pop thresholds), see screen_rate_cv_pop above
 table_screened <- table_cs %>%
   mutate(rate = ifelse(rate_cv > cv_threshold | pop < pop_threshold, NA, rate), 
-         num = ifelse(rate_cv > cv_threshold | pop < pop_threshold, NA, num)) %>%
+         raw = ifelse(rate_cv > cv_threshold | pop < pop_threshold, NA, num)) %>%
   arrange(desc(rate_cv), desc(num)) 
 
 screened_out <- table_screened %>%
@@ -353,7 +353,7 @@ d <- table_screened %>% filter(group %in% c(race_name, "total"))
 d <- d %>%
   pivot_wider(id_cols = c(geoid, geoname, geolevel),
               names_from = subgroup,
-              values_from = c(num, rate, pop, rate_moe, rate_cv, count_moe, count_cv),
+              values_from = c(raw, rate, pop, rate_moe, rate_cv, count_moe, count_cv),
               names_glue = "{subgroup}_{.value}") %>%
   select(where(~!all(is.na(.))))      # drop cols where all values are NA
 
@@ -411,7 +411,7 @@ d <- table_screened %>% filter(group %in% c(race_name, "total"))
 d <- d %>%
   pivot_wider(id_cols = c(geoid, geoname, geolevel),
               names_from = subgroup,
-              values_from = c(num, rate, pop, rate_moe, rate_cv, count_moe, count_cv),
+              values_from = c(raw, rate, pop, rate_moe, rate_cv, count_moe, count_cv),
               names_glue = "{subgroup}_{.value}") %>%
   select(where(~!all(is.na(.))))      # drop cols where all values are NA
 
