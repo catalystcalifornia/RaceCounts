@@ -59,8 +59,11 @@ cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0))    # get all PUMS
 cols_wts <- grep(paste0("^", weight, "*"), cols, value = TRUE)    # filter for PUMS weight colnames
 
 people <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE,
-                select = c(cols_wts, "RT", "SERIALNO", "PUMA", "RAC1P", "RAC3P", "RAC2P19", "RAC2P23", "HISP", "ANC1P", "ANC2P", "RACASN", "RACNH", "RACPI"),
-                colClasses = list(character = c("PUMA", "RAC1P", "RAC3P", "RAC2P19", "RAC2P23", "HISP", "ANC1P", "ANC2P", "RACASN", "RACNH", "RACPI")))
+                select = c(cols_wts, "RT", "SERIALNO", "PUMA", "RAC1P", "RAC3P", 
+                           "RAC2P19", "RAC2P23", "HISP", "ANC1P", "ANC2P", 
+                           "RACASN", "RACNH", "RACPI"),
+                colClasses = list(character = c("PUMA", "RAC1P", "RAC3P", "RAC2P19", 
+                                                "RAC2P23", "HISP", "ANC1P", "ANC2P")))
 orig_data <- people
 
 
@@ -379,12 +382,12 @@ column_comments <- c('fips code',
                      'moe for num', 
                      'cv for num')
 
-dbWriteTable(con2, 
-             Id(schema = schema, table = table_name),
-             pop_table_screened, overwrite = FALSE)
-
-# comment on table and columns
-add_table_comments(con2, schema, table_name, indicator, source, qa_filepath, column_names, column_comments)
+# dbWriteTable(con2, 
+#              Id(schema = schema, table = table_name),
+#              pop_table_screened, overwrite = FALSE)
+# 
+# # comment on table and columns
+# add_table_comments(con2, schema, table_name, indicator, source, qa_filepath, column_names, column_comments)
 
 
 #disconnect
