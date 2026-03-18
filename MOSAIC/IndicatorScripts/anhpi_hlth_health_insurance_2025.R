@@ -38,13 +38,13 @@ schema = 'health'
 table_code = 'b27001'    # Select relevant indicator table name
 
 
-# CREATE RAW DATA TABLES -------------------------------------------------------------------------
-# Only run this section if the raw data tables have not been created yet ##
+# # CREATE RAW DATA TABLES -------------------------------------------------------------------------
+# # Only run this section if the raw data tables have not been created yet ##
 # race <- "asian"
 # asian_list <- get_detailed_race(table_code, race, curr_yr)
 # #check race col names which are created in fx
 # unique(asian_list[[2]]$new_label)
-
+# 
 # race <- "nhpi"
 # nhpi_list <- get_detailed_race(table_code, race, curr_yr)
 # #check race col names which are created in fx
@@ -52,13 +52,13 @@ table_code = 'b27001'    # Select relevant indicator table name
 # 
 # #check the metadata
 # View(nhpi_list$metadata)
-
-
-#######  Transform the data for the raw data table  ############
-# This variable is broken up by age group, by sex, by geo, insurance status, and by detailed race.
-## We need to collapse the subcategories so that we just have it broken down by geo + detailed race + insurance status. 
-
-# Step 1: pivot to long format (its too much data to work with wide format until we aggregate it down)
+# 
+# 
+# ######  Transform the data for the raw data table  ############
+# # This variable is broken up by age group, by sex, by geo, insurance status, and by detailed race.
+# # We need to collapse the subcategories so that we just have it broken down by geo + detailed race + insurance status.
+# 
+# # Step 1: pivot to long format (its too much data to work with wide format until we aggregate it down)
 # nhpi_long <- nhpi_list$nhpi_df %>%
 #   pivot_longer(
 #     cols = -c(name, geoid, geolevel),
@@ -98,7 +98,7 @@ table_code = 'b27001'    # Select relevant indicator table name
 # nhpi_total <- nhpi_long %>%
 #   filter(var_num == "001") %>%
 #   mutate(var_base = substr(variable, 1, nchar(variable) - 5)) %>%
-#   select(name, geoid, geolevel, var_base, type, value, var_num) 
+#   select(name, geoid, geolevel, var_base, type, value, var_num)
 # 
 # asian_total <- asian_long %>%
 #   filter(var_num == "001") %>%
@@ -125,9 +125,9 @@ table_code = 'b27001'    # Select relevant indicator table name
 #   pivot_wider(names_from = type, values_from = value) %>%
 #   group_by(name, geoid, geolevel, var_base) %>%
 #   summarise(
-#     e = if_else(all(is.na(e)), NA_real_, sum(e, na.rm = TRUE)),
 #     m = moe_sum(moe = m, estimate = e),
-#     .groups  = "drop"
+#     e = if_else(all(is.na(e)), NA_real_, sum(e, na.rm = TRUE)),
+#     .groups = "drop"
 #   ) %>%
 #   pivot_longer(cols = c(e, m), names_to = "type", values_to = "value") %>%
 #   mutate(var_num = "002")   # create new var_num for our calc'd uninsured variable
@@ -143,42 +143,47 @@ table_code = 'b27001'    # Select relevant indicator table name
 #   pivot_wider(names_from = type, values_from = value) %>%
 #   group_by(name, geoid, geolevel, var_base) %>%
 #   summarise(
-#     e = if_else(all(is.na(e)), NA_real_, sum(e, na.rm = TRUE)),
 #     m = moe_sum(moe = m, estimate = e),
-#     .groups  = "drop"
+#     e = if_else(all(is.na(e)), NA_real_, sum(e, na.rm = TRUE)),
+#     .groups = "drop"
 #   ) %>%
 #   pivot_longer(cols = c(e, m), names_to = "type", values_to = "value") %>%
 #   mutate(var_num = "002")   # create new var_num for our calc'd uninsured variable
 # 
 # # Step 6: combine and pivot to final wide format
 # nhpi_final <- bind_rows(nhpi_total, nhpi_uninsured_summary) %>%
-#   pivot_wider(names_from = c(var_base, var_num, type), 
+#   pivot_wider(names_from = c(var_base, var_num, type),
 #               names_glue = "{var_base}_{var_num}{type}",
 #               values_from = value)
 # 
 # asian_final <- bind_rows(asian_total, asian_uninsured_summary) %>%
-#   pivot_wider(names_from = c(var_base, var_num, type), 
+#   pivot_wider(names_from = c(var_base, var_num, type),
 #               names_glue = "{var_base}_{var_num}{type}",
 #               values_from = value)
+#
+# ## check that moe issue was resolved. Looks good reordering moe_sum() inputs worked. Its now the expected moe again. moe should be before estimate in the function so that it doesn't use the collapsed scalar values of estimates as opposed to the vector of estimated to aggregate the moes.
+# asian_final %>%
+#   filter(geoid == "06019") %>%
+#   select(b27001_026_001e, b27001_026_002e, b27001_026_001m, b27001_026_002m)
 # 
 # # Step 7: Build the metadata
 # prep_metadata <- function(meta) {
 #   #meta = metadata
-#   
+# 
 #   metadata_final <- meta %>%
 #     filter(grepl('_001', new_var))
-#   
+# 
 #   raw_metadata <- metadata_final %>%
 #     mutate(
 #       new_var = str_replace(new_var, "_001", "_002"),
 #       new_label = str_replace(new_label, "Total:", "Total: Uninsured")
 #     )
-#   
+# 
 #   metadata_final <- bind_rows(metadata_final, raw_metadata) %>%
 #     mutate(geoid = 'fips code',
 #            geoname = 'geography name',
 #            geolevel = 'City, County, State')
-#   
+# 
 #   return(metadata_final)
 # }
 # 
@@ -201,7 +206,7 @@ table_code = 'b27001'    # Select relevant indicator table name
 #   asian_df  = asian_final,
 #   metadata = asian_metadata_final
 # )
-
+# 
 # # Send table to postgres
 # send_to_mosaic(table_code, asian_list, rc_schema)
 # send_to_mosaic(table_code, nhpi_list, rc_schema)
@@ -417,3 +422,19 @@ to_postgres(county_table,state_table, 'mosaic')
 city_to_postgres(city_table, 'mosaic')
 
 dbDisconnect(con)
+
+# check what raw and rate_moe look like in the intermediate step
+
+
+# check what raw and rate_moe look like in the intermediate step
+asian_data_v1 %>%
+  filter(geoid == "06019") %>%
+  select(b27001_026_pop, b27001_026_raw, b27001_026_pop_moe, b27001_026_raw_moe)
+
+asian_rate_old %>%
+  filter(county_id == "06019") %>%
+  select(pakistani_pop, pakistani_raw, pakistani_rate, pakistani_rate_moe, pakistani_rate_cv)
+
+asian_rate_new %>%
+  filter(county_id == "06019") %>%
+  select(pakistani_pop, pakistani_raw, pakistani_rate, pakistani_rate_moe, pakistani_rate_cv)
