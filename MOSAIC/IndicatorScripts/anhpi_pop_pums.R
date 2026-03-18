@@ -16,6 +16,8 @@ for(pkg in packages){
   library(pkg, character.only = TRUE)
 }
 
+options(scipen = 999)
+
 #SOURCE from the script that has: styling, packages, dbconnection, colors
 source("W:\\RDA Team\\R\\credentials_source.R")
 source("./MOSAIC/Functions/pums_fx.R")
@@ -232,10 +234,6 @@ ppl_cs <- left_join(people, county_crosswalk, by=c("puma_id" = "puma"))   # join
 ppl_state <- people %>% rename(geoid = state_geoid) %>%
   mutate(geoname = 'California')
 
-# ppl_puma <- left_join(people, county_crosswalk %>%
-#                       select(puma, puma_name), by=c("puma_id" = "puma")) %>%  # join puma names
-#   rename(geoid = puma_id, geoname = puma_name)
-
 
 #### Step 6: Set up for PUMS calc fx ####
 # get list of subgroups for calcs based on aapi_incl
@@ -250,9 +248,10 @@ state_list <- pums_pop_srvy_denom(ppl_state, weight, repwlist, vars)
 list2env(state_list, envir = .GlobalEnv)
 
 # run PUMS calcs
-pop_table_state <- map_dfr(vars, calc_pums_pop) %>%
-  rbind(num_df_group)   # add any asian ancestry and any nhpi ancestry pop data
+pop_table_state <- map(vars, calc_pums_pop) |> list_rbind() %>%
+rbind(num_df_group)   # add any asian ancestry and any nhpi ancestry pop data
 #rm(ppl_state)
+
 
 ## COUNTY
 # run fx to create survey and calc pop rate denominators
@@ -262,21 +261,9 @@ county_list <- pums_pop_srvy_denom(ppl_cs, weight, repwlist, vars)
 list2env(county_list, envir = .GlobalEnv)
 
 # run PUMS calcs
-pop_table_county <- map_dfr(vars, calc_pums_pop) %>%
+pop_table_county <- map(vars, calc_pums_pop) |> list_rbind() %>%
   rbind(num_df_group)   # add any asian ancestry and any nhpi ancestry pop data
 #rm(ppl_cs)
-
-## PUMA
-# run fx to create survey and calc pop rate denominators
-# puma_list <- pums_pop_srvy_denom(ppl_puma, weight, repwlist, vars)
-# 
-# # add list elements to Environment - these df's are used in calc_pums_pop fx
-# list2env(puma_list, envir = .GlobalEnv)
-# 
-# # run PUMS calcs
-# pop_table_puma <- map_dfr(vars, calc_pums_pop) %>%
-#   rbind(num_df_group)   # add any asian ancestry and any nhpi ancestry pop data
-#rm(ppl_puma)
 
 
 ##### SCREENING EXPORATION (STATE DATA) #####
@@ -293,8 +280,9 @@ pop_table_county <- map_dfr(vars, calc_pums_pop) %>%
       anc_label,
       tot_count = rowSums(cbind(n.x, n.y), na.rm = TRUE)
     ) %>%
-    right_join(aapi_incl, by = "anc_label") %>%
-    arrange(tot_count)
+    right_join(aapi_incl, by = "anc_label") %>% 
+    arrange(tot_count) %>%
+    mutate(unw_flag = ifelse(tot_count < 100, 1, 0))
   # there are 3 groups who don't meet ERI's screening threshold: bhutanese (17), micronesian (70), marshallese (71)
   
   rm(aapi_filtered)
@@ -302,21 +290,22 @@ pop_table_county <- map_dfr(vars, calc_pums_pop) %>%
   # Method 2: Try RC screening method, suppress data where rate_cv > cv_threshold OR num < pop_threshold (see top of script for values)
   screen_rate_cv_pop <- pop_table_state %>%
     mutate(rate_cv_flag = ifelse(rate_cv > cv_threshold, 1, 0), 
-           pop_flag = ifelse(num < pop_threshold, 1, 0)) %>%
+           pop_flag = ifelse(num < pop_threshold, 1, 0)) %>%  # screen on num not pop bc these are pop data, not indicator data
     arrange(desc(rate_cv), desc(num))
-  # there are 0 groups who don't meet our rate_cv threshold. there is 1 group not meeting pop_threshold: Bhutanese (pop is 212)
+  # there is 1 group who doesn't meet rate_cv threshold: Bhutanese (44.6). there is 1 group not meeting pop_threshold: Bhutanese (pop is 212)
 
   
 #### Step 7: Screen data (incl. recoding suppressed subgroups & recalcs) ####
 # STATE-LEVEL ONLY: Recode Bhutanese as other_asian. If we present county data, we could recode any suppressed grps for that county too.
   oth_asian_srvy <- ppl_state %>%
+    filter(asian == 1) %>%
     mutate(subgroup = case_when(
       bhutanese == 1 | other_asian == 1 ~ 'other_asian',  # recode bhutanese as oth_asian
-      TRUE ~ 'total')) %>%                            # recode non-bhutanese as total
+      TRUE ~ 'total')) %>%                                # recode non-bhutanese as total
     as_survey_rep(
       variables = c(geoid, geoname, subgroup), # dplyr::select grouping variables.
       weights = weight,                       # person weight
-      repweights = repwlist,                  # list of replicate weights
+      repweights = all_of(repwlist),          # list of replicate weights
       combined_weights = TRUE,                # tells the function that replicate weights are included in the data
       mse = TRUE,                             # tells the function to calc mse
       type="other",                           # statistical method
@@ -334,25 +323,24 @@ pop_table_county <- map_dfr(vars, calc_pums_pop) %>%
     ) %>%
     
     # Join + metrics
-    left_join(state_list$den_asian, by = c("geoid", "geoname")) %>%
+    left_join(state_list$den_total %>% filter(pop_group == 'asian'), by = c("geoid", "geoname")) %>%
     mutate(
       subgroup  = 'other_asian',
       group     = 'asian',
-      rate      = rate * 100,
       rate_moe  = rate_se * 1.645 * 100,
       rate_cv   = ifelse(rate > 0, (rate_se / rate) * 100, NA_real_),
+      rate      = rate * 100,
       count_moe = num_se * 1.645,
       count_cv  = ifelse(num > 0, (num_se / num) * 100, NA_real_)
     )
   
 # combine re-calc'd other_asian and pop_table_state, drop old 'other_asian' row
-  pop_table_state <- rbind(num_df_oth_asian, pop_table_state %>% filter(subgroup != 'other_asian'))
-  
+  pop_table_state <- bind_rows(num_df_oth_asian, pop_table_state) %>% filter(subgroup != 'other_asian')
   pop_table <- rbind(pop_table_state, pop_table_county)
   
 # RC screening method (CV and pop thresholds), see screen_rate_cv_pop above
   pop_table_screened <- pop_table %>%
-    mutate(rate = ifelse(rate_cv > cv_threshold | num < pop_threshold, NA, rate), 
+    mutate(rate = ifelse(rate_cv > cv_threshold | num < pop_threshold, NA, rate),    # screen on num not pop bc these are pop data, not indicator data
            num = ifelse(rate_cv > cv_threshold | num < pop_threshold, NA, num)) %>%
     arrange(desc(rate_cv), desc(num)) 
   
@@ -363,12 +351,13 @@ pop_table_county <- map_dfr(vars, calc_pums_pop) %>%
   table(subgroup = screened_out$subgroup)   # count of suppressed values by subgroup
   
   pop_table_screened <- pop_table_screened %>%
-    select(-c(num_se, rate_se, pop_se))     # drop unneeded cols
+    select(-c(pop_group, num_se, rate_se, pop_se)) %>%    # drop unneeded cols
+    rename(group_ = group)
   
 #### Step 8: Send data to postgres ####
 table_name <- 'anhpi_pop_pums'
 indicator <- "Disaggregated Asian & NHPI Ancestry Population"
-source <- paste0("American Community Survey 2019-2023 5-year PUMS estimates for Asian & NHPI Ancestry at state and county level")
+source <- paste0("American Community Survey 2019-2023 5-year PUMS estimates for Asian & NHPI Ancestry at state and county level. Note: Bhutanese is included in Other Asian at state level")
 column_names <- colnames(pop_table_screened) # n = 11
 column_comments <- c('fips code', 
                      '', 
