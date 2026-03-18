@@ -422,19 +422,3 @@ to_postgres(county_table,state_table, 'mosaic')
 city_to_postgres(city_table, 'mosaic')
 
 dbDisconnect(con)
-
-# check what raw and rate_moe look like in the intermediate step
-
-
-# check what raw and rate_moe look like in the intermediate step
-asian_data_v1 %>%
-  filter(geoid == "06019") %>%
-  select(b27001_026_pop, b27001_026_raw, b27001_026_pop_moe, b27001_026_raw_moe)
-
-asian_rate_old %>%
-  filter(county_id == "06019") %>%
-  select(pakistani_pop, pakistani_raw, pakistani_rate, pakistani_rate_moe, pakistani_rate_cv)
-
-asian_rate_new %>%
-  filter(county_id == "06019") %>%
-  select(pakistani_pop, pakistani_raw, pakistani_rate, pakistani_rate_moe, pakistani_rate_cv)
