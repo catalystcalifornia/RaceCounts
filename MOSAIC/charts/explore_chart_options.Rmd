@@ -1,0 +1,396 @@
+---
+title: "explore_chart_options"
+output: 
+  html_document:
+    self_contained: true
+---
+<style>
+.html-widget {
+    width: 100vw !important;
+    height: 100vh !important;
+}
+body { margin: 0; }
+</style>
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+# load libraries and test data
+source("W:\\RDA Team\\R\\credentials_source.R")
+library(dplyr)
+library(purrr)
+library(highcharter)
+library(htmltools)
+con <- connect_to_db("mosaic")
+con_rc <- connect_to_db("racecounts")
+
+low_birthweight_asian<- dbGetQuery(con, "SELECT * FROM v7.asian_hlth_low_birthweight_state_2025;") %>%
+  select(ends_with("_raw"), ends_with("_rate"))
+low_birthweight_nhpi <- dbGetQuery(con, "SELECT * FROM v7.nhpi_hlth_low_birthweight_state_2025;") %>%
+  select(ends_with("_raw"), ends_with("_rate"))
+low_birthweight_rc <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hlth_low_birthweight_state_2025;") 
+
+low_birthweight_asbest <- low_birthweight_rc %>% pull(asbest)
+
+low_birthweight_rc <- low_birthweight_rc %>%
+  select(ends_with("_raw"), ends_with("_rate"))
+
+homeownership_asian <- dbGetQuery(con, "SELECT * FROM v7.asian_hous_homeownership_state_2025;") %>%
+  select(ends_with("_raw"), ends_with("_rate")) 
+homeownership_nhpi <- dbGetQuery(con, "SELECT * FROM v7.nhpi_hous_homeownership_state_2025;") %>%
+  select(ends_with("_raw"), ends_with("_rate"))
+homeownership_rc <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_homeownership_state_2025;") 
+
+homeownership_asbest <- homeownership_rc %>% pull(asbest)
+homeownership_rc <- homeownership_rc %>%
+  select(ends_with("_raw"), ends_with("_rate"))
+
+dbDisconnect(con)
+dbDisconnect(con_rc)
+
+```
+
+```{r}
+# get data in right shape
+# should have at minimum: group (asian, nhpi, total); subgroup (bangladesh, philippines, etc); count, rate
+
+# colnames(low_birthweight_asian)
+# colnames(homeownership_asian)
+
+low_bw_asian_reshape <- low_birthweight_asian %>%
+   pivot_longer(
+    cols = matches("_raw$|_rate$"),
+    names_to = c("subgroup", ".value"),
+    names_pattern = "^(.+)_(raw|rate)$") %>%
+  rename(count = raw) %>%
+  mutate(group = "asian") %>%
+  select(group, subgroup, count, rate) 
+
+low_bw_nhpi_reshape <- low_birthweight_nhpi %>%
+   pivot_longer(
+    cols = matches("_raw$|_rate$"),
+    names_to = c("subgroup", ".value"),
+    names_pattern = "^(.+)_(raw|rate)$") %>%
+  rename(count = raw) %>%
+  mutate(group = "nhpi") %>%
+  select(group, subgroup, count, rate)
+
+low_bw_rc_reshape <- low_birthweight_rc %>%
+   pivot_longer(
+    cols = matches("_raw$|_rate$"),
+    names_to = c("subgroup", ".value"),
+    names_pattern = "^(.+)_(raw|rate)$") %>%
+  rename(count = raw) %>%
+  mutate(group = "total") %>%
+  select(group, subgroup, count, rate) 
+
+low_birthweight <- rbind(low_bw_asian_reshape, low_bw_nhpi_reshape, low_bw_rc_reshape)
+
+homeownership_asian_reshape <- homeownership_asian %>%
+   pivot_longer(
+    cols = matches("_raw$|_rate$"),
+    names_to = c("subgroup", ".value"),
+    names_pattern = "^(.+)_(raw|rate)$") %>%
+  rename(count = raw) %>%
+  mutate(group = "asian") %>%
+  select(group, subgroup, count, rate) 
+
+homeownership_nhpi_reshape <- homeownership_nhpi %>%
+   pivot_longer(
+    cols = matches("_raw$|_rate$"),
+    names_to = c("subgroup", ".value"),
+    names_pattern = "^(.+)_(raw|rate)$") %>%
+  rename(count = raw) %>%
+  mutate(group = "nhpi") %>%
+  select(group, subgroup, count, rate) 
+
+homeownership_rc_reshape <- homeownership_rc %>%
+  pivot_longer(
+    cols = matches("_raw$|_rate$"),
+    names_to = c("subgroup", ".value"),
+    names_pattern = "^(.+)_(raw|rate)$") %>%
+  rename(count = raw) %>%
+  mutate(group = "total") %>%
+  select(group, subgroup, count, rate) 
+
+homeownership <- rbind(homeownership_asian_reshape, homeownership_nhpi_reshape, homeownership_rc_reshape)
+
+```
+
+Current Mockup: https://catalystcalifornia.sharepoint.com/:p:/s/Portal/IQB2I72xqiLbQYADd3kq9sa8AZMzOGt4QlRKnGaOnVPirrY?e=vzYzR7
+
+Goal 1: Make the case for disaggregation. Highlight racial disparities faced by CA’s AAPI
+communities that would be "hidden" without disaggregated data. 
+
+Goal 2. Counter the model minority myth by showing the “shared struggle”. Highlight where
+AAPI subgroup rates are on par with other BIPOC rates. 
+
+Questions to answer regarding feasibility:
+1. Would we need to use the same chart aesthetics/settings for the main (Goal 1) and the drilldown (Goal 2) charts?
+For this I will explore potential limitations but we should be able to maintain similar aesthetics/chart settings if we keep separate "main" and "drilldown" charts or if those end up being split.
+2. Add an instruction line like: CLICK ASIAN BAR TO SEE DISAGGREGATION/SUBGROUPS then COLLAPSE ASIAN SUBGROUPS
+
+
+Other considerations
+1. Asian aggregated to include asian, nhpi, and then drilldown each
+2. Total line as a vertical line
+3. A version where the total bar is clickable (though theoretically this would include Asian adn NHPI so we may break the logic/intuition of drilldown - will try it but better design is probably vertical line
+4. Do we keep separate "main" and "drilldown" charts? How do we incorporate other groups? A toggle? A clickable total?
+5. Toggle counts and rates?
+
+Options:
+Highcharter: https://www.appsilon.com/post/r-highcharts-drilldown
+
+```{r}
+# Test highcharter
+
+low_birthweight <- low_birthweight %>%
+  mutate(subgroup = ifelse(group=="nhpi", sprintf("%s (nhpi)", subgroup), subgroup)) %>%
+  mutate(group= ifelse(group=="nhpi", "asian", group)) %>%
+  arrange(rate)
+  
+
+base_bw_df <- low_birthweight %>%
+  filter(subgroup=="total") %>%
+  select(-subgroup)
+
+drilldown_bw_df <- low_birthweight %>%
+  filter(subgroup!="total") %>%
+  group_nest(group) %>%
+  mutate(
+    id=group,
+    type="bar",
+    data=map(data, mutate, name=subgroup, y2=count, y=rate),
+    data=map(data, list_parse)
+  )
+
+total_rate_bw <- base_bw_df %>%
+  filter(group=="total") %>%
+  pull(rate) %>%
+  round(2)
+
+drilldown_bw_js <- paste0("function(e) {
+  this.yAxis[0].addPlotLine({
+    id: 'total-line',
+    value: ", total_rate_bw, ",
+    color: '#FF0000',
+    width: 2,
+    dashStyle: 'Dash',
+    zIndex: 5,
+    label: { text: 'Total: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 0 }
+  });
+}")
+
+hchart(
+  base_bw_df,
+  "bar",
+  hcaes(x = group, y = rate, drilldown = group),
+  name = "Low Birthweight Rates",
+  colorByPoint = TRUE
+)  |>
+  hc_chart(events = list(
+    drilldown = JS(drilldown_bw_js),
+    drillup = JS("function() { this.yAxis[0].removePlotLine('total-line'); }")
+  ))|>
+  hc_drilldown(
+    allowPointDrilldown = TRUE,
+    series = list_parse(drilldown_bw_df)
+  ) 
+
+# fixes needed - each bar gets a label and the chart expands to show all or atleast 
+# adds a scroll bar
+
+```
+
+
+
+```{r}
+bw_goal2 <- low_birthweight %>%
+  mutate(group= ifelse(group=="total", subgroup, group))
+
+# Other groups as single bars
+other_groups <- bw_goal2 |>
+  filter(group != "asian") |>
+  select(subgroup, rate) |>
+  rename(name = subgroup)
+
+# Asian subgroups, excluding aggregates
+asian_subgroups <- bw_goal2 |>
+  filter(group == "asian", !subgroup %in% c("total", "total (nhpi)")) |>
+  select(subgroup, rate) |>
+  rename(name = subgroup)
+
+# Total reference line value
+total_rate <- bw_goal2 |> filter(group=="total" & subgroup == "total") |> pull(rate)
+
+chart_data <- bind_rows(
+  asian_subgroups |> mutate(color = "#0099bf", group = "Asian Subgroup"),
+  other_groups    |> mutate(color = "#004c5f", group = "Other Group")
+) |>
+  arrange(rate) |>
+  rename(y = rate) |>  # <-- explicit mapping
+  select(name, y, color, group)          # <-- only pass what's needed
+
+# parsed <- list_parse(chart_data)
+# str(parsed[[1]])  # should show: name, y, color, group
+
+# # Calculate height based on number of rows (e.g., 30px per bar)
+# chart_height <- length(unique(chart_data$name)) * 30 
+
+highchart() |>
+  # hc_size(height=chart_height) |>
+  hc_chart(type = "bar", 
+           height=600,
+           scrollablePlotArea = list(
+                   minHeight = 800, # Height at which scrolling kicks in
+                   opacity = 0.9,
+                   scrollPositionY = 0)) |>
+  # Real data series
+  hc_add_series(
+    name = "All Groups",
+    data = list_parse(chart_data),
+    colorByPoint = TRUE,
+    showInLegend = FALSE
+  ) |>
+  # Dummy series for legend toggling
+  hc_add_series(
+    name = "Asian Subgroup",
+    color = "#0099bf",
+    data = list(),
+    showInLegend = TRUE,
+    events = list(
+      legendItemClick = JS("function() {
+        var chart = this.chart;
+        var visible = this.visible !== false;
+        chart.series[0].points.forEach(function(p) {
+          if (p.group === 'Asian Subgroup') {
+            p.setVisible(!visible, false);
+          }
+        });
+        chart.redraw();
+        this.visible = !visible;
+        return false;
+      }")
+    )
+  ) |>
+  hc_add_series(
+    name = "Other Group",
+    color = "#004c5f",
+    data = list(),
+    showInLegend = TRUE,
+    events = list(
+      legendItemClick = JS("function() {
+        var chart = this.chart;
+        var visible = this.visible !== false;
+        chart.series[0].points.forEach(function(p) {
+          if (p.group === 'Other Group') {
+            p.setVisible(!visible, false);
+          }
+        });
+        chart.redraw();
+        this.visible = !visible;
+        return false;
+      }")
+    )
+  ) |>
+  hc_xAxis(type = "category") |>
+  hc_yAxis(
+    plotLines = list(list(
+      id = "total-line",
+      value = total_rate,
+      color = "#FF0000",
+      width = 2,
+      dashStyle = "Dash",
+      zIndex = 5,
+      label = list(
+        text = paste("Total:", total_rate),
+        rotation = 0,
+        y = 5,
+        x=0,
+        align = "left"
+      )
+    ))
+  )
+
+
+```
+
+Here is an example of the second chart type. It's interactive in a different way but the initial view shows rates for all subgroups and aggregated groups (where relevant) for initial comparison. You can interact by toggling on/off different series or by changing the view to display counts. 
+```{r}
+# trying out a bar chart (not drill down) with fixed bar widths where every bar is labeled and a scroll is added
+
+
+# calculate a dynamic height based on number of bars
+n_bars <- nrow(low_birthweight)
+bar_height <- 15  # pixels per bar (adjust as needed)
+chart_height <- n_bars * bar_height + 50  # Increased buffer for margins
+
+# create the bar chart
+hc <- highchart() %>%
+  hc_chart(
+    type = "bar",
+    reflow = TRUE  # Enable auto-reflow on resize
+    # ,
+    # # set the dynamic height here
+    # height=chart_height
+    ) %>%
+  hc_plotOptions(
+    bar = list(
+      pointWidth = 20  # Fixed width in pixels
+    ),
+    series = list(
+      clip = FALSE  # This is the key - disable clipping
+    )
+  ) %>%
+  hc_xAxis(categories = low_birthweight$subgroup,
+           labels = list(
+             enabled = TRUE,
+             style = list(
+               fontSize = "11px"))) %>%
+  hc_yAxis(
+    title = list(text = "Rate"),
+    # Also try increasing the plot area
+    offset = 0) %>%
+  hc_add_series(
+    name = "Low Birthweight Rate",
+    data = low_birthweight$rate
+  ) 
+
+# Wrap with constrained width
+htmltools::tagList(
+  htmltools::tags$div(
+    class = "chart-wrapper",
+    style = "max-width: 1200px; width: 100%; margin: 0 auto;",  # Set max-width
+    htmltools::tags$div(
+      class = "chart-container",
+      style = "height: 600px; overflow-y: auto; overflow-x: hidden; border: 1px solid #ccc;",
+      hc
+    )
+  ),
+  htmltools::tags$script(HTML("
+    // Wait for Highcharts to fully load
+    function resizeChart() {
+      if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
+        Highcharts.charts.forEach(function(chart) {
+          if (chart) {
+            // Get the chart-wrapper width (respects max-width)
+            var wrapper = document.querySelector('.chart-wrapper');
+            if (wrapper) {
+              var targetWidth = wrapper.offsetWidth - 40; // Account for padding/scrollbar
+              chart.setSize(targetWidth, null, false);
+            }
+          }
+        });
+      }
+    }
+    
+    // Run multiple times to catch widget initialization
+    setTimeout(resizeChart, 100);
+    
+    window.addEventListener('resize', resizeChart);
+  "))
+)
+```
+#
+#
+
+
