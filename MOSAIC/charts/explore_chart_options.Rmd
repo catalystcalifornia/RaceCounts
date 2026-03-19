@@ -83,7 +83,7 @@ low_bw_rc_reshape <- low_birthweight_rc %>%
   mutate(group = "total") %>%
   select(group, subgroup, count, rate) 
 
-low_birthweight <- rbind(low_bw_asian_reshape, low_bw_nhpi_reshape, low_bw_rc_reshape)
+low_birthweight <- rbind(low_bw_asian_reshape, low_bw_rc_reshape) # low_bw_nhpi_reshape, 
 
 homeownership_asian_reshape <- homeownership_asian %>%
    pivot_longer(
@@ -139,21 +139,48 @@ Other considerations
 
 Options:
 Highcharter: https://www.appsilon.com/post/r-highcharts-drilldown
+echarts4r: https://echarts4r.john-coene.com/
+
+# Working Examples
+
+## Goal 1 Example
+Make the case for disaggregation. Highlight racial disparities faced by CA’s AAPI communities that would be "hidden" without disaggregated data. 
 
 ```{r}
 # Test highcharter
 
+low_birthweight_chart1 <- low_birthweight %>%
+  filter(group!="nhpi") %>%
+
+  # mutate(subgroup = ifelse(group=="nhpi", sprintf("%s (nhpi)", subgroup), subgroup)) %>%
+  # mutate(group= ifelse(group=="nhpi", "asian", group)) %>%
+  mutate(rate=round(rate, 2))
+
 low_birthweight <- low_birthweight %>%
-  mutate(subgroup = ifelse(group=="nhpi", sprintf("%s (nhpi)", subgroup), subgroup)) %>%
-  mutate(group= ifelse(group=="nhpi", "asian", group)) %>%
-  arrange(rate)
+  filter(group!="nhpi") %>%
+  mutate(
+    group = case_when(group=="total"&subgroup!="total" ~ subgroup,
+                      .default=group)
+  ) %>%
+  # mutate(subgroup = ifelse(group=="nhpi", sprintf("%s (nhpi)", subgroup), subgroup)) %>%
+  # mutate(group= ifelse(group=="nhpi", "asian", group)) %>%
+  mutate(rate=round(rate, 2))
+
+if(low_birthweight_asbest=="min") {
+  low_birthweight <- low_birthweight %>%
+    arrange(desc(rate))
+  
+} else{
+  low_birthweight <- low_birthweight %>%
+    arrange(rate)
+}
   
 
-base_bw_df <- low_birthweight %>%
+base_bw_df <- low_birthweight_chart1 %>%
   filter(subgroup=="total") %>%
   select(-subgroup)
 
-drilldown_bw_df <- low_birthweight %>%
+drilldown_bw_df <- low_birthweight_chart1 %>%
   filter(subgroup!="total") %>%
   group_nest(group) %>%
   mutate(
@@ -176,7 +203,7 @@ drilldown_bw_js <- paste0("function(e) {
     width: 2,
     dashStyle: 'Dash',
     zIndex: 5,
-    label: { text: 'Total: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 0 }
+    label: { text: 'State Average: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 5 }
   });
 }")
 
@@ -186,130 +213,167 @@ hchart(
   hcaes(x = group, y = rate, drilldown = group),
   name = "Low Birthweight Rates",
   colorByPoint = TRUE
-)  |>
-  hc_chart(events = list(
-    drilldown = JS(drilldown_bw_js),
-    drillup = JS("function() { this.yAxis[0].removePlotLine('total-line'); }")
-  ))|>
+) %>%
+  hc_chart(
+    events = list(
+      drilldown = JS(drilldown_bw_js),
+      drillup = JS("function() { this.yAxis[0].removePlotLine('total-line'); }")
+    )
+  ) %>%
+  hc_tooltip(enabled = FALSE) %>%
   hc_drilldown(
     allowPointDrilldown = TRUE,
-    series = list_parse(drilldown_bw_df)
-  ) 
+    series = list_parse(drilldown_bw_df),
+    # USE drillUpButton INSTEAD OF breadcrumbs
+    drillUpButton = list(
+      relativeTo = "spacingBox",
+      position = list(
+        align = "right",
+        verticalAlign = "middle"
+        # ,
+        # x = 20,
+        # y = -50  can use x and y for finer positioning
+      )
+    )
+  ) %>%
+  hc_title(
+    text = "Low Birthweight by Race/Ethnicity",
+    align = "center" 
+  ) %>% 
+  hc_subtitle(
+    text = "Click a bar below to disaggregate",
+    align = "center"
+  ) %>%
+  hc_plotOptions(
+    bar = list(
+      dataLabels = list(
+        enabled = TRUE,
+        align = "right",      # Alignment relative to the data point
+        inside = FALSE,      # Place outside the bar
+        style = list(color = "black")
+      )
+    )
+  ) %>% 
+  hc_xAxis(labels = list(
+             enabled = TRUE,
+             style = list(
+               fontSize = "11px"))) 
 
 # fixes needed - each bar gets a label and the chart expands to show all or atleast 
 # adds a scroll bar
 
 ```
+#
 
-
-
+## Goal 2 Example
+Counter the model minority myth by showing the “shared struggle”. Highlight where AAPI subgroup rates are on par with other BIPOC rates. 
 ```{r}
-bw_goal2 <- low_birthweight %>%
-  mutate(group= ifelse(group=="total", subgroup, group))
-
-# Other groups as single bars
-other_groups <- bw_goal2 |>
-  filter(group != "asian") |>
-  select(subgroup, rate) |>
-  rename(name = subgroup)
-
-# Asian subgroups, excluding aggregates
-asian_subgroups <- bw_goal2 |>
-  filter(group == "asian", !subgroup %in% c("total", "total (nhpi)")) |>
-  select(subgroup, rate) |>
-  rename(name = subgroup)
-
-# Total reference line value
-total_rate <- bw_goal2 |> filter(group=="total" & subgroup == "total") |> pull(rate)
-
-chart_data <- bind_rows(
-  asian_subgroups |> mutate(color = "#0099bf", group = "Asian Subgroup"),
-  other_groups    |> mutate(color = "#004c5f", group = "Other Group")
-) |>
-  arrange(rate) |>
-  rename(y = rate) |>  # <-- explicit mapping
-  select(name, y, color, group)          # <-- only pass what's needed
-
-# parsed <- list_parse(chart_data)
-# str(parsed[[1]])  # should show: name, y, color, group
-
-# # Calculate height based on number of rows (e.g., 30px per bar)
-# chart_height <- length(unique(chart_data$name)) * 30 
-
-highchart() |>
-  # hc_size(height=chart_height) |>
-  hc_chart(type = "bar", 
-           height=600,
-           scrollablePlotArea = list(
-                   minHeight = 800, # Height at which scrolling kicks in
-                   opacity = 0.9,
-                   scrollPositionY = 0)) |>
-  # Real data series
-  hc_add_series(
-    name = "All Groups",
-    data = list_parse(chart_data),
-    colorByPoint = TRUE,
-    showInLegend = FALSE
-  ) |>
-  # Dummy series for legend toggling
-  hc_add_series(
-    name = "Asian Subgroup",
-    color = "#0099bf",
-    data = list(),
-    showInLegend = TRUE,
-    events = list(
-      legendItemClick = JS("function() {
-        var chart = this.chart;
-        var visible = this.visible !== false;
-        chart.series[0].points.forEach(function(p) {
-          if (p.group === 'Asian Subgroup') {
-            p.setVisible(!visible, false);
-          }
-        });
-        chart.redraw();
-        this.visible = !visible;
-        return false;
-      }")
-    )
-  ) |>
-  hc_add_series(
-    name = "Other Group",
-    color = "#004c5f",
-    data = list(),
-    showInLegend = TRUE,
-    events = list(
-      legendItemClick = JS("function() {
-        var chart = this.chart;
-        var visible = this.visible !== false;
-        chart.series[0].points.forEach(function(p) {
-          if (p.group === 'Other Group') {
-            p.setVisible(!visible, false);
-          }
-        });
-        chart.redraw();
-        this.visible = !visible;
-        return false;
-      }")
-    )
-  ) |>
-  hc_xAxis(type = "category") |>
-  hc_yAxis(
-    plotLines = list(list(
-      id = "total-line",
-      value = total_rate,
-      color = "#FF0000",
-      width = 2,
-      dashStyle = "Dash",
-      zIndex = 5,
-      label = list(
-        text = paste("Total:", total_rate),
-        rotation = 0,
-        y = 5,
-        x=0,
-        align = "left"
-      )
-    ))
-  )
+# bw_goal2 <- low_birthweight %>%
+#   mutate(group= ifelse(group=="total", subgroup, group))
+# 
+# # Other groups as single bars
+# other_groups <- bw_goal2 %>%
+#   filter(group != "asian") %>%
+#   select(subgroup, rate) %>%
+#   rename(name = subgroup)
+# 
+# # Asian subgroups, excluding aggregates
+# asian_subgroups <- bw_goal2 %>%
+#   filter(group == "asian", !subgroup %in% c("total", "total (nhpi)")) %>%
+#   select(subgroup, rate) %>%
+#   rename(name = subgroup)
+# 
+# # Total reference line value
+# total_rate <- bw_goal2 %>% filter(group=="total" & subgroup == "total") %>% pull(rate)
+# 
+# chart_data <- bind_rows(
+#   asian_subgroups %>% mutate(color = "#0099bf", group = "Asian Subgroup"),
+#   other_groups    %>% mutate(color = "#004c5f", group = "Other Group")
+# ) %>%
+#   arrange(rate) %>%
+#   rename(y = rate) %>%  # <-- explicit mapping
+#   select(name, y, color, group)          # <-- only pass what's needed
+# 
+# # parsed <- list_parse(chart_data)
+# # str(parsed[[1]])  # should show: name, y, color, group
+# 
+# # # Calculate height based on number of rows (e.g., 30px per bar)
+# # chart_height <- length(unique(chart_data$name)) * 30 
+# 
+# highchart() %>%
+#   # hc_size(height=chart_height) %>%
+#   hc_chart(type = "bar", 
+#            height=600,
+#            scrollablePlotArea = list(
+#                    minHeight = 800, # Height at which scrolling kicks in
+#                    opacity = 0.9,
+#                    scrollPositionY = 0)) %>%
+#   # Real data series
+#   hc_add_series(
+#     name = "All Groups",
+#     data = list_parse(chart_data),
+#     colorByPoint = TRUE,
+#     showInLegend = FALSE
+#   ) %>%
+#   # Dummy series for legend toggling
+#   hc_add_series(
+#     name = "Asian Subgroup",
+#     color = "#0099bf",
+#     data = list(),
+#     showInLegend = TRUE,
+#     events = list(
+#       legendItemClick = JS("function() {
+#         var chart = this.chart;
+#         var visible = this.visible !== false;
+#         chart.series[0].points.forEach(function(p) {
+#           if (p.group === 'Asian Subgroup') {
+#             p.setVisible(!visible, false);
+#           }
+#         });
+#         chart.redraw();
+#         this.visible = !visible;
+#         return false;
+#       }")
+#     )
+#   ) %>%
+#   hc_add_series(
+#     name = "Other Group",
+#     color = "#004c5f",
+#     data = list(),
+#     showInLegend = TRUE,
+#     events = list(
+#       legendItemClick = JS("function() {
+#         var chart = this.chart;
+#         var visible = this.visible !== false;
+#         chart.series[0].points.forEach(function(p) {
+#           if (p.group === 'Other Group') {
+#             p.setVisible(!visible, false);
+#           }
+#         });
+#         chart.redraw();
+#         this.visible = !visible;
+#         return false;
+#       }")
+#     )
+#   ) %>%
+#   hc_xAxis(type = "category") %>%
+#   hc_yAxis(
+#     plotLines = list(list(
+#       id = "total-line",
+#       value = total_rate,
+#       color = "#FF0000",
+#       width = 2,
+#       dashStyle = "Dash",
+#       zIndex = 5,
+#       label = list(
+#         text = paste("Total:", total_rate),
+#         rotation = 0,
+#         y = 5,
+#         x=0,
+#         align = "left"
+#       )
+#     ))
+#   )
 
 
 ```
@@ -317,49 +381,113 @@ highchart() |>
 Here is an example of the second chart type. It's interactive in a different way but the initial view shows rates for all subgroups and aggregated groups (where relevant) for initial comparison. You can interact by toggling on/off different series or by changing the view to display counts. 
 ```{r}
 # trying out a bar chart (not drill down) with fixed bar widths where every bar is labeled and a scroll is added
+# Create a mapping of all unique subgroups to indices
+all_subgroups <- unique(low_birthweight$subgroup)
 
+# Prepare data by group with proper x-axis mapping
+series_data <- low_birthweight %>%
+  group_by(group) %>%
+  group_split() %>%
+  map(function(df) {
+    # For each row, find the index of its subgroup in all_subgroups
+    data_points <- map(1:nrow(df), function(i) {
+      x_index <- which(all_subgroups == df$subgroup[i]) - 1  # 0-indexed for Highcharts
+      list(
+        x = unname(x_index),
+        y = df$rate[i],
+        name = df$subgroup[i]
+      )
+    })
+    
+    list(
+      name = df$group[1],
+      data = data_points
+    )
+  })
 
-# calculate a dynamic height based on number of bars
-n_bars <- nrow(low_birthweight)
-bar_height <- 15  # pixels per bar (adjust as needed)
-chart_height <- n_bars * bar_height + 50  # Increased buffer for margins
-
-# create the bar chart
 hc <- highchart() %>%
   hc_chart(
     type = "bar",
-    reflow = TRUE  # Enable auto-reflow on resize
-    # ,
-    # # set the dynamic height here
-    # height=chart_height
-    ) %>%
+    reflow = TRUE
+  ) %>%
   hc_plotOptions(
     bar = list(
-      pointWidth = 20  # Fixed width in pixels
+      dataLabels = list(
+        enabled = TRUE,
+        align = "right",      # Alignment relative to the data point
+        inside = FALSE,      # Place outside the bar
+        style = list(color = "black")
+      ),
+      pointWidth = 20,
+      grouping = FALSE,  # Disable grouping so bars don't cluster
+      pointPadding = 0,  # Remove padding between bars
+      groupPadding = 0   # Remove padding between groups
     ),
     series = list(
-      clip = FALSE  # This is the key - disable clipping
+      clip = FALSE,
+      events = list(
+        legendItemClick = htmlwidgets::JS("
+          function() {
+            var chart = this.chart;
+            var series = this;
+            
+            setTimeout(function() {
+              // After toggle, check which categories have visible data
+              var visibleCategories = new Set();
+              
+              chart.series.forEach(function(s) {
+                if (s.visible) {
+                  s.data.forEach(function(point) {
+                    visibleCategories.add(point.x);
+                  });
+                }
+              });
+              
+              // Show/hide axis labels based on visible data
+              chart.xAxis[0].categories.forEach(function(cat, i) {
+                var tick = chart.xAxis[0].ticks[i];
+                if (tick && tick.label) {
+                  if (visibleCategories.has(i)) {
+                    tick.label.show();
+                  } else {
+                    tick.label.hide();
+                  }
+                }
+              });
+            }, 10);
+          }
+        ")
+      )
     )
   ) %>%
-  hc_xAxis(categories = low_birthweight$subgroup,
-           labels = list(
-             enabled = TRUE,
-             style = list(
-               fontSize = "11px"))) %>%
+  hc_xAxis(
+    categories = all_subgroups,
+    labels = list(
+      enabled = TRUE,
+      style = list(
+        fontSize = "11px"
+      )
+    )
+  ) %>%
   hc_yAxis(
     title = list(text = "Rate"),
-    # Also try increasing the plot area
-    offset = 0) %>%
-  hc_add_series(
-    name = "Low Birthweight Rate",
-    data = low_birthweight$rate
-  ) 
+    offset = 0
+  ) %>%
+  hc_legend(enabled = TRUE)
+
+# Add each series
+for (series in series_data) {
+  hc <- hc %>% hc_add_series(
+    name = series$name,
+    data = series$data
+  )
+}
 
 # Wrap with constrained width
 htmltools::tagList(
   htmltools::tags$div(
     class = "chart-wrapper",
-    style = "max-width: 1200px; width: 100%; margin: 0 auto;",  # Set max-width
+    style = "max-width: 1200px; width: 100%; margin: 0 auto;",
     htmltools::tags$div(
       class = "chart-container",
       style = "height: 600px; overflow-y: auto; overflow-x: hidden; border: 1px solid #ccc;",
@@ -367,15 +495,13 @@ htmltools::tagList(
     )
   ),
   htmltools::tags$script(HTML("
-    // Wait for Highcharts to fully load
     function resizeChart() {
       if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
         Highcharts.charts.forEach(function(chart) {
           if (chart) {
-            // Get the chart-wrapper width (respects max-width)
             var wrapper = document.querySelector('.chart-wrapper');
             if (wrapper) {
-              var targetWidth = wrapper.offsetWidth - 40; // Account for padding/scrollbar
+              var targetWidth = wrapper.offsetWidth - 40;
               chart.setSize(targetWidth, null, false);
             }
           }
@@ -383,14 +509,179 @@ htmltools::tagList(
       }
     }
     
-    // Run multiple times to catch widget initialization
     setTimeout(resizeChart, 100);
-    
     window.addEventListener('resize', resizeChart);
   "))
 )
+# # create the bar chart
+# hc <- highchart() %>%
+#   hc_chart(
+#     type = "bar",
+#     reflow = TRUE  # Enable auto-reflow on resize
+#     # ,
+#     # # set the dynamic height here
+#     # height=chart_height
+#     ) %>%
+#   hc_plotOptions(
+#     bar = list(
+#       pointWidth = 20  # Fixed width in pixels
+#     ),
+#     series = list(
+#       clip = FALSE  # This is the key - disable clipping
+#     )
+#   ) %>%
+#   hc_xAxis(categories = low_birthweight$subgroup,
+#            labels = list(
+#              enabled = TRUE,
+#              style = list(
+#                fontSize = "11px"))) %>%
+#   hc_yAxis(
+#     title = list(text = "Rate"),
+#     # Also try increasing the plot area
+#     offset = 0) %>%
+#   hc_add_series(
+#     name = "Low Birthweight Rate",
+#     data = low_birthweight$rate
+#   ) 
+# 
+# # Wrap with constrained width
+# htmltools::tagList(
+#   htmltools::tags$div(
+#     class = "chart-wrapper",
+#     style = "max-width: 1200px; width: 100%; margin: 0 auto;",  # Set max-width
+#     htmltools::tags$div(
+#       class = "chart-container",
+#       style = "height: 600px; overflow-y: auto; overflow-x: hidden; border: 1px solid #ccc;",
+#       hc
+#     )
+#   ),
+#   htmltools::tags$script(HTML("
+#     // Wait for Highcharts to fully load
+#     function resizeChart() {
+#       if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
+#         Highcharts.charts.forEach(function(chart) {
+#           if (chart) {
+#             // Get the chart-wrapper width (respects max-width)
+#             var wrapper = document.querySelector('.chart-wrapper');
+#             if (wrapper) {
+#               var targetWidth = wrapper.offsetWidth - 40; // Account for padding/scrollbar
+#               chart.setSize(targetWidth, null, false);
+#             }
+#           }
+#         });
+#       }
+#     }
+#     
+#     // Run multiple times to catch widget initialization
+#     setTimeout(resizeChart, 100);
+#     
+#     window.addEventListener('resize', resizeChart);
+#   "))
+# )
 ```
 #
 #
+```{r}
+all_subgroups <- unique(low_birthweight$subgroup)
 
+series_data <- low_birthweight %>%
+  group_by(group) %>%
+  group_split() %>%
+  map(function(df) {
+    data_points <- map(1:nrow(df), function(i) {
+      x_index <- which(all_subgroups == df$subgroup[i]) - 1
+      list(
+        x = unname(x_index),
+        y = df$rate[i],
+        name = df$subgroup[i]
+      )
+    })
+    
+    list(
+      name = df$group[1],
+      data = data_points
+    )
+  })
 
+hc <- highchart() %>%
+  hc_chart(type = "bar", reflow = TRUE) %>%
+  hc_plotOptions(
+    bar = list(
+      dataLabels = list(
+        enabled = TRUE,
+        align = "right",      # Alignment relative to the data point
+        inside = FALSE,      # Place outside the bar
+        style = list(color = "black")
+      ),
+      pointWidth = 20,
+      grouping = FALSE,
+      pointPadding = 0,
+      groupPadding = 0.1  # Small padding between different subgroups
+    ),
+    series = list(clip = FALSE)
+  ) %>%
+  hc_xAxis(
+    categories = all_subgroups,
+    labels = list(
+      enabled = TRUE,
+      style = list(fontSize = "11px")
+    ),
+    # Add grid lines to visually separate categories
+    gridLineWidth = 1,
+    gridLineColor = '#e6e6e6'
+  ) %>%
+  hc_yAxis(
+    title = list(text = "Rate"),
+    offset = 0,
+    plotLines = list(
+      list(
+        value = total_rate_bw,  # Add your reference line here
+        color = 'red',
+        width = 2,
+        dashStyle = 'Dash',
+        label = list(text = 'State Average', align = 'left', rotation=0,y=5,x=5),
+        zIndex = 5
+      )
+    )
+  ) %>%
+  hc_legend(enabled = TRUE)
+
+for (series in series_data) {
+  hc <- hc %>% hc_add_series(
+    name = series$name,
+    data = series$data
+  )
+}
+
+# Wrap with constrained width
+htmltools::tagList(
+  htmltools::tags$div(
+    class = "chart-wrapper",
+    style = "max-width: 1200px; width: 100%; margin: 0 auto;",
+    htmltools::tags$div(
+      class = "chart-container",
+      style = "height: 600px; overflow-y: auto; overflow-x: hidden; border: 1px solid #ccc;",
+      hc
+    )
+  ),
+  htmltools::tags$script(HTML("
+    function resizeChart() {
+      if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
+        Highcharts.charts.forEach(function(chart) {
+          if (chart) {
+            var wrapper = document.querySelector('.chart-wrapper');
+            if (wrapper) {
+              var targetWidth = wrapper.offsetWidth - 40;
+              chart.setSize(targetWidth, null, false);
+            }
+          }
+        });
+      }
+    }
+    
+    setTimeout(resizeChart, 100);
+    window.addEventListener('resize', resizeChart);
+  "))
+)
+
+```
