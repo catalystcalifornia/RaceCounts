@@ -168,13 +168,13 @@ low_birthweight <- low_birthweight %>%
 if(low_birthweight_asbest=="min") {
   low_birthweight <- low_birthweight %>%
     arrange(desc(rate))
-  low_birthweight_chart1 <- low_birthweight %>%
+  low_birthweight_chart1 <- low_birthweight_chart1 %>%
     arrange(desc(rate))
   
 } else{
   low_birthweight <- low_birthweight %>%
     arrange(rate)
-  low_birthweight_chart1 <- low_birthweight %>%
+  low_birthweight_chart1 <- low_birthweight_chart1 %>%
     arrange(desc(rate))
 }
   
