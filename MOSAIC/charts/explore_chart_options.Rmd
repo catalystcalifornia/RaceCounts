@@ -151,7 +151,6 @@ Make the case for disaggregation. Highlight racial disparities faced by CA’s A
 
 low_birthweight_chart1 <- low_birthweight %>%
   filter(group!="nhpi") %>%
-
   # mutate(subgroup = ifelse(group=="nhpi", sprintf("%s (nhpi)", subgroup), subgroup)) %>%
   # mutate(group= ifelse(group=="nhpi", "asian", group)) %>%
   mutate(rate=round(rate, 2))
@@ -169,10 +168,14 @@ low_birthweight <- low_birthweight %>%
 if(low_birthweight_asbest=="min") {
   low_birthweight <- low_birthweight %>%
     arrange(desc(rate))
+  low_birthweight_chart1 <- low_birthweight %>%
+    arrange(desc(rate))
   
 } else{
   low_birthweight <- low_birthweight %>%
     arrange(rate)
+  low_birthweight_chart1 <- low_birthweight %>%
+    arrange(desc(rate))
 }
   
 
