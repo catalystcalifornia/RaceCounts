@@ -1,0 +1,844 @@
+---
+title: "explore_chart_options"
+output: 
+  html_document:
+    self_contained: true
+---
+<style>
+.html-widget {
+    width: 100vw !important;
+    height: 100vh !important;
+}
+body { margin: 0; }
+</style>
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+# load libraries and test data
+source("W:\\RDA Team\\R\\credentials_source.R")
+library(dplyr)
+library(purrr)
+library(highcharter)
+library(htmltools)
+con <- connect_to_db("mosaic")
+con_rc <- connect_to_db("racecounts")
+
+low_birthweight_asian<- dbGetQuery(con, "SELECT * FROM v7.asian_hlth_low_birthweight_state_2025;") %>%
+  select(ends_with("_raw"), ends_with("_rate"))
+low_birthweight_nhpi <- dbGetQuery(con, "SELECT * FROM v7.nhpi_hlth_low_birthweight_state_2025;") %>%
+  select(ends_with("_raw"), ends_with("_rate"))
+low_birthweight_rc <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hlth_low_birthweight_state_2025;") 
+
+low_birthweight_asbest <- low_birthweight_rc %>% pull(asbest)
+
+low_birthweight_rc <- low_birthweight_rc %>%
+  select(ends_with("_raw"), ends_with("_rate"))
+
+homeownership_asian <- dbGetQuery(con, "SELECT * FROM v7.asian_hous_homeownership_state_2025;") %>%
+  select(ends_with("_raw"), ends_with("_rate")) 
+homeownership_nhpi <- dbGetQuery(con, "SELECT * FROM v7.nhpi_hous_homeownership_state_2025;") %>%
+  select(ends_with("_raw"), ends_with("_rate"))
+homeownership_rc <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_homeownership_state_2025;") 
+
+homeownership_asbest <- homeownership_rc %>% pull(asbest)
+homeownership_rc <- homeownership_rc %>%
+  select(ends_with("_raw"), ends_with("_rate"))
+
+dbDisconnect(con)
+dbDisconnect(con_rc)
+
+```
+
+```{r}
+# get data in right shape
+# should have at minimum: group (asian, nhpi, total); subgroup (bangladesh, philippines, etc); count, rate
+
+# colnames(low_birthweight_asian)
+# colnames(homeownership_asian)
+
+low_bw_asian_reshape <- low_birthweight_asian %>%
+   pivot_longer(
+    cols = matches("_raw$|_rate$"),
+    names_to = c("subgroup", ".value"),
+    names_pattern = "^(.+)_(raw|rate)$") %>%
+  rename(count = raw) %>%
+  mutate(group = "asian") %>%
+  select(group, subgroup, count, rate) 
+
+low_bw_nhpi_reshape <- low_birthweight_nhpi %>%
+   pivot_longer(
+    cols = matches("_raw$|_rate$"),
+    names_to = c("subgroup", ".value"),
+    names_pattern = "^(.+)_(raw|rate)$") %>%
+  rename(count = raw) %>%
+  mutate(group = "nhpi") %>%
+  select(group, subgroup, count, rate)
+
+low_bw_rc_reshape <- low_birthweight_rc %>%
+   pivot_longer(
+    cols = matches("_raw$|_rate$"),
+    names_to = c("subgroup", ".value"),
+    names_pattern = "^(.+)_(raw|rate)$") %>%
+  rename(count = raw) %>%
+  mutate(group = "total") %>%
+  select(group, subgroup, count, rate) 
+
+low_birthweight <- rbind(low_bw_asian_reshape, low_bw_rc_reshape) # low_bw_nhpi_reshape, 
+
+homeownership_asian_reshape <- homeownership_asian %>%
+   pivot_longer(
+    cols = matches("_raw$|_rate$"),
+    names_to = c("subgroup", ".value"),
+    names_pattern = "^(.+)_(raw|rate)$") %>%
+  rename(count = raw) %>%
+  mutate(group = "asian") %>%
+  select(group, subgroup, count, rate) 
+
+homeownership_nhpi_reshape <- homeownership_nhpi %>%
+   pivot_longer(
+    cols = matches("_raw$|_rate$"),
+    names_to = c("subgroup", ".value"),
+    names_pattern = "^(.+)_(raw|rate)$") %>%
+  rename(count = raw) %>%
+  mutate(group = "nhpi") %>%
+  select(group, subgroup, count, rate) 
+
+homeownership_rc_reshape <- homeownership_rc %>%
+  pivot_longer(
+    cols = matches("_raw$|_rate$"),
+    names_to = c("subgroup", ".value"),
+    names_pattern = "^(.+)_(raw|rate)$") %>%
+  rename(count = raw) %>%
+  mutate(group = "total") %>%
+  select(group, subgroup, count, rate) 
+
+homeownership <- rbind(homeownership_asian_reshape, homeownership_nhpi_reshape, homeownership_rc_reshape)
+
+# Set colors for bars
+base_colors <- c(
+  "asian" = "#070024", 
+  "total" = "#ac0068",
+  "default" = "#cccccc")
+
+drilldown_colors <- c(
+  "asian subgroups" = "#7cb5ec", 
+  "total" = "#ac0068",
+  "default" = "#cccccc"
+)
+
+color_map <- c(
+  "asian subgroups" = "#7cb5ec", 
+  "asian" = "#070024",             
+  "other" = "#ac0068",
+  "total" = "#ac0068",
+  "default" = "#cccccc"
+)
+
+```
+
+Current Mockup: https://catalystcalifornia.sharepoint.com/:p:/s/Portal/IQB2I72xqiLbQYADd3kq9sa8AZMzOGt4QlRKnGaOnVPirrY?e=vzYzR7
+
+This document aims to test out available chart options for disaggregation. For interactive charts, RDA primarily uses the library Highcharts which is the starting point for the working examples below. We should assess the following charts and provide feedback. Based on feedback we can assess if Highcharts is an appropriate library for our needs, or if we should consider another library, or perhaps pursue no interactivity at all.
+
+
+# Working Examples
+
+## Goal 1 Example
+Make the case for disaggregation. Highlight racial disparities faced by CA’s AAPI communities that would be "hidden" without disaggregated data. 
+
+This is an example of a "drilldown" chart. You can select Asian or Total and the chart will drilldown to show the subgroups in each. Once you drilldown, you have another option to toggle to counts or stay on rates. When drilling down and viewing rates, a vertical line will appear with the state average. 
+
+```{r}
+# Test highcharter
+
+low_birthweight_chart1 <- low_birthweight %>%
+  filter(group!="nhpi") %>%
+  # mutate(subgroup = ifelse(group=="nhpi", sprintf("%s (nhpi)", subgroup), subgroup)) %>%
+  # mutate(group= ifelse(group=="nhpi", "asian", group)) %>%
+  mutate(rate=round(rate, 2))
+
+low_birthweight <- low_birthweight %>%
+  filter(group!="nhpi") %>%
+  mutate(
+    group = case_when(group=="total" & subgroup != "total" ~ subgroup,
+                      group=="asian" & subgroup != "total" ~ "asian subgroups",
+                      .default=group),
+    subgroup = case_when(group=="asian"&subgroup=="total" ~ "asian average",
+                         .default=subgroup)
+  ) %>%
+  filter(group!="total"&subgroup!="total") %>%
+  # mutate(subgroup = ifelse(group=="nhpi", sprintf("%s (nhpi)", subgroup), subgroup)) %>%
+  # mutate(group= ifelse(group=="nhpi", "asian", group)) %>%
+  mutate(rate=round(rate, 2))
+
+if(low_birthweight_asbest=="min") {
+  low_birthweight <- low_birthweight %>%
+    arrange(desc(rate))
+  low_birthweight_chart1 <- low_birthweight_chart1 %>%
+    arrange(desc(rate))
+  
+} else{
+  low_birthweight <- low_birthweight %>%
+    arrange(rate)
+  low_birthweight_chart1 <- low_birthweight_chart1 %>%
+    arrange(desc(rate))
+}
+
+base_bw_df <- low_birthweight_chart1 %>%
+  filter(subgroup=="total") %>%
+  select(-subgroup) %>%
+  mutate(color = case_when(
+    group == "asian" ~ color_map[["asian"]],
+    group == "total" ~ color_map[["total"]],
+    TRUE ~ base_colors[["default"]]
+  ))
+drilldown_bw_df <- low_birthweight_chart1 %>%
+  filter(subgroup!="total") %>%
+  group_nest(group) %>%
+  mutate(
+    id = group,
+    type = "bar",
+    # Assign color based on group
+    color = case_when(
+      group == "asian" ~ color_map[["asian subgroups"]],
+      group == "total" ~ color_map[["total"]],
+      .default = color_map[["default"]]
+    ),
+    # Store both rate-sorted and count-sorted versions
+    data = map(data, function(df) {
+      df %>%
+        arrange(desc(rate)) %>%
+        mutate(name = subgroup, y = rate, y2 = count) %>%
+        select(name, y, y2) %>%
+        list_parse()
+    }),
+    data_count_sorted = map2(data, group, function(df, grp) {
+      low_birthweight_chart1 %>%
+        filter(group == grp, subgroup != "total") %>%
+        arrange(desc(count)) %>%
+        mutate(name = subgroup, y = count, y2 = rate) %>%
+        select(name, y, y2) %>%
+        list_parse()
+    })
+  ) %>%
+  select(id, type, color, data, data_count_sorted)
+
+total_rate_bw <- base_bw_df %>%
+  filter(group=="total") %>%
+  pull(rate) %>%
+  round(2)
+
+drilldown_bw_js <- paste0("function(e) {
+  var chart = this;
+  
+  // Store the original drilldown data before any modifications
+  var seriesId = e.seriesOptions.id;
+  
+  if (!chart.originalDrilldownData) {
+    chart.originalDrilldownData = {};
+  }
+  
+  // Store both rate and count sorted data from the drilldown series options
+  if (e.seriesOptions.data && e.seriesOptions.data_count_sorted) {
+    chart.originalDrilldownData[seriesId] = {
+      rateSorted: JSON.parse(JSON.stringify(e.seriesOptions.data)),
+      countSorted: JSON.parse(JSON.stringify(e.seriesOptions.data_count_sorted))
+    };
+  }
+  
+  // Add plot line (only for rates view)
+  chart.yAxis[0].addPlotLine({
+    id: 'total-line',
+    value: ", total_rate_bw, ",
+    color: '#FF0000',
+    width: 2,
+    dashStyle: 'Dash',
+    zIndex: 5,
+    label: { text: 'State Average: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 5 }
+  });
+  
+  // Reset state - always start with rates
+  chart.currentView = 'rates';
+  
+  // Update data label formatter for rates (initial state)
+  chart.update({
+    plotOptions: {
+      bar: {
+        dataLabels: {
+          formatter: function() {
+            return this.y;
+          }
+        }
+      }
+    }
+  }, false);
+  
+  chart.yAxis[0].update({title: {text: 'Rate'}}, false);
+  
+  // Add toggle button if it doesn't exist
+  if (!chart.customToggleButton) {
+    chart.customToggleButton = chart.renderer.button(
+      'Show Counts',
+      chart.plotLeft + 10,
+      10,
+      function() {
+        if (chart.currentView === 'rates') {
+          // Switch to counts
+          chart.currentView = 'counts';
+          chart.yAxis[0].update({title: {text: 'Count'}}, false);
+          chart.customToggleButton.attr({text: 'Show Rates'});
+          
+          // Remove the state average line
+          chart.yAxis[0].removePlotLine('total-line');
+          
+          // Update all drilled-down series to show counts
+          chart.series.forEach(function(s) {
+            if (s.options.id && chart.originalDrilldownData[s.options.id]) {
+              s.setData(chart.originalDrilldownData[s.options.id].countSorted, false);
+            }
+          });
+          
+          // Update data label formatter for counts
+          chart.update({
+            plotOptions: {
+              bar: {
+                dataLabels: {
+                  formatter: function() {
+                    return this.y.toLocaleString('en-US');
+                  }
+                }
+              }
+            }
+          }, false);
+          
+        } else {
+          // Switch to rates
+          chart.currentView = 'rates';
+          chart.yAxis[0].update({title: {text: 'Rate'}}, false);
+          chart.customToggleButton.attr({text: 'Show Counts'});
+          
+          // Re-add the state average line
+          chart.yAxis[0].addPlotLine({
+            id: 'total-line',
+            value: ", total_rate_bw, ",
+            color: '#f91105',
+            width: 2,
+            dashStyle: 'Dash',
+            zIndex: 5,
+            label: { text: 'State Average: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 5 }
+          });
+          
+          // Update all drilled-down series to show rates
+          chart.series.forEach(function(s) {
+            if (s.options.id && chart.originalDrilldownData[s.options.id]) {
+              s.setData(chart.originalDrilldownData[s.options.id].rateSorted, false);
+            }
+          });
+          
+          // Update data label formatter for rates
+          chart.update({
+            plotOptions: {
+              bar: {
+                dataLabels: {
+                  formatter: function() {
+                    return this.y;
+                  }
+                }
+              }
+            }
+          }, false);
+        }
+        
+        chart.redraw();
+      },
+      {
+        fill: '#2196F3',
+        stroke: '#1976D2',
+        'stroke-width': 1,
+        r: 3,
+        padding: 8
+      },
+      {
+        fill: '#1976D2'
+      },
+      {
+        fill: '#0D47A1'
+      }
+    )
+    .css({
+      color: 'white',
+      fontWeight: 'bold',
+      fontSize: '12px'
+    })
+    .add();
+  } else {
+    // Button exists, reset it
+    chart.customToggleButton.attr({text: 'Show Counts'});
+  }
+  
+  chart.redraw();
+}")
+
+drillup_bw_js <- "function() { 
+  var chart = this;
+  chart.yAxis[0].removePlotLine('total-line');
+  
+  // CRITICAL: Reset all drilldown series data back to rate-sorted BEFORE drilling up
+  // This ensures the next drilldown starts with the correct data
+  if (chart.originalDrilldownData && chart.options.drilldown && chart.options.drilldown.series) {
+    chart.options.drilldown.series.forEach(function(drilldownSeries) {
+      var seriesId = drilldownSeries.id;
+      if (chart.originalDrilldownData[seriesId]) {
+        drilldownSeries.data = chart.originalDrilldownData[seriesId].rateSorted;
+      }
+    });
+  }
+  
+  // Remove toggle button on drillup
+  if (chart.customToggleButton) {
+    chart.customToggleButton.destroy();
+    chart.customToggleButton = null;
+  }
+  
+  // Clear state
+  chart.currentView = null;
+  
+  // Reset to rates view
+  chart.yAxis[0].update({title: {text: 'Rate'}}, false);
+  
+  // Reset data label formatter
+  chart.update({
+    plotOptions: {
+      bar: {
+        dataLabels: {
+          formatter: function() {
+            return this.y;
+          }
+        }
+      }
+    }
+  }, false);
+  
+  chart.redraw();
+}"
+
+hc <- hchart(
+  base_bw_df,
+  "bar",
+  hcaes(x = group, y = rate, drilldown = group, y2 = count, color=color),
+  name = "Low Birthweight Rates",
+  colorByPoint = FALSE
+) %>%
+  hc_chart(
+    height = 400, 
+    scrollablePlotArea = list(minHeight = 500, opacity = 0.9),
+    events = list(
+      drilldown = JS(drilldown_bw_js),
+      drillup = JS(drillup_bw_js)
+    )
+  ) %>%
+  hc_tooltip(enabled = FALSE) %>%
+  hc_drilldown(
+    allowPointDrilldown = TRUE,
+    series = list_parse(drilldown_bw_df),  
+    drillUpButton = list(
+      relativeTo = "spacingBox",
+      position = list(
+        align = "right",
+        verticalAlign = "middle"
+      )
+    )
+  ) %>%
+  hc_title(
+    text = "Low Birthweight by Race/Ethnicity",
+    align = "center" 
+  ) %>% 
+  hc_subtitle(
+    text = "Click the Asian or Total bar below to disaggregate data",
+    align = "center"
+  ) %>%
+  hc_plotOptions(
+    bar = list(
+      dataLabels = list(
+        enabled = TRUE,
+        align = "right",
+        inside = FALSE,
+        style = list(color = "black")
+      ))) %>% 
+  hc_xAxis(labels = list(
+    enabled = TRUE,
+    style = list(
+      fontSize = "11px"))) %>%
+  hc_yAxis(title = list(text = "Rate")) %>%
+  hc_legend(enabled=FALSE)
+
+
+# Wrap with constrained width
+htmltools::tagList(
+  htmltools::tags$div(
+    class = "chart-wrapper",
+    style = "max-width: 1200px; width: 100%; margin: 0 auto;",
+    htmltools::tags$div(
+      class = "chart-container",
+      style = "height: auto; overflow: hidden; border: 1px solid #ccc;",
+      hc
+    )
+  ),
+  htmltools::tags$script(HTML("
+    function resizeChart() {
+      if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
+        Highcharts.charts.forEach(function(chart) {
+          if (chart) {
+            var wrapper = document.querySelector('.chart-wrapper');
+            if (wrapper) {
+              var targetWidth = wrapper.offsetWidth - 40;
+              chart.setSize(targetWidth, null, false);
+            }
+          }
+        });
+      }
+    }
+    
+    setTimeout(resizeChart, 100);
+    window.addEventListener('resize', resizeChart);
+  "))
+)
+
+```
+#
+
+## Goal 2 Example
+Counter the model minority myth by showing the “shared struggle”. Highlight where AAPI subgroup rates are on par with other BIPOC rates. 
+
+Here is an example of the second chart type. The initial view shows rates for all subgroups and aggregated groups (like traditional Race Counts race/ethnic groups) for initial comparison. You can interact by toggling on/off different series or by changing the view to display counts instead of rates. 
+
+```{r}
+all_subgroups <- unique(low_birthweight$subgroup)
+
+# Create ordered categories for RATES (descending by rate)
+rate_order <- low_birthweight %>%
+  arrange(desc(rate)) %>%
+  pull(subgroup)
+
+# Create ordered categories for COUNTS (descending by count)
+count_order <- low_birthweight %>%
+  arrange(desc(count)) %>%
+  pull(subgroup)
+
+# Get unique groups for color assignment
+groups <- unique(low_birthweight$group)
+
+
+# Create series data for RATES with colors
+series_data_rates <- low_birthweight %>%
+  group_by(group) %>%
+  group_split() %>%
+  map(function(df) {
+    data_points <- map(1:nrow(df), function(i) {
+      x_index <- which(rate_order == df$subgroup[i]) - 1
+      list(
+        x = unname(x_index),
+        y = df$rate[i],
+        name = df$subgroup[i]
+      )
+    })
+    
+    # Assign color based on group
+    series_color <- if(df$group[1] == "asian subgroups") {
+      color_map[["asian subgroups"]]
+    } else if(df$group[1] == "asian") {
+      color_map[["asian"]]
+    } else {
+      color_map[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
+    }
+    
+    list(
+      name = df$group[1],
+      data = data_points,
+      id = paste0("rates-", df$group[1]),
+      color = series_color
+    )
+  })
+
+# Create series data for COUNTS with same colors
+series_data_counts <- low_birthweight %>%
+  group_by(group) %>%
+  group_split() %>%
+  map(function(df) {
+    data_points <- map(1:nrow(df), function(i) {
+      x_index <- which(count_order == df$subgroup[i]) - 1
+      list(
+        x = unname(x_index),
+        y = df$count[i],
+        name = df$subgroup[i]
+      )
+    })
+    
+    # Assign same color based on group
+    series_color <- if(df$group[1] == "asian subgroups") {
+      color_map[["asian subgroups"]]
+    } else if(df$group[1] == "asian") {
+      color_map[["asian"]]
+    } else {
+      color_map[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
+    }
+    
+    list(
+      name = df$group[1],
+      data = data_points,
+      id = paste0("counts-", df$group[1]),
+      visible = FALSE,
+      color = series_color
+    )
+  })
+
+hc <- highchart() %>%
+  hc_chart(
+    type = "bar",
+    reflow = TRUE,
+    events = list(
+      load = htmlwidgets::JS(sprintf("
+        function() {
+          var chart = this;
+          var rateOrder = %s;
+          var countOrder = %s;
+          
+          // NO NEED for color mapping logic anymore - colors are already set
+          
+          // Create toggle button
+          chart.customButton = chart.renderer.button(
+            'Show Counts',
+            chart.plotLeft + 10,
+            10,
+            function() {
+              var showingRates = true;
+              
+              // Check if rates are currently visible
+              chart.series.forEach(function(s) {
+                if (s.userOptions.id && s.userOptions.id.startsWith('rates-')) {
+                  showingRates = s.visible;
+                }
+              });
+              
+              // Toggle all series and update x-axis
+              chart.series.forEach(function(s) {
+                if (s.userOptions.id) {
+                  if (showingRates) {
+                    // Switch to counts
+                    if (s.userOptions.id.startsWith('rates-')) {
+                      s.update({showInLegend: false}, false);
+                      s.hide();
+                    } else if (s.userOptions.id.startsWith('counts-')) {
+                      s.update({showInLegend: true}, false);
+                      s.show();
+                    }
+                  } else {
+                    // Switch to rates
+                    if (s.userOptions.id.startsWith('counts-')) {
+                      s.update({showInLegend: false}, false);
+                      s.hide();
+                    } else if (s.userOptions.id.startsWith('rates-')) {
+                      s.update({showInLegend: true}, false);
+                      s.show();
+                    }
+                  }
+                }
+              });
+              
+              // Update button text, y-axis, x-axis categories, and data label formatter
+              if (showingRates) {
+                chart.customButton.attr({text: 'Show Rates'});
+                chart.yAxis[0].update({title: {text: 'Count'}}, false);
+                chart.xAxis[0].update({categories: countOrder}, false);
+                chart.yAxis[0].removePlotLine('state-average-line');
+                chart.update({
+                  plotOptions: {
+                    bar: {
+                      dataLabels: {
+                        formatter: function() {
+                          return this.y.toLocaleString('en-US');
+                        }
+                      }
+                    }
+                  }
+                }, false);
+              } else {
+                chart.customButton.attr({text: 'Show Counts'});
+                chart.yAxis[0].update({title: {text: 'Rate'}}, false);
+                chart.xAxis[0].update({categories: rateOrder}, false);
+                chart.yAxis[0].addPlotLine({
+                  id: 'state-average-line',
+                  value: %s,
+                  color: '#f91105',
+                  width: 2,
+                  dashStyle: 'Dash',
+                  label: {text: 'State Average: %s', align: 'left', rotation: 0, y: -8, x: 5},
+                  zIndex: 5
+                });
+                chart.update({
+                  plotOptions: {
+                    bar: {
+                      dataLabels: {
+                        formatter: function() {
+                          return this.y;
+                        }
+                      }
+                    }
+                  }
+                }, false);
+              }
+              
+              chart.redraw();
+            },
+            {
+              fill: '#2196F3',
+              stroke: '#1976D2',
+              'stroke-width': 1,
+              r: 3,
+              padding: 8
+            },
+            {
+              fill: '#1976D2'
+            },
+            {
+              fill: '#0D47A1'
+            }
+          )
+          .css({
+            color: 'white',
+            fontWeight: 'bold',
+            fontSize: '12px'
+          })
+          .add();
+        }
+      ", jsonlite::toJSON(rate_order), jsonlite::toJSON(count_order), total_rate_bw, total_rate_bw))
+    )
+  ) %>%
+  hc_plotOptions(
+    bar = list(
+      dataLabels = list(
+        enabled = TRUE,
+        align = "right",
+        inside = FALSE,
+        style = list(color = "black"),
+        formatter = JS("function() { return this.y; }")
+      ),
+      pointWidth = 20,
+      grouping = FALSE,
+      pointPadding = 0,
+      groupPadding = 0.1
+    ),
+    series = list(clip = FALSE)
+  ) %>%
+  hc_xAxis(
+    categories = rate_order,
+    labels = list(
+      enabled = TRUE,
+      style = list(fontSize = "11px")
+    ),
+    gridLineWidth = 1,
+    gridLineColor = '#e6e6e6'
+  ) %>%
+  hc_yAxis(
+    title = list(text = "Rate"),
+    offset = 0,
+    plotLines = list(
+      list(
+        id = 'state-average-line',
+        value = total_rate_bw,
+        color = '#f91105',
+        width = 2,
+        dashStyle = 'Dash',
+        label = list(text = paste('State Average:', total_rate_bw), align = 'left', rotation=0, y=-8, x=5),
+        zIndex = 5
+      )
+    )
+  ) %>%
+  hc_legend(
+    enabled = TRUE,
+    verticalAlign = "top",
+    margin = 20
+  ) %>%
+  hc_tooltip(enabled = FALSE) %>%
+  hc_title(
+    text = "Low Birthweight by Race/Ethnicity",
+    align = "center" 
+  ) %>% 
+  hc_subtitle(
+    text = "Toggle groups on/off by clicking the legend labels below",
+    align = "center"
+  )
+
+# Add RATES series (visible by default)
+for (series in series_data_rates) {
+  hc <- hc %>% hc_add_series(
+    name = series$name,
+    data = series$data,
+    id = series$id,
+    color = series$color  # Use pre-assigned color
+  )
+}
+
+# Add COUNTS series (hidden by default)
+for (series in series_data_counts) {
+  hc <- hc %>% hc_add_series(
+    name = series$name,
+    data = series$data,
+    id = series$id,
+    visible = FALSE,
+    showInLegend = FALSE,
+    color = series$color  # Use pre-assigned color
+  )
+}
+
+# Wrap with constrained width
+htmltools::tagList(
+  htmltools::tags$div(
+    class = "chart-wrapper",
+    style = "max-width: 1200px; width: 100%; margin: 0 auto;",
+    htmltools::tags$div(
+      class = "chart-container",
+      style = "height: auto; overflow: hidden; border: 1px solid #ccc;",
+      hc
+    )
+  ),
+  htmltools::tags$script(HTML("
+    function resizeChart() {
+      if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
+        Highcharts.charts.forEach(function(chart) {
+          if (chart) {
+            var wrapper = document.querySelector('.chart-wrapper');
+            if (wrapper) {
+              var targetWidth = wrapper.offsetWidth - 40;
+              chart.setSize(targetWidth, null, false);
+            }
+          }
+        });
+      }
+    }
+    
+    setTimeout(resizeChart, 100);
+    window.addEventListener('resize', resizeChart);
+  "))
+)
+
+```
+
+
+## Other notes
+Questions to answer regarding feasibility:
+1. Would we need to use the same chart aesthetics/settings for the main (Goal 1) and the drilldown (Goal 2) charts?
+For this I will explore potential limitations but we should be able to maintain similar aesthetics/chart settings if we keep separate "main" and "drilldown" charts or if those end up being split.
+2. Add an instruction line like: CLICK ASIAN BAR TO SEE DISAGGREGATION/SUBGROUPS then COLLAPSE ASIAN SUBGROUPS
+
+
+Other considerations
+1. Asian aggregated to include asian, nhpi, and then drilldown each
+2. Total line as a vertical line
+3. A version where the total bar is clickable (though theoretically this would include Asian adn NHPI so we may break the logic/intuition of drilldown - will try it but better design is probably vertical line
+4. Do we keep separate "main" and "drilldown" charts? How do we incorporate other groups? A toggle? A clickable total?
+5. Toggle counts and rates?
+
+Options to consider:
+Highcharter: https://www.appsilon.com/post/r-highcharts-drilldown
+echarts4r: https://echarts4r.john-coene.com/
