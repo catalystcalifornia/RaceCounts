@@ -1,6 +1,6 @@
 # Disaggregated Asian and NHPI Pop from PUMS
 
-# Data Dictionary: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
+# Data Dictionary: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2024.pdf
 
 # Install packages if not already installed
 packages <- c("tidyverse", "data.table", "readxl","tidycensus", "srvyr","stringr", "openxlsx", "dplyr") 
@@ -24,13 +24,13 @@ source("./MOSAIC/Functions/pums_fx.R")
 con <- connect_to_db("rda_shared_data")
 con2 <- connect_to_db("mosaic")
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\QA_Sheet_MOSAIC_Pop_PUMS.docx"
-ancestry_list <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\Asian_NHPI_Ancestry.xlsx", sheet = "ancestry") # list of ANHPI ANC1P/ANC2P codes
+ancestry_list <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\Asian_NHPI_Ancestry_2024.xlsx", sheet = "ancestry") # list of ANHPI ANC1P/ANC2P codes
 
 #### Step 1: Define Variables ####
 
 # PUMS Data
-root <- "W:/Data/Demographics/PUMS/CA_2019_2023/"
-curr_yr <- 2023
+root <- "W:/Data/Demographics/PUMS/CA_2020_2024/"
+curr_yr <- 2024
 start_yr <- curr_yr - 4
 cv_threshold <- 30     # taken from Liv Wage
 pop_threshold <- 400   # taken from Liv Wage
@@ -61,11 +61,8 @@ cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0))    # get all PUMS
 cols_wts <- grep(paste0("^", weight, "*"), cols, value = TRUE)    # filter for PUMS weight colnames
 
 people <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE,
-                select = c(cols_wts, "RT", "SERIALNO", "PUMA", "RAC1P", "RAC3P", 
-                           "RAC2P19", "RAC2P23", "HISP", "ANC1P", "ANC2P", 
-                           "RACASN", "RACNH", "RACPI"),
-                colClasses = list(character = c("PUMA", "RAC1P", "RAC3P", "RAC2P19", 
-                                                "RAC2P23", "HISP", "ANC1P", "ANC2P")))
+                select = c(cols_wts, "RT", "SERIALNO", "PUMA", "RAC1P", "RAC3P", "RAC2P19", "RAC2P23", "HISP", "ANC1P", "ANC2P", "RACASN", "RACNH", "RACPI"),
+                colClasses = list(character = c("PUMA", "RAC1P", "RAC3P", "RAC2P19", "RAC2P23", "HISP", "ANC1P", "ANC2P", "RACASN", "RACNH", "RACPI")))
 orig_data <- people
 
 
@@ -89,7 +86,7 @@ for (label in aapi_incl$anc_label) {
 }
 
 # check reclass worked
-## ancestry code 603 = Bangladeshi ancestry. See: page 50 in https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
+## ancestry code 603 = Bangladeshi ancestry. See: page 50 in https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2024.pdf
 check_reclass <- people %>%
   filter((ANC1P == '603') |
            (ANC2P == '603')) %>%
@@ -125,7 +122,7 @@ people$nhpi[people$ANC1P == '999' & people$ANC2P == '999'] <- NA  # recode ances
 # check records where ancestry is Not Reported
 check_anc_nr <- people %>%
   filter((ANC1P == '999') &
-         (ANC2P == '999')) %>%
+           (ANC2P == '999')) %>%
   select(ANC1P, ANC2P, RAC1P, RACASN, RACNHPI)
 nrow(check_anc_nr) / nrow(people)  # 18.4% of records have no ancestry data
 
@@ -142,22 +139,22 @@ race_names <- function(x){
     x$RAC1P == 9 ~ 'Multiracial',  # 16% have no ancestry data, lower than avg. we know many NHPI are in this group.
     TRUE ~ 'NA'
   ))
-return(x)
+  return(x)
 }
 
 # what pct of race alone groups (unweighted) have no ancestry data?
 check_anc_nr2 <- people %>%
   select(RAC1P) %>%
-    group_by(RAC1P) %>%
-    summarise(count = n()) %>%
+  group_by(RAC1P) %>%
+  summarise(count = n()) %>%
   left_join(check_anc_nr %>%
-    group_by(RAC1P) %>%
-    summarise(anc_na = n()), by = "RAC1P") %>%
+              group_by(RAC1P) %>%
+              summarise(anc_na = n()), by = "RAC1P") %>%
   mutate(pct_anc_nr = anc_na / count * 100) %>%
   race_names()  # 'Asian Alone', 17% have no ancestry data, slightly lower than avg (18.4%)
-                # 'NHPI Alone', 25% have no ancestry data, higher than avg (18.4%)
-                # 'Multiracial', 16% have no ancestry data, lower than avg. we know many NHPI are in this group.
- 
+# 'NHPI Alone', 25% have no ancestry data, higher than avg (18.4%)
+# 'Multiracial', 16% have no ancestry data, lower than avg. we know many NHPI are in this group.
+
 # what % of Asian AOIC and NHPI AOIC (unweighted) have no ancestry data?
 table(check_anc_nr = check_anc_nr$RACASN) %>%
   setNames(c('Not Asian', 'Asian AOIC')) # 1 = Asian AOIC, 0 = Not Asian race. 62,864 Asian AOIC have no anc data.
@@ -249,7 +246,7 @@ list2env(state_list, envir = .GlobalEnv)
 
 # run PUMS calcs
 pop_table_state <- map(vars, calc_pums_pop) |> list_rbind() %>%
-rbind(num_df_group)   # add any asian ancestry and any nhpi ancestry pop data
+  rbind(num_df_group)   # add any asian ancestry and any nhpi ancestry pop data
 #rm(ppl_state)
 
 
@@ -268,96 +265,96 @@ pop_table_county <- map(vars, calc_pums_pop) |> list_rbind() %>%
 
 ##### SCREENING EXPORATION (STATE DATA) #####
 
-  # Method 1: Try ERI screening method, suppress data where subgroup has <100 unweighted responses
-  aapi_filtered <- ppl_state %>% filter(asian == 1 | nhpi == 1)
-  
-  screen_unw_count <- full_join(
-    aapi_filtered %>% count(anc_label = anc_label.x),
-    aapi_filtered %>% count(anc_label = anc_label.y),
-    by = "anc_label"
-  ) %>%
-    transmute(
-      anc_label,
-      tot_count = rowSums(cbind(n.x, n.y), na.rm = TRUE)
-    ) %>%
-    right_join(aapi_incl, by = "anc_label") %>% 
-    arrange(tot_count) %>%
-    mutate(unw_flag = ifelse(tot_count < 100, 1, 0))
-  # there are 3 groups who don't meet ERI's screening threshold: bhutanese (17), micronesian (70), marshallese (71)
-  
-  rm(aapi_filtered)
-  
-  # Method 2: Try RC screening method, suppress data where rate_cv > cv_threshold OR num < pop_threshold (see top of script for values)
-  screen_rate_cv_pop <- pop_table_state %>%
-    mutate(rate_cv_flag = ifelse(rate_cv > cv_threshold, 1, 0), 
-           pop_flag = ifelse(num < pop_threshold, 1, 0)) %>%  # screen on num not pop bc these are pop data, not indicator data
-    arrange(desc(rate_cv), desc(num))
-  # there is 1 group who doesn't meet rate_cv threshold: Bhutanese (44.6). there is 1 group not meeting pop_threshold: Bhutanese (pop is 212)
+# Method 1: Try ERI screening method, suppress data where subgroup has <100 unweighted responses
+aapi_filtered <- ppl_state %>% filter(asian == 1 | nhpi == 1)
 
-  
+screen_unw_count <- full_join(
+  aapi_filtered %>% count(anc_label = anc_label.x),
+  aapi_filtered %>% count(anc_label = anc_label.y),
+  by = "anc_label"
+) %>%
+  transmute(
+    anc_label,
+    tot_count = rowSums(cbind(n.x, n.y), na.rm = TRUE)
+  ) %>%
+  right_join(aapi_incl, by = "anc_label") %>% 
+  arrange(tot_count) %>%
+  mutate(unw_flag = ifelse(tot_count < 100, 1, 0))
+# there are 3 groups who don't meet ERI's screening threshold: bhutanese (17), micronesian (70), marshallese (71)
+
+rm(aapi_filtered)
+
+# Method 2: Try RC screening method, suppress data where rate_cv > cv_threshold OR num < pop_threshold (see top of script for values)
+screen_rate_cv_pop <- pop_table_state %>%
+  mutate(rate_cv_flag = ifelse(rate_cv > cv_threshold, 1, 0), 
+         pop_flag = ifelse(num < pop_threshold, 1, 0)) %>%  # screen on num not pop bc these are pop data, not indicator data
+  arrange(desc(rate_cv), desc(num))
+# there is 1 group who doesn't meet rate_cv threshold: Bhutanese (44.6). there is 1 group not meeting pop_threshold: Bhutanese (pop is 212)
+
+
 #### Step 7: Screen data (incl. recoding suppressed subgroups & recalcs) ####
 # STATE-LEVEL ONLY: Recode Bhutanese as other_asian. If we present county data, we could recode any suppressed grps for that county too.
-  oth_asian_srvy <- ppl_state %>%
-    filter(asian == 1) %>%
-    mutate(subgroup = case_when(
-      bhutanese == 1 | other_asian == 1 ~ 'other_asian',  # recode bhutanese as oth_asian
-      TRUE ~ 'total')) %>%                                # recode non-bhutanese as total
-    as_survey_rep(
-      variables = c(geoid, geoname, subgroup), # dplyr::select grouping variables.
-      weights = weight,                       # person weight
-      repweights = all_of(repwlist),          # list of replicate weights
-      combined_weights = TRUE,                # tells the function that replicate weights are included in the data
-      mse = TRUE,                             # tells the function to calc mse
-      type="other",                           # statistical method
-      scale=4/80,                             # scaling set by ACS
-      rscale=rep(1,80)                        # setting specific to ACS-scaling
-    )
-  
-  # Numerator
-  num_df_oth_asian <- oth_asian_srvy %>%
-    group_by(geoid, geoname) %>%
-    summarise(
-      num  = survey_total(subgroup == 'other_asian', na.rm = TRUE),
-      rate = survey_mean(subgroup == 'other_asian', na.rm = TRUE),
-      .groups = "drop"
-    ) %>%
-    
-    # Join + metrics
-    left_join(state_list$den_total %>% filter(pop_group == 'asian'), by = c("geoid", "geoname")) %>%
-    mutate(
-      subgroup  = 'other_asian',
-      group     = 'asian',
-      rate_moe  = rate_se * 1.645 * 100,
-      rate_cv   = ifelse(rate > 0, (rate_se / rate) * 100, NA_real_),
-      rate      = rate * 100,
-      count_moe = num_se * 1.645,
-      count_cv  = ifelse(num > 0, (num_se / num) * 100, NA_real_)
-    )
-  
-# combine re-calc'd other_asian and pop_table_state, drop old 'other_asian' row
-  pop_table_state <- bind_rows(num_df_oth_asian, pop_table_state) %>% filter(subgroup != 'other_asian')
-  pop_table <- rbind(pop_table_state, pop_table_county)
-  
-# RC screening method (CV and pop thresholds), see screen_rate_cv_pop above
-  pop_table_screened <- pop_table %>%
-    mutate(rate = ifelse(rate_cv > cv_threshold | num < pop_threshold, NA, rate),    # screen on num not pop bc these are pop data, not indicator data
-           num = ifelse(rate_cv > cv_threshold | num < pop_threshold, NA, num)) %>%
-    arrange(desc(rate_cv), desc(num)) 
-  
-  screened_out <- pop_table_screened %>%
-    filter(is.na(rate))
+oth_asian_srvy <- ppl_state %>%
+  filter(asian == 1) %>%
+  mutate(subgroup = case_when(
+    bhutanese == 1 | other_asian == 1 ~ 'other_asian',  # recode bhutanese as oth_asian
+    TRUE ~ 'total')) %>%                                # recode non-bhutanese as total
+  as_survey_rep(
+    variables = c(geoid, geoname, subgroup), # dplyr::select grouping variables.
+    weights = weight,                       # person weight
+    repweights = all_of(repwlist),          # list of replicate weights
+    combined_weights = TRUE,                # tells the function that replicate weights are included in the data
+    mse = TRUE,                             # tells the function to calc mse
+    type="other",                           # statistical method
+    scale=4/80,                             # scaling set by ACS
+    rscale=rep(1,80)                        # setting specific to ACS-scaling
+  )
 
-  length(unique(pop_table_screened$geoid))  # number of unique geos in final data, n = 38
-  table(subgroup = screened_out$subgroup)   # count of suppressed values by subgroup
+# Numerator
+num_df_oth_asian <- oth_asian_srvy %>%
+  group_by(geoid, geoname) %>%
+  summarise(
+    num  = survey_total(subgroup == 'other_asian', na.rm = TRUE),
+    rate = survey_mean(subgroup == 'other_asian', na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
   
-  pop_table_screened <- pop_table_screened %>%
-    select(-c(pop_group, num_se, rate_se, pop_se)) %>%    # drop unneeded cols
-    rename(group_ = group)
-  
+  # Join + metrics
+  left_join(state_list$den_total %>% filter(pop_group == 'asian'), by = c("geoid", "geoname")) %>%
+  mutate(
+    subgroup  = 'other_asian',
+    group     = 'asian',
+    rate_moe  = rate_se * 1.645 * 100,
+    rate_cv   = ifelse(rate > 0, (rate_se / rate) * 100, NA_real_),
+    rate      = rate * 100,
+    count_moe = num_se * 1.645,
+    count_cv  = ifelse(num > 0, (num_se / num) * 100, NA_real_)
+  )
+
+# combine re-calc'd other_asian and pop_table_state, drop old 'other_asian' row
+pop_table_state <- bind_rows(num_df_oth_asian, pop_table_state) %>% filter(subgroup != 'other_asian')
+pop_table <- rbind(pop_table_state, pop_table_county)
+
+# RC screening method (CV and pop thresholds), see screen_rate_cv_pop above
+pop_table_screened <- pop_table %>%
+  mutate(rate = ifelse(rate_cv > cv_threshold | num < pop_threshold, NA, rate),    # screen on num not pop bc these are pop data, not indicator data
+         num = ifelse(rate_cv > cv_threshold | num < pop_threshold, NA, num)) %>%
+  arrange(desc(rate_cv), desc(num)) 
+
+screened_out <- pop_table_screened %>%
+  filter(is.na(rate))
+
+length(unique(pop_table_screened$geoid))  # number of unique geos in final data, n = 38
+table(subgroup = screened_out$subgroup)   # count of suppressed values by subgroup
+
+pop_table_screened <- pop_table_screened %>%
+  select(-c(pop_group, num_se, rate_se, pop_se)) %>%    # drop unneeded cols
+  rename(group_ = group)
+
 #### Step 8: Send data to postgres ####
 table_name <- 'anhpi_pop_pums'
 indicator <- "Disaggregated Asian & NHPI Ancestry Population"
-source <- paste0("American Community Survey 2019-2023 5-year PUMS estimates for Asian & NHPI Ancestry at state and county level. Note: Bhutanese is included in Other Asian at state level")
+source <- paste0("American Community Survey 2020-2024 5-year PUMS estimates for Asian & NHPI Ancestry at state and county level. Note: Bhutanese is included in Other Asian at state level")
 column_names <- colnames(pop_table_screened) # n = 11
 column_comments <- c('fips code', 
                      '', 
@@ -371,12 +368,12 @@ column_comments <- c('fips code',
                      'moe for num', 
                      'cv for num')
 
-# dbWriteTable(con2, 
-#              Id(schema = schema, table = table_name),
-#              pop_table_screened, overwrite = FALSE)
-# 
-# # comment on table and columns
-# add_table_comments(con2, schema, table_name, indicator, source, qa_filepath, column_names, column_comments)
+dbWriteTable(con2, 
+             Id(schema = schema, table = table_name),
+             pop_table_screened, overwrite = FALSE)
+
+# comment on table and columns
+add_table_comments(con2, schema, table_name, indicator, source, qa_filepath, column_names, column_comments)
 
 
 #disconnect

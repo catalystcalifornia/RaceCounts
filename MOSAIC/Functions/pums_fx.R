@@ -6,8 +6,8 @@ anhpi_reclass <- function(x, acs_yr, ancestry_list) {  # used in MOSAIC Living W
   ## import ANC1P/ANC2P codes/labels pulled from https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
   print(paste0("Adding ancestry labels from:", ancestry_list))
   anc_codes <- ancestry_list %>%
-    mutate(anc_label = stringr::str_to_lower(stringr::str_replace_all("\\s+", "_", anc_label)))
-
+    mutate(anc_label = stringr::str_to_lower(stringr::str_replace_all(anc_label, "\\s+", "_")))
+  print(head(anc_codes %>% filter(asian==1)))
   # get list of AA or PI ancestries actually in CA PUMS data
   aapi_incl <- x %>% select(ANC1P) %>% 
     unique() %>%
