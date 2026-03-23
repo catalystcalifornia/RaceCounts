@@ -83,6 +83,15 @@ for (label in aapi_incl$anc_label) {
   people[[label]] <- as.integer(people$anc_label.x == label | people$anc_label.y == label)
 }
 
+# check reclass worked
+## ancestry code 603 = Bangladeshi ancestry. See: page 50 in https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
+check_reclass <- people %>%
+  filter((ANC1P == '603') |
+           (ANC2P == '603')) %>%
+  select(bangladeshi, anc_label.x, ANC1P, anc_label.y, ANC2P)
+nrow(check_reclass) == nrow(check_reclass %>% filter(ANC1P == '603' | ANC2P == '603')) # check ancestry label columns against anc codes
+nrow(check_reclass %>% filter(bangladeshi != 1 & (ANC1P == '603' | ANC2P == '603')))   # check bangladeshi binary column against anc codes
+
 # Add a new column for any asian ancestry and same for nhpi, populated with 1 or 0
 # Create a named lookup vector: anc_label -> asian value
 asian_lookup <- setNames(aapi_incl$asian, aapi_incl$anc_label)
@@ -93,6 +102,8 @@ people$asian <- as.integer(
     (people$anc_label.y %in% names(asian_lookup[asian_lookup == 1]))
 )
 
+people$asian[people$ANC1P == '999' & people$ANC2P == '999'] <- NA # recode ancestry Not Reported to NA from 0
+
 # Create a named lookup vector: anc_label -> nhpi value
 nhpi_lookup <- setNames(aapi_incl$nhpi, aapi_incl$anc_label)
 
@@ -102,23 +113,110 @@ people$nhpi <- as.integer(
     (people$anc_label.y %in% names(nhpi_lookup[nhpi_lookup == 1]))
 )
 
+people$nhpi[people$ANC1P == '999' & people$ANC2P == '999'] <- NA  # recode ancestry Not Reported to NA from 0
+
+
+#### Step 4.1: Check race/ancestry relationships ####
+# check records where ancestry is Not Reported
+check_anc_nr <- people %>%
+  filter((ANC1P == '999') &
+         (ANC2P == '999')) %>%
+  select(ANC1P, ANC2P, RAC1P, RACASN, RACNHPI)
+nrow(check_anc_nr) / nrow(people)  # 18.4% of records have no ancestry data
+
+race_names <- function(x){
+  x <- x %>% mutate(race = case_when(
+    x$RAC1P == 1 ~ 'White Alone',
+    x$RAC1P == 2 ~ 'Black Alone',
+    x$RAC1P == 3 ~ 'Am Ind Alone',
+    x$RAC1P == 4 ~ 'AK Native Alone',
+    x$RAC1P == 5 ~ 'AIAN other',
+    x$RAC1P == 6 ~ 'Asian Alone',  # 17% have no ancestry data, slightly lower than avg (18.4%)
+    x$RAC1P == 7 ~ 'NHPI Alone',   # 25% have no ancestry data, higher than avg (18.4%)
+    x$RAC1P == 8 ~ 'Other Race Alone',
+    x$RAC1P == 9 ~ 'Multiracial',  # 16% have no ancestry data, lower than avg. we know many NHPI are in this group.
+    TRUE ~ 'NA'
+  ))
+return(x)
+}
+
+# what pct of race alone groups (unweighted) have no ancestry data?
+check_anc_nr2 <- people %>%
+  select(RAC1P) %>%
+    group_by(RAC1P) %>%
+    summarise(count = n()) %>%
+  left_join(check_anc_nr %>%
+    group_by(RAC1P) %>%
+    summarise(anc_na = n()), by = "RAC1P") %>%
+  mutate(pct_anc_nr = anc_na / count * 100) %>%
+  race_names()  # 'Asian Alone', 17% have no ancestry data, slightly lower than avg (18.4%)
+                # 'NHPI Alone', 25% have no ancestry data, higher than avg (18.4%)
+                # 'Multiracial', 16% have no ancestry data, lower than avg. we know many NHPI are in this group.
+ 
+# what % of Asian AOIC and NHPI AOIC (unweighted) have no ancestry data?
+table(check_anc_nr = check_anc_nr$RACASN) %>%
+  setNames(c('Not Asian', 'Asian AOIC')) # 1 = Asian AOIC, 0 = Not Asian race. 62,864 Asian AOIC have no anc data.
+table(check_anc_nr = check_anc_nr$RACNHPI) %>%
+  setNames(c('Not NHPI', 'NHPI AOIC'))   # 1 = NHPI AOIC, 0 = Not NHPI race. 3,318 NHPI AOIC have no anc data.
+
+
+
+# check how many Asian and NHPI ancestry are Multiracial
+asian_multir <- people %>% select(asian, RAC1P) %>% 
+  race_names() %>%
+  group_by(RAC1P, race, asian) %>%
+  summarise(count_asian_anc = n()) %>%
+  filter(asian == 1) %>%
+  left_join(people %>% select(asian, RAC1P) %>%
+              group_by(asian) %>%
+              summarise(all_asian_anc = n()), by = "asian") %>%
+  mutate(pct_asian_anc = count_asian_anc / all_asian_anc * 100)  # 10% of Asian ancestry are Multiracial
+
+nhpi_multir <- people %>% select(nhpi, RAC1P) %>% 
+  race_names() %>%
+  group_by(RAC1P, race, nhpi) %>%
+  summarise(count_nhpi_anc = n()) %>%
+  filter(nhpi == 1) %>%
+  left_join(people %>% select(nhpi, RAC1P) %>%
+              group_by(nhpi) %>%
+              summarise(all_nhpi_anc = n()), by = "nhpi") %>%
+  mutate(pct_nhpi_anc = count_nhpi_anc / all_nhpi_anc * 100)     # 40% of nhpi ancestry are Multiracial
+
+asian_aoic <- people %>% select(asian, RACASN) %>% 
+  group_by(RACASN, asian) %>%
+  summarise(count_asian_anc = n()) %>%
+  left_join(people %>% select(asian, RACASN) %>%
+              group_by(RACASN) %>%
+              summarise(all_asian_aoic = n()), by = "RACASN") %>%
+  mutate(pct_asian_anc = count_asian_anc / all_asian_aoic * 100) %>%  # 78% of Asian AOIC have asian ancestry, 17% have no ancestry
+  filter(RACASN == 1)
+
+nhpi_aoic <- people %>% select(nhpi, RACNHPI) %>% 
+  group_by(RACNHPI, nhpi) %>%
+  summarise(count_nhpi_anc = n()) %>%
+  left_join(people %>% select(nhpi, RACNHPI) %>%
+              group_by(RACNHPI) %>%
+              summarise(all_nhpi_aoic = n()), by = "RACNHPI") %>%
+  mutate(pct_nhpi_anc = count_nhpi_anc / all_nhpi_aoic * 100) %>%  # 48% of NHPI AOIC have nhpi ancestry, 23% have no ancestry
+  filter(RACNHPI == 1)
+
 
 ## check a few of the new ancestry & asian/nhpi cols
 table(chinese = people$chinese, asian_race = people$RACASN)  # check how many chinese ancestry rows are also marked Asian race
 table(chinese = people$chinese, asian_anc = people$asian)    # check that all chinese ancestry rows are also marked asian ancestry
-table(asian_anc = people$asian, asian_race = people$RACASN)  # 4,452 responses w/ asian ancestry who are not coded race = Asian
-#         asian_race
-# chinese         0       1
-#         0 1481976   79536
-#         1    4452  287465
+table(asian_anc = people$asian, asian_race = people$RACASN)  # 4,452 responses (unw) w/ asian ancestry who are not coded race = Asian
+#           asian_race
+# chinese         0        1
+#        0  1485865   287900
+#        1      563    79101   # 563 people (unw) with chinese ancestry are not marked Asian AOIC
 
 table(samoan = people$samoan, nhpi_race = people$RACNHPI)    # check how many samoan ancestry rows are also marked NHPI race
 table(samoan = people$samoan, nhpi_anc = people$nhpi)        # check that all samoan ancestry rows are also marked nhpi ancestry
-table(nhpi_anc = people$nhpi, nhpi_race = people$RACNHPI)    # 941 responses w/ nhpi ancestry who are not coded race = NHPI
-#       nhpi_race
-# samoan        0       1
-#       0 1838025    7536
-#       1     941    6927
+table(nhpi_anc = people$nhpi, nhpi_race = people$RACNHPI)    # 941 responses (unw) w/ nhpi ancestry who are not coded race = NHPI
+#         nhpi_race
+# samoan         0      1
+#        0 1838908  12943
+#        1      58   1520   # 58 people (unw) with samoan ancestry are not marked NHPI AOIC
 
 # For this analysis, we include anyone with an Asian ancestry and anyone with an NHPI ancestry, regardless of race.
 ## E.g. For NHPI, we include all records where nhpi == 1 regardless of RACNHPI value.
