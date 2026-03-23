@@ -29,7 +29,7 @@ curr_yr = 2021      # Always 2021 for MOSAIC 2026 project
 rc_yr = '2025'      # you MUST UPDATE each year
 rc_schema ="v7"     # you MUST UPDATE each year
 schema = 'v7'
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Health_Insurance - MOSAIC.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Health_Insurance - MOSAIC.docx. Please note that the variables ending in _002 is an internally created code to represent the raw values of uninsured by race to work with our prep_acs function and is not the Census ACS total male insured category." #going to run this variable again after raw data prep b/c it contains a note specific to the raw data tables
 
 cv_threshold = 40         
 pop_threshold = 130      
@@ -125,10 +125,7 @@ table_code = 'b27001'    # Select relevant indicator table name
 #   pivot_wider(names_from = type, values_from = value) %>%
 #   group_by(name, geoid, geolevel, var_base) %>%
 #   summarise(
-#     #I was looking at Fresno county Pakistani to check b/c CR and LF got 199 but I got 174 for the raw_moe. Becuase of Census recommendations the moe_sum() formula will
-#     #take the max moe if there are multiple zero estimates and uses that one only. This one had 11 zero estimates so it just takes the max zero moe (31) and doesn't use the other ones so the calculation is actually:
-#     # Square root(81^2 + 121^2 + 11^2 + 58^2 +49^2 + 13^2 + 46^2 +31^2) = 174.17
-#     # that's why moe_sum() should be calculated before e is collapsed on the next line.
+#     #I was looking at Fresno county Pakistani to check b/c CR and LF got 199 but I got 174 for the raw_moe. Becuase of Census recommendations the moe_sum() formula will take the max moe if there are multiple zero estimates and uses that one only. This one had 11 zero estimates so it just takes the max zero moe (31) and doesn't use the other ones so the calculation is actually: Square root(81^2 + 121^2 + 11^2 + 58^2 +49^2 + 13^2 + 46^2 +31^2) = 174.17 that's why moe_sum() should be calculated before e is collapsed on the next line.
 #     m = moe_sum(moe = m, estimate = e),
 #     e = if_else(all(is.na(e)), NA_real_, sum(e, na.rm = TRUE)),
 #     .groups = "drop"
@@ -215,7 +212,8 @@ table_code = 'b27001'    # Select relevant indicator table name
 # send_to_mosaic(table_code, asian_list, rc_schema)
 # send_to_mosaic(table_code, nhpi_list, rc_schema)
 
-
+# Need to run qa filepath again becuase the previous included a comment that was only for the raw data tables
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Health_Insurance - MOSAIC.docx"
 ## IMPORT RAW DATA FROM POSTGRES -------------------------------------------
 asian_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.asian_acs_5yr_%s_multigeo_%s",
                                      rc_schema, tolower(table_code), curr_yr))
