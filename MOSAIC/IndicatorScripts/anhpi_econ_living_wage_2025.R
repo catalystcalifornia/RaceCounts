@@ -49,7 +49,7 @@ raw_rate_threshold <- 0           # data values less than threshold are screened
 pop_threshold <- 400              # data for geos+race combos with pop smaller than threshold are screened.
 
 
-##### Step 2: GET PUMA CROSSWALKS ######
+#### Step 2: GET PUMA CROSSWALKS ######
 crosswalk <- dbGetQuery(con, "select county_id AS geoid, county_name AS geoname, geo_id AS puma, num_county, afact, afact2 from crosswalks.puma_2022_county_2020")
 
 ## Drop counties that have only 1 PUMA that is shared with another county that also has only 1 PUMA.
@@ -66,7 +66,7 @@ county_crosswalk <- crosswalk %>%
 # length(unique(crosswalk$geoid))         # this number should be higher bc it is unfiltered xwalk
 
 
-##### Step 3: GET PUMS DATA ######
+#### Step 3: GET PUMS DATA ######
 # Data Dictionary: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
 # Load ONLY the PUMS columns needed for this indicator
 cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0))    # get all PUMS cols 
@@ -207,7 +207,7 @@ table(nhpi_anc = people$nhpi, nhpi_race = people$RACNHPI)    # 409 responses w/ 
 ## E.g. For NHPI, we include all records where nhpi == 1 regardless of RACNHPI value.
 
 
-#### Step 5: Join crosswalks to data ####
+#### Step 6: Join crosswalks to data ####
 # join county crosswalk to data
 ppl_county <- left_join(people, county_crosswalk, by=c("puma_id" = "puma"))   # join FILTERED county-puma crosswalk
 
@@ -215,7 +215,7 @@ ppl_county <- left_join(people, county_crosswalk, by=c("puma_id" = "puma"))   # 
 ppl_state <- people %>% rename(geoid = state_geoid) %>% mutate(geoname = 'California')
 
 
-#### Step 6: Set up for PUMS calc fx ####
+#### Step 7: Set up for PUMS calc fx ####
 # get list of subgroups for calcs based on aapi_incl
 vars <- aapi_incl %>% pull(anc_label)
 vars
@@ -323,7 +323,7 @@ table_state <- rbind(num_df_oth_asian, table_state %>% filter(subgroup != 'other
 table_cs <- rbind(table_state, table_county) %>%
   rename('indicator' = indicator) %>%      # update to generic colname
   filter(indicator == indicator_val) %>%   # keep only the rows with indicator value we want, eg: keep livable, and drop  not livable
-  filter(!is.na(geoid))                     # drop rows for responses that are not incl. in our county-xwalk (rows where geoid is NA)
+  filter(!is.na(geoid))                    # drop rows for responses that are not incl. in our county-xwalk (rows where geoid is NA)
   
 # RC screening method (CV and pop thresholds), see screen_rate_cv_pop above
 table_screened <- table_cs %>%
@@ -334,11 +334,11 @@ table_screened <- table_cs %>%
 screened_out <- table_screened %>%
   filter(is.na(rate))
 
-length(unique(table_screened$geoid))  # number of unique geos in final data, n = 37
+length(unique(table_screened$geoid))      # number of unique geos in final data, n = 37
 table(subgroup = screened_out$subgroup)   # count of suppressed values by subgroup, some subgroups had no data reported for some counties which is not noted here.
 geo_subgroup_combos <- table_screened %>%
   group_by(geoname) %>%
-  summarise(unique_subgroups = n_distinct(subgroup))  # max = 43. 40 subgroups, 2 groups, 1 total
+  summarise(unique_subgroups = n_distinct(subgroup))  # max = 43. up to 40 subgroups + 2 groups + 1 total
 
 table_screened <- table_screened %>%
   select(-c(num_se, rate_se, pop_se)) %>%    # drop unneeded cols

@@ -195,12 +195,7 @@ calc_pums_ind <- function(d, weight, repwlist, vars, indicator) {
   asian_srvy <- anhpi_srvy %>% filter(asian == 1)
   nhpi_srvy  <- anhpi_srvy %>% filter(nhpi  == 1)
   
-  # ── 2. Overall population denominators (for asian/nhpi group-level stats) ────
-  den_total <- anhpi_srvy %>%
-    group_by(geoid, geoname) %>%
-    summarise(pop = survey_total(na.rm = TRUE), .groups = "drop")
-  
-  # ── 3. Helper: compute metrics from num/rate SE columns ──────────────────────
+  # ── 2. Helper: compute metrics from num/rate SE columns ──────────────────────
   add_metrics <- function(df, den_df, group_label, subgroup_label) {
     df %>%
       left_join(den_df, by = c("geoid", "geoname")) %>%
@@ -215,12 +210,19 @@ calc_pums_ind <- function(d, weight, repwlist, vars, indicator) {
       )
   }
   
-  # ── 4. GROUP-LEVEL: asian & nhpi, denominator = overall population ───────────
-  # Estimates/rates for records where asian == 1 or nhpi == 1,
-  # grouped by indicator value, denominator = all anhpi records
-  message("Calculating group-level stats (asian, nhpi)...")
+  # ── 3. GROUP-LEVEL: total, asian & nhpi ───────────
+  # Estimates/rates for total and records where asian == 1 or nhpi == 1,
+  # grouped by indicator value
+  message("Calculating total and group-level stats (asian, nhpi)...")
   
   calc_group <- function(srvy, group_label) {
+    
+    # calc denominator
+    den_ <- srvy %>%
+      group_by(geoid, geoname) %>%
+      summarise(pop = survey_total(na.rm = TRUE), .groups = "drop")
+    
+    # calc raw, rate	
     srvy %>%
       group_by(geoid, geoname, !!sym(indicator)) %>%
       summarise(
@@ -228,7 +230,7 @@ calc_pums_ind <- function(d, weight, repwlist, vars, indicator) {
         rate = survey_mean(na.rm = TRUE),
         .groups = "drop"
       ) %>%
-      add_metrics(den_total, group_label, group_label)
+      add_metrics(den_, group_label, group_label)
   }
   
   df_total <- calc_group(anhpi_srvy, "total")
@@ -237,7 +239,7 @@ calc_pums_ind <- function(d, weight, repwlist, vars, indicator) {
   
   df_group <- bind_rows(df_total, df_asian, df_nhpi)
   
-  # ── 5. SUBGROUP-LEVEL: each var in vars, denominator = var == 1 ──────────────
+  # ── 4. SUBGROUP-LEVEL: each var in vars, denominator = var == 1 ──────────────
   # Estimates/rates grouped by indicator value,
   # denominator = all records where that var == 1
   calc_one_subgroup <- function(var_name) {
@@ -269,12 +271,12 @@ calc_pums_ind <- function(d, weight, repwlist, vars, indicator) {
       add_metrics(den_var, den_group, var_name)
   }
   
-  # ── 6. Run subgroup calcs sequentially (survey too large for parallel export) ─
+  # ── 5. Run subgroup calcs sequentially (survey too large for parallel export) ─
   message("Running subgroup calculations...")
   
   num_df_subgroups <- map(vars, calc_one_subgroup) |> list_rbind()
   
-  # ── 7. Combine & return ──────────────────────────────────────────────────────
+  # ── 6. Combine & return ──────────────────────────────────────────────────────
   result <- bind_rows(df_group, num_df_subgroups)
   
   elapsed <- round(difftime(Sys.time(), start_time, units = "mins"), 2)
