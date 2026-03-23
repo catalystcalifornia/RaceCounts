@@ -125,6 +125,10 @@ table_code = 'b27001'    # Select relevant indicator table name
 #   pivot_wider(names_from = type, values_from = value) %>%
 #   group_by(name, geoid, geolevel, var_base) %>%
 #   summarise(
+#     #I was looking at Fresno county Pakistani to check b/c CR and LF got 199 but I got 174 for the raw_moe. Becuase of Census recommendations the moe_sum() formula will
+#     #take the max moe if there are multiple zero estimates and uses that one only. This one had 11 zero estimates so it just takes the max zero moe (31) and doesn't use the other ones so the calculation is actually:
+#     # Square root(81^2 + 121^2 + 11^2 + 58^2 +49^2 + 13^2 + 46^2 +31^2) = 174.17
+#     # that's why moe_sum() should be calculated before e is collapsed on the next line.
 #     m = moe_sum(moe = m, estimate = e),
 #     e = if_else(all(is.na(e)), NA_real_, sum(e, na.rm = TRUE)),
 #     .groups = "drop"
@@ -160,7 +164,7 @@ table_code = 'b27001'    # Select relevant indicator table name
 #   pivot_wider(names_from = c(var_base, var_num, type),
 #               names_glue = "{var_base}_{var_num}{type}",
 #               values_from = value)
-#
+# 
 # ## check that moe issue was resolved. Looks good reordering moe_sum() inputs worked. Its now the expected moe again. moe should be before estimate in the function so that it doesn't use the collapsed scalar values of estimates as opposed to the vector of estimated to aggregate the moes.
 # asian_final %>%
 #   filter(geoid == "06019") %>%
@@ -218,7 +222,15 @@ asian_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.asian_acs_5yr_%s_multige
 
 nhpi_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.nhpi_acs_5yr_%s_multigeo_%s",
                                      rc_schema, tolower(table_code), curr_yr))
+asian_data_qa <- dbGetQuery(con, ("SELECT * FROM v7.asian_acs_5yr_b27001_multigeo_2021_todelete_v1"))
+asian_data_qa %>%
+  filter(geoid == "06019") %>%
+  select(b27001_026_pop, b27001_026_pop_moe, b27001_026_raw, b27001_026_raw_moe)
 
+asian_data_qa2 <- dbGetQuery(con, ("SELECT * FROM v7.asian_acs_5yr_b27001_multigeo_2021_todelete_v2"))
+asian_data_qa2 %>%
+  filter(geoid == "06019") %>%
+  select(b27001_026_001e, b27001_026_002e, b27001_026_001m, b27001_026_002m)
 #### ASIAN: Pre-RC CALCS ##############
 asian_df <- prep_acs(asian_data, 'asian', table_code, cv_threshold, pop_threshold)
 
