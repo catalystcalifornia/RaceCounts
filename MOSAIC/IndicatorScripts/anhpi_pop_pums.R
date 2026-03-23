@@ -133,10 +133,10 @@ race_names <- function(x){
     x$RAC1P == 3 ~ 'Am Ind Alone',
     x$RAC1P == 4 ~ 'AK Native Alone',
     x$RAC1P == 5 ~ 'AIAN other',
-    x$RAC1P == 6 ~ 'Asian Alone',  # 17% have no ancestry data, slightly lower than avg (18.4%)
-    x$RAC1P == 7 ~ 'NHPI Alone',   # 25% have no ancestry data, higher than avg (18.4%)
+    x$RAC1P == 6 ~ 'Asian Alone',  
+    x$RAC1P == 7 ~ 'NHPI Alone',   
     x$RAC1P == 8 ~ 'Other Race Alone',
-    x$RAC1P == 9 ~ 'Multiracial',  # 16% have no ancestry data, lower than avg. we know many NHPI are in this group.
+    x$RAC1P == 9 ~ 'Multiracial',  
     TRUE ~ 'NA'
   ))
 return(x)
