@@ -70,7 +70,7 @@ orig_data <- people
 people$RACNHPI <- case_when(
   people$RACNH == 1 | people$RACPI ==1 ~ 1,
   TRUE ~ 0
-)
+) %>% as.character()
 
 # Add state_geoid to people, add state_geoid to PUMA id, so it aligns with same vintage county-puma xwalk
 people$state_geoid <- "06"
