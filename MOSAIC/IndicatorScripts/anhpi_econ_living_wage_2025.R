@@ -25,15 +25,15 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 source("./MOSAIC/Functions/pums_fx.R")
 con <- connect_to_db("rda_shared_data")
 con2 <- connect_to_db("mosaic")
-ancestry_list <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\Asian_NHPI_Ancestry.xlsx", sheet = "ancestry") # list of ANHPI ANC1P/ANC2P codes
+ancestry_list <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\Asian_NHPI_Ancestry_2024.xlsx", sheet = "ancestry") # list of ANHPI ANC1P/ANC2P codes
 
 # update QA doc filepath
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Living_Wage_MOSAIC.docx"
 
 #### Step 1: Define Variables ####
-root <- "W:/Data/Demographics/PUMS/CA_2019_2023/"
+root <- "W:/Data/Demographics/PUMS/CA_2020_2024/"
 rc_yr = '2025'      # you MUST UPDATE each year
-curr_yr <- 2023
+curr_yr <- 2024
 start_yr <- curr_yr - 4
 rc_schema <- 'v7'
 lw <- 15.50    # update living wage value as needed
@@ -187,21 +187,21 @@ people$nhpi <- as.integer(
 
 
 ## check a few of the new ancestry & asian/nhpi cols
-table(thai = people$thai, asian_race = people$RACASN)  # check how many thai ancestry rows are also marked Asian race
-table(thai = people$thai, asian_anc = people$asian)    # check that all thai ancestry rows are also marked asian ancestry
-table(asian_anc = people$asian, asian_race = people$RACASN)  # 1,7972 responses w/ asian ancestry who are not coded race = Asian
+table(thai = people$thai, asian_race = people$RACASN)        # check how many thai ancestry rows are also marked Asian race
+table(thai = people$thai, asian_anc = people$asian)          # check that all thai ancestry rows are also marked asian ancestry
+table(asian_anc = people$asian, asian_race = people$RACASN)  # 1,609 responses w/ asian ancestry who are not coded race = Asian
 #       asian_race
 # thai         0      1
-#       0 580358 156300
-#       1     17   1376
+#       0 579993 160147
+#       1     11   1336
 
 table(fijian = people$fijian, nhpi_race = people$RACNHPI)    # check how many fijian ancestry rows are also marked NHPI race
 table(fijian = people$fijian, nhpi_anc = people$nhpi)        # check that all fijian ancestry rows are also marked nhpi ancestry
-table(nhpi_anc = people$nhpi, nhpi_race = people$RACNHPI)    # 409 responses w/ nhpi ancestry who are not coded race = NHPI
+table(nhpi_anc = people$nhpi, nhpi_race = people$RACNHPI)    # 353 responses w/ nhpi ancestry who are not coded race = NHPI
 #       nhpi_race
-# fijian        0       1
-#       0 732164   5409
-#       1     56    422
+# fijian        0     1
+#       0 735552   5500
+#       1     46    389
 
 # For this analysis, we include anyone with an Asian ancestry and anyone with an NHPI ancestry, regardless of race.
 ## E.g. For NHPI, we include all records where nhpi == 1 regardless of RACNHPI value.
@@ -254,7 +254,7 @@ screen_unw_count <- full_join(
   right_join(aapi_incl, by = "anc_label") %>% 
   arrange(tot_count) %>%
   mutate(unw_flag = ifelse(tot_count < 100, 1, 0))
-message("there are 8 groups who don't meet ERI's screening threshold.")
+message("there are 7 groups who don't meet ERI's screening threshold.")
 screen_unw_count %>% filter(unw_flag == 1)
 
 rm(aapi_filtered)
