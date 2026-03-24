@@ -265,7 +265,8 @@ list2env(county_list, envir = .GlobalEnv)
 # run PUMS calcs
 pop_table_county <- map(vars, calc_pums_pop) |> list_rbind() %>%
   rbind(num_df_group) %>%  # add any asian ancestry and any nhpi ancestry pop data
-  filter(!is.na(geoid))    # drop rows with summary data for PUMAs that are excluded from our filtered xwalk#rm(ppl_cs)
+  filter(!is.na(geoid))    # drop rows with summary data for PUMAs that are excluded from our filtered xwalk
+#rm(ppl_cs)
 
 
 ##### SCREENING EXPORATION (STATE DATA) #####
