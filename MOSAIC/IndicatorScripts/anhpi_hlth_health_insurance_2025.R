@@ -38,8 +38,8 @@ schema = 'health'
 table_code = 'b27001'    # Select relevant indicator table name
 
 
-# # CREATE RAW DATA TABLES -------------------------------------------------------------------------
-# # Only run this section if the raw data tables have not been created yet ##
+# CREATE RAW DATA TABLES -------------------------------------------------------------------------
+# Only run this section if the raw data tables have not been created yet ##
 # race <- "asian"
 # asian_list <- get_detailed_race(table_code, race, curr_yr)
 # #check race col names which are created in fx
@@ -55,10 +55,10 @@ table_code = 'b27001'    # Select relevant indicator table name
 # 
 # 
 # ######  Transform the data for the raw data table  ############
-# # This variable is broken up by age group, by sex, by geo, insurance status, and by detailed race.
-# # We need to collapse the subcategories so that we just have it broken down by geo + detailed race + insurance status.
+# This variable is broken up by age group, by sex, by geo, insurance status, and by detailed race.
+# We need to collapse the subcategories so that we just have it broken down by geo + detailed race + insurance status.
 # 
-# # Step 1: pivot to long format (its too much data to work with wide format until we aggregate it down)
+# Step 1: pivot to long format (its too much data to work with wide format until we aggregate it down)
 # nhpi_long <- nhpi_list$nhpi_df %>%
 #   pivot_longer(
 #     cols = -c(name, geoid, geolevel),
@@ -88,11 +88,11 @@ table_code = 'b27001'    # Select relevant indicator table name
 #     var_num   = str_extract(variable, "\\d{3}(?=[em]$)")
 #   )
 # 
-# # #check that the extract worked
-# # nhpi_long %>% filter(is.na(table_num)) %>% View()
-# # nhpi_long %>% filter(is.na(var_num)) %>% View()
-# # table(nhpi_long$var_num)
-# #it looks good so keep going
+# check that the extract worked
+# nhpi_long %>% filter(is.na(table_num)) %>% View()
+# nhpi_long %>% filter(is.na(var_num)) %>% View()
+# table(nhpi_long$var_num)
+# it looks good so keep going
 # 
 # # Step 3: get totals (var_num == "001")
 # nhpi_total <- nhpi_long %>%
@@ -111,8 +111,8 @@ table_code = 'b27001'    # Select relevant indicator table name
 #   filter(
 #     variable %in% nhpi_uninsured_vars$new_var)
 # # check we got all the uninsured e/m values, # unique uninsured variables should be the same as in metadata
-# #all.equal(unique(nhpi_uninsured$variable), nhpi_list$metadata %>% filter(str_detect(new_label, "No health insurance")))
-# 
+# anti_join(nhpi_uninsured_vars %>% select(new_var), nhpi_uninsured %>% select(variable) %>% unique(), by = c("new_var" = "variable"))
+
 # asian_uninsured_vars <- as.data.frame(asian_list$metadata %>% filter(grepl("No health insurance", new_label)))
 # asian_uninsured <- asian_long %>%
 #   filter(
@@ -125,7 +125,7 @@ table_code = 'b27001'    # Select relevant indicator table name
 #   pivot_wider(names_from = type, values_from = value) %>%
 #   group_by(name, geoid, geolevel, var_base) %>%
 #   summarise(
-#     #I was looking at Fresno county Pakistani to check b/c CR and LF got 199 but I got 174 for the raw_moe. Becuase of Census recommendations the moe_sum() formula will take the max moe if there are multiple zero estimates and uses that one only. This one had 11 zero estimates so it just takes the max zero moe (31) and doesn't use the other ones so the calculation is actually: Square root(81^2 + 121^2 + 11^2 + 58^2 +49^2 + 13^2 + 46^2 +31^2) = 174.17 that's why moe_sum() should be calculated before e is collapsed on the next line.
+#     #I was looking at Fresno county Pakistani to check b/c CR and LF got 199 but I got 174 for the raw_moe. Because of Census recommendations the moe_sum() formula will take the max moe if there are multiple zero estimates and uses that one only. This one had 11 zero estimates so it just takes the max zero moe (31) and doesn't use the other ones so the calculation is actually: Square root(81^2 + 121^2 + 11^2 + 58^2 +49^2 + 13^2 + 46^2 +31^2) = 174.17 that's why moe_sum() should be calculated before e is collapsed on the next line.
 #     m = moe_sum(moe = m, estimate = e),
 #     e = if_else(all(is.na(e)), NA_real_, sum(e, na.rm = TRUE)),
 #     .groups = "drop"
@@ -150,7 +150,25 @@ table_code = 'b27001'    # Select relevant indicator table name
 #   ) %>%
 #   pivot_longer(cols = c(e, m), names_to = "type", values_to = "value") %>%
 #   mutate(var_num = "002")   # create new var_num for our calc'd uninsured variable
-# 
+
+# # check Fresno County - Pakistani Alone
+# # Documentation: W:\Cold Data Migration\W Drive\Data\Demographics\ACS\Documentation\Using ACS Data for Researchers 2009.pdf 
+# # Or https://www.census.gov/content/dam/Census/library/publications/2009/acs/ACSResearch.pdf  See Page A-14.
+# fresno_check <- asian_uninsured %>%
+# select(-variable) %>%
+# filter(name == 'Fresno County' & table_num == '026') %>%
+# pivot_wider(names_from = type, values_from = value) %>%
+# group_by(name, geoid, geolevel, table_num) %>%
+# summarise(m_update = moe_sum(moe = m, estimate = e), # updated moe calc
+#           e=sum(e, na.rm=TRUE),
+#           m_orig=moe_sum(moe=m, estimate=e))         # original moe calc
+# fresno_check2 <- asian_uninsured %>%
+#   filter(name == 'Fresno County' & table_num == '026' & type == 'm') %>%
+#   mutate(m_sq = value * value)
+# sqrt(sum(fresno_check2$m_sq))   # manually calc'd MOE per ACS Documentation cited above
+
+
+
 # # Step 6: combine and pivot to final wide format
 # nhpi_final <- bind_rows(nhpi_total, nhpi_uninsured_summary) %>%
 #   pivot_wider(names_from = c(var_base, var_num, type),
