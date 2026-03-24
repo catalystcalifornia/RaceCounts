@@ -164,7 +164,7 @@ table_code = 'b27001'    # Select relevant indicator table name
 #           m_orig=moe_sum(moe=m, estimate=e))         # original moe calc
 # fresno_check2 <- asian_uninsured %>%
 #   filter(name == 'Fresno County' & table_num == '026' & type == 'm') %>%
-#   mutate(m_sq = value * value)
+#   mutate(m_sq = value^2)
 # sqrt(sum(fresno_check2$m_sq))   # manually calc'd MOE per ACS Documentation cited above
 
 
