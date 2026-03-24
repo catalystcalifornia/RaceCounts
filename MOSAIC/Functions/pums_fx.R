@@ -6,7 +6,7 @@ anhpi_reclass <- function(x, acs_yr, ancestry_list) {  # used in MOSAIC Living W
   ## import ANC1P/ANC2P codes/labels pulled from https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
   print(paste0("Adding ancestry labels from:", ancestry_list))
   anc_codes <- ancestry_list %>%
-    mutate(anc_label = tolower(gsub(" ", "_", anc_label)))
+    mutate(anc_label = tolower(str_replace_all(anc_label, "\\s+", "_")))
 
   # get list of AA or PI ancestries actually in CA PUMS data
   aapi_incl <- x %>% select(ANC1P) %>% 
@@ -132,7 +132,7 @@ calc_pums_pop <- function(var_name) {
   # var_name is the list of asian and nhpi subgroups
   ### Then run something like this: pop_table <- map(vars, calc_pums_pop) |> list_rbind()
   
-  message(paste0(var_name, ": Assigning subgroup survey and denominator (asian , nhpi)..."))
+  message(paste0(var_name, ": Assigning subgroup survey and denominator (asian, nhpi)..."))
   
   # Assign ancestry group, used to determine which pop denominator to use for rate calcs
   den_group <- case_when( 
