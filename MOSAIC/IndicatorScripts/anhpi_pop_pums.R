@@ -77,7 +77,7 @@ people$state_geoid <- "06"
 people$puma_id <- paste0(people$state_geoid, people$PUMA)
 
 #### Step 4: Join subgroup labels to data ####
-people <- anhpi_reclass(people, curr_yr, ancestry_list)  # returns list containing people (reclassified pums data) and aapi_incl (list of AAPI ancestries in data)
+people <- anhpi_reclass(people, ancestry_list)  # returns list containing people (reclassified pums data) and aapi_incl (list of AAPI ancestries in data)
 list2env(people, .GlobalEnv)
 
 # Add a new column for each anc_label, populated with 1 or 0
@@ -211,7 +211,7 @@ nhpi_aoic
 ## check a few of the new ancestry & asian/nhpi cols
 table(chinese = people$chinese, asian_race = people$RACASN)  # check how many chinese ancestry rows are also marked Asian race
 table(chinese = people$chinese, asian_anc = people$asian)    # check that all chinese ancestry rows are also marked asian ancestry
-table(asian_anc = people$asian, asian_race = people$RACASN)  # 4,452 people (unw) w/ asian ancestry who are not coded race = Asian
+table(asian_anc = people$asian, asian_race = people$RACASN)  # 4,452 responses (unw) w/ asian ancestry who are not coded race = Asian
 #           asian_race
 # chinese         0        1
 #        0  1485865   287900
@@ -219,7 +219,7 @@ table(asian_anc = people$asian, asian_race = people$RACASN)  # 4,452 people (unw
 
 table(samoan = people$samoan, nhpi_race = people$RACNHPI)    # check how many samoan ancestry rows are also marked NHPI race
 table(samoan = people$samoan, nhpi_anc = people$nhpi)        # check that all samoan ancestry rows are also marked nhpi ancestry
-table(nhpi_anc = people$nhpi, nhpi_race = people$RACNHPI)    # 941 people (unw) w/ nhpi ancestry who are not coded race = NHPI
+table(nhpi_anc = people$nhpi, nhpi_race = people$RACNHPI)    # 941 responses (unw) w/ nhpi ancestry who are not coded race = NHPI
 #         nhpi_race
 # samoan         0      1
 #        0 1838908  12943

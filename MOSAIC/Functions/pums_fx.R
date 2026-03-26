@@ -170,7 +170,9 @@ calc_pums_ind <- function(d, weight, repwlist, vars, indicator) {
   # vars = the list of asian and nhpi subgroups (aapi_incl$anc_label)
   # indicator = name of column that contains indicator data, eg: 'living_wage' which contains values 'livable' and 'not livable'
   ### Then run something like this: pop_table <- map(vars, ppl_state)   |> list_rbind()
-  
+
+
+
   library(purrr)
   library(readr)
   
@@ -283,6 +285,7 @@ calc_pums_ind <- function(d, weight, repwlist, vars, indicator) {
   message(paste0("Done! calc_pums_ind completed in ", elapsed, " minutes."))
   
   return(result)
+
 }
 
 
