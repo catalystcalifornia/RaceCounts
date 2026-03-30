@@ -371,41 +371,102 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   }
   
   if(endsWith(table_code, "b25014")) {  # LF edited Overcrowding
-    # pivot longer
-    x_long <- x %>%
-      pivot_longer(
-        cols = -c(geoid, name, geolevel),
-        names_to = c("ethnic_group", "line", "stat"),
-        names_pattern = "^(.*?)(001|005|006|007|011|012|013)(e|m)$",
-        values_to = "value"
-      ) %>%
-      mutate(                   
-        measure = case_when(
-          line == "001" & stat == "e" ~ "pop",
-          line == "001" & stat == "m" ~ "pop_moe",
-          line != "001" & stat == "e" ~ "raw",
-          line != "001" & stat == "m" ~ "raw_moe"
-        )
-      ) %>%
-      select(-stat) %>%         
-      pivot_wider(
-        names_from = measure,
-        values_from = value		
-      ) %>%
-      select(-line) %>%         
-      group_by(name, geoid, geolevel, ethnic_group) %>%
-      summarise(
-        pop     = as.numeric(sum(pop)),
-        pop_moe = as.numeric(moe_sum(moe = pop_moe, estimate = pop)),
-        raw     = as.numeric(sum(raw)),
-        raw_moe = as.numeric(moe_sum(moe = raw_moe, estimate = as.numeric(raw))),
-        .groups = "drop"
-      ) %>%
-      # calc raced rates
-      mutate(rate = ifelse(pop <= 0, NA, raw / pop * 100),
-             rate_moe = moe_prop(raw, pop, raw_moe, pop_moe) * 100)
+    safe_sum <- function(x) {
+      if (all(is.na(x))) NA_real_ else sum(x, na.rm = TRUE)
+    }
     
+    safe_moe_sum <- function(moe, estimate) {
+      valid <- !is.na(moe) & !is.na(estimate)
+      if (!any(valid)) NA_real_ else moe_sum(moe = moe[valid], estimate = estimate[valid])
+    }
+    
+      # Get data cols only (exclude non-data cols)
+      data_cols <- names(x) %>%
+        setdiff(c("name", "geoid", "geolevel"))
+      
+      # Extract unique ancestry group prefixes
+      ancestry_ids <- data_cols %>%
+        str_replace_all("[em]$", "") %>%   # drop trailing "e" or "m"
+        str_sub(end = -4) %>%              # drop last 3 digits (001, 005 etc)
+        unique()
+      
+      get_b25014 <- function(x){
+        
+      # Build a summary tibble per ancestry group
+      map_dfr(ancestry_ids, function(id) {
+        
+        pop_cols     <- names(x %>% select(matches(paste0("^", id, ".001e$"))))
+        pop_moe_cols <- names(x %>% select(matches(paste0("^", id, ".001m$"))))
+        raw_cols     <- names(x %>% select(matches(paste0("^", id, ".(005|006|007|011|012|013)e$"))))
+        raw_moe_cols <- names(x %>% select(matches(paste0("^", id, ".(005|006|007|011|012|013)m$"))))
+        
+        if (length(pop_cols) == 0 & length(raw_cols) == 0) return(NULL)
+        
+        x %>%
+          rowwise() %>%
+          transmute(
+            name, geoid, geolevel,
+            ethnic_group = id,
+            #pop     = safe_sum(c_across(all_of(pop_cols))),
+            pop     = sum(c_across(all_of(pop_cols))),
+            pop_moe = safe_moe_sum(
+              moe      = c_across(all_of(pop_moe_cols)),
+              estimate = c_across(all_of(pop_cols))
+            ),
+            raw     = sum(c_across(all_of(raw_cols)), na.rm=TRUE),
+            #raw     = safe_sum(c_across(all_of(raw_cols))),
+            raw_moe = safe_moe_sum(
+              moe      = c_across(all_of(raw_moe_cols)),
+              estimate = c_across(all_of(raw_cols))
+            )
+          ) %>%
+          ungroup()
+      }) #%>%
+
+      # calc raced rates
+        mutate(rate = ifelse(pop <= 0, NA, raw / pop * 100),
+               rate_moe = moe_prop(raw, pop, raw_moe, pop_moe) * 100)
+    }
+  
+      x_long3 <- get_b25014(x)
   }
+  
+  # if(endsWith(table_code, "b25014")) {  # LF edited Overcrowding
+  #   # pivot longer
+  #   x_long <- x %>%
+  #     pivot_longer(
+  #       cols = -c(geoid, name, geolevel),
+  #       names_to = c("ethnic_group", "line", "stat"),
+  #       names_pattern = "^(.*?)(001|005|006|007|011|012|013)(e|m)$",
+  #       values_to = "value"
+  #     ) %>%
+  #     mutate(                   
+  #       measure = case_when(
+  #         line == "001" & stat == "e" ~ "pop",
+  #         line == "001" & stat == "m" ~ "pop_moe",
+  #         line != "001" & stat == "e" ~ "raw",
+  #         line != "001" & stat == "m" ~ "raw_moe"
+  #       )
+  #     ) %>%
+  #     select(-stat) %>%         
+  #     pivot_wider(
+  #       names_from = measure,
+  #       values_from = value		
+  #     ) %>%
+  #     select(-line) %>%         
+  #     group_by(name, geoid, geolevel, ethnic_group) %>%
+  #     summarise(
+  #       pop     = as.numeric(sum(pop)),
+  #       pop_moe = as.numeric(moe_sum(moe = pop_moe, estimate = pop)),
+  #       raw     = as.numeric(sum(raw)),
+  #       raw_moe = as.numeric(moe_sum(moe = raw_moe, estimate = as.numeric(raw))),
+  #       .groups = "drop"
+  #     ) %>%
+  #     # calc raced rates
+  #     mutate(rate = ifelse(pop <= 0, NA, raw / pop * 100),
+  #            rate_moe = moe_prop(raw, pop, raw_moe, pop_moe) * 100)
+  #   
+  # }
   
   if(endsWith(table_code, "b19301")) {
     
