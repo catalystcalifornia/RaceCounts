@@ -737,8 +737,9 @@ hc <- highchart() %>%
       pointPadding = 0,
       groupPadding = 0.1
     ),
-    series = list(clip = FALSE)
-  ) %>%
+    series = 
+      list(enableMouseTracking=FALSE), # removes all highlighting from hovering over bars and legend groups
+      clip = FALSE) %>%
   hc_xAxis(
     categories = rate_order,
     labels = list(
