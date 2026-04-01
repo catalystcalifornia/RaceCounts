@@ -85,34 +85,34 @@ low_bw_rc_reshape <- low_birthweight_rc %>%
 
 low_birthweight <- rbind(low_bw_asian_reshape, low_bw_rc_reshape) # low_bw_nhpi_reshape, 
 
-homeownership_asian_reshape <- homeownership_asian %>%
-   pivot_longer(
-    cols = matches("_raw$|_rate$"),
-    names_to = c("subgroup", ".value"),
-    names_pattern = "^(.+)_(raw|rate)$") %>%
-  rename(count = raw) %>%
-  mutate(group = "asian") %>%
-  select(group, subgroup, count, rate) 
-
-homeownership_nhpi_reshape <- homeownership_nhpi %>%
-   pivot_longer(
-    cols = matches("_raw$|_rate$"),
-    names_to = c("subgroup", ".value"),
-    names_pattern = "^(.+)_(raw|rate)$") %>%
-  rename(count = raw) %>%
-  mutate(group = "nhpi") %>%
-  select(group, subgroup, count, rate) 
-
-homeownership_rc_reshape <- homeownership_rc %>%
-  pivot_longer(
-    cols = matches("_raw$|_rate$"),
-    names_to = c("subgroup", ".value"),
-    names_pattern = "^(.+)_(raw|rate)$") %>%
-  rename(count = raw) %>%
-  mutate(group = "total") %>%
-  select(group, subgroup, count, rate) 
-
-homeownership <- rbind(homeownership_asian_reshape, homeownership_nhpi_reshape, homeownership_rc_reshape)
+# homeownership_asian_reshape <- homeownership_asian %>%
+#    pivot_longer(
+#     cols = matches("_raw$|_rate$"),
+#     names_to = c("subgroup", ".value"),
+#     names_pattern = "^(.+)_(raw|rate)$") %>%
+#   rename(count = raw) %>%
+#   mutate(group = "asian") %>%
+#   select(group, subgroup, count, rate) 
+# 
+# homeownership_nhpi_reshape <- homeownership_nhpi %>%
+#    pivot_longer(
+#     cols = matches("_raw$|_rate$"),
+#     names_to = c("subgroup", ".value"),
+#     names_pattern = "^(.+)_(raw|rate)$") %>%
+#   rename(count = raw) %>%
+#   mutate(group = "nhpi") %>%
+#   select(group, subgroup, count, rate) 
+# 
+# homeownership_rc_reshape <- homeownership_rc %>%
+#   pivot_longer(
+#     cols = matches("_raw$|_rate$"),
+#     names_to = c("subgroup", ".value"),
+#     names_pattern = "^(.+)_(raw|rate)$") %>%
+#   rename(count = raw) %>%
+#   mutate(group = "total") %>%
+#   select(group, subgroup, count, rate) 
+# 
+# homeownership <- rbind(homeownership_asian_reshape, homeownership_nhpi_reshape, homeownership_rc_reshape)
 
 # Set colors for bars
 base_colors <- c(
@@ -149,21 +149,25 @@ Make the case for disaggregation. Highlight racial disparities faced by CA’s A
 This is an example of a "drilldown" chart. You can select Asian or Total and the chart will drilldown to show the subgroups in each. Once you drilldown, you have another option to toggle to counts or stay on rates. When drilling down and viewing rates, a vertical line will appear with the state average. 
 
 ```{r}
+# A bit more indicator prep for chart mock ups
 # Test highcharter
 
 low_birthweight_chart1 <- low_birthweight %>%
+  # remove nphi for now
   filter(group!="nhpi") %>%
   # mutate(subgroup = ifelse(group=="nhpi", sprintf("%s (nhpi)", subgroup), subgroup)) %>%
   # mutate(group= ifelse(group=="nhpi", "asian", group)) %>%
+  # round rates
   mutate(rate=round(rate, 2))
 
 low_birthweight <- low_birthweight %>%
   filter(group!="nhpi") %>%
   mutate(
-    group = case_when(group=="total" & subgroup != "total" ~ subgroup,
+    group = case_when(group=="total" & subgroup != "total" ~ "race counts groups",
                       group=="asian" & subgroup != "total" ~ "asian subgroups",
+                      group=="asian" & subgroup=="total" ~ "asian average",
                       .default=group),
-    subgroup = case_when(group=="asian"&subgroup=="total" ~ "asian average",
+    subgroup = case_when(group=="asian average" ~ "asian average",
                          .default=subgroup)
   ) %>%
   filter(group!="total"&subgroup!="total") %>%
@@ -171,6 +175,7 @@ low_birthweight <- low_birthweight %>%
   # mutate(group= ifelse(group=="nhpi", "asian", group)) %>%
   mutate(rate=round(rate, 2))
 
+# use indicator best direction to arrange "shared struggle" groups at top
 if(low_birthweight_asbest=="min") {
   low_birthweight <- low_birthweight %>%
     arrange(desc(rate))
@@ -183,6 +188,10 @@ if(low_birthweight_asbest=="min") {
   low_birthweight_chart1 <- low_birthweight_chart1 %>%
     arrange(desc(rate))
 }
+
+```
+
+```{r}
 
 base_bw_df <- low_birthweight_chart1 %>%
   filter(subgroup=="total") %>%
@@ -546,7 +555,7 @@ series_data_rates <- low_birthweight %>%
     # Assign color based on group
     series_color <- if(df$group[1] == "asian subgroups") {
       color_map[["asian subgroups"]]
-    } else if(df$group[1] == "asian") {
+    } else if(df$group[1] == "asian average") {
       color_map[["asian"]]
     } else {
       color_map[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
@@ -577,7 +586,7 @@ series_data_counts <- low_birthweight %>%
     # Assign same color based on group
     series_color <- if(df$group[1] == "asian subgroups") {
       color_map[["asian subgroups"]]
-    } else if(df$group[1] == "asian") {
+    } else if(df$group[1] == "asian average") {
       color_map[["asian"]]
     } else {
       color_map[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
