@@ -17,11 +17,10 @@ for(pkg in packages){
   library(pkg, character.only = TRUE) 
 } 
 
-## Fx to return NA when all values are NA, and to return the sum ignoring NAs when some values are not NA
-safe_sum <- function(x) {
-  if (all(is.na(x))) NA else sum(x, na.rm = TRUE)
+# fx to sum estimates ignoring NA, but also return NA (not 0) if all are NA
+safe_sum <- function(x) {  
+  if (all(is.na(x))) NA_real_ else sum(x, na.rm = TRUE)
 }
-
 
 #### Automate writing API calls and pull ACS SPT detailed Asian & NHPI race tables for city/county/state ####
 get_detailed_race <- function(table, race, year = 2021) {
@@ -371,12 +370,7 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   }
   
   if(endsWith(table_code, "b25014")) {  # LF edited Overcrowding
-     
-     # fx to sum estimates ignoring NA, but also return NA (not 0) if all are NA
-     safe_sum <- function(x) {  
-       if (all(is.na(x))) NA_real_ else sum(x, na.rm = TRUE)
-     }
- 
+
      x_long <- x %>%
           pivot_longer(
             cols = -c(geoid, name, geolevel),
