@@ -189,7 +189,8 @@ county_table <- calc_z(county_table)
 
 ## Calc county ranks## These fx don't work bc total_rate is NA
 # county_table <- calc_ranks(county_table) 
-county_table <- county_table %>% dplyr::select(-c(geolevel, total_rate))
+county_table <- county_table %>% dplyr::select(-c(geolevel, total_rate)) %>%
+  select(where(~!all(is.na(.))))
 # View(county_table)
 
 #calculate CITY z-scores
@@ -197,7 +198,8 @@ city_table <- calc_z(city_table)
 
 ## Calc city ranks##
 # city_table <- calc_ranks(city_table)
-city_table <- city_table %>% dplyr::select(-c(geolevel, total_rate))
+city_table <- city_table %>% dplyr::select(-c(geolevel, total_rate)) %>%
+  select(where(~!all(is.na(.))))
 #View(city_table)
 
 #rename geoid to state_id, county_id, city_id
@@ -224,8 +226,6 @@ city_to_postgres(city_table, 'mosaic')
 
 #### NHPI: Pre-RC CALCS ##############
 nhpi_df <- prep_acs(nhpi_data, 'nhpi', table_code, cv_threshold, pop_threshold)
-
-#####  screening:
 
 nhpi_df_screened <- dplyr::select(nhpi_df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_cv"))
 
@@ -264,7 +264,9 @@ county_table <- calc_z(county_table)
 
 ## Calc county ranks## These fx don't work bc total_rate is NA
 # county_table <- calc_ranks(county_table) 
-county_table <- county_table %>% dplyr::select(-c(geolevel, total_rate))
+county_table <- county_table %>% dplyr::select(-c(geolevel, total_rate)) %>%
+  select(where(~!all(is.na(.))))
+
 # View(county_table)
 
 #calculate CITY z-scores
@@ -272,7 +274,8 @@ city_table <- calc_z(city_table)
 
 ## Calc city ranks##
 # city_table <- calc_ranks(city_table)
-city_table <- city_table %>% dplyr::select(-c(geolevel, total_rate))
+city_table <- city_table %>% dplyr::select(-c(geolevel, total_rate)) %>%
+  select(where(~!all(is.na(.))))
 #View(city_table)
 
 #rename geoid to state_id, county_id, city_id

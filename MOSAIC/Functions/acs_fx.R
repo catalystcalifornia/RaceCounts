@@ -371,64 +371,61 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   }
   
   if(endsWith(table_code, "b25014")) {  # LF edited Overcrowding
-    # safe_sum <- function(x) {
-    #   if (all(is.na(x))) NA_real_ else sum(x, na.rm = TRUE)
-    # }
-    # 
-    # safe_moe_sum <- function(moe, estimate) {
-    #   valid <- !is.na(moe) & !is.na(estimate)
-    #   if (!any(valid)) NA_real_ else moe_sum(moe = moe[valid], estimate = estimate[valid])
-    # }
-    
-      get_b25014 <- function(df) {
+     
+     # fx to sum estimates ignoring NA, but also return NA (not 0) if all are NA
+     safe_sum <- function(x) {  
+       if (all(is.na(x))) NA_real_ else sum(x, na.rm = TRUE)
+     }
+ 
+     x_long <- x %>%
+          pivot_longer(
+            cols = -c(geoid, name, geolevel),
+            names_to = c("ethnic_group", "line", "stat"),
+            names_pattern = "^(.*?)(001|005|006|007|011|012|013)(e|m)$",
+            values_to = "val"
+          ) %>%
+          pivot_wider(
+            names_from = stat,
+            values_from = val
+          ) %>%
+          rename(
+            value = e,
+            moe = m
+          ) %>%
+          mutate(
+            measure = case_when(
+              line == "001" ~ "pop",
+              line != "001" ~ "raw"
+            )
+          )
         
-        # Get data cols only (exclude non-data cols)
-        data_cols <- names(df) %>%
-          setdiff(c("name", "geoid", "geolevel"))
-        
-        # Extract unique ancestry group prefixes
-        ancestry_ids <- data_cols %>%
-          str_replace_all("[em]$", "") %>%  # drop trailing "e" or "m"
-          str_sub(end = -4) %>%             # drop last 3 digits (001, 005 etc)
-          unique()
-        
-        map_dfr(ancestry_ids, function(id) {
-          
-          pop_cols     <- names(df %>% select(matches(paste0("^", id, "001e$"))))
-          pop_moe_cols <- names(df %>% select(matches(paste0("^", id, "001m$"))))
-          raw_cols     <- names(df %>% select(matches(paste0("^", id, "(005|006|007|011|012|013)e$"))))
-          raw_moe_cols <- names(df %>% select(matches(paste0("^", id, "(005|006|007|011|012|013)m$"))))
-          
-          if (length(pop_cols) == 0 & length(raw_cols) == 0) return(NULL)
-          
-          # Pre-extract matrices for vectorised row operations
-          pop_mat     <- as.matrix(df[, pop_cols,     drop = FALSE])
-          pop_moe_mat <- as.matrix(df[, pop_moe_cols, drop = FALSE])
-          raw_mat     <- as.matrix(df[, raw_cols,     drop = FALSE])
-          raw_moe_mat <- as.matrix(df[, raw_moe_cols, drop = FALSE])
+        get_b25014 <- function(df) {
           
           df %>%
-            select(name, geoid, geolevel) %>%
+            group_by(name, geoid, geolevel, ethnic_group, measure) %>%
+            summarise(
+              agg_value = safe_sum(value),
+              agg_moe   = moe_sum(moe = moe, estimate = value),
+              .groups   = "drop"
+            ) %>%
+            pivot_wider(
+              names_from  = measure,
+              values_from = c(agg_value, agg_moe),
+              names_glue  = "{measure}_{.value}"
+            ) %>%
+            rename(
+              pop     = pop_agg_value,
+              pop_moe = pop_agg_moe,
+              raw     = raw_agg_value,
+              raw_moe = raw_agg_moe
+            ) %>%
             mutate(
-              ethnic_group = id,
-              pop     = rowSums(pop_mat, na.rm = TRUE),
-              pop     = ifelse(rowSums(!is.na(pop_mat)) == 0, NA_real_, pop),
-              pop_moe = apply(pop_moe_mat, 1, function(i) {
-                moe_sum(moe = i, estimate = pop_mat[which(pop_moe_mat == i, arr.ind = TRUE)[1], ])
-              }),
-              raw     = rowSums(raw_mat, na.rm = TRUE),
-              raw     = ifelse(rowSums(!is.na(raw_mat)) == 0, NA_real_, raw),
-              raw_moe = apply(cbind(raw_moe_mat, raw_mat), 1, function(i) {
-                n <- ncol(raw_moe_mat)
-                moe_sum(moe = i[1:n], estimate = i[(n+1):(2*n)])
-              }),
               rate     = ifelse(pop <= 0, NA, raw / pop * 100),
               rate_moe = moe_prop(raw, pop, raw_moe, pop_moe) * 100
             )
-        })
-      }
-  
-      x_long <- get_b25014(x)
+        }
+        
+      x_long <- get_b25014(x_long)
   }
   
   if(endsWith(table_code, "b19301")) {
@@ -632,7 +629,7 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   ### Coefficient of Variation (CV) CALCS #####
 
   ### calc cv's
-  ## Calculate CV values for all rates - store in columns as cv_[race]_rate
+  # Calculate CV values for all rates - store in columns as cv_[race]_rate
   if (!is.na(cv_threshold)){
     x_long$rate_cv <- ifelse(x_long$rate==0, NA, x_long$rate_moe/1.645/x_long$rate*100)
   }
@@ -645,26 +642,26 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     # if pop_threshold ex_longists and cv_threshold is NA, do pop check but no CV check (doesn't apply to any at this time, may need to add _raw screens later.)
     ## Screen out low populations
     df$rate <- ifelse(df$pop < pop_threshold, NA, df$rate)
-    
+
   } else if (is.na(pop_threshold) & !is.na(cv_threshold)){
     # if pop_threshold is NA and cv_threshold ex_longists, check cv only (i.e. only B19301). As of now, the only table that uses this does not have _raw values, may need to add _raw screens later.
     ## Screen out rates with high CVs
     df$rate <- ifelse(df$rate_cv > cv_threshold, NA, df$rate)
-    
+
   } else if (!is.na(pop_threshold) & !is.na(cv_threshold)){
     # if pop_threshold ex_longists and cv_threshold ex_longists, check population and cv (i.e. B25003, S2301, S2802, S2701, B25014)
     ## Screen out rates with high CVs and low populations
     df$rate <- ifelse(df$rate_cv > cv_threshold, NA, ifelse(df$pop < pop_threshold, NA, df$rate))
     df$raw <- ifelse(df$rate_cv > cv_threshold, NA, ifelse(df$pop < pop_threshold, NA, df$raw))
-    
+
   } else {
     # Only DP05 should hit this condition
     # Will use to change population values < 0 to NA (negative values are Census annotations)
     pop_columns <- colnames(dplyr::select(df, ends_with("_pop")))
     df[,pop_columns] <- sapply(df[,pop_columns], function(x_long) ifelse(x_long<0, NA, x_long))
-    
+
   }
-  
+
   df_wide <- pivot_wider(df,
                          names_from = ethnic_group,
                          values_from = c(pop, pop_moe, raw, raw_moe, rate, rate_moe, rate_cv),
