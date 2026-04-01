@@ -109,13 +109,16 @@ color_map <- c(
 
 custom_theme <- hc_theme(
   chart = list(
-    style = list(fontFamily = "Roboto", color = "#070024")
-  ),
+    style = list(fontFamily = "Roboto", color = "#070024")),
   title = list(style = list(color = "#070024")),
   subtitle = list(style = list(color = "#070024")),
   legend = list(itemStyle = list(color = "#070024")),
-  xAxis = list(labels = list(style = list(color = "#070024"))),
-  yAxis = list(labels = list(style = list(color = "#070024")))
+  xAxis = list(
+    labels = list(style = list(color = "#070024"))),
+  yAxis = list(
+    lineWidth = 1,      # Keep the main baseline
+    tickWidth = 0,       # Remove the small tick marks
+    labels = list(style = list(color = "#070024")))
 )
 
 ```
@@ -256,6 +259,11 @@ drilldown_bw_js <- paste0("function(e) {
   chart.update({
     plotOptions: {
       bar: {
+        states: {
+          hover: {
+            enabled: false  // Disable hover in drilldown
+          }
+        },
         dataLabels: {
           formatter: function() {
             return this.y;
@@ -271,10 +279,8 @@ drilldown_bw_js <- paste0("function(e) {
   if (!chart.customToggleButton) {
     chart.customToggleButton = chart.renderer.button(
       'Show Counts',
-      chart.chartWidth - 103,           // Match drillup horizontal position
+      chart.chartWidth - 106,           // Match drillup horizontal position
       chart.chartHeight / 2 - 50,       // Above the middle where drillup sits
-      //chart.plotLeft + 10, // previous horizontal
-      //10,                  // previous vertical
       function() {
         if (chart.currentView === 'rates') {
           // Switch to counts
@@ -364,7 +370,7 @@ drilldown_bw_js <- paste0("function(e) {
       fontWeight: 'bold',
       fontSize: '12px'
     })
-    .attr({ zIndex: 7 })  // Add this line - higher than gridlines
+    .attr({ zIndex: 7 })  // Add this line to put on top of gridlines
     .add();
     
     // Add event listener to reposition on redraw/resize
@@ -373,7 +379,7 @@ drilldown_bw_js <- paste0("function(e) {
         var buttonWidth = chart.customToggleButton.getBBox().width;
         var rightEdge = chart.chartWidth - chart.spacing[1];
         chart.customToggleButton.attr({
-          x: rightEdge - buttonWidth - 10
+          x: rightEdge - buttonWidth
         });
       }
     });
@@ -382,7 +388,7 @@ drilldown_bw_js <- paste0("function(e) {
     var buttonWidth = chart.customToggleButton.getBBox().width;
     var rightEdge = chart.chartWidth - chart.spacing[1];
     chart.customToggleButton.attr({
-      x: rightEdge - buttonWidth - 10
+      x: rightEdge - buttonWidth
     });
   } else {
     // Button exists, reset it
@@ -440,52 +446,52 @@ hc <- hchart(
   "bar",
   hcaes(x = group, y = rate, drilldown = group, y2 = count, color=color),
   name = "Overview",
-  colorByPoint = FALSE
-) %>%
+  colorByPoint = FALSE) %>%
   hc_chart(
     height = 400, 
     scrollablePlotArea = list(minHeight = 500, opacity = 0.9),
     events = list(
       drilldown = JS(drilldown_bw_js),
-      drillup = JS(drillup_bw_js)
-    )
-  ) %>%
+      drillup = JS(drillup_bw_js))) %>%
   hc_tooltip(enabled = FALSE) %>%
   hc_drilldown(
     allowPointDrilldown = TRUE,
-    series = list_parse(drilldown_bw_df),  
-    drillUpButton = list(
-      relativeTo = "spacingBox",
-      position = list(
-        align = "right",
-        verticalAlign = "middle"
-      ),
-    theme = list(
-      text = "Back to Overview"  # Add your custom text here
+  series = list_parse(drilldown_bw_df),
+  activeDataLabelStyle = list(
+    color = "#070024",
+    textDecoration = "none",
+    fontWeight = "normal"
+  ),
+  activeAxisLabelStyle = list(
+    color = "#070024",
+    textDecoration = "none",
+    cursor = "pointer"
+  ),
+  drillUpButton = list(
+    relativeTo = "spacingBox",
+    position = list(
+      align = "right",
+      verticalAlign = "middle"
     )
-    )
-  ) %>%
+  )) %>%
   hc_title(
     text = "Low Birthweight by Race/Ethnicity",
-    align = "center" 
-  ) %>% 
+    align = "center" ) %>% 
   hc_subtitle(
     text = "Click the Asian or Total bar below to disaggregate data",
-    align = "center"
-  ) %>%
+    align = "center") %>%
   hc_plotOptions(
     bar = list(
       dataLabels = list(
         enabled = TRUE,
         align = "right",
-        inside = FALSE
-        # ,
-        # style = list(color = "black")
-      ))) %>% 
-  hc_xAxis(labels = list(
-    enabled = TRUE,
-    style = list(
-      fontSize = "11px"))) %>%
+        inside = FALSE))) %>% 
+  hc_xAxis(
+    title=list(text=NULL),
+    labels = list(
+      enabled = TRUE,
+      style = list(
+        fontSize = "11px"))) %>%
   hc_yAxis(title = list(text = "Rate"),
            labels=list(enabled=FALSE)) %>%# remove labels from rate axis) 
   hc_legend(enabled=FALSE) %>%
@@ -622,13 +628,11 @@ hc <- highchart() %>%
           var rateOrder = %s;
           var countOrder = %s;
           
-          // NO NEED for color mapping logic anymore - colors are already set
-          
           // Create toggle button
-          chart.customButton = chart.renderer.button(
+          chart.customToggleButton = chart.renderer.button(
             'Show Counts',
-            chart.plotLeft + 10,
-            10,
+            chart.chartWidth - 106,           
+            chart.chartHeight / 2 - 50,       
             function() {
               var showingRates = true;
               
@@ -666,7 +670,7 @@ hc <- highchart() %>%
               
               // Update button text, y-axis, x-axis categories, and data label formatter
               if (showingRates) {
-                chart.customButton.attr({text: 'Show Rates'});
+                chart.customToggleButton.attr({text: 'Show Rates'});
                 chart.yAxis[0].update({title: {text: 'Count'}}, false);
                 chart.xAxis[0].update({categories: countOrder}, false);
                 chart.yAxis[0].removePlotLine('state-average-line');
@@ -682,7 +686,7 @@ hc <- highchart() %>%
                   }
                 }, false);
               } else {
-                chart.customButton.attr({text: 'Show Counts'});
+                chart.customToggleButton.attr({text: 'Show Counts'});
                 chart.yAxis[0].update({title: {text: 'Rate'}}, false);
                 chart.xAxis[0].update({categories: rateOrder}, false);
                 chart.yAxis[0].addPlotLine({
@@ -710,26 +714,44 @@ hc <- highchart() %>%
               chart.redraw();
             },
             {
-              fill: '#2196F3',
-              stroke: '#1976D2',
+              fill: '#fec009',
+              stroke: '#fec009',
               'stroke-width': 1,
               r: 3,
               padding: 8
             },
             {
-              fill: '#1976D2'
+              fill: '#fec009'
             },
             {
-              fill: '#0D47A1'
+              fill: '#fec009'
             }
           )
           .css({
-            color: 'white',
             fontWeight: 'bold',
             fontSize: '12px'
           })
+          .attr({ zIndex: 7 })  // Add this line to put on top of gridlines
           .add();
-        }
+          
+          // Add event listener to reposition on redraw/resize
+          Highcharts.addEvent(chart, 'redraw', function() {
+            if (chart.customToggleButton) {
+              var buttonWidth = chart.customToggleButton.getBBox().width;
+              var rightEdge = chart.chartWidth - chart.spacing[1];
+              chart.customToggleButton.attr({
+                x: rightEdge - buttonWidth
+              });
+            }
+          });
+          
+          // Initial positioning
+          var buttonWidth = chart.customToggleButton.getBBox().width;
+          var rightEdge = chart.chartWidth - chart.spacing[1];
+          chart.customToggleButton.attr({
+            x: rightEdge - buttonWidth
+          });
+              }
       ", jsonlite::toJSON(rate_order), jsonlite::toJSON(count_order), total_rate_bw, total_rate_bw))
     )
   ) %>%
@@ -740,13 +762,11 @@ hc <- highchart() %>%
         align = "right",
         inside = FALSE,
         style = list(color = "black"),
-        formatter = JS("function() { return this.y; }")
-      ),
+        formatter = JS("function() { return this.y; }")),
       pointWidth = 20,
       grouping = FALSE,
       pointPadding = 0,
-      groupPadding = 0.1
-    ),
+      groupPadding = 0.1),
     series = 
       list(enableMouseTracking=FALSE), # removes all highlighting from hovering over bars and legend groups
       clip = FALSE) %>%
@@ -788,7 +808,8 @@ hc <- highchart() %>%
   hc_subtitle(
     text = "Toggle groups on/off by clicking the legend labels below",
     align = "center"
-  )
+  ) %>%
+  hc_add_theme(custom_theme)
 
 # Add RATES series (visible by default)
 for (series in series_data_rates) {
