@@ -486,7 +486,8 @@ hc <- hchart(
     enabled = TRUE,
     style = list(
       fontSize = "11px"))) %>%
-  hc_yAxis(title = list(text = "Rate")) %>%
+  hc_yAxis(title = list(text = "Rate"),
+           labels=list(enabled=FALSE)) %>%# remove labels from rate axis) 
   hc_legend(enabled=FALSE) %>%
   hc_add_theme(custom_theme)
 
@@ -759,13 +760,7 @@ hc <- highchart() %>%
     gridLineColor = '#e6e6e6') %>%
   hc_yAxis(
     title = list(text = "Rate"),
-    # remove labels from rate axis
-    labels=list(enabled=FALSE),
-    # below can be used to set specific number of ticks
-    # min=0,
-    # tickAmount = 3,
-    # startOnTick=FALSE,
-    # endOnTick=FALSE,
+    labels=list(enabled=FALSE), # remove labels from rate axis
     gridLineWidth=0,
     offset = 0,
     plotLines = list(
