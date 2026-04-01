@@ -439,7 +439,7 @@ hc <- hchart(
   base_bw_df,
   "bar",
   hcaes(x = group, y = rate, drilldown = group, y2 = count, color=color),
-  name = "Low Birthweight Rates",
+  name = "Overview",
   colorByPoint = FALSE
 ) %>%
   hc_chart(
