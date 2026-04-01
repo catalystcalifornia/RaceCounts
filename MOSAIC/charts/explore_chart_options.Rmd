@@ -747,10 +747,17 @@ hc <- highchart() %>%
       style = list(fontSize = "11px")
     ),
     gridLineWidth = 1,
-    gridLineColor = '#e6e6e6'
-  ) %>%
+    gridLineColor = '#e6e6e6') %>%
   hc_yAxis(
     title = list(text = "Rate"),
+    # remove labels from rate axis
+    labels=list(enabled=FALSE),
+    # below can be used to set specific number of ticks
+    # min=0,
+    # tickAmount = 3,
+    # startOnTick=FALSE,
+    # endOnTick=FALSE,
+    gridLineWidth=0,
     offset = 0,
     plotLines = list(
       list(
