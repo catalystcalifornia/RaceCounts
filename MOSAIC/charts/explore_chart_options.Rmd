@@ -134,6 +134,17 @@ color_map <- c(
   "default" = "#cccccc"
 )
 
+custom_theme <- hc_theme(
+  chart = list(
+    style = list(fontFamily = "Roboto", color = "#070024")
+  ),
+  title = list(style = list(color = "#070024")),
+  subtitle = list(style = list(color = "#070024")),
+  legend = list(itemStyle = list(color = "#070024")),
+  xAxis = list(labels = list(style = list(color = "#070024"))),
+  yAxis = list(labels = list(style = list(color = "#070024")))
+)
+
 ```
 
 Current Mockup: https://catalystcalifornia.sharepoint.com/:p:/s/Portal/IQB2I72xqiLbQYADd3kq9sa8AZMzOGt4QlRKnGaOnVPirrY?e=vzYzR7
@@ -288,8 +299,10 @@ drilldown_bw_js <- paste0("function(e) {
   if (!chart.customToggleButton) {
     chart.customToggleButton = chart.renderer.button(
       'Show Counts',
-      chart.plotLeft + 10,
-      10,
+      chart.chartWidth - 103,           // Match drillup horizontal position
+      chart.chartHeight / 2 - 50,       // Above the middle where drillup sits
+      //chart.plotLeft + 10, // previous horizontal
+      //10,                  // previous vertical
       function() {
         if (chart.currentView === 'rates') {
           // Switch to counts
@@ -361,25 +374,44 @@ drilldown_bw_js <- paste0("function(e) {
         chart.redraw();
       },
       {
-        fill: '#2196F3',
-        stroke: '#1976D2',
+        fill: '#fec009',
+        stroke: '#fec009',
         'stroke-width': 1,
         r: 3,
         padding: 8
       },
       {
-        fill: '#1976D2'
+        fill: '#fec009'
       },
       {
-        fill: '#0D47A1'
+        fill: '#fec009'
       }
     )
     .css({
-      color: 'white',
+      //color: '#070024',
       fontWeight: 'bold',
       fontSize: '12px'
     })
+    .attr({ zIndex: 7 })  // Add this line - higher than gridlines
     .add();
+    
+    // Add event listener to reposition on redraw/resize
+    Highcharts.addEvent(chart, 'redraw', function() {
+      if (chart.customToggleButton) {
+        var buttonWidth = chart.customToggleButton.getBBox().width;
+        var rightEdge = chart.chartWidth - chart.spacing[1];
+        chart.customToggleButton.attr({
+          x: rightEdge - buttonWidth - 10
+        });
+      }
+    });
+    
+    // Initial positioning
+    var buttonWidth = chart.customToggleButton.getBBox().width;
+    var rightEdge = chart.chartWidth - chart.spacing[1];
+    chart.customToggleButton.attr({
+      x: rightEdge - buttonWidth - 10
+    });
   } else {
     // Button exists, reset it
     chart.customToggleButton.attr({text: 'Show Counts'});
@@ -455,7 +487,10 @@ hc <- hchart(
       position = list(
         align = "right",
         verticalAlign = "middle"
-      )
+      ),
+    theme = list(
+      text = "Back to Overview"  # Add your custom text here
+    )
     )
   ) %>%
   hc_title(
@@ -471,15 +506,17 @@ hc <- hchart(
       dataLabels = list(
         enabled = TRUE,
         align = "right",
-        inside = FALSE,
-        style = list(color = "black")
+        inside = FALSE
+        # ,
+        # style = list(color = "black")
       ))) %>% 
   hc_xAxis(labels = list(
     enabled = TRUE,
     style = list(
       fontSize = "11px"))) %>%
   hc_yAxis(title = list(text = "Rate")) %>%
-  hc_legend(enabled=FALSE)
+  hc_legend(enabled=FALSE) %>%
+  hc_add_theme(custom_theme)
 
 
 # Wrap with constrained width
