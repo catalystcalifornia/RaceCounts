@@ -83,36 +83,9 @@ low_bw_rc_reshape <- low_birthweight_rc %>%
   mutate(group = "total") %>%
   select(group, subgroup, count, rate) 
 
-low_birthweight <- rbind(low_bw_asian_reshape, low_bw_rc_reshape) # low_bw_nhpi_reshape, 
-
-# homeownership_asian_reshape <- homeownership_asian %>%
-#    pivot_longer(
-#     cols = matches("_raw$|_rate$"),
-#     names_to = c("subgroup", ".value"),
-#     names_pattern = "^(.+)_(raw|rate)$") %>%
-#   rename(count = raw) %>%
-#   mutate(group = "asian") %>%
-#   select(group, subgroup, count, rate) 
-# 
-# homeownership_nhpi_reshape <- homeownership_nhpi %>%
-#    pivot_longer(
-#     cols = matches("_raw$|_rate$"),
-#     names_to = c("subgroup", ".value"),
-#     names_pattern = "^(.+)_(raw|rate)$") %>%
-#   rename(count = raw) %>%
-#   mutate(group = "nhpi") %>%
-#   select(group, subgroup, count, rate) 
-# 
-# homeownership_rc_reshape <- homeownership_rc %>%
-#   pivot_longer(
-#     cols = matches("_raw$|_rate$"),
-#     names_to = c("subgroup", ".value"),
-#     names_pattern = "^(.+)_(raw|rate)$") %>%
-#   rename(count = raw) %>%
-#   mutate(group = "total") %>%
-#   select(group, subgroup, count, rate) 
-# 
-# homeownership <- rbind(homeownership_asian_reshape, homeownership_nhpi_reshape, homeownership_rc_reshape)
+low_birthweight <- rbind(low_bw_asian_reshape, low_bw_rc_reshape) %>%
+  # round rates
+  mutate(rate=round(rate, 1))
 
 # Set colors for bars
 base_colors <- c(
@@ -165,11 +138,10 @@ This is an example of a "drilldown" chart. You can select Asian or Total and the
 
 low_birthweight_chart1 <- low_birthweight %>%
   # remove nphi for now
-  filter(group!="nhpi") %>%
+  filter(group!="nhpi") 
   # mutate(subgroup = ifelse(group=="nhpi", sprintf("%s (nhpi)", subgroup), subgroup)) %>%
-  # mutate(group= ifelse(group=="nhpi", "asian", group)) %>%
-  # round rates
-  mutate(rate=round(rate, 2))
+  # mutate(group= ifelse(group=="nhpi", "asian", group)) 
+  
 
 low_birthweight <- low_birthweight %>%
   filter(group!="nhpi") %>%
