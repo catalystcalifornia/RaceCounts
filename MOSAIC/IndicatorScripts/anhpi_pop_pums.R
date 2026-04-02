@@ -16,6 +16,8 @@ for(pkg in packages){
   library(pkg, character.only = TRUE)
 }
 
+options(scipen = 999)
+
 #SOURCE from the script that has: styling, packages, dbconnection, colors
 source("W:\\RDA Team\\R\\credentials_source.R")
 source("./MOSAIC/Functions/pums_fx.R")
@@ -89,7 +91,7 @@ check_reclass <- people %>%
   filter((ANC1P == '603') |
            (ANC2P == '603')) %>%
   select(bangladeshi, anc_label.x, ANC1P, anc_label.y, ANC2P)
-nrow(check_reclass) == nrow(check_reclass %>% filter(ANC1P == '603' | ANC2P == '603')) # check ancestry label columns against anc codes
+nrow(check_reclass) == nrow(check_reclass %>% filter(anc_label.x == 'bangladeshi' | anc_label.y == 'bangladeshi')) # check ancestry label columns against anc codes
 nrow(check_reclass %>% filter(bangladeshi != 1 & (ANC1P == '603' | ANC2P == '603')))   # check bangladeshi binary column against anc codes
 
 # Add a new column for any asian ancestry and same for nhpi, populated with 1 or 0
@@ -102,7 +104,7 @@ people$asian <- as.integer(
     (people$anc_label.y %in% names(asian_lookup[asian_lookup == 1]))
 )
 
-people$asian[people$ANC1P == '999' & people$ANC2P == '999'] <- NA # recode ancestry Not Reported to NA from 0
+people$asian[people$ANC1P == '999' & people$ANC2P == '999'] <- NA # recode ancestry Not Reported to NA from 999
 
 # Create a named lookup vector: anc_label -> nhpi value
 nhpi_lookup <- setNames(aapi_incl$nhpi, aapi_incl$anc_label)
@@ -113,7 +115,7 @@ people$nhpi <- as.integer(
     (people$anc_label.y %in% names(nhpi_lookup[nhpi_lookup == 1]))
 )
 
-people$nhpi[people$ANC1P == '999' & people$ANC2P == '999'] <- NA  # recode ancestry Not Reported to NA from 0
+people$nhpi[people$ANC1P == '999' & people$ANC2P == '999'] <- NA  # recode ancestry Not Reported to NA from 999
 
 
 #### Step 4.1: Check race/ancestry relationships ####
@@ -122,7 +124,7 @@ check_anc_nr <- people %>%
   filter((ANC1P == '999') &
          (ANC2P == '999')) %>%
   select(ANC1P, ANC2P, RAC1P, RACASN, RACNHPI)
-nrow(check_anc_nr) / nrow(people)  # 18.4% of records have no ancestry data
+nrow(check_anc_nr) / nrow(people) * 100 # 18.4% of records have no ancestry data
 
 race_names <- function(x){
   x <- x %>% mutate(race = case_when(
@@ -131,10 +133,10 @@ race_names <- function(x){
     x$RAC1P == 3 ~ 'Am Ind Alone',
     x$RAC1P == 4 ~ 'AK Native Alone',
     x$RAC1P == 5 ~ 'AIAN other',
-    x$RAC1P == 6 ~ 'Asian Alone',  # 17% have no ancestry data, slightly lower than avg (18.4%)
-    x$RAC1P == 7 ~ 'NHPI Alone',   # 25% have no ancestry data, higher than avg (18.4%)
+    x$RAC1P == 6 ~ 'Asian Alone',  
+    x$RAC1P == 7 ~ 'NHPI Alone',   
     x$RAC1P == 8 ~ 'Other Race Alone',
-    x$RAC1P == 9 ~ 'Multiracial',  # 16% have no ancestry data, lower than avg. we know many NHPI are in this group.
+    x$RAC1P == 9 ~ 'Multiracial',  
     TRUE ~ 'NA'
   ))
 return(x)
@@ -154,8 +156,10 @@ check_anc_nr2 <- people %>%
                 # 'Multiracial', 16% have no ancestry data, lower than avg. we know many NHPI are in this group.
  
 # what % of Asian AOIC and NHPI AOIC (unweighted) have no ancestry data?
+message("Among those with no ancestry data...")
 table(check_anc_nr = check_anc_nr$RACASN) %>%
   setNames(c('Not Asian', 'Asian AOIC')) # 1 = Asian AOIC, 0 = Not Asian race. 62,864 Asian AOIC have no anc data.
+message("Among those with no ancestry data...")
 table(check_anc_nr = check_anc_nr$RACNHPI) %>%
   setNames(c('Not NHPI', 'NHPI AOIC'))   # 1 = NHPI AOIC, 0 = Not NHPI race. 3,318 NHPI AOIC have no anc data.
 
@@ -171,6 +175,7 @@ asian_multir <- people %>% select(asian, RAC1P) %>%
               group_by(asian) %>%
               summarise(all_asian_anc = n()), by = "asian") %>%
   mutate(pct_asian_anc = count_asian_anc / all_asian_anc * 100)  # 10% of Asian ancestry are Multiracial
+asian_multir
 
 nhpi_multir <- people %>% select(nhpi, RAC1P) %>% 
   race_names() %>%
@@ -181,6 +186,7 @@ nhpi_multir <- people %>% select(nhpi, RAC1P) %>%
               group_by(nhpi) %>%
               summarise(all_nhpi_anc = n()), by = "nhpi") %>%
   mutate(pct_nhpi_anc = count_nhpi_anc / all_nhpi_anc * 100)     # 40% of nhpi ancestry are Multiracial
+nhpi_multir
 
 asian_aoic <- people %>% select(asian, RACASN) %>% 
   group_by(RACASN, asian) %>%
@@ -190,6 +196,7 @@ asian_aoic <- people %>% select(asian, RACASN) %>%
               summarise(all_asian_aoic = n()), by = "RACASN") %>%
   mutate(pct_asian_anc = count_asian_anc / all_asian_aoic * 100) %>%  # 78% of Asian AOIC have asian ancestry, 17% have no ancestry
   filter(RACASN == 1)
+asian_aoic
 
 nhpi_aoic <- people %>% select(nhpi, RACNHPI) %>% 
   group_by(RACNHPI, nhpi) %>%
@@ -197,9 +204,9 @@ nhpi_aoic <- people %>% select(nhpi, RACNHPI) %>%
   left_join(people %>% select(nhpi, RACNHPI) %>%
               group_by(RACNHPI) %>%
               summarise(all_nhpi_aoic = n()), by = "RACNHPI") %>%
-  mutate(pct_nhpi_anc = count_nhpi_anc / all_nhpi_aoic * 100) %>%  # 48% of NHPI AOIC have nhpi ancestry, 23% have no ancestry
+  mutate(pct_nhpi_anc = count_nhpi_anc / all_nhpi_aoic * 100) %>%  # 48% of NHPI AOIC have nhpi ancestry, 29% have non-nhpi ancestry, 23% have no ancestry
   filter(RACNHPI == 1)
-
+nhpi_aoic
 
 ## check a few of the new ancestry & asian/nhpi cols
 table(chinese = people$chinese, asian_race = people$RACASN)  # check how many chinese ancestry rows are also marked Asian race
@@ -229,10 +236,6 @@ ppl_cs <- left_join(people, county_crosswalk, by=c("puma_id" = "puma"))   # join
 ppl_state <- people %>% rename(geoid = state_geoid) %>%
   mutate(geoname = 'California')
 
-# ppl_puma <- left_join(people, county_crosswalk %>%
-#                       select(puma, puma_name), by=c("puma_id" = "puma")) %>%  # join puma names
-#   rename(geoid = puma_id, geoname = puma_name)
-
 
 #### Step 6: Set up for PUMS calc fx ####
 # get list of subgroups for calcs based on aapi_incl
@@ -247,9 +250,10 @@ state_list <- pums_pop_srvy_denom(ppl_state, weight, repwlist, vars)
 list2env(state_list, envir = .GlobalEnv)
 
 # run PUMS calcs
-pop_table_state <- map_dfr(vars, calc_pums_pop) %>%
-  rbind(num_df_group)   # add any asian ancestry and any nhpi ancestry pop data
+pop_table_state <- map(vars, calc_pums_pop) |> list_rbind() %>%
+rbind(num_df_group)   # add any asian ancestry and any nhpi ancestry pop data
 #rm(ppl_state)
+
 
 ## COUNTY
 # run fx to create survey and calc pop rate denominators
@@ -259,21 +263,9 @@ county_list <- pums_pop_srvy_denom(ppl_cs, weight, repwlist, vars)
 list2env(county_list, envir = .GlobalEnv)
 
 # run PUMS calcs
-pop_table_county <- map_dfr(vars, calc_pums_pop) %>%
+pop_table_county <- map(vars, calc_pums_pop) |> list_rbind() %>%
   rbind(num_df_group)   # add any asian ancestry and any nhpi ancestry pop data
 #rm(ppl_cs)
-
-## PUMA
-# run fx to create survey and calc pop rate denominators
-# puma_list <- pums_pop_srvy_denom(ppl_puma, weight, repwlist, vars)
-# 
-# # add list elements to Environment - these df's are used in calc_pums_pop fx
-# list2env(puma_list, envir = .GlobalEnv)
-# 
-# # run PUMS calcs
-# pop_table_puma <- map_dfr(vars, calc_pums_pop) %>%
-#   rbind(num_df_group)   # add any asian ancestry and any nhpi ancestry pop data
-#rm(ppl_puma)
 
 
 ##### SCREENING EXPORATION (STATE DATA) #####
@@ -290,8 +282,9 @@ pop_table_county <- map_dfr(vars, calc_pums_pop) %>%
       anc_label,
       tot_count = rowSums(cbind(n.x, n.y), na.rm = TRUE)
     ) %>%
-    right_join(aapi_incl, by = "anc_label") %>%
-    arrange(tot_count)
+    right_join(aapi_incl, by = "anc_label") %>% 
+    arrange(tot_count) %>%
+    mutate(unw_flag = ifelse(tot_count < 100, 1, 0))
   # there are 3 groups who don't meet ERI's screening threshold: bhutanese (17), micronesian (70), marshallese (71)
   
   rm(aapi_filtered)
@@ -299,14 +292,15 @@ pop_table_county <- map_dfr(vars, calc_pums_pop) %>%
   # Method 2: Try RC screening method, suppress data where rate_cv > cv_threshold OR num < pop_threshold (see top of script for values)
   screen_rate_cv_pop <- pop_table_state %>%
     mutate(rate_cv_flag = ifelse(rate_cv > cv_threshold, 1, 0), 
-           pop_flag = ifelse(num < pop_threshold, 1, 0)) %>%
+           pop_flag = ifelse(num < pop_threshold, 1, 0)) %>%  # screen on num not pop bc these are pop data, not indicator data
     arrange(desc(rate_cv), desc(num))
-  # there are 0 groups who don't meet our rate_cv threshold. there is 1 group not meeting pop_threshold: Bhutanese (pop is 212)
+  # there is 1 group who doesn't meet rate_cv threshold: Bhutanese (44.6). there is 1 group not meeting pop_threshold: Bhutanese (pop is 212)
 
   
 #### Step 7: Screen data (incl. recoding suppressed subgroups & recalcs) ####
 # STATE-LEVEL ONLY: Recode Bhutanese as other_asian. If we present county data, we could recode any suppressed grps for that county too.
   oth_asian_srvy <- ppl_state %>%
+    filter(asian == 1) %>%
     mutate(subgroup = case_when(
       bhutanese == 1 | other_asian == 1 ~ 'other_asian',  # recode bhutanese as oth_asian
       TRUE ~ 'total')) %>%                                # recode non-bhutanese as total
@@ -331,7 +325,7 @@ pop_table_county <- map_dfr(vars, calc_pums_pop) %>%
     ) %>%
     
     # Join + metrics
-    left_join(state_list$den_asian, by = c("geoid", "geoname")) %>%
+    left_join(state_list$den_total %>% filter(pop_group == 'asian'), by = c("geoid", "geoname")) %>%
     mutate(
       subgroup  = 'other_asian',
       group     = 'asian',
@@ -343,13 +337,12 @@ pop_table_county <- map_dfr(vars, calc_pums_pop) %>%
     )
   
 # combine re-calc'd other_asian and pop_table_state, drop old 'other_asian' row
-  pop_table_state <- rbind(num_df_oth_asian, pop_table_state %>% filter(subgroup != 'other_asian'))
-  
+  pop_table_state <- bind_rows(num_df_oth_asian, pop_table_state) %>% filter(subgroup != 'other_asian')
   pop_table <- rbind(pop_table_state, pop_table_county)
   
 # RC screening method (CV and pop thresholds), see screen_rate_cv_pop above
   pop_table_screened <- pop_table %>%
-    mutate(rate = ifelse(rate_cv > cv_threshold | num < pop_threshold, NA, rate), 
+    mutate(rate = ifelse(rate_cv > cv_threshold | num < pop_threshold, NA, rate),    # screen on num not pop bc these are pop data, not indicator data
            num = ifelse(rate_cv > cv_threshold | num < pop_threshold, NA, num)) %>%
     arrange(desc(rate_cv), desc(num)) 
   
@@ -360,12 +353,13 @@ pop_table_county <- map_dfr(vars, calc_pums_pop) %>%
   table(subgroup = screened_out$subgroup)   # count of suppressed values by subgroup
   
   pop_table_screened <- pop_table_screened %>%
-    select(-c(num_se, rate_se, pop_se))     # drop unneeded cols
+    select(-c(pop_group, num_se, rate_se, pop_se)) %>%    # drop unneeded cols
+    rename(group_ = group)
   
 #### Step 8: Send data to postgres ####
 table_name <- 'anhpi_pop_pums'
 indicator <- "Disaggregated Asian & NHPI Ancestry Population"
-source <- paste0("American Community Survey 2019-2023 5-year PUMS estimates for Asian & NHPI Ancestry at state and county level")
+source <- paste0("American Community Survey 2019-2023 5-year PUMS estimates for Asian & NHPI Ancestry at state and county level. Note: Bhutanese is included in Other Asian at state level")
 column_names <- colnames(pop_table_screened) # n = 11
 column_comments <- c('fips code', 
                      '', 
