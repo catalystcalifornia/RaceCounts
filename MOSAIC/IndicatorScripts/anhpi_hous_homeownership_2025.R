@@ -57,7 +57,7 @@ table_code = 'b25003'    # Select relevant indicator table name
 
 # IMPORT RAW DATA FROM POSTGRES -------------------------------------------
 asian_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.asian_acs_5yr_%s_multigeo_%s",
-                                     rc_schema, tolower(table_code), curr_yr))
+                                      rc_schema, tolower(table_code), curr_yr))
 
 nhpi_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.nhpi_acs_5yr_%s_multigeo_%s",
                                      rc_schema, tolower(table_code), curr_yr))
