@@ -149,7 +149,7 @@ low_birthweight_chart1 <- low_birthweight %>%
 low_birthweight <- low_birthweight %>%
   filter(group!="nhpi") %>%
   mutate(
-    group = case_when(group=="total" & subgroup != "total" ~ "race counts groups",
+    group = case_when(group=="total" & subgroup != "total" ~ "other major race groups",
                       group=="asian" & subgroup != "total" ~ "asian subgroups",
                       group=="asian" & subgroup=="total" ~ "asian average",
                       .default=group),
