@@ -29,43 +29,36 @@ curr_yr = 2021      # Always 2021 for MOSAIC 2026 project
 rc_yr = '2025'      # you MUST UPDATE each year
 rc_schema ="v7"     # you MUST UPDATE each year
 schema = 'v7'
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Health_Insurance - MOSAIC.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Health_Insurance - MOSAIC.docx. Please note that the variables ending in _002 is an internally created code to represent the raw values of uninsured by race to work with our prep_acs function and is not the Census ACS total male insured category." #going to run this variable again after raw data prep b/c it contains a note specific to the raw data tables
 
 cv_threshold = 40         
 pop_threshold = 130      
-pop_threshold = 0    
 asbest = 'min'            
 schema = 'health'
 table_code = 'b27001'    # Select relevant indicator table name
 
 
-# # CREATE RAW DATA TABLES -------------------------------------------------------------------------
-# # Only run this section if the raw data tables have not been created yet ##
+# CREATE RAW DATA TABLES -------------------------------------------------------------------------
+# Only run this section if the raw data tables have not been created yet ##
 # race <- "asian"
 # asian_list <- get_detailed_race(table_code, race, curr_yr)
-# # check race col names which are created in fx
-# # unique(asian_list[[2]]$new_label)
+# #check race col names which are created in fx
+# unique(asian_list[[2]]$new_label)
 # 
-# # race = for MOSAIC, either 'asian' or 'nhpi', case-insensitive
-# # table_code = ACS table_code name, eg: "B25003" or "b25003", case-insensitive
-# # year = ACS data year, defaults to 2021 if none specified
-# #
 # race <- "nhpi"
 # nhpi_list <- get_detailed_race(table_code, race, curr_yr)
-# # # check race col names which are created in fx
-# # #unique(nhpi_list[[2]]$new_label)
-# # #
-# # #check the metadata to see if 001 is actually the total row
-# # nhpi_list$metadata %>%
-# #   filter(str_extract(new_var, "\\d{3}(?=[em]$)") == "001") %>%
-# #   select(new_var, new_label)
-# # # it is the total row so we need to exclude it when trying to get uninsured raw values and use is for total values (pop values)
+# #check race col names which are created in fx
+# unique(nhpi_list[[2]]$new_label)
 # 
-# #######   Transform the data for the raw data table  ############
-# ### Instructions: This variable is broken up into insured/uninsured, by age group, by sex, by geolevel, and by detailed race.
-# # We need to collapse the subcategories so that we just have it broken down by geolevel, detailed race, and uninsured and total of uninsured plus insured.
+# #check the metadata
+# View(nhpi_list$metadata)
 # 
-#   # Step 1: pivot to long format (its too much data to work with wide format until we aggregate it down)
+# 
+# ######  Transform the data for the raw data table  ############
+# This variable is broken up by age group, by sex, by geo, insurance status, and by detailed race.
+# We need to collapse the subcategories so that we just have it broken down by geo + detailed race + insurance status.
+# 
+# Step 1: pivot to long format (its too much data to work with wide format until we aggregate it down)
 # nhpi_long <- nhpi_list$nhpi_df %>%
 #   pivot_longer(
 #     cols = -c(name, geoid, geolevel),
@@ -95,158 +88,128 @@ table_code = 'b27001'    # Select relevant indicator table name
 #     var_num   = str_extract(variable, "\\d{3}(?=[em]$)")
 #   )
 # 
-# # #check that the extract worked
-# # nhpi_long %>% filter(is.na(table_num)) %>% View()
-# # nhpi_long %>% filter(is.na(var_num)) %>% View()
-# # table(nhpi_long$var_num)
-# #it looks good so keep going
+# check that the extract worked
+# nhpi_long %>% filter(is.na(table_num)) %>% View()
+# nhpi_long %>% filter(is.na(var_num)) %>% View()
+# table(nhpi_long$var_num)
+# it looks good so keep going
 # 
 # # Step 3: get totals (var_num == "001")
 # nhpi_total <- nhpi_long %>%
 #   filter(var_num == "001") %>%
-#   mutate(var_base = str_remove(variable, "[em]$")) %>%
-#   select(name, geoid, geolevel, table_num, type, value, var_base) %>%
+#   mutate(var_base = substr(variable, 1, nchar(variable) - 5)) %>%
+#   select(name, geoid, geolevel, var_base, type, value, var_num)
+# 
+# asian_total <- asian_long %>%
+#   filter(var_num == "001") %>%
+#   mutate(var_base = substr(variable, 1, nchar(variable) - 5)) %>%
+#   select(name, geoid, geolevel, var_base, type, value, var_num)
+# 
+# # Step 4: filter to uninsured variables
+# nhpi_uninsured_vars <- as.data.frame(nhpi_list$metadata %>% filter(grepl("No health insurance", new_label)))
+# nhpi_uninsured <- nhpi_long %>%
+#   filter(
+#     variable %in% nhpi_uninsured_vars$new_var)
+# # check we got all the uninsured e/m values, # unique uninsured variables should be the same as in metadata
+# anti_join(nhpi_uninsured_vars %>% select(new_var), nhpi_uninsured %>% select(variable) %>% unique(), by = c("new_var" = "variable"))
+
+# asian_uninsured_vars <- as.data.frame(asian_list$metadata %>% filter(grepl("No health insurance", new_label)))
+# asian_uninsured <- asian_long %>%
+#   filter(
+#     variable %in% asian_uninsured_vars$new_var)
+# 
+# # Step 5: pivot wide and aggregate uninsured
+# nhpi_uninsured_summary <- nhpi_uninsured %>%
+#   mutate(var_base = substr(variable, 1, nchar(variable) - 5)) %>%
+#   select(-variable) %>%
 #   pivot_wider(names_from = type, values_from = value) %>%
-#   group_by(name, geoid, geolevel, table_num) %>%
+#   group_by(name, geoid, geolevel, var_base) %>%
+#   summarise(
+#     #I was looking at Fresno county Pakistani to check b/c CR and LF got 199 but I got 174 for the raw_moe. Because of Census recommendations the moe_sum() formula will take the max moe if there are multiple zero estimates and uses that one only. This one had 11 zero estimates so it just takes the max zero moe (31) and doesn't use the other ones so the calculation is actually: Square root(81^2 + 121^2 + 11^2 + 58^2 +49^2 + 13^2 + 46^2 +31^2) = 174.17 that's why moe_sum() should be calculated before e is collapsed on the next line.
+#     m = moe_sum(moe = m, estimate = e),
+#     e = if_else(all(is.na(e)), NA_real_, sum(e, na.rm = TRUE)),
+#     .groups = "drop"
+#   ) %>%
+#   pivot_longer(cols = c(e, m), names_to = "type", values_to = "value") %>%
+#   mutate(var_num = "002")   # create new var_num for our calc'd uninsured variable
+# # check Carson - Polynesian Alone
+# # nhpi_uninsured %>%
+# # filter(geoid == '0611530' & table_num == '051' & type == 'e') %>%
+# # group_by(geoid, table_num, type) %>%
+# # summarise(e=sum(value, na.rm=TRUE))
+# 
+# asian_uninsured_summary <- asian_uninsured %>%
+#   mutate(var_base = substr(variable, 1, nchar(variable) - 5)) %>%
+#   select(-variable) %>%
+#   pivot_wider(names_from = type, values_from = value) %>%
+#   group_by(name, geoid, geolevel, var_base) %>%
 #   summarise(
 #     m = moe_sum(moe = m, estimate = e),
 #     e = if_else(all(is.na(e)), NA_real_, sum(e, na.rm = TRUE)),
 #     .groups = "drop"
 #   ) %>%
-#   mutate(measure = "pop")
-# 
-# asian_total <- asian_long %>%
-#   filter(var_num == "001") %>% #total is 001 so you don't need this column for this section
-#   mutate(var_base = str_remove(variable, "[em]$")) %>%
-#   select(name, geoid, geolevel, table_num, type, value, var_base) %>%
-#   pivot_wider(names_from = type, values_from = value) %>%
-#   group_by(name, geoid, geolevel, table_num) %>%
-#   summarise(
-#     m      = moe_sum(moe = m, estimate = e),
-#     e = if_else(all(is.na(e)), NA_real_, sum(e, na.rm = TRUE)),
-#     .groups  = "drop"
-#   ) %>%
-#   mutate(measure = "pop")
-# 
-# # Step 4: filter to uninsured variables
-# 
-# nhpi_uninsured <- nhpi_long %>%
-#   filter(
-#     str_detect(
-#       variable,
-#       paste(
-#         nhpi_list$metadata %>%
-#           filter(str_detect(new_label, "No health insurance coverage")) %>%
-#           mutate(var = str_remove(new_var, "[em]$")) %>%
-#           pull(var) %>%
-#           unique(),
-#         collapse = "|"
-#       )
-#     ),
-#     var_num != "001" #exclude the total row
-#   )
-# 
-# asian_uninsured <- asian_long %>%
-#   filter(
-#     str_detect(
-#       variable,
-#       paste(
-#         asian_list$metadata %>%
-#           filter(str_detect(new_label, "No health insurance coverage")) %>%
-#           mutate(var = str_remove(new_var, "[em]$")) %>%
-#           pull(var) %>%
-#           unique(),
-#         collapse = "|"
-#       )
-#     ),
-#     var_num != "001" #exclude the total row
-#   )
-# 
-# # Step 5: pivot wide and aggregate uninsured
-# nhpi_uninsured_summary <- nhpi_uninsured %>%
-#   mutate(var_base = str_remove(variable, "[em]$")) %>%
-#   select(-variable) %>%
-#   pivot_wider(names_from = type, values_from = value) %>%
-#   group_by(name, geoid, geolevel, table_num) %>%
-#   summarise(
-#     m      = moe_sum(moe = m, estimate = e),
-#     e = if_else(all(is.na(e)), NA_real_, sum(e, na.rm = TRUE)),
-#     .groups  = "drop"
-#   ) %>%
-#   mutate(measure = "raw")
-# 
-# asian_uninsured_summary <- asian_uninsured %>%
-#   mutate(var_base = str_remove(variable, "[em]$")) %>%
-#   select(-variable) %>%
-#   pivot_wider(names_from = type, values_from = value) %>%
-#   group_by(name, geoid, geolevel, table_num) %>%
-#   summarise(
-#     m      = moe_sum(moe = m, estimate = e),
-#     e = if_else(all(is.na(e)), NA_real_, sum(e, na.rm = TRUE)),
-#     .groups  = "drop"
-#   ) %>%
-#   mutate(measure = "raw")
-# 
+#   pivot_longer(cols = c(e, m), names_to = "type", values_to = "value") %>%
+#   mutate(var_num = "002")   # create new var_num for our calc'd uninsured variable
+
+# # check Fresno County - Pakistani Alone
+# # Documentation: W:\Cold Data Migration\W Drive\Data\Demographics\ACS\Documentation\Using ACS Data for Researchers 2009.pdf 
+# # Or https://www.census.gov/content/dam/Census/library/publications/2009/acs/ACSResearch.pdf  See Page A-14.
+# fresno_check <- asian_uninsured %>%
+# select(-variable) %>%
+# filter(name == 'Fresno County' & table_num == '026') %>%
+# pivot_wider(names_from = type, values_from = value) %>%
+# group_by(name, geoid, geolevel, table_num) %>%
+# summarise(m_update = moe_sum(moe = m, estimate = e), # updated moe calc
+#           e=sum(e, na.rm=TRUE),
+#           m_orig=moe_sum(moe=m, estimate=e))         # original moe calc
+# fresno_check2 <- asian_uninsured %>%
+#   filter(name == 'Fresno County' & table_num == '026' & type == 'm') %>%
+#   mutate(m_sq = value^2)
+# sqrt(sum(fresno_check2$m_sq))   # manually calc'd MOE per ACS Documentation cited above
+
+
+
 # # Step 6: combine and pivot to final wide format
 # nhpi_final <- bind_rows(nhpi_total, nhpi_uninsured_summary) %>%
-#   pivot_wider(
-#     names_from  = c(table_num, measure),
-#     values_from = c(e, m),
-#     names_glue  = "b27001_{table_num}_{ifelse(measure == 'pop', ifelse(.value == 'e', 'pop', 'pop_moe'), ifelse(.value == 'e', 'raw', 'raw_moe'))}"
-# 
-#   )
+#   pivot_wider(names_from = c(var_base, var_num, type),
+#               names_glue = "{var_base}_{var_num}{type}",
+#               values_from = value)
 # 
 # asian_final <- bind_rows(asian_total, asian_uninsured_summary) %>%
-#   pivot_wider(
-#     names_from  = c(table_num, measure),
-#     values_from = c(e, m),
-#     names_glue  = "b27001_{table_num}_{ifelse(measure == 'pop', ifelse(.value == 'e', 'pop', 'pop_moe'), ifelse(.value == 'e', 'raw', 'raw_moe'))}"
-#   )
+#   pivot_wider(names_from = c(var_base, var_num, type),
+#               names_glue = "{var_base}_{var_num}{type}",
+#               values_from = value)
 # 
-# # Step 7: Add the metadata back
-# # build metadata bridge while still in long format
-# nhpi_metadata_final <- bind_rows(
-#   # total variables
-#   nhpi_long %>%
-#     filter(var_num == "001") %>%
-#     distinct(table_num) %>%
+# ## check that moe issue was resolved. Looks good reordering moe_sum() inputs worked. Its now the expected moe again. moe should be before estimate in the function so that it doesn't use the collapsed scalar values of estimates as opposed to the vector of estimated to aggregate the moes.
+# asian_final %>%
+#   filter(geoid == "06019") %>%
+#   select(b27001_026_001e, b27001_026_002e, b27001_026_001m, b27001_026_002m)
+# 
+# # Step 7: Build the metadata
+# prep_metadata <- function(meta) {
+#   #meta = metadata
+# 
+#   metadata_final <- meta %>%
+#     filter(grepl('_001', new_var))
+# 
+#   raw_metadata <- metadata_final %>%
 #     mutate(
-#       estimate_var = paste0("b27001_", table_num, "_pop"),
-#       moe_var      = paste0("b27001_", table_num, "_pop_moe")
-#     ),
-#   # uninsured variables
-#   nhpi_uninsured %>%
-#     distinct(table_num) %>%
-#     mutate(
-#       estimate_var = paste0("b27001_", table_num, "_raw"),
-#       moe_var      = paste0("b27001_", table_num, "_raw_moe")
+#       new_var = str_replace(new_var, "_001", "_002"),
+#       new_label = str_replace(new_label, "Total:", "Total: Uninsured")
 #     )
-# ) %>%
-#   pivot_longer(cols = c(estimate_var, moe_var),
-#                names_to = NULL, values_to = "new_var") %>%
-#   left_join(
-#     nhpi_list$metadata %>%
-#       filter(str_detect(new_var, "001e$")) %>%  # only estimate rows, not MOE
-#       mutate(
-#         table_num = str_extract(new_var, "(?<=b27001_)[a-z0-9]+(?=_)"),
-#         new_label = str_remove(new_label, "^Estimate!!Total: ")
-#       ) %>%
-#       select(table_num, new_label),
-#     by = "table_num"
-#   ) %>%
-# mutate(
-#   new_label = case_when(
-#     str_ends(new_var, "_raw")     ~ paste0("Estimate!!No health insurance coverage: ", new_label),
-#     str_ends(new_var, "_raw_moe") ~ paste0("MOE!!No health insurance coverage: ", new_label),
-#     str_ends(new_var, "_pop")     ~ paste0("Estimate!!Total: ", new_label),
-#     str_ends(new_var, "_pop_moe") ~ paste0("MOE!!Total: ", new_label)
-#   )
-# )%>%
-#   select(new_var, new_label) %>%
-#   bind_rows(
-#     tibble(new_var   = c("name", "geoid", "geolevel"),
-#            new_label = c("", "fips code", "city, county, state"))
-#   )
+# 
+#   metadata_final <- bind_rows(metadata_final, raw_metadata) %>%
+#     mutate(geoid = 'fips code',
+#            geoname = 'geography name',
+#            geolevel = 'City, County, State')
+# 
+#   return(metadata_final)
+# }
+# 
+# 
+# 
+# # nhpi metadata
+# nhpi_metadata_final <- prep_metadata(nhpi_list$metadata)
 # 
 # # reassemble list to match expected structure
 # nhpi_list <- list(
@@ -254,97 +217,62 @@ table_code = 'b27001'    # Select relevant indicator table name
 #   metadata = nhpi_metadata_final
 # )
 # 
-# 
-# asian_metadata_final <- bind_rows(
-#   # total variables
-#   asian_long %>%
-#     filter(var_num == "001") %>%
-#     distinct(table_num) %>%
-#     mutate(
-#       estimate_var = paste0("b27001_", table_num, "_pop"),
-#       moe_var      = paste0("b27001_", table_num, "_pop_moe")
-#     ),
-#   # uninsured variables
-#   asian_uninsured %>%
-#     distinct(table_num) %>%
-#     mutate(
-#       estimate_var = paste0("b27001_", table_num, "_raw"),
-#       moe_var      = paste0("b27001_", table_num, "_raw_moe")
-#     )
-# ) %>%
-#   pivot_longer(cols = c(estimate_var, moe_var),
-#                names_to = NULL, values_to = "new_var") %>%
-#   left_join(
-#     asian_list$metadata %>%
-#       filter(str_detect(new_var, "001e$")) %>%  # only estimate rows, not MOE
-#       mutate(
-#         table_num = str_extract(new_var, "(?<=b27001_)[a-z0-9]+(?=_)"),
-#         new_label = str_remove(new_label, "^Estimate!!Total: ")
-#       ) %>%
-#       select(table_num, new_label),
-#     by = "table_num"
-#   ) %>%
-# mutate(
-#   new_label = case_when(
-#     str_ends(new_var, "_raw")     ~ paste0("Estimate!!No health insurance coverage: ", new_label),
-#     str_ends(new_var, "_raw_moe") ~ paste0("MOE!!No health insurance coverage: ", new_label),
-#     str_ends(new_var, "_pop")     ~ paste0("Estimate!!Total: ", new_label),
-#     str_ends(new_var, "_pop_moe") ~ paste0("MOE!!Total: ", new_label)
-#   )
-# ) %>%
-#   select(new_var, new_label) %>%
-#   bind_rows(
-#     tibble(new_var   = c("name", "geoid", "geolevel"),
-#            new_label = c("", "fips code", "city, county, state"))
-#   )
+# # asian metadata
+# asian_metadata_final <- prep_metadata(asian_list$metadata)
 # 
 # # reassemble list to match expected structure
 # asian_list <- list(
 #   asian_df  = asian_final,
 #   metadata = asian_metadata_final
 # )
-
+# 
 # # Send table to postgres
 # send_to_mosaic(table_code, asian_list, rc_schema)
 # send_to_mosaic(table_code, nhpi_list, rc_schema)
 
-
-# # IMPORT RAW DATA FROM POSTGRES -------------------------------------------
+# Need to run qa filepath again becuase the previous included a comment that was only for the raw data tables
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Health_Insurance - MOSAIC.docx"
+## IMPORT RAW DATA FROM POSTGRES -------------------------------------------
 asian_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.asian_acs_5yr_%s_multigeo_%s",
                                      rc_schema, tolower(table_code), curr_yr))
 
 nhpi_data <- dbGetQuery(con, sprintf("SELECT * FROM %s.nhpi_acs_5yr_%s_multigeo_%s",
                                      rc_schema, tolower(table_code), curr_yr))
+asian_data_qa <- dbGetQuery(con, ("SELECT * FROM v7.asian_acs_5yr_b27001_multigeo_2021_todelete_v1"))
+asian_data_qa %>%
+  filter(geoid == "06019") %>%
+  select(b27001_026_pop, b27001_026_pop_moe, b27001_026_raw, b27001_026_raw_moe)
 
+asian_data_qa2 <- dbGetQuery(con, ("SELECT * FROM v7.asian_acs_5yr_b27001_multigeo_2021_todelete_v2"))
+asian_data_qa2 %>%
+  filter(geoid == "06019") %>%
+  select(b27001_026_001e, b27001_026_002e, b27001_026_001m, b27001_026_002m)
 #### ASIAN: Pre-RC CALCS ##############
 asian_df <- prep_acs(asian_data, 'asian', table_code, cv_threshold, pop_threshold)
 
 
 # #check if things make sense
-# #indian raw is  na but I would expect that to be a bigger group if pop is 1599 for Alameda City
+# #indian raw is na but I would expect that to be a bigger group if pop is 1599 for Alameda City
 # # raw should be 42 according to online table
 # asian_df %>%
 #   filter(geoid %in% c("0600562", "06001")) %>%
 #   select(name, geoid, geolevel, indian_pop, indian_raw, indian_pop_moe, indian_raw_moe)
-# # # A tibble: 2 x 7
-# # name    geoid   geolevel indian_pop indian_raw indian_pop_moe indian_raw_moe    ####raw is getting suppresed so maybe its a cv threshold issue?
-# # <chr>   <chr>   <chr>         <dbl>      <dbl>          <dbl>          <dbl>
-# #   1 Alameda 0600562 place          1599         NA            504           43.7
+# # name    geoid   geolevel indian_pop indian_raw indian_pop_moe indian_raw_moe    ####raw is getting suppressed so maybe it's a cv threshold issue?
+# # 1 Alameda 0600562 place          1599         NA            504           43.7
 # # 2 Alameda 06001   county       142253       2372           3701          392.
 # 
 # ###### lets check the rate_cv too. Confirmed cv of 60.3 explains why the raw is getting suppressed even though it has data.
 # asian_df %>%
-# filter(geoid == "0600562") %>%
+# filter(geoid %in% c("0600562", "06001") %>%
 #   select(indian_rate, indian_rate_moe, indian_rate_cv, indian_raw)
-# # A tibble: 1 x 4
-# # indian_rate indian_rate_moe indian_rate_cv indian_raw
-# # <dbl>           <dbl>          <dbl>      <dbl>
-# #   1          NA            2.61           60.3         NA
+# #   name    geoid   geolevel indian_pop indian_raw indian_pop_moe indian_raw_moe
+# # 1 Alameda 0600562 place          1599         42            504           116.
+# # 2 Alameda 06001   county       142253       2372           3701           392.
 # 
 # #it makes sense that rates are getting suppressed but maybe raw values shouldn't be suppressed because uninsured rates are lower for asian subgroups and we still want to show the differences. 
 # #Let's bring this up w/ the team for a methodology discussion.
 # 
-# # # some very high cvs like 640 for Aliso viejo but this is a dataset with pretty large MOEs so its actually correct
+# # # some very high cvs like 640 for Aliso Viejo but this is a dataset with pretty large MOEs so it's correct
 # # rate_cv = rate_moe / 1.645 / rate * 100
 # # rate = 42 / 1599 * 100 = 2.63%
 # # rate_moe = 2.61
@@ -352,7 +280,7 @@ asian_df <- prep_acs(asian_data, 'asian', table_code, cv_threshold, pop_threshol
 # #
 # # bhutanese is missing is there a 072 for b27001?
 #   # I checked against the dataset online (https://data.census.gov/table?q=B27001:+Health+Insurance+Coverage+Status+by+Sex+by+Age&t=-04&g=050XX00US06001&y=2021&d=ACS+5-Year+Estimates+Selected+Population+Detailed+Tables) 
-#   #and Bhutanese really is missing from this analysis
+#   #and Bhutanese really is missing from the original data
 
 ######################## resume ##########
 asian_df_screened <- dplyr::select(asian_df, geoid, name, geolevel, ends_with("_pop"), ends_with("_raw"), ends_with("_rate"), everything(), -ends_with("_cv"))
@@ -408,6 +336,16 @@ colnames(state_table)[1:2] <- c("state_id", "state_name")
 colnames(county_table)[1:2] <- c("county_id", "county_name")
 colnames(city_table)[1:2] <- c("city_id", "city_name")
 
+# # STATE: check how many groups have non-na rates
+# sum(!is.na(state_table[, grep("_rate$", names(state_table))]))
+# # check which groups have na rates
+# names(which(colSums(is.na(state_table[, grep("_rate$", names(state_table))])) > 0))
+
+# # COUNTY: check how many groups have non-na rates
+# sum(!is.na(county_table[, grep("_rate$", names(county_table))]))
+# # check how many counties have non-na rates by group
+# colSums(!is.na(county_table[, grep("_rate$", names(county_table))]))
+
 
 ############## ASIAN: COUNTY, STATE, CITY METADATA  ##############
 
@@ -418,7 +356,7 @@ city_table_name <- paste0(tolower(race_name), "_hlth_health_insurance_city_", rc
 start_yr <- curr_yr-4
 
 indicator <- paste0("Uninsured Population (%) ", str_to_title(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
-source <- paste0("ACS (", start_yr, "-", curr_yr,") ACS 5-Year Estimates, Table B27001, https://data.census.gov/cedsci/. QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
+source <- paste0("ACS (", start_yr, "-", curr_yr,") ACS 5-Year Estimates, SPT Table ", toupper(table_code), " https://data.census.gov/cedsci/. QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## ASIAN: SEND TO POSTGRES #######
 to_postgres(county_table,state_table, 'mosaic')
@@ -485,6 +423,16 @@ colnames(state_table)[1:2] <- c("state_id", "state_name")
 colnames(county_table)[1:2] <- c("county_id", "county_name")
 colnames(city_table)[1:2] <- c("city_id", "city_name")
 
+# # STATE: check how many groups have non-na rates
+# sum(!is.na(state_table[, grep("_rate$", names(state_table))]))
+# # check which groups have na rates
+# names(which(colSums(is.na(state_table[, grep("_rate$", names(state_table))])) > 0))
+# 
+# # COUNTY: check how many groups have non-na rates
+# sum(!is.na(county_table[, grep("_rate$", names(county_table))]))
+# # check how many counties have non-na rates by group
+# colSums(!is.na(county_table[, grep("_rate$", names(county_table))]))
+
 
 ############## NHPI: COUNTY, STATE, CITY METADATA  ##############
 
@@ -495,7 +443,7 @@ city_table_name <- paste0(tolower(race_name), "_hlth_health_insurance_city_", rc
 start_yr <- curr_yr-4
 
 indicator <- paste0("Uninsured Population (%) ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
-source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table B27001, https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
+source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table ", toupper(table_code), " https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## NHPI: SEND TO POSTGRES #######
 to_postgres(county_table,state_table, 'mosaic')
