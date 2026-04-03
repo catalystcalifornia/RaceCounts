@@ -19,9 +19,6 @@ for(pkg in packages){
 } 
 
 
-year_ <- curr_yr
-
-
 #### Automate writing API calls and pull ACS SPT detailed Asian & NHPI race tables for city/county/state ####
 get_detailed_race <- function(table, race, year_ = 2021) {
   # race = for MOSAIC, either 'asian' or 'nhpi', case-insensitive
