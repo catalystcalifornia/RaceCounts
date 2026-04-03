@@ -25,7 +25,8 @@ con <- connect_to_db("mosaic")
 
 
 ############## UPDATE VARIABLES ##############
-curr_yr = 2024      # Data year
+#curr_yr = 2024      # Data year
+curr_yr = 2021      # Data year
 rc_yr = '2025'      # you MUST UPDATE each year
 rc_schema ="v7"     # you MUST UPDATE each year
 schema = 'v7'
@@ -35,18 +36,62 @@ cv_threshold = 40
 pop_threshold = 100      # in this case, a screen on number of housing units, not population       
 asbest = 'min'            
 schema = 'housing'
-table_code = 's0201'     # Select relevant indicator table name
+#table = 's0201'          # Select relevant indicator table name
+table = 'b25070'          # Select relevant indicator table name
 
 
 # CREATE RAW DATA TABLES -------------------------------------------------------------------------
 # Only run this section if the raw data tables have not been created yet ##
 race <- "asian"
-asian_list <- get_detailed_race(table_code, race, curr_yr)
+asian_list <- get_detailed_race(table, race, curr_yr)
+
+# Filter for selected variables
+View(asian_list$metadata)    # identify needed var names used to create vars_asian/vars_nhpi using fx below
+
+# Fx to parse new_label to get subgroup names
+get_subgroup_names <- function(meta) {  # meta is the metadata
+  
+  vars_ <- meta %>%
+    filter(
+      new_var %in% c("name", "geoid", "geolevel") |
+        grepl("GROSS RENT AS A PERCENTAGE OF HOUSEHOLD INCOME IN THE PAST 12 MONTHS!!", new_label, ignore.case = TRUE) |
+        grepl("SELECTED MONTHLY OWNER COSTS AS A PERCENTAGE OF HOUSEHOLD INCOME IN THE PAST 12 MONTHS!!", new_label, ignore.case = TRUE)
+    ) 
+  
+  y <- vars_ %>%
+    separate(new_label, into = c("part1", "part2", "part3", "part4"), sep = "!!", fill = "right", extra = "merge")
+  
+  y <- y %>%
+    mutate(
+      measure = case_when(
+        is.na(part4) | part4 == "NA" ~ "total",
+        TRUE ~ trimws(sub("^(Less than 30 percent|30 percent or more).*", "\\1", part4))
+      ),
+      subgroup = case_when(
+        is.na(part4) | part4 == "NA" ~ "",
+        TRUE ~ trimws(sub("^(Less than 30 percent|30 percent or more) ?(.*)", "\\2", part4))
+      )
+    )
+  
+  return(y)
+}
+
+vars_asian <- get_subgroup_names(asian_list$metadata)
+
 # check race col names which are created in fx
-#unique(asian_list[[2]]$new_label)
+#unique(vars_asian$subgroup)
+
+# Filter data, keep only needed columns
+asian_df <- subset(asian_list$asian_df, select = vars_asian$new_var)
+
 
 race <- "nhpi"
-nhpi_list <- get_detailed_race(table_code, race, curr_yr)
+nhpi_list <- get_detailed_race(table, race, curr_yr)
+
+vars_nhpin <- get_subgroup_names(nhpi_list$metadata)
+
+
+
 # check race col names which are created in fx
 #unique(nhpi_list[[2]]$new_label)
 
