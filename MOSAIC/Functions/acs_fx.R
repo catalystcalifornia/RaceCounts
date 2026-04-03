@@ -19,8 +19,11 @@ for(pkg in packages){
 } 
 
 
+year_ <- curr_yr
+
+
 #### Automate writing API calls and pull ACS SPT detailed Asian & NHPI race tables for city/county/state ####
-get_detailed_race <- function(table, race, year = 2021) {
+get_detailed_race <- function(table, race, year_ = 2021) {
   # race = for MOSAIC, either 'asian' or 'nhpi', case-insensitive
   # table = ACS table name, eg: "B25003" or "S2701", case-insensitive
   # year = ACS data year, defaults to 2021 if none specified
@@ -38,17 +41,34 @@ get_detailed_race <- function(table, race, year = 2021) {
   
   table_name <- toupper(table)
   
-  city_api_call <- sprintf(
-    "https://api.census.gov/data/%s/acs/acs5/spt?get=group(%s)&POPGROUP=pseudo(%s)&ucgid=pseudo(0400000US06$1600000)",
-    year, table_name, race_code)
-  
-  county_api_call <- sprintf(
-    "https://api.census.gov/data/%s/acs/acs5/spt?get=group(%s)&POPGROUP=pseudo(%s)&ucgid=pseudo(0400000US06$0500000)",
-    year, table_name, race_code)
-  
-  state_api_call <- sprintf(
-    "https://api.census.gov/data/%s/acs/acs5/spt?get=group(%s)&POPGROUP=pseudo(%s)&ucgid=0400000US06",
-    year, table_name, race_code)
+  if (table_name == 'S0201') {   # this table requires a different API call
+    
+    city_api_call <- base::sprintf(
+      "https://api.census.gov/data/%s/acs/acs1/spp?get=group(%s)&POPGROUP=pseudo(%s)&ucgid=pseudo(0400000US06$1600000)",
+      year_, table_name, race_code)
+    
+    county_api_call <- sprintf(  
+      "https://api.census.gov/data/%s/acs/acs1/spp?get=group(%s)&POPGROUP=pseudo(%s)&ucgid=pseudo(0400000US06$0500000)",
+      year_, table_name, race_code)
+    
+    state_api_call <- sprintf(  
+      "https://api.census.gov/data/%s/acs/acs1/spp?get=group(%s)&POPGROUP=pseudo(%s)&ucgid=0400000US06",
+      year_, table_name, race_code)
+    
+  } else { 
+    
+    city_api_call <- sprintf(
+      "https://api.census.gov/data/%s/acs/acs5/spt?get=group(%s)&POPGROUP=pseudo(%s)&ucgid=pseudo(0400000US06$1600000)",
+      year_, table_name, race_code)
+    
+    county_api_call <- sprintf(
+      "https://api.census.gov/data/%s/acs/acs5/spt?get=group(%s)&POPGROUP=pseudo(%s)&ucgid=pseudo(0400000US06$0500000)",
+      year_, table_name, race_code)
+    
+    state_api_call <- sprintf(
+      "https://api.census.gov/data/%s/acs/acs5/spt?get=group(%s)&POPGROUP=pseudo(%s)&ucgid=0400000US06",
+      year_, table_name, race_code)
+  }
   
   api_call_list <- c(city_api_call, county_api_call, state_api_call)  
   
@@ -83,7 +103,7 @@ get_detailed_race <- function(table, race, year = 2021) {
     mutate(across(contains(table_name), as.numeric))         # assign numeric cols to numeric type
   clean_data <- clean_data %>%
     filter(!if_all(where(is.numeric), is.na))                # drop rows where all numeric values are NA, this also removes the extra 'header' rows
-  clean_data$geoid <- str_replace(clean_data$GEO_ID, ".*US", "")  # clean geoids
+  clean_data$geoid <- str_replace(clean_data$GEO_ID, ".*US", "")   # clean geoids
   clean_data$geolevel <- case_when(                                # add geolevel bc it's a multigeo table
     nchar(clean_data$geoid) == 2 ~ 'state',
     nchar(clean_data$geoid) == 5 ~ 'county',
@@ -121,7 +141,7 @@ get_detailed_race <- function(table, race, year = 2021) {
   
   # prep metadata
   metadata <- clean_data %>%
-    pivot_longer(cols = starts_with("B"),
+    pivot_longer(cols = starts_with(substr(table_name, 1, 1)),
                  names_to = "var",
                  values_to = "raw")
   
@@ -130,11 +150,46 @@ get_detailed_race <- function(table, race, year = 2021) {
     unique() %>%
     mutate(var_suff = sub(".*_", "", var),
            generic_var = gsub(("E|M"), "", var),
-           new_var = tolower(paste0(table_code, "_", POPGROUP, "_", var_suff)))
+           new_var = tolower(paste0(tolower(table_name), "_", POPGROUP, "_", var_suff)))
   
   # load variable names
-  v21 <- load_variables(year, "acs5", cache = TRUE)
-  table_vars <- v21 %>% filter(grepl(table_name, name))
+  vars <- if (table_name == 'S0201') {
+    
+    # Fetch the JSON
+    response <- GET("https://api.census.gov/data/2024/acs/acs1/spp/variables.json")
+    data <- content(response, as = "text", encoding = "UTF-8") |> fromJSON()
+    
+    # Extract variables list
+    variables <- data$variables
+    
+    # Filter to only S0201_ keys
+    s0201_names <- names(variables)[startsWith(names(variables), "S0201_")]   # drop PR variables
+    s0201_list  <- variables[s0201_names]
+    
+    # Coerce each element to a flat named list (some fields may be nested)
+    rows <- lapply(s0201_names, function(nm) {
+      el <- s0201_list[[nm]]
+      # Flatten any nested lists to character so bind_rows doesn't choke
+      el <- lapply(el, function(v) {
+        if (length(v) == 0) NA_character_
+        else if (length(v) > 1) paste(v, collapse = "; ")
+        else as.character(v)
+      })
+      as.data.frame(el, stringsAsFactors = FALSE)
+    })
+    
+    # Bind into a single dataframe
+    vars <- bind_rows(rows)
+    vars <- cbind(variable_name = s0201_names, vars) %>%
+      rename("name" = "variable_name") %>%
+      select(-c(concept, predicateType, limit)) %>%
+      mutate(name = gsub("E","", name))
+    
+  } else {
+    load_variables(year_, "acs5", cache = TRUE)
+  }
+  
+  table_vars <- vars %>% filter(grepl(table_name, name))  # this code results in filter for all tables except S0201
   
   # join variable names to metadata
   metadata <- metadata %>% 
@@ -158,9 +213,8 @@ get_detailed_race <- function(table, race, year = 2021) {
   
   names(data_list) <- c(paste0(race,"_df"), "metadata")
   
-return(data_list)
+  return(data_list)
 }
-
 
 #### Send raw detailed tables to postgres - info for postgres tables automatically updates ####
 send_to_mosaic <- function(acs_table, df_list, table_schema){

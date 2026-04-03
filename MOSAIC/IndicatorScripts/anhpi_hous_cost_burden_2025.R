@@ -1,4 +1,4 @@
-## MOSAIC: Disaggregated Asian/NHPI Housing Cost Burden SPT S0201 ###
+## MOSAIC: Disaggregated Asian/NHPI Housing Cost Burden SPT B25070 ###
 
 #install packages if not already installed
 packages <- c("readr", "tidyr", "dplyr", "DBI", "RPostgres", "tidycensus", "tidyverse", "stringr", "usethis", "httr", "jsonlite", "rlang")
@@ -30,7 +30,7 @@ curr_yr = 2021      # Data year
 rc_yr = '2025'      # you MUST UPDATE each year
 rc_schema ="v7"     # you MUST UPDATE each year
 schema = 'v7'
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Housing_Quality_MOSAIC.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_HousingBurden_MOSAIC.docx"
 
 cv_threshold = 40         
 pop_threshold = 100      # in this case, a screen on number of housing units, not population       
