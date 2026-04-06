@@ -1,0 +1,269 @@
+---
+title: "Internal MOSAIC Sensemaking"
+output: html_document
+date: "2026-04-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+### Set up workspace ####
+#install.packages("extrafont")
+library(extrafont)
+library(here)
+library(dplyr)
+library(RPostgres)
+library(formattable)
+library(svglite)
+library(stringr)
+library(tidyr)
+library(showtext)
+library(scales)
+library(highcharter)
+
+
+options(scipen=999)
+
+# set global options to ensure that comma separator is a comma for highchart graphs
+
+lang <- getOption("highcharter.lang")
+lang$thousandsSep <- ","
+options(highcharter.lang = lang)
+
+# loads the PostgreSQL driver
+
+source("W:\\RDA Team\\R\\credentials_source.R")
+con <- connect_to_db("mosaic")
+con2 <- connect_to_db("racecounts")
+rc_schema <- 'v7'
+
+####################
+#### Style Guide ###
+####################
+
+## COLORS: There is only blue ##
+black <- "#000000"
+mainblue <- "#22BCB8"
+textgrey <- "#919191"
+linecolor<-"#FF0000"
+
+# define fonts in chart
+font_title <- "Arial"
+font_subtitle <- "Arial"
+font_caption <- "Arial"
+font_bar_label <- "Arial"
+font_axis_label <- "Arial"
+font_table_text<-"Arial"
+
+####################################
+########Highchart theme#############
+####################################
+
+#### Define Highcharts theme #### 
+tnp_theme <- hc_theme(
+  colors = c("#22BCB8"  # main blue
+            
+  ),
+  chart = list(
+    backgroundColor = "white",
+    style = list(
+      fontFamily = font_subtitle
+    ) 
+  ),
+  plotOptions = 
+    list(
+      line = 
+        list(
+          marker = 
+            list(
+              enabled = FALSE
+            )
+        )
+    ),
+  title = list(
+    style = list(
+      color = black,
+      fontFamily = font_title,
+      textAlign="left",
+      fontsize='200px'
+    )
+  ),
+  subtitle = list(
+    style = list(
+      color = black, # medium grey
+      fontFamily = font_subtitle,
+      textAlign="left",
+      fontsize='100px'
+    )
+  ),
+  caption = list(
+    style = list(
+      color = black,
+      fontFamily = font_caption,
+      textAlign = "left",
+      fontsize="12px"
+    ),
+    useHTML = TRUE
+  ),
+  axis = list(
+    style = list(
+      color = black,
+      fontFamily = font_axis_label,
+      fontSize='50px'
+    )
+  ),
+  legend = list(
+    itemStyle = list(
+      fontFamily = font_axis_label,
+      color = black
+    ),
+    itemHoverStyle = list(
+      fontFamily = font_table_text,
+      color = black
+    )
+  )
+)
+
+### Info: Race 
+lang <- getOption("highcharter.lang")
+lang$thousandsSep <- ","
+options(highcharter.lang = lang)
+
+```
+
+
+```{r setup-metadata, include=FALSE}
+
+###################################
+###Set Up Data Captions and Info###
+###################################
+
+### Metadata: Default is v7 county/state, WILL NEED TO BE REPLACED WITH MOSAIC INDICATOR METADATA TABLE
+metadata <- dbGetQuery(con2, paste0("SELECT * FROM ", rc_schema, ".", "arei_indicator_list_cntyst"))
+
+# Define your issue area: demo, econ, hlth, hben, hous, crim
+issue <-  "econ"
+
+# Define your indicator here: api_name in metadata df is default, update as needed
+ind <- "internet"
+
+# write a brief version of the race methodology (language about race coding) here: MUST BE UPDATED FOR EACH INDICATOR
+racenote <- "Data Note: Subgroups are Latinx-inclusive and Alone or in Combination, which means they include all people who identify as the subgroup\nincluding in combination with other subroups, races, and/or ethnicities."
+
+# Define your geolevel: state, county
+geo <-  "state"
+
+# Filter metadata to selected indicator before pulling in metadata details
+meta_ <- metadata %>%
+  filter(api_name == ind)      # filter for selected indicator
+
+# Define your race here: 'asian' or 'nhpi'
+race <- 'asian'
+
+# Set table name
+table_name <- sprintf("%s_%s_%s_%s_2025", race, issue, ind, geo)
+
+# Title of chart here: bar_chart_header from metadata df is default, update as needed
+title_text <- meta_ %>%
+  select(api_name, bar_chart_header) %>%  
+  pull(bar_chart_header) %>%
+  as.character()                # convert to char vector
+
+#Subtitle text if necessary: methodology in metadata df is default, update as needed
+subtitle_text <- meta_ %>%
+  select(api_name, methodology) %>%  
+  pull(methodology) %>%
+  as.character()                # convert to char vector
+
+
+# Set your data source here: data_source in metadata df is being used as dummy data, WILL NEED TO BE REPLACED WITH MOSAIC INDICATOR METADATA TABLE
+datasource <- meta_ %>%
+  select(api_name, data_source) %>%  
+  pull(data_source) %>%
+  as.character()                # convert to char vector
+
+
+# Set asbest: arei_best in metadata df, WILL NEED TO BE REPLACED WITH MOSAIC INDICATOR METADATA TABLE
+asbest <- meta_ %>%
+  select(api_name, arei_best) %>%  
+  pull(arei_best) %>%
+  as.character()                # convert to char vector
+
+
+```
+
+```{r setup-data, include=FALSE}
+
+##########################
+###########Graph##########
+##########################
+
+df_wide <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".", table_name)) %>%
+  # Keep only AOIC subgroups - we may decide to change this methodology
+  select(ends_with("_name"), (ends_with("_raw") & contains("aoic")), (ends_with("_rate") & contains("aoic"))) %>%
+  rename_with(~ "geoname", matches("^.*name.*$")[1])   # rename geo name col to generic
+
+# convert to long
+df <- df_wide %>%
+  pivot_longer(
+    cols = -geoname,
+    names_to = c("subgroup", ".value"),
+    names_pattern = "^(.+)_(raw|rate)$"
+  )
+
+
+#### Indicator Bar Chart ####
+
+b_chart <- df %>% 
+  arrange(-rate) %>%   # add ifelse to sort asc/desc depending on asbest value
+  hchart(
+    type = "bar", 
+    hcaes(y = round(rate, 2), x = subgroup_label), 
+    color = mainblue,
+    tooltip = list(
+      pointFormat = "Total: {point.tot_rate:,.0f}<br>
+      Rate: {point.rate:.1f}%"),
+  ) %>% 
+  hc_tooltip(crosshairs = TRUE) %>% 
+  
+  hc_xAxis( title = list(text = ""),
+            labels=list(style=list(fontSize='15px'))) %>% 
+  
+  hc_yAxis( title = list(text = ""),
+            labels = list(format = "{value}%")) %>%  ##this is for rate indicators only adding % signs 
+  
+  # title elements
+  hc_title(
+    text = paste0(title_text),
+    #margin = 20,
+    align = "left", 
+    style = list(useHTML = TRUE, fontWeight = "bold", fontSize='30px')
+  ) %>% 
+  
+  hc_subtitle(
+    text = paste0(subtitle_text)
+    ) %>% 
+  hc_caption(
+    text = paste0("<br>",geo,"<br>",
+                  'datasource</a>',
+                  "<br>",racenote),
+    style=list(fontSize='15px')
+    #align = "left"
+  ) %>% 
+  
+  hc_add_theme(tnp_theme)%>%
+  hc_exporting(
+    enabled = TRUE, sourceWidth=900, sourceHeight=600, 
+    chartOptions=list(plotOptions=list(series=list(dataLabels=list(enabled=TRUE, format='{y} %')))),
+    filename = "plot"
+  )
+
+```
+
+```{r plot, include=FALSE}
+
+# review the plot
+
+b_chart
+
+```
