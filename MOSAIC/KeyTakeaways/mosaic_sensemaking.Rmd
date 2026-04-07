@@ -36,6 +36,9 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("mosaic")
 con2 <- connect_to_db("racecounts")
 rc_schema <- 'v7'
+tot_schema <- 'v5'  # 2017-21 total_rate data source
+curr_yr <- '2025'
+tot_yr <- '2023'
 
 ####################
 #### Style Guide ###
@@ -161,7 +164,8 @@ meta_ <- metadata %>%
 race <- 'asian'
 
 # Set table name
-table_name <- sprintf("%s_%s_%s_%s_2025", race, issue, ind, geo)
+table_name <- sprintf("%s_%s_%s_%s_%s", race, issue, ind, geo, curr_yr)
+tot_table_name <- sprintf("arei_%s_%s_%s_%s", issue, ind, geo, tot_yr)
 
 # Title of chart here: bar_chart_header from metadata df is default, update as needed
 title_text <- meta_ %>%
@@ -198,6 +202,9 @@ asbest <- meta_ %>%
 ###########Graph##########
 ##########################
 
+tot_df <- dbGetQuery(con2, paste0("SELECT * FROM ", tot_schema, ".", tot_table_name)) %>% 
+  select(total_rate)
+                              
 df_wide <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".", table_name)) %>%
   # Keep only AOIC subgroups - we may decide to change this methodology
   select(ends_with("_name"), (ends_with("_raw") & contains("aoic")), (ends_with("_rate") & contains("aoic"))) %>%
@@ -209,29 +216,47 @@ df <- df_wide %>%
     cols = -geoname,
     names_to = c("subgroup", ".value"),
     names_pattern = "^(.+)_(raw|rate)$"
-  )
-
+  ) %>%
+  # make clean subgroup labels
+  mutate(subgroup_label = gsub("_aoic", "", subgroup)) %>%
+  mutate(subgroup_label = str_to_title(gsub("_", " ", subgroup_label)))
 
 #### Indicator Bar Chart ####
 
-b_chart <- df %>% 
-  arrange(-rate) %>%   # add ifelse to sort asc/desc depending on asbest value
-  hchart(
+b_chart <- hchart(
+  df %>% arrange(-rate),   # add ifelse to sort asc/desc depending on asbest value
     type = "bar", 
-    hcaes(y = round(rate, 2), x = subgroup_label), 
+    hcaes(y = round(rate, 1), x = subgroup_label), 
     color = mainblue,
     tooltip = list(
-      pointFormat = "Total: {point.tot_rate:,.0f}<br>
-      Rate: {point.rate:.1f}%"),
+      pointFormat = "Rate: {point.rate:.1f}%<br>
+      Raw: {point.raw:,.0f}"),
   ) %>% 
   hc_tooltip(crosshairs = TRUE) %>% 
   
   hc_xAxis( title = list(text = ""),
-            labels=list(style=list(fontSize='15px'))) %>% 
+            labels=list(style=list(fontSize='15px'))
+            ) %>% 
   
   hc_yAxis( title = list(text = ""),
-            labels = list(format = "{value}%")) %>%  ##this is for rate indicators only adding % signs 
-  
+            labels = list(format = "{value}%"), list(step = 1), padding = 0, #%>%  ##this is for rate indicators only adding % signs 
+            plotLines = list(
+              list(
+                value = tot_df$total_rate,   # or your total value
+                color = "red",
+                width = 2,
+                dashStyle = "Solid",     # "Solid", "Dash", "Dot", "DashDot"
+                zIndex = 5,              # draw on top of bars
+                label = list(
+                  text = paste0("Total Rate: ", round(tot_df$total_rate, 1), "%"),
+                  align = "right",
+                  verticalAlign = "bottom",
+                  style = list(color = "red", fontWeight = "bold")
+                )
+              )
+            )
+          ) %>%
+          
   # title elements
   hc_title(
     text = paste0(title_text),
@@ -241,19 +266,21 @@ b_chart <- df %>%
   ) %>% 
   
   hc_subtitle(
-    text = paste0(subtitle_text)
+    text = paste0(subtitle_text),
+    align = "left" 
     ) %>% 
   hc_caption(
-    text = paste0("<br>",geo,"<br>",
-                  'datasource</a>',
+    text = paste0("<br>Data Source: ", datasource,
                   "<br>",racenote),
     style=list(fontSize='15px')
     #align = "left"
   ) %>% 
   
+  hc_size(height = 800) %>%
+  
   hc_add_theme(tnp_theme)%>%
   hc_exporting(
-    enabled = TRUE, sourceWidth=900, sourceHeight=600, 
+    enabled = TRUE, sourceWidth=900, sourceHeight=800, 
     chartOptions=list(plotOptions=list(series=list(dataLabels=list(enabled=TRUE, format='{y} %')))),
     filename = "plot"
   )
