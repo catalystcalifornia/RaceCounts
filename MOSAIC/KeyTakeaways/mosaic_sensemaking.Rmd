@@ -21,7 +21,6 @@ library(showtext)
 library(scales)
 library(highcharter)
 
-
 options(scipen=999)
 
 # set global options to ensure that comma separator is a comma for highchart graphs
@@ -30,11 +29,16 @@ lang <- getOption("highcharter.lang")
 lang$thousandsSep <- ","
 options(highcharter.lang = lang)
 
-# loads the PostgreSQL driver
-
+# load the PostgreSQL driver
 source("W:\\RDA Team\\R\\credentials_source.R")
+# load fx
+source(here("MOSAIC/Functions/viz_fx.R"))
 con <- connect_to_db("mosaic")
 con2 <- connect_to_db("racecounts")
+
+
+
+# set variables
 rc_schema <- 'v7'
 tot_schema <- 'v5'  # 2017-21 total_rate data source
 curr_yr <- '2025'
@@ -134,163 +138,77 @@ options(highcharter.lang = lang)
 
 ```
 
+```{r import-metadata, include=FALSE}
 
-```{r setup-metadata, include=FALSE}
-
-###################################
-###Set Up Data Captions and Info###
-###################################
-
-### Metadata: Default is v7 county/state, WILL NEED TO BE REPLACED WITH MOSAIC INDICATOR METADATA TABLE
+### Metadata: Dummy is v7 county/state, WILL NEED TO BE REPLACED WITH MOSAIC INDICATOR METADATA TABLE
 metadata <- dbGetQuery(con2, paste0("SELECT * FROM ", rc_schema, ".", "arei_indicator_list_cntyst"))
 
-# Define your issue area: demo, econ, hlth, hben, hous, crim
-issue <-  "econ"
+# metadata$api_name
 
-# Define your indicator here: api_name in metadata df is default, update as needed
-ind <- "internet"
+```
 
-# write a brief version of the race methodology (language about race coding) here: MUST BE UPDATED FOR EACH INDICATOR
-racenote <- "Data Note: Subgroups are Latinx-inclusive and Alone or in Combination, which means they include all people who identify as the subgroup\nincluding in combination with other subroups, races, and/or ethnicities."
+```{r run-fx, include=FALSE}
 
-# Define your geolevel: state, county
-geo <-  "state"
+acs_racenote <- "Data Note: Subgroups are Latinx-inclusive and Alone or in Combination, which means they include all people who identify as the subgroup\nincluding in combination with other subroups, races, and/or ethnicities."
 
-# Filter metadata to selected indicator before pulling in metadata details
-meta_ <- metadata %>%
-  filter(api_name == ind)      # filter for selected indicator
-
-# Define your race here: 'asian' or 'nhpi'
-race <- 'asian'
-
-# Set table name
-table_name <- sprintf("%s_%s_%s_%s_%s", race, issue, ind, geo, curr_yr)
-tot_table_name <- sprintf("arei_%s_%s_%s_%s", issue, ind, geo, tot_yr)
-
-# Title of chart here: bar_chart_header from metadata df is default, update as needed
-title_text <- meta_ %>%
-  select(api_name, bar_chart_header) %>%  
-  pull(bar_chart_header) %>%
-  as.character()                # convert to char vector
-
-#Subtitle text if necessary: methodology in metadata df is default, update as needed
-subtitle_text <- meta_ %>%
-  select(api_name, methodology) %>%  
-  pull(methodology) %>%
-  as.character()                # convert to char vector
+cdc_racenote <- "Data Note: Subgroups include foreign-born birthing parents only and are defined by country of birth."
 
 
-# Set your data source here: data_source in metadata df is being used as dummy data, WILL NEED TO BE REPLACED WITH MOSAIC INDICATOR METADATA TABLE
-datasource <- meta_ %>%
-  select(api_name, data_source) %>%  
-  pull(data_source) %>%
-  as.character()                # convert to char vector
+#### INTERNET ####
+# Run metadata fx - run metadata$api_name if need to find indicator variable name
+internet_meta <- metadata_fx("econ", "internet", "asian", metadata)
+
+# Run data fx
+internet_list <- data_fx(internet_meta, "asian")
+
+# Run chart fx
+internet_plot <- chart_fx(internet_list, internet_meta, "asian", acs_racenote)
 
 
-# Set asbest: arei_best in metadata df, WILL NEED TO BE REPLACED WITH MOSAIC INDICATOR METADATA TABLE
-asbest <- meta_ %>%
-  select(api_name, arei_best) %>%  
-  pull(arei_best) %>%
-  as.character()                # convert to char vector
+#### OVERCROWDED ####
+# Run metadata fx
+overcrowd_meta <- metadata_fx("hous", "overcrowded", "asian", metadata)
+
+# Run data fx
+overcrowd_list <- data_fx(overcrowd_meta, "asian")
+
+# Run chart fx
+overcrowd_plot <- chart_fx(overcrowd_list, overcrowd_meta, "asian", acs_racenote)
+
+
+#### HOMEOWNERSHIP ####
+# Run metadata fx
+homeown_meta <- metadata_fx("hous", "homeownership", "asian", metadata)
+
+# Run data fx
+homeown_list <- data_fx(homeown_meta, "asian")
+
+# Run chart fx
+homeown_plot <- chart_fx(homeown_list, homeown_meta, "asian", acs_racenote)
+
+
+#### LOW BIRTHWEIGHT ####
+# Run metadata fx
+lbw_meta <- metadata_fx("hlth", "low_birthweight", "asian", metadata)
+
+# Run data fx
+lbw_list <- data_fx(lbw_meta, "asian")
+
+# Run chart fx
+lbw_plot <- chart_fx(lbw_list, lbw_meta, "asian", cdc_racenote)
 
 
 ```
 
-```{r setup-data, include=FALSE}
-
-##########################
-###########Graph##########
-##########################
-
-tot_df <- dbGetQuery(con2, paste0("SELECT * FROM ", tot_schema, ".", tot_table_name)) %>% 
-  select(total_rate)
-                              
-df_wide <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".", table_name)) %>%
-  # Keep only AOIC subgroups - we may decide to change this methodology
-  select(ends_with("_name"), (ends_with("_raw") & contains("aoic")), (ends_with("_rate") & contains("aoic"))) %>%
-  rename_with(~ "geoname", matches("^.*name.*$")[1])   # rename geo name col to generic
-
-# convert to long
-df <- df_wide %>%
-  pivot_longer(
-    cols = -geoname,
-    names_to = c("subgroup", ".value"),
-    names_pattern = "^(.+)_(raw|rate)$"
-  ) %>%
-  # make clean subgroup labels
-  mutate(subgroup_label = gsub("_aoic", "", subgroup)) %>%
-  mutate(subgroup_label = str_to_title(gsub("_", " ", subgroup_label)))
-
-#### Indicator Bar Chart ####
-
-b_chart <- hchart(
-  df %>% arrange(-rate),   # add ifelse to sort asc/desc depending on asbest value
-    type = "bar", 
-    hcaes(y = round(rate, 1), x = subgroup_label), 
-    color = mainblue,
-    tooltip = list(
-      pointFormat = "Rate: {point.rate:.1f}%<br>
-      Raw: {point.raw:,.0f}"),
-  ) %>% 
-  hc_tooltip(crosshairs = TRUE) %>% 
-  
-  hc_xAxis( title = list(text = ""),
-            labels=list(style=list(fontSize='15px'))
-            ) %>% 
-  
-  hc_yAxis( title = list(text = ""),
-            labels = list(format = "{value}%"), list(step = 1), padding = 0, #%>%  ##this is for rate indicators only adding % signs 
-            plotLines = list(
-              list(
-                value = tot_df$total_rate,   # or your total value
-                color = "red",
-                width = 2,
-                dashStyle = "Solid",     # "Solid", "Dash", "Dot", "DashDot"
-                zIndex = 5,              # draw on top of bars
-                label = list(
-                  text = paste0("Total Rate: ", round(tot_df$total_rate, 1), "%"),
-                  align = "right",
-                  verticalAlign = "bottom",
-                  style = list(color = "red", fontWeight = "bold")
-                )
-              )
-            )
-          ) %>%
-          
-  # title elements
-  hc_title(
-    text = paste0(title_text),
-    #margin = 20,
-    align = "left", 
-    style = list(useHTML = TRUE, fontWeight = "bold", fontSize='30px')
-  ) %>% 
-  
-  hc_subtitle(
-    text = paste0(subtitle_text),
-    align = "left" 
-    ) %>% 
-  hc_caption(
-    text = paste0("<br>Data Source: ", datasource,
-                  "<br>",racenote),
-    style=list(fontSize='15px')
-    #align = "left"
-  ) %>% 
-  
-  hc_size(height = 800) %>%
-  
-  hc_add_theme(tnp_theme)%>%
-  hc_exporting(
-    enabled = TRUE, sourceWidth=900, sourceHeight=800, 
-    chartOptions=list(plotOptions=list(series=list(dataLabels=list(enabled=TRUE, format='{y} %')))),
-    filename = "plot"
-  )
-
-```
-
-```{r plot, include=FALSE}
-
+```{r internet}
 # review the plot
 
-b_chart
+internet_plot
+
+overcrowd_plot
+
+homeown_plot
+
+lbw_plot
 
 ```
