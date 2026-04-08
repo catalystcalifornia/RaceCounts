@@ -423,6 +423,64 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
       x_long <- get_b25014(x_long)
   }
   
+  if(endsWith(table_code, "b25091")) {  # MTK adding for Housing Cost Burden B25091 (owner)
+    
+    x_long <- x %>%
+      pivot_longer(
+        cols = -c(geoid, name, geolevel),
+        names_to = c("ethnic_group", "line", "stat"),
+        names_pattern = "^b25091_(\\d{3})_(\\d{3})(e|m)$",
+        values_to = "val"
+      ) %>%
+      pivot_wider(
+        names_from = stat,
+        values_from = val
+      ) %>%
+      rename(
+        value = e,
+        moe = m
+      ) %>%
+      mutate(
+        measure = case_when(
+          line == "001" ~ "pop",
+          line %in% c("008", "009", "010", "011") ~ "raw_with_mortgage",
+          line %in% c("019", "020", "021", "022") ~ "raw_without_mortgage"
+        )
+      ) %>%
+      filter(!is.na(measure))  # drop lines we don't need (002-007, 012-018, 023)
+    
+    get_b25091 <- function(df) {
+      
+      df %>%
+        group_by(name, geoid, geolevel, ethnic_group, measure) %>%
+        summarise(
+          agg_value = safe_sum(value),
+          agg_moe   = moe_sum(moe = moe, estimate = value),
+          .groups   = "drop"
+        ) %>%
+        pivot_wider(
+          names_from  = measure,
+          values_from = c(agg_value, agg_moe),
+          names_glue  = "{measure}_{.value}"
+        ) %>% 
+        mutate(
+          raw     = raw_with_mortgage_agg_value + raw_without_mortgage_agg_value,
+          raw_moe = sqrt(raw_with_mortgage_agg_moe^2 + raw_without_mortgage_agg_moe^2)
+        ) %>%
+        rename(
+          pop     = pop_agg_value,
+          pop_moe = pop_agg_moe
+        ) %>%
+        mutate(
+          rate     = ifelse(pop <= 0, NA, raw / pop * 100),
+          rate_moe = moe_prop(raw, pop, raw_moe, pop_moe) * 100
+        )
+    }
+    
+    x_long <- get_b25091(x_long)
+  }
+  
+  
   if(endsWith(table_code, "b19301")) {
     
     names(x) <- gsub("001e", "_rate", names(x))
