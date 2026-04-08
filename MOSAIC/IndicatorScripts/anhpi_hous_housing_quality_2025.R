@@ -251,7 +251,7 @@ View(screen_rate_cv_pop %>% filter(rate_cv_flag == 1 | pop_flag == 1))
 ## Note there are some on the ERI list that do not get suppressed in our method bc they have no 'low quality' estimates (Bhutanese, Tibetan).
 
 #### Step 7: Screen data (incl. recoding suppressed subgroups & recalcs) ####
-# STATE-LEVEL ONLY: Recode Bhutanese as other_asian. If we present county data, we could recode any suppressed grps for that county too.
+# STATE-LEVEL ONLY: Recode suppressed asian subgroups as other_asian and same for nhpi. If we present county data, we could recode any suppressed grps for that county too.
 
 recode_asian <- screen_rate_cv_pop %>%
   filter(housing_quality == 'low_quality'& (rate_cv_flag == 1 | pop_flag == 1)) %>%
