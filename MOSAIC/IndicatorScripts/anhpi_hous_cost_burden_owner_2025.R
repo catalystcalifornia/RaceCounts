@@ -40,21 +40,21 @@ table_code = 'b25091'          # Select relevant indicator table name
 
 # CREATE RAW DATA TABLES -------------------------------------------------------------------------
 # Only run this section if the raw data tables have not been created yet ##
- race <- "asian"
- asian_list <- get_detailed_race(table_code, race, curr_yr)
- # check race col names which are created in fx
- View(asian_list[[2]])
-
- race <- "nhpi"
- nhpi_list <- get_detailed_race(table_code, race, curr_yr)
- # check race col names which are created in fx
- View(nhpi_list[[2]])
+ # race <- "asian"
+ # asian_list <- get_detailed_race(table_code, race, curr_yr)
+ # # check race col names which are created in fx
+ # View(asian_list[[2]])
+ # 
+ # race <- "nhpi"
+ # nhpi_list <- get_detailed_race(table_code, race, curr_yr)
+ # # check race col names which are created in fx
+ # View(nhpi_list[[2]])
 
 ######  Transform the data for the raw data table  ###
 # This variable is broken up by geo, by tenure, by cost burden %, and by detailed race.
 # We need to collapse the subcategories so that we just have it broken down by geo + detailed race + cost burden under or over 30%.
 #
-# # Step 1: pivot to long format (it's too much data to work with wide format until we aggregate it down)
+# Step 1: pivot to long format (it's too much data to work with wide format until we aggregate it down)
 #  nhpi_long <- nhpi_list$nhpi_df %>%
 #    pivot_longer(
 #      cols = -c(name, geoid, geolevel),
