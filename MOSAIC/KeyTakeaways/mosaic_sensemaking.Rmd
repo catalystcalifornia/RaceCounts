@@ -1,11 +1,46 @@
 ---
-title: "Internal MOSAIC Sensemaking"
-output: html_document
-date: "2026-04-06"
+title: "DRAFT: Internal MOSAIC Sensemaking"
+subtitle: "Do Not Share"
+author: "Catalyst California"
+output:
+  html_document:
+    css: "W:\\RDA Team\\R\\cc_brandguide.css"
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+date: "`r format(Sys.time(), '%d %B %Y')`"
 ---
 
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+<style>
+
+/* Set TOC formatting for active items */
+.list-group-item.active, .list-group-item.active:focus, .list-group-item.active:hover{
+  color: #3A207D !important;     /* meteorite */
+  background-color: white;
+  font-weight: 600;
+  font-size: 23;
+}
+
+/* set addt'l unordered (bulleted) list formatting (override formatting set in css) */
+.large-list ul {
+  font-family: Inter, sans-serif;
+  color: meteorite;
+  font-size: 16px;
+}
+
+/* set accordion label formatting */
+summary {
+  color: #3A207D !important;    /* Change the color to meteorite */
+}
+
+</style>
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE)
 
 ### Set up workspace ####
 #install.packages("extrafont")
@@ -147,9 +182,11 @@ metadata <- dbGetQuery(con2, paste0("SELECT * FROM ", rc_schema, ".", "arei_indi
 
 ```
 
-```{r run-fx, include=FALSE}
+```{r asian-charts, include=FALSE}
 
 acs_racenote <- "Data Note: Subgroups are Latinx-inclusive and Alone or in Combination, which means they include all people who identify as the subgroup\nincluding in combination with other subroups, races, and/or ethnicities."
+
+pums_racenote <- "Data Note: Subgroups are Latinx-inclusive and Alone or in Combination, which means they include all people who identify as the subgroup\nincluding in combination with other subroups, races, and/or ethnicities. Subgroups are defined by Ancestry."
 
 cdc_racenote <- "Data Note: Subgroups include foreign-born birthing parents only and are defined by country of birth."
 
@@ -187,6 +224,17 @@ homeown_list <- data_fx(homeown_meta, "asian")
 homeown_plot <- chart_fx(homeown_list, homeown_meta, "asian", acs_racenote)
 
 
+#### UNINSURED ####
+# Run metadata fx 
+uninsured_meta <- metadata_fx("hlth", "health_insurance", "asian", metadata)
+
+# Run data fx
+uninsured_list <- data_fx(uninsured_meta, "asian")
+
+# Run chart fx
+uninsured_plot <- chart_fx(uninsured_list, uninsured_meta, "asian", cdc_racenote)
+
+
 #### LOW BIRTHWEIGHT ####
 # Run metadata fx
 lbw_meta <- metadata_fx("hlth", "low_birthweight", "asian", metadata)
@@ -200,15 +248,108 @@ lbw_plot <- chart_fx(lbw_list, lbw_meta, "asian", cdc_racenote)
 
 ```
 
-```{r internet}
-# review the plot
+# Introduction {#intro}
+## text that these are DRAFT viz not what will look on website
+## text that Asian/NHPI/Total rates are approx and will be updated once we select final indicators
 
+
+# Asian Disaggregation {#asian}
+### Internet Access
+```{r, echo=FALSE}
 internet_plot
+```
 
+### Overcrowded Housing
+```{r, echo=FALSE}
 overcrowd_plot
+```
 
+### Homeownership
+```{r, echo=FALSE}
 homeown_plot
+```
 
+### Uninsured
+```{r, echo=FALSE}
+uninsured_plot
+```
+
+### Voter Engagement
+
+
+```{r nhpi-charts, include=FALSE}
+
+acs_racenote <- "Data Note: Subgroups are Latinx-inclusive and Alone or in Combination, which means they include all people who identify as the subgroup\nincluding in combination with other subroups, races, and/or ethnicities."
+
+pums_racenote <- "Data Note: Subgroups are Latinx-inclusive and Alone or in Combination, which means they include all people who identify as the subgroup\nincluding in combination with other subroups, races, and/or ethnicities. Subgroups are defined by Ancestry."
+
+cdc_racenote <- "Data Note: Subgroups include foreign-born birthing parents only and are defined by country of birth."
+
+
+#### INTERNET ####
+# Run metadata fx - run metadata$api_name if need to find indicator variable name
+internet_meta <- metadata_fx("econ", "internet", "nhpi", metadata)
+
+# Run data fx
+internet_list <- data_fx(internet_meta, "nhpi")
+
+# Run chart fx
+internet_plot <- chart_fx(internet_list, internet_meta, "nhpi", acs_racenote)
+
+
+#### OVERCROWDED ####
+# Run metadata fx
+overcrowd_meta <- metadata_fx("hous", "overcrowded", "nhpi", metadata)
+
+# Run data fx
+overcrowd_list <- data_fx(overcrowd_meta, "nhpi")
+
+# Run chart fx
+overcrowd_plot <- chart_fx(overcrowd_list, overcrowd_meta, "nhpi", acs_racenote)
+
+
+#### CONNECTED YOUTH ####
+# Run metadata fx
+youth_meta <- metadata_fx("econ", "connected_youth", "nhpi", metadata)
+
+# Run data fx
+youth_list <- data_fx(youth_meta, "nhpi")
+
+# Run chart fx
+youth_plot <- chart_fx(youth_list, youth_meta, "nhpi", acs_racenote)
+
+
+#### LOW BIRTHWEIGHT ####
+# Run metadata fx
+lbw_meta <- metadata_fx("hlth", "low_birthweight", "nhpi", metadata)
+
+# Run data fx
+lbw_list <- data_fx(lbw_meta, "nhpi")
+
+# Run chart fx
+lbw_plot <- chart_fx(lbw_list, lbw_meta, "nhpi", cdc_racenote)
+
+
+```
+
+# NHPI Disaggregation {#nhpi}
+
+### Internet Access
+```{r, echo=FALSE}
+internet_plot
+```
+
+### Overcrowded Housing
+```{r, echo=FALSE}
+overcrowd_plot
+```
+
+### Connected Youth
+```{r, echo=FALSE}
+youth_plot
+```
+
+### Low Birthweight Births
+```{r, echo=FALSE}
 lbw_plot
-
 ```
