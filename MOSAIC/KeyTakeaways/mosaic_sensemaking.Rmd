@@ -37,6 +37,14 @@ summary {
 
 </style>
 
+
+```{css, echo=FALSE}
+.highcharts-container,
+.highcharts-root {
+  overflow: visible !important;
+}
+```
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE,
                       message = FALSE,
@@ -192,14 +200,14 @@ cdc_racenote <- "Data Note: Subgroups include foreign-born birthing parents only
 
 
 #### INTERNET ####
-# Run metadata fx - run metadata$api_name if need to find indicator variable name
-internet_meta <- metadata_fx("econ", "internet", "asian", metadata)
-
-# Run data fx
-internet_list <- data_fx(internet_meta, "asian")
-
-# Run chart fx
-internet_plot <- chart_fx(internet_list, internet_meta, "asian", acs_racenote)
+# # Run metadata fx - run metadata$api_name if need to find indicator variable name
+# internet_meta <- metadata_fx("econ", "internet", "asian", metadata)
+# 
+# # Run data fx
+# internet_list <- data_fx(internet_meta, "asian")
+# 
+# # Run chart fx
+# internet_plot <- chart_fx(internet_list, internet_meta, "asian", acs_racenote)
 
 
 #### OVERCROWDED ####
@@ -225,7 +233,7 @@ homeown_plot <- chart_fx(homeown_list, homeown_meta, "asian", acs_racenote)
 
 
 #### UNINSURED ####
-# Run metadata fx 
+# Run metadata fx
 uninsured_meta <- metadata_fx("hlth", "health_insurance", "asian", metadata)
 
 # Run data fx
@@ -246,18 +254,26 @@ lbw_list <- data_fx(lbw_meta, "asian")
 lbw_plot <- chart_fx(lbw_list, lbw_meta, "asian", cdc_racenote)
 
 
+#### VOTER ENGAGEMENT ####  Does not work with functions bc not in RC v7
+# Run metadata fx
+#voter_meta <- metadata_fx("demo", "voter_engagement", "asian", metadata)
+
+# Run data fx
+#voter_list <- data_fx(voter_meta, "asian")
+
+# Run chart fx
+#voter_plot <- chart_fx(voter_list, voter_meta, "asian", cdc_racenote)
+
+
 ```
 
 # Introduction {#intro}
-## text that these are DRAFT viz not what will look on website
-## text that Asian/NHPI/Total rates are approx and will be updated once we select final indicators
+#### These are draft visuals for internal sensemaking only. These visuals do not reflect what final visuals on MOSAIC report page will look or behave like.
+
+#### Note that the Asian/NHPI/Total rates displayed as vertical lines are sourced from our 'regular' RC data. The data sources and methods vary slightly by necessity from those of MOSAIC analysis. Once we select indicators, we will recalculate the Asian/NHPI/Total rates using the MOSAIC sources/methods for more direct comparison.
 
 
 # Asian Disaggregation {#asian}
-### Internet Access
-```{r, echo=FALSE}
-internet_plot
-```
 
 ### Overcrowded Housing
 ```{r, echo=FALSE}
@@ -274,7 +290,6 @@ homeown_plot
 uninsured_plot
 ```
 
-### Voter Engagement
 
 
 ```{r nhpi-charts, include=FALSE}
@@ -285,16 +300,38 @@ pums_racenote <- "Data Note: Subgroups are Latinx-inclusive and Alone or in Comb
 
 cdc_racenote <- "Data Note: Subgroups include foreign-born birthing parents only and are defined by country of birth."
 
+hmda_racenote <- "Data Note: Subgroups Latinx-inclusive and Alone or in Combination, which means they include all people who identify as the subgroup\nincluding in combination with other subroups, races, and/or ethnicities."
 
 #### INTERNET ####
-# Run metadata fx - run metadata$api_name if need to find indicator variable name
-internet_meta <- metadata_fx("econ", "internet", "nhpi", metadata)
+# # Run metadata fx - run metadata$api_name if need to find indicator variable name
+# internet_meta <- metadata_fx("econ", "internet", "nhpi", metadata)
+# 
+# # Run data fx
+# internet_list <- data_fx(internet_meta, "nhpi")
+# 
+# # Run chart fx
+# internet_plot <- chart_fx(internet_list, internet_meta, "nhpi", acs_racenote)
+
+#### CONNECTED YOUTH ####
+# Run metadata fx
+youth_meta <- metadata_fx("econ", "connected_youth", "nhpi", metadata)
 
 # Run data fx
-internet_list <- data_fx(internet_meta, "nhpi")
+youth_list <- data_fx(youth_meta, "nhpi")
 
 # Run chart fx
-internet_plot <- chart_fx(internet_list, internet_meta, "nhpi", acs_racenote)
+youth_plot <- chart_fx(youth_list, youth_meta, "nhpi", acs_racenote)
+
+
+#### UNINSURED ####
+# # Run metadata fx 
+# uninsured_meta <- metadata_fx("hlth", "health_insurance", "nhpi", metadata)
+# 
+# # Run data fx
+# uninsured_list <- data_fx(uninsured_meta, "nhpi")
+# 
+# # Run chart fx
+# uninsured_plot <- chart_fx(uninsured_list, uninsured_meta, "nhpi", cdc_racenote)
 
 
 #### OVERCROWDED ####
@@ -308,15 +345,26 @@ overcrowd_list <- data_fx(overcrowd_meta, "nhpi")
 overcrowd_plot <- chart_fx(overcrowd_list, overcrowd_meta, "nhpi", acs_racenote)
 
 
-#### CONNECTED YOUTH ####
+#### HOMEOWNERSHIP ####
 # Run metadata fx
-youth_meta <- metadata_fx("econ", "connected_youth", "nhpi", metadata)
+homeown_meta <- metadata_fx("hous", "homeownership", "nhpi", metadata)
 
 # Run data fx
-youth_list <- data_fx(youth_meta, "nhpi")
+homeown_list <- data_fx(homeown_meta, "nhpi")
 
 # Run chart fx
-youth_plot <- chart_fx(youth_list, youth_meta, "nhpi", acs_racenote)
+homeown_plot <- chart_fx(homeown_list, homeown_meta, "nhpi", acs_racenote)
+
+
+#### DENIED MORTGAGEW ####
+# Run metadata fx
+mtg_meta <- metadata_fx("hous", "denied_mortgages", "nhpi", metadata)
+
+# Run data fx
+mtg_list <- data_fx(mtg_meta, "nhpi")
+
+# Run chart fx
+mtg_plot <- chart_fx(mtg_list, mtg_meta, "nhpi", hmda_racenote)
 
 
 #### LOW BIRTHWEIGHT ####
@@ -334,16 +382,6 @@ lbw_plot <- chart_fx(lbw_list, lbw_meta, "nhpi", cdc_racenote)
 
 # NHPI Disaggregation {#nhpi}
 
-### Internet Access
-```{r, echo=FALSE}
-internet_plot
-```
-
-### Overcrowded Housing
-```{r, echo=FALSE}
-overcrowd_plot
-```
-
 ### Connected Youth
 ```{r, echo=FALSE}
 youth_plot
@@ -352,4 +390,19 @@ youth_plot
 ### Low Birthweight Births
 ```{r, echo=FALSE}
 lbw_plot
+```
+
+### Overcrowded Housing
+```{r, echo=FALSE}
+overcrowd_plot
+```
+
+### Homeownership
+```{r, echo=FALSE}
+homeown_plot
+```
+
+### Denied Mortgages
+```{r, echo=FALSE}
+mtg_plot
 ```

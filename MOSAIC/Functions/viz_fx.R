@@ -62,6 +62,7 @@ data_fx <- function(meta, race) {
     rename_with(~ "pacisl_rate", matches("^.*pacisl.*$")[1])      # rename nhpi rate col to generic
   
   df_wide <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".", meta$table_name)) %>%
+    select(-starts_with("na_"), starts_with("unknown_")) %>%
     { # Keep only "aoic" cols for ACS indicators. Keep only geoname, raw, rate cols for all indicators.
       if (grepl("American Community Survey", meta$datasource[1]) & !grepl("PUMS", meta$datasource[1])) {
         select(., ends_with("_name"), (ends_with("_raw") & contains("aoic")), (ends_with("_rate") & contains("aoic"))) %>%
@@ -97,14 +98,23 @@ chart_fx <- function(data_list, meta, race, racenote) {
   # racenote: notes on definition of subgroups
   
   # select Asian or NHPI race rate as comparison
+  race_ <- ifelse(race == 'nhpi', 'pacisl', 'asian')
+  
   race_rate <- data_list$tot_df %>%
-    select(contains(tolower(race))) %>%
+    select(contains(tolower(race_))) %>%
     as.numeric()
   
   # generate race rate label
   race_label <- case_when(
     race %in% c('asian','Asian') ~ "Asian",
     TRUE ~ "Native Hawaiian or Pacific Islander"
+  )
+  
+  # dynamic height based on number of bars bc there are many more Asian subgroups
+  chart_height <- case_when(
+    nrow(data_list$df) >= 13 ~ 700,
+    nrow(data_list$df) >= 8  ~ 500,
+    TRUE                     ~ 300
   )
   
   # build chart
@@ -161,6 +171,13 @@ chart_fx <- function(data_list, meta, race, racenote) {
              )
     ) %>%
     
+    hc_plotOptions(
+      bar = list(
+        groupPadding = 0.05,   # space between groups (default 0.2)
+        pointPadding = 0.01    # width of bars
+      )
+    ) %>%
+    
     # title elements
     hc_title(
       text = paste0(meta$title_text),
@@ -181,15 +198,15 @@ chart_fx <- function(data_list, meta, race, racenote) {
       #align = "left"
     ) %>% 
     
-    hc_size(height = 800) %>%
+    hc_size(height = chart_height) %>%
     
-    hc_add_theme(tnp_theme) %>%
+    hc_add_theme(tnp_theme) #%>%
     
-    hc_exporting(
-      enabled = TRUE, sourceWidth=900, sourceHeight=800, 
-      chartOptions=list(plotOptions=list(series=list(dataLabels=list(enabled=TRUE, format='{y} %')))),
-      filename = "plot"
-    )
+    # hc_exporting(
+    #   enabled = TRUE, sourceWidth=1000, sourceHeight=chart_height, 
+    #   chartOptions=list(plotOptions=list(series=list(dataLabels=list(enabled=TRUE, format='{y} %')))),
+    #   filename = "plot"
+    # )
   
   return(b_chart)
 }
