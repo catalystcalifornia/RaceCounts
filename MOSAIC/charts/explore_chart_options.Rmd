@@ -89,23 +89,12 @@ low_birthweight <- rbind(low_bw_asian_reshape, low_bw_rc_reshape) %>%
 
 # Set colors for bars
 base_colors <- c(
-  "asian" = "#070024", 
+  "asian" = "#FF6B02",
+  "asian subgroups" = "#FF6B02",
+  "asian average"= "#070024",
   "total" = "#ac0068",
-  "default" = "#cccccc")
-
-drilldown_colors <- c(
-  "asian subgroups" = "#7cb5ec", 
-  "total" = "#ac0068",
-  "default" = "#cccccc"
-)
-
-color_map <- c(
-  "asian subgroups" = "#7cb5ec", 
-  "asian" = "#070024",             
   "other" = "#ac0068",
-  "total" = "#ac0068",
-  "default" = "#cccccc"
-)
+  "default" = "#cccccc")
 
 custom_theme <- hc_theme(
   chart = list(
@@ -183,8 +172,8 @@ base_bw_df <- low_birthweight_chart1 %>%
   filter(subgroup=="total") %>%
   select(-subgroup) %>%
   mutate(color = case_when(
-    group == "asian" ~ color_map[["asian"]],
-    group == "total" ~ color_map[["total"]],
+    group == "asian" ~ base_colors[["asian"]],
+    group == "total" ~ base_colors[["total"]],
     TRUE ~ base_colors[["default"]]
   ))
 drilldown_bw_df <- low_birthweight_chart1 %>%
@@ -195,9 +184,9 @@ drilldown_bw_df <- low_birthweight_chart1 %>%
     type = "bar",
     # Assign color based on group
     color = case_when(
-      group == "asian" ~ color_map[["asian subgroups"]],
-      group == "total" ~ color_map[["total"]],
-      .default = color_map[["default"]]
+      group == "asian" ~ base_colors[["asian subgroups"]],
+      group == "total" ~ base_colors[["total"]],
+      .default = base_colors[["default"]]
     ),
     # Store both rate-sorted and count-sorted versions
     data = map(data, function(df) {
@@ -570,11 +559,11 @@ series_data_rates <- low_birthweight %>%
     
     # Assign color based on group
     series_color <- if(df$group[1] == "asian subgroups") {
-      color_map[["asian subgroups"]]
+      base_colors[["asian subgroups"]]
     } else if(df$group[1] == "asian average") {
-      color_map[["asian"]]
+      base_colors[["asian average"]]
     } else {
-      color_map[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
+      base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
     }
     
     list(
@@ -601,11 +590,11 @@ series_data_counts <- low_birthweight %>%
     
     # Assign same color based on group
     series_color <- if(df$group[1] == "asian subgroups") {
-      color_map[["asian subgroups"]]
+      base_colors[["asian subgroups"]]
     } else if(df$group[1] == "asian average") {
-      color_map[["asian"]]
+      base_colors[["asian"]]
     } else {
-      color_map[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
+      base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
     }
     
     list(
