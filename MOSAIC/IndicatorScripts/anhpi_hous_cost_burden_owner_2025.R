@@ -302,9 +302,9 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
 ############## ASIAN: COUNTY, STATE, CITY METADATA  ##############
 
 ###update info for postgres tables###
-county_table_name <- paste0(tolower(race_name), "_hous_cost_burden_renter_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
-state_table_name <- paste0(tolower(race_name), "_hous_cost_burden_renter_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
-city_table_name <- paste0(tolower(race_name), "_hous_cost_burden_renter_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
+county_table_name <- paste0(tolower(race_name), "_hous_cost_burden_owner_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
+state_table_name <- paste0(tolower(race_name), "_hous_cost_burden_owner_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
+city_table_name <- paste0(tolower(race_name), "_hous_cost_burden_owner_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
 start_yr <- curr_yr-4
 
 indicator <- paste0("The percentage of rented housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
@@ -381,12 +381,12 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
 ############## NHPI: COUNTY, STATE, CITY METADATA  ##############
 
 ###update info for postgres tables###
-county_table_name <- paste0(tolower(race_name), "_hous_cost_burden_renter_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
-state_table_name <- paste0(tolower(race_name), "_hous_cost_burden_renter_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
-city_table_name <- paste0(tolower(race_name), "_hous_cost_burden_renter_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
+county_table_name <- paste0(tolower(race_name), "_hous_cost_burden_owner_county_", rc_yr)      # See most recent RC Workflow SQL Views for table name (remember to update year)
+state_table_name <- paste0(tolower(race_name), "_hous_cost_burden_owner_state_", rc_yr)        # See most recent RC Workflow SQL Views for table name (remember to update year)
+city_table_name <- paste0(tolower(race_name), "_hous_cost_burden_owner_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
 start_yr <- curr_yr-4
 
-indicator <- paste0("The percentage of rented housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
+indicator <- paste0("The percentage of owners experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
 source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table ", toupper(table_code), ", https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## ASIAN: SEND TO POSTGRES #######
