@@ -389,7 +389,7 @@ start_yr <- curr_yr-4
 indicator <- paste0("The percentage of owners experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
 source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table ", toupper(table_code), ", https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
-############## ASIAN: SEND TO POSTGRES #######
+############## NHPI: SEND TO POSTGRES #######
 to_postgres(county_table,state_table, 'mosaic')
 city_to_postgres(city_table, 'mosaic')
 
