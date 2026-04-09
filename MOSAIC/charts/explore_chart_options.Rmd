@@ -92,6 +92,7 @@ rc_blue <-  "#070024" # primary
 rc_orange <- "#FF6B02" # accent
 rc_magenta <- "#ac0068" # accent
 rc_grey <- "#cccccc" # neutral
+rc_white <- "#ffffff" # neutral
 
 # Set colors for bars
 base_colors <- c(
@@ -347,22 +348,26 @@ drilldown_bw_js <- paste0("function(e) {
         chart.redraw();
       },
       {
-        fill: '#fec009',
-        stroke: '#fec009',
+        fill: '", rc_blue, "' ,
+        stroke: '", rc_blue, "' ,
+        style: { color: '", rc_white, "' },
         'stroke-width': 1,
         r: 3,
         padding: 8
       },
       {
-        fill: '#fec009'
+        fill: '", rc_blue, "' ,
+        style: { color: '", rc_white, "' }  // Add this so font color stays white in hover state
       },
       {
-        fill: '#fec009'
+        fill: '", rc_blue, "' ,
+        style: { color: '", rc_white, "' }  // Add this so font color stays white for active/pressed state
       }
     )
     .css({
       fontWeight: 'bold',
-      fontSize: '12px'
+      fontSize: '12px',
+      color: '", rc_white, "'
     })
     .attr({ zIndex: 7 })  // Add this line to put on top of gridlines
     .add();
@@ -616,7 +621,7 @@ hc <- highchart() %>%
     type = "bar",
     reflow = TRUE,
     events = list(
-      load = htmlwidgets::JS(sprintf("
+      load = htmlwidgets::JS(sprintf(paste0("
         function() {
           var chart = this;
           var rateOrder = %s;
@@ -708,22 +713,26 @@ hc <- highchart() %>%
               chart.redraw();
             },
             {
-              fill: '#fec009',
-              stroke: '#fec009',
+              fill: '", rc_blue, "' ,
+              stroke: '", rc_blue, "' ,
+              style: { color: '", rc_white, "' },  // Add this so font color persists
               'stroke-width': 1,
               r: 3,
               padding: 8
             },
             {
-              fill: '#fec009'
+              fill: '", rc_blue, "' ,
+              style: { color: '", rc_white, "' }  // Add this so font color persists in hover state
             },
             {
-              fill: '#fec009'
+              fill: '", rc_blue, "' ,
+              style: { color: '", rc_white, "' }  // Add this so font color persists in active/pressed state
             }
           )
           .css({
             fontWeight: 'bold',
-            fontSize: '12px'
+            fontSize: '12px',
+            color: '", rc_white, "'
           })
           .attr({ zIndex: 7 })  // Add this line to put on top of gridlines
           .add();
@@ -746,7 +755,7 @@ hc <- highchart() %>%
             x: rightEdge - buttonWidth
           });
               }
-      ", 
+      "), 
       jsonlite::toJSON(rate_order), # rate order
       jsonlite::toJSON(count_order), # count order
       total_rate_bw, # value
