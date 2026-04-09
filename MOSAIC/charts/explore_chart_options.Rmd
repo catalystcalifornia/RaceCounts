@@ -87,27 +87,33 @@ low_birthweight <- rbind(low_bw_asian_reshape, low_bw_rc_reshape) %>%
   # round rates
   mutate(rate=round(rate, 1))
 
+# define rc colors we want to use
+rc_blue <-  "#070024" # primary
+rc_orange <- "#FF6B02" # accent
+rc_magenta <- "#ac0068" # accent
+rc_grey <- "#cccccc" # neutral
+
 # Set colors for bars
 base_colors <- c(
-  "asian" = "#FF6B02",
-  "asian subgroups" = "#FF6B02",
-  "asian average"= "#070024",
-  "total" = "#ac0068",
-  "other" = "#ac0068",
-  "default" = "#cccccc")
+  "asian" = rc_orange,
+  "asian subgroups" = rc_orange,
+  "asian average"= rc_blue,
+  "total" = rc_magenta,
+  "other" = rc_magenta,
+  "default" = rc_grey)
 
 custom_theme <- hc_theme(
   chart = list(
-    style = list(fontFamily = "Roboto", color = "#070024")),
-  title = list(style = list(color = "#070024")),
-  subtitle = list(style = list(color = "#070024")),
-  legend = list(itemStyle = list(color = "#070024")),
+    style = list(fontFamily = "Roboto", color = rc_blue)),
+  title = list(style = list(color = rc_blue)),
+  subtitle = list(style = list(color = rc_blue)),
+  legend = list(itemStyle = list(color = rc_blue)),
   xAxis = list(
-    labels = list(style = list(color = "#070024"))),
+    labels = list(style = list(color = rc_blue))),
   yAxis = list(
     lineWidth = 1,      # Keep the main baseline
     tickWidth = 0,       # Remove the small tick marks
-    labels = list(style = list(color = "#070024")))
+    labels = list(style = list(color = rc_blue)))
 )
 
 ```
@@ -234,9 +240,9 @@ drilldown_bw_js <- paste0("function(e) {
   chart.yAxis[0].addPlotLine({
     id: 'total-line',
     value: ", total_rate_bw, ",
-    color: '#FF0000',
+    color: '", rc_blue, "' ,
     width: 2,
-    dashStyle: 'Dash',
+    dashStyle: 'ShortDash',
     zIndex: 5,
     label: { text: 'State Average: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 5 }
   });
@@ -310,9 +316,9 @@ drilldown_bw_js <- paste0("function(e) {
           chart.yAxis[0].addPlotLine({
             id: 'total-line',
             value: ", total_rate_bw, ",
-            color: '#f91105',
+            color: '", rc_blue, "' ,
             width: 2,
-            dashStyle: 'Dash',
+            dashStyle: 'ShortDash',
             zIndex: 5,
             label: { text: 'State Average: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 5 }
           });
@@ -355,7 +361,6 @@ drilldown_bw_js <- paste0("function(e) {
       }
     )
     .css({
-      //color: '#070024',
       fontWeight: 'bold',
       fontSize: '12px'
     })
@@ -447,12 +452,12 @@ hc <- hchart(
     allowPointDrilldown = TRUE,
   series = list_parse(drilldown_bw_df),
   activeDataLabelStyle = list(
-    color = "#070024",
+    color = rc_blue,
     textDecoration = "none",
     fontWeight = "normal"
   ),
   activeAxisLabelStyle = list(
-    color = "#070024",
+    color = rc_blue,
     textDecoration = "none",
     cursor = "pointer"
   ),
@@ -681,9 +686,9 @@ hc <- highchart() %>%
                 chart.yAxis[0].addPlotLine({
                   id: 'state-average-line',
                   value: %s,
-                  color: '#f91105',
+                  color: '%s' ,
                   width: 2,
-                  dashStyle: 'Dash',
+                  dashStyle: 'ShortDash',
                   label: {text: 'State Average: %s', align: 'left', rotation: 0, y: -8, x: 5},
                   zIndex: 5
                 });
@@ -741,7 +746,13 @@ hc <- highchart() %>%
             x: rightEdge - buttonWidth
           });
               }
-      ", jsonlite::toJSON(rate_order), jsonlite::toJSON(count_order), total_rate_bw, total_rate_bw))
+      ", 
+      jsonlite::toJSON(rate_order), # rate order
+      jsonlite::toJSON(count_order), # count order
+      total_rate_bw, # value
+      rc_blue, # color
+      total_rate_bw) # state average
+      )
     )
   ) %>%
   hc_plotOptions(
@@ -776,9 +787,9 @@ hc <- highchart() %>%
       list(
         id = 'state-average-line',
         value = total_rate_bw,
-        color = '#f91105',
+        color = rc_blue,
         width = 2,
-        dashStyle = 'Dash',
+        dashStyle = 'ShortDash',
         label = list(text = paste('State Average:', total_rate_bw), align = 'left', rotation=0, y=-8, x=5),
         zIndex = 5
       )
