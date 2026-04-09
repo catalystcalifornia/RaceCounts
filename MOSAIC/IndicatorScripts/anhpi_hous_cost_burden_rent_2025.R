@@ -40,6 +40,9 @@ table_code = 'b25070'          # Select relevant indicator table name
 
 # CREATE RAW DATA TABLES -------------------------------------------------------------------------
 # Only run this section if the raw data tables have not been created yet ##
+# safe_sum <- function(x) { # I didn't see safe_sum but I think you meant to create it
+#   if (all(is.na(x))) NA_real_ else sum(x, na.rm = TRUE) 
+# }
 # race <- "asian"
 # asian_list <- get_detailed_race(table_code, race, curr_yr)
 # # check race col names which are created in fx
@@ -47,14 +50,14 @@ table_code = 'b25070'          # Select relevant indicator table name
 # 
 # race <- "nhpi"
 # nhpi_list <- get_detailed_race(table_code, race, curr_yr)
-# # check race col names which are created in fx
-# #View(nhpi_list[[2]])
-
+# check race col names which are created in fx
+#View(nhpi_list[[2]])
+#
 ######  Transform the data for the raw data table  ###
-# This variable is broken up by geo, by tenure, by cost burden %, and by detailed race.
-# We need to collapse the subcategories so that we just have it broken down by geo + detailed race + cost burden under or over 30%.
+# # This variable is broken up by geo, by tenure, by cost burden %, and by detailed race.
+# # We need to collapse the subcategories so that we just have it broken down by geo + detailed race + cost burden under or over 30%.
 # 
-# Step 1: pivot to long format (it's too much data to work with wide format until we aggregate it down)
+# # # Step 1: pivot to long format (it's too much data to work with wide format until we aggregate it down)
 # nhpi_long <- nhpi_list$nhpi_df %>%
 #   pivot_longer(
 #     cols = -c(name, geoid, geolevel),
@@ -68,29 +71,29 @@ table_code = 'b25070'          # Select relevant indicator table name
 #     names_to = "variable",
 #     values_to = "value"
 #   )
-# 
-# # Step 2: separate estimate vs MOE and extract table number / detailed race number
+# # # 
+# # # # Step 2: separate estimate vs MOE and extract table number / detailed race number
 # nhpi_long <- nhpi_long %>%
 #   mutate(
 #     type      = if_else(str_ends(variable, "e"), "e", "m"),
-#     table_num = str_extract(variable, "(?<=b27001_)[a-z0-9]+(?=_)"),
+#     table_num = str_extract(variable, "(?<=b25070_)[a-z0-9]+(?=_)"),
 #     var_num   = str_extract(variable, "\\d{3}(?=[em]$)")
 #   )
 # 
 # asian_long <- asian_long %>%
 #   mutate(
 #     type      = if_else(str_ends(variable, "e"), "e", "m"),
-#     table_num = str_extract(variable, "(?<=b27001_)[a-z0-9]+(?=_)"),
+#     table_num = str_extract(variable, "(?<=b25070_)[a-z0-9]+(?=_)"),
 #     var_num   = str_extract(variable, "\\d{3}(?=[em]$)")
 #   )
-# 
-# # check that the extract worked
+# #
+# # # check that the extract worked
 # nhpi_long %>% filter(is.na(table_num)) %>% View()
 # nhpi_long %>% filter(is.na(var_num)) %>% View()
 # table(nhpi_long$var_num)
-# # it looks good so keep going
-# 
-# # Step 3: get totals (var_num == "001")
+# # # it looks good so keep going
+# # 
+# # # Step 3: get totals (var_num == "001")
 # nhpi_total <- nhpi_long %>%
 #   filter(var_num == "001") %>%
 #   mutate(var_base = substr(variable, 1, nchar(variable) - 5)) %>%
@@ -101,7 +104,7 @@ table_code = 'b25070'          # Select relevant indicator table name
 #   mutate(var_base = substr(variable, 1, nchar(variable) - 5)) %>%
 #   select(name, geoid, geolevel, var_base, type, value, var_num)
 # 
-# # Step 4: filter for cost burden variables
+#  # Step 4: filter for cost burden variables
 # nhpi_burden_vars <- as.data.frame(nhpi_list$metadata %>% filter(grepl("percent", new_label)))
 # nhpi_burden <- nhpi_long %>%
 #   filter(
@@ -162,9 +165,9 @@ table_code = 'b25070'          # Select relevant indicator table name
 #   pivot_longer(cols = -c(name, geoid, geolevel, var_base, burden, var_num),
 #                names_to = "type",
 #                values_to = "value",
-#   )  
+#   )
 # 
-# 
+#
 # # Step 6: combine and pivot to final wide format
 # nhpi_final <- bind_rows(nhpi_total, nhpi_burden_summary) %>%
 #   pivot_wider(names_from = c(var_base, var_num, burden, type),
@@ -180,27 +183,27 @@ table_code = 'b25070'          # Select relevant indicator table name
 # # Step 7: Build the metadata
 # prep_metadata <- function(meta) {
 #   #meta = metadata
-#   
+# 
 #   metadata_final <- meta %>%
 #     filter(grepl('_001', new_var))
-#   
+# 
 #   burden_metadata <- metadata_final %>%
 #     mutate(
 #       new_var = str_replace(new_var, "_001", "_002"),
 #       new_label = str_replace(new_label, "Total:", "Total: Cost Burdened")
 #     )
-#   
+# 
 #   not_burden_metadata <- metadata_final %>%
 #     mutate(
 #       new_var = str_replace(new_var, "_001", "_003"),
 #       new_label = str_replace(new_label, "Total:", "Total: Not Cost Burdened")
 #     )
-#   
+# 
 #   metadata_final <- bind_rows(metadata_final, burden_metadata, not_burden_metadata)
-#   
+# 
 #   new_rows <- data.frame(new_var = c("name", "geoid", "geolevel"), new_label = c("geography name", "fips code", "City, County, State"))
 #   metadata_final <- rbind(new_rows, metadata_final)
-#   
+# 
 #   return(metadata_final)
 # }
 # 
@@ -221,8 +224,8 @@ table_code = 'b25070'          # Select relevant indicator table name
 #   asian_df  = asian_final,
 #   metadata = asian_metadata_final
 # )
-# 
-# # Send table to postgres
+# # 
+# # # Send table to postgres
 # send_to_mosaic(table_code, asian_list, rc_schema)
 # send_to_mosaic(table_code, nhpi_list, rc_schema)
 

@@ -317,7 +317,7 @@ prep_acs <- function(x, table_code, cv_threshold, pop_threshold) {
     x$aian_raw_moe <- sqrt(x$aian_pop^2 * (x$aian_rate_moe/100)^2 + (x$aian_rate/100)^2 * x$aian_pop_moe^2)
   }
   
-
+  
   if (startsWith(table_code, "dp05")) {
     old_names <- colnames(x)[-(1:3)]
     new_names <- c("total_pop", "total_rate", "aian_pop", "pct_aian_pop", "pacisl_pop",
@@ -365,7 +365,7 @@ prep_acs <- function(x, table_code, cv_threshold, pop_threshold) {
     df$aian_rate_cv <- ifelse(df$aian_rate==0, NA, df$aian_rate_moe/1.645/df$aian_rate*100)
     
   }
-
+  
   ############## PRE-CALCULATION POPULATION AND/OR CV CHECKS ##############
   if (!is.na(pop_threshold) & is.na(cv_threshold)) {
     # if pop_threshold exists and cv_threshold is NA, do pop check but no CV check (doesn't apply to any at this time, may need to add _raw screens later.)
@@ -442,76 +442,76 @@ clean_geo_names <- function(x){
 
 ### Use this fx to get CDE Public Schools data ####
 get_cde_schools <- function(school_url, school_dwnld_url, school_layout_url, table_source) {
-                # Create rda_shared_data table metadata -----------------------------------
-                table_name <- paste0("cde_public_schools_",curr_yr)
-                table_comment_source <- paste0("Downloaded from ", school_dwnld_url,". File layout: ", school_layout_url)				
-                
-                df <- read_delim(file = school_url, delim = "\t", na = c("*", ""))
-                View(head(df))
-                
-                #### THIS SECTION NOT WORKING YET ####
-                # # download data to W drive if not already downloaded
-                # if (file.exists(paste0("W:\\Data\\Education\\Public Schools\\", curr_yr, "sb_ca20", str_sub(curr_yr, -2), "_all_ascii_v1.txt"))) {
-                #   # Print message if file exists
-                #   print(paste0("Schools file is already saved here: W:\\Data\\Education\\California Department of Education\\Public Schools\\", str_sub(curr_yr, 1,4), "-20", str_sub(curr_yr, -2), "\\"))
-                # } else {
-                #   # Download file and print message if file doesn't exist
-                #   write.table(df, paste0("W:\\Data\\Education\\California Department of Education\\Public Schools\\", str_sub(curr_yr, 1,4), "-20", str_sub(curr_yr, -2), "\\", "pubschls.txt"))
-                #   print(paste0("Schools file does not exist on W drive. Saving to W:\\Data\\Education\\Public Schools\\", str_sub(curr_yr, 1,4), "-20", str_sub(curr_yr, -2), " now."))
-                # }
-                
-                #add latitude and longitude numeric type columns, used later to add geom field
-                df$latitude <- as.numeric(df$Latitude, na.rm = TRUE)
-                df$longitude <- as.numeric(df$Longitude, na.rm = TRUE)
-                df <- df %>% select(-c(Latitude, Longitude))                # drop varchar lat/long columns
-                df <- df %>% relocate(latitude, .after = last_col())        # ensure lat/long columns are last 2 columns in dataframe
-                df <- df %>% relocate(longitude, .after = last_col())
-                
-                #format column names
-                names(df) <- str_replace_all(names(df), "[^[:alnum:]]", "") # remove non-alphanumeric characters
-                names(df) <- gsub(" ", "", names(df))                       # remove spaces
-                names(df) <- tolower(names(df))                             # make col names lowercase
-                Encoding(df$school) <- "ISO 8859-1"                   # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
-                Encoding(df$district) <- "ISO 8859-1"                 # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
-                print("Schools list downloaded, imported to R, and cleaned.")
-                
-                
-                #  WRITE TABLE TO POSTGRES DB
-                
-                # make character vector for field types in postgres table
-                charvect = rep('varchar', dim(df)[2]) 
-                
-                # add names to the character vector
-                names(charvect) <- colnames(df)
-                lat_pos <- length(charvect) - 1   # define position of lat column, lat column already moved to 2nd to last position above
-                long_pos <- length(charvect)      # define position of long column, long column already moved to last position above
-                
-                charvect[(lat_pos:long_pos)] <- "numeric"             # specify lat/long as numeric
-                charvect
-                
-                dbWriteTable(con, Id(table_schema, table_name), df, 
-                             overwrite = FALSE, row.names = FALSE,
-                             field.types = charvect)
-                print("Schools table exported to postgres.")
-                
-                # Add geom field to postgres table based on lat/long
-                geom <- paste0("alter table ", table_schema, ".", table_name, " add column geom Geometry('POINT', 3310);
+  # Create rda_shared_data table metadata -----------------------------------
+  table_name <- paste0("cde_public_schools_",curr_yr)
+  table_comment_source <- paste0("Downloaded from ", school_dwnld_url,". File layout: ", school_layout_url)				
+  
+  df <- read_delim(file = school_url, delim = "\t", na = c("*", ""))
+  View(head(df))
+  
+  #### THIS SECTION NOT WORKING YET ####
+  # # download data to W drive if not already downloaded
+  # if (file.exists(paste0("W:\\Data\\Education\\Public Schools\\", curr_yr, "sb_ca20", str_sub(curr_yr, -2), "_all_ascii_v1.txt"))) {
+  #   # Print message if file exists
+  #   print(paste0("Schools file is already saved here: W:\\Data\\Education\\California Department of Education\\Public Schools\\", str_sub(curr_yr, 1,4), "-20", str_sub(curr_yr, -2), "\\"))
+  # } else {
+  #   # Download file and print message if file doesn't exist
+  #   write.table(df, paste0("W:\\Data\\Education\\California Department of Education\\Public Schools\\", str_sub(curr_yr, 1,4), "-20", str_sub(curr_yr, -2), "\\", "pubschls.txt"))
+  #   print(paste0("Schools file does not exist on W drive. Saving to W:\\Data\\Education\\Public Schools\\", str_sub(curr_yr, 1,4), "-20", str_sub(curr_yr, -2), " now."))
+  # }
+  
+  #add latitude and longitude numeric type columns, used later to add geom field
+  df$latitude <- as.numeric(df$Latitude, na.rm = TRUE)
+  df$longitude <- as.numeric(df$Longitude, na.rm = TRUE)
+  df <- df %>% select(-c(Latitude, Longitude))                # drop varchar lat/long columns
+  df <- df %>% relocate(latitude, .after = last_col())        # ensure lat/long columns are last 2 columns in dataframe
+  df <- df %>% relocate(longitude, .after = last_col())
+  
+  #format column names
+  names(df) <- str_replace_all(names(df), "[^[:alnum:]]", "") # remove non-alphanumeric characters
+  names(df) <- gsub(" ", "", names(df))                       # remove spaces
+  names(df) <- tolower(names(df))                             # make col names lowercase
+  Encoding(df$school) <- "ISO 8859-1"                   # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+  Encoding(df$district) <- "ISO 8859-1"                 # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+  print("Schools list downloaded, imported to R, and cleaned.")
+  
+  
+  #  WRITE TABLE TO POSTGRES DB
+  
+  # make character vector for field types in postgres table
+  charvect = rep('varchar', dim(df)[2]) 
+  
+  # add names to the character vector
+  names(charvect) <- colnames(df)
+  lat_pos <- length(charvect) - 1   # define position of lat column, lat column already moved to 2nd to last position above
+  long_pos <- length(charvect)      # define position of long column, long column already moved to last position above
+  
+  charvect[(lat_pos:long_pos)] <- "numeric"             # specify lat/long as numeric
+  charvect
+  
+  dbWriteTable(con, Id(table_schema, table_name), df, 
+               overwrite = FALSE, row.names = FALSE,
+               field.types = charvect)
+  print("Schools table exported to postgres.")
+  
+  # Add geom field to postgres table based on lat/long
+  geom <- paste0("alter table ", table_schema, ".", table_name, " add column geom Geometry('POINT', 3310);
                             update ", table_schema, ".", table_name, " set geom = st_setsrid(st_point(longitude, latitude), 3310);")
-                dbBegin(con)
-                dbExecute(con, geom)
-                print("Geom column added to schools postgres table.")
-                
-                
-                # write comment to table, and the first three fields that won't change.
-                table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
-                
-                # send table comment to database
-                dbExecute(con, table_comment)      			
-                print("Schools table comment exported to postgres.")
-                
-                dbCommit(con)
-                
-                return(df)
+  dbBegin(con)
+  dbExecute(con, geom)
+  print("Geom column added to schools postgres table.")
+  
+  
+  # write comment to table, and the first three fields that won't change.
+  table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
+  
+  # send table comment to database
+  dbExecute(con, table_comment)      			
+  print("Schools table comment exported to postgres.")
+  
+  dbCommit(con)
+  
+  return(df)
 }
 
 ### Use this fx to get CDE Public Schools metadata ####
@@ -580,7 +580,7 @@ get_cde_data <- function(filepath, fieldtype, table_schema, table_name, table_co
   # read in data
   df <- read_delim(file = filepath, delim = "\t", na = c("*", ""))#, #name_repair=make.names ),
   #col_types = cols('District Code' = col_character()))
-                
+  
   #format column names
   names(df) <- str_replace_all(names(df), "[^[:alnum:]]", "") # remove non-alphanumeric characters
   names(df) <- gsub(" ", "", names(df)) # remove spaces
@@ -588,7 +588,7 @@ get_cde_data <- function(filepath, fieldtype, table_schema, table_name, table_co
   Encoding(df$schoolname) <- "ISO 8859-1"  # added this piece in 2023 script bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
   Encoding(df$districtname) <- "ISO 8859-1"  # added this piece in 2023 script bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
   df$districtcode<-as.character(df$districtcode)
-                
+  
   #create cdscode field
   df$cdscode <- case_when(df$aggregatelevel == "T"~paste0("00000000000000"),
                           df$aggregatelevel == "D"~paste0(df$countycode,df$districtcode,"0000000"),
@@ -596,25 +596,25 @@ get_cde_data <- function(filepath, fieldtype, table_schema, table_name, table_co
                           .default=paste0(df$countycode,"000000000000"))
   
   df <- df %>% relocate(cdscode) # make cds code the first col
-                
+  
   #  WRITE TABLE TO POSTGRES DB
   # make character vector for field types in postgres table
   charvect = rep('numeric', dim(df)[2]) 
   charvect[fieldtype] <- "varchar" # specify which cols are varchar, the rest will be numeric
-                
+  
   # add names to the character vector
   names(charvect) <- colnames(df)
-                
+  
   dbWriteTable(con, Id(schema=table_schema, table=table_name), df,
                overwrite = FALSE, row.names = FALSE,
                field.types = charvect)
-                
+  
   # write comment to table, and the first three fields that won't change.
   table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
-                
+  
   # send table comment to database
   dbSendQuery(conn = con, table_comment)      			
-
+  
   return(df)
 }
 
@@ -684,11 +684,11 @@ get_cde_metadata <- function(url, html_element, table_schema, table_name, exclud
                                colname_charvar[[i]], " IS '", colcomments_charvar[[i]], "';" )
       dbExecute(con, column_comment)
     }
-  
+    
     # Commit the transaction if everything succeeded
     dbCommit(con)
     print("Columns comments added to table!")
-  
+    
   }, error = function(e) {
     # If there's an error, roll back the transaction
     dbRollback(con)
@@ -713,7 +713,7 @@ get_caaspp_data <- function(url, zipfile, file, url2, zipfile2, file2, url3, dwn
     html_nodes(xpath = '//*[@id="MainContent_divResearchFileLayout2024"]/div/table' ) %>%  # NOTE: this line will need to be updated each year
     html_table(fill = T) %>% as.data.frame()
   
-   #Read in and Prep Layout File     
+  #Read in and Prep Layout File     
   names(df_layout)[length(names(df_layout))] <- "variable" 
   df_layout <- df_layout %>% select(c("variable","Length")) # remove unneeded columns
   print("Layout file prepped imported to R.")
@@ -727,58 +727,58 @@ get_caaspp_data <- function(url, zipfile, file, url2, zipfile2, file2, url3, dwn
   print("Unzipped data file ready for prep.")
   
   #Read in Data File
-   all_student_groups <- read_fwf(file, na = c("*", ""),
-                                  fwf_widths(c(df_layout$Length),  				      # assign column breaks using df_layout
-                                             col_names = c(df_layout$variable))) # assign colnames using df_layout
+  all_student_groups <- read_fwf(file, na = c("*", ""),
+                                 fwf_widths(c(df_layout$Length),  				      # assign column breaks using df_layout
+                                            col_names = c(df_layout$variable))) # assign colnames using df_layout
   
-    #Prep Data File
-   colnames(all_student_groups) <- gsub(" ", "_", colnames(all_student_groups))   # replace spaces with "_" in colnames
-   colnames(all_student_groups) <- tolower(colnames(all_student_groups))			     # make column names lower case
-   all_student_groups <- all_student_groups %>% select(-c(filler))				         # drop 'filler' column
-   all_student_groups$cdscode <- paste0(all_student_groups$county_code, all_student_groups$district_code, all_student_groups$school_code) # create cdscode field
-   Encoding(all_student_groups$school_name) <- "ISO 8859-1"    # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
-   Encoding(all_student_groups$district_name) <- "ISO 8859-1"  # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
-   print("Prepped CAASPP data ready.")
+  #Prep Data File
+  colnames(all_student_groups) <- gsub(" ", "_", colnames(all_student_groups))   # replace spaces with "_" in colnames
+  colnames(all_student_groups) <- tolower(colnames(all_student_groups))			     # make column names lower case
+  all_student_groups <- all_student_groups %>% select(-c(filler))				         # drop 'filler' column
+  all_student_groups$cdscode <- paste0(all_student_groups$county_code, all_student_groups$district_code, all_student_groups$school_code) # create cdscode field
+  Encoding(all_student_groups$school_name) <- "ISO 8859-1"    # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+  Encoding(all_student_groups$district_name) <- "ISO 8859-1"  # added this piece bc Spanish accents weren't appearing properly bc CDE native encoding is not UTF-8
+  print("Prepped CAASPP data ready.")
   
-   # Entities File
-   if(!file.exists(file2)) { download.file(url=url2, destfile=zipfile2) } # download file ONLY if it is not already in exdir
-   if(!file.exists(file2)) { unzip(zipfile2, exdir = exdir) }             # unzip file ONLY if it is not already in exdir
-   print("Entities file downloaded and unzipped.")
+  # Entities File
+  if(!file.exists(file2)) { download.file(url=url2, destfile=zipfile2) } # download file ONLY if it is not already in exdir
+  if(!file.exists(file2)) { unzip(zipfile2, exdir = exdir) }             # unzip file ONLY if it is not already in exdir
+  print("Entities file downloaded and unzipped.")
   
-    #Read in Entities File
-   entities <- read_fwf(file2, fwf_widths(c(14,2,4,4,25), col_names = c("cdscode", "type_id", "filler", "test_year", "geoname")))
-   entities <- entities %>% select(-c(filler))   # drop 'filler' column
-   print("Prepped Entities file ready.")
+  #Read in Entities File
+  entities <- read_fwf(file2, fwf_widths(c(14,2,4,4,25), col_names = c("cdscode", "type_id", "filler", "test_year", "geoname")))
+  entities <- entities %>% select(-c(filler))   # drop 'filler' column
+  print("Prepped Entities file ready.")
   
-   df <-left_join(x=all_student_groups,y=entities,by= c("cdscode", "test_year", "type_id")) %>%  # join data and entities tables
-     select(cdscode, everything())
-   df <- df %>% dplyr::relocate(geoname, .after = cdscode) %>% select(-c(starts_with("composite"), contains("_count_"), ends_with("_total"), overall_total)) # drop unneeded cols
-   print("CAASPP data and Entities file joined.")
+  df <-left_join(x=all_student_groups,y=entities,by= c("cdscode", "test_year", "type_id")) %>%  # join data and entities tables
+    select(cdscode, everything())
+  df <- df %>% dplyr::relocate(geoname, .after = cdscode) %>% select(-c(starts_with("composite"), contains("_count_"), ends_with("_total"), overall_total)) # drop unneeded cols
+  print("CAASPP data and Entities file joined.")
   
-   # WRITE TABLE TO POSTGRES DB
+  # WRITE TABLE TO POSTGRES DB
   
-   #make character vector for field types in postgres table
-   charvect = rep('numeric', dim(df)[2])
-   charvect[c(1:8,10:13)] <- "varchar" # specify which cols are characters (cdscode, geoname, district name, school name, etc)
+  #make character vector for field types in postgres table
+  charvect = rep('numeric', dim(df)[2])
+  charvect[c(1:8,10:13)] <- "varchar" # specify which cols are characters (cdscode, geoname, district name, school name, etc)
   
-    #add names to the character vector
-   names(charvect) <- colnames(df)
-   print(charvect)
-   print("Check that charvect has correct column types.")
+  #add names to the character vector
+  names(charvect) <- colnames(df)
+  print(charvect)
+  print("Check that charvect has correct column types.")
   
-   dbWriteTable(con, c(table_schema, table_name), df,
-                overwrite = FALSE, row.names = FALSE,
-                field.types = charvect)
-   print("Table sent to postgres and imported to R.")
+  dbWriteTable(con, c(table_schema, table_name), df,
+               overwrite = FALSE, row.names = FALSE,
+               field.types = charvect)
+  print("Table sent to postgres and imported to R.")
   
   #write comment to table.
-   table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ". QA doc: ", qa_filepath,"';")
+  table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ". QA doc: ", qa_filepath,"';")
   
   #send table comment to database
-   dbSendQuery(conn = con, table_comment)
-   print("Table comment sent to postgres.")
-
-   return(df)
+  dbSendQuery(conn = con, table_comment)
+  print("Table comment sent to postgres.")
+  
+  return(df)
 }
 
 ### Use this fx to get CAASPP (ELA/Math testing) metadata ####
@@ -867,7 +867,7 @@ get_ursus_data <- function(filepath, fieldtype, table_schema, table_name, table_
   if('received_force_type' %in% names(df) & !'received_force' %in% names(df)) df <- df %>% 
     mutate(received_force = ifelse(received_force_type == "NONE" |
                                      received_force_type == "UNKNOWN", "FALSE", "TRUE"))
-                                                                                                    
+  
   
   ##  WRITE TABLE TO POSTGRES DB ##               NOTE: con2 must be rda_shared_data for function to work.
   # make character vector for field types in postgres table
@@ -886,7 +886,3 @@ get_ursus_data <- function(filepath, fieldtype, table_schema, table_name, table_
   
   return(df)
 }
-
-
-
-

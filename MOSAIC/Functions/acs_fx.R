@@ -281,7 +281,7 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   
   # renaming rules will change depending on type of census table
   if (startsWith(table_code, "b") && startsWith(table_name, "nhpi")) {
-      
+    
     table_051_code = paste0(table_code, "_051_")
     table_052_code = paste0(table_code, "_052_")
     table_053_code = paste0(table_code, "_053_")
@@ -416,7 +416,7 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   } else {
     stop('The column renaming function did not work for the table you have submitted. Please check your table.')
   }
-
+  
   if(endsWith(table_code, "b25014")) {
     # Overcrowded Housing #
     ## Occupants per Room
@@ -588,35 +588,35 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
              rate_moe = moe_prop(raw, pop, raw_moe, pop_moe)*100)
     
   }
-
+  
   if(endsWith(table_code, "b27001")) {  # LF edited Insurance
-     # pivot longer
-      x_long <- x %>%
-        pivot_longer(
-          cols = -c(geoid, name, geolevel),
-          names_to = c("ethnic_group", "line", "stat"),
-          names_pattern = "^(.*?)(001|002)(e|m)$",
-          values_to = "value"
-        ) %>%
-        mutate(
-          measure = case_when(
-            line == "001" & stat == "e" ~ "pop",
-            line == "001" & stat == "m" ~ "pop_moe",
-            line == "002" & stat == "e" ~ "raw",
-            line == "002" & stat == "m" ~ "raw_moe"
-          )
-        ) %>%
-        select(-line, -stat) %>%
-        pivot_wider(
-          names_from = measure,
-          values_from = value
+    # pivot longer
+    x_long <- x %>%
+      pivot_longer(
+        cols = -c(geoid, name, geolevel),
+        names_to = c("ethnic_group", "line", "stat"),
+        names_pattern = "^(.*?)(001|002)(e|m)$",
+        values_to = "value"
+      ) %>%
+      mutate(
+        measure = case_when(
+          line == "001" & stat == "e" ~ "pop",
+          line == "001" & stat == "m" ~ "pop_moe",
+          line == "002" & stat == "e" ~ "raw",
+          line == "002" & stat == "m" ~ "raw_moe"
         )
-      
-      # calc raced rates
-      x_long <- x_long %>%
-        mutate(rate = ifelse(pop <= 0, NA, raw / pop * 100),
-               rate_moe = moe_prop(raw, pop, raw_moe, pop_moe)*100)
-      
+      ) %>%
+      select(-line, -stat) %>%
+      pivot_wider(
+        names_from = measure,
+        values_from = value
+      )
+    
+    # calc raced rates
+    x_long <- x_long %>%
+      mutate(rate = ifelse(pop <= 0, NA, raw / pop * 100),
+             rate_moe = moe_prop(raw, pop, raw_moe, pop_moe)*100)
+    
   }
   
   if(endsWith(table_code, "b25070")) {  # LF edited Rent Housing Burden
