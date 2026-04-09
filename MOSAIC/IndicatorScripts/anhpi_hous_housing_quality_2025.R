@@ -66,11 +66,7 @@ county_crosswalk <- crosswalk %>%
 
 
 #### Step 3: GET PUMS DATA ######
-# Data Dictionary: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
-# Load the housing PUMS data, including wts bc this indicator is based on housing units
-start_yr <- curr_yr - 4  # autogenerate start yr of 5yr estimates
-root <- paste0("W:/Data/Demographics/PUMS/CA_", start_yr, "_", curr_yr, "/")
-
+# Data Dictionary: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2024.pdf
 
 # Load ONLY the PUMS columns needed for this indicator
 # Load the people PUMS data, excluding wts bc this indicator is based on housing units
@@ -94,7 +90,7 @@ ppl <- left_join(ppl, housing, # left join  to the ppl column. Removed a few col
 ppl$state_geoid <- "06"
 ppl$puma_id <- paste0(ppl$state_geoid, ppl$PUMA)
 
-# create list of replicate weights: WGTP for housing file, PWGTP for person file
+# create list of replicate weights defined at top of script: WGTP for housing file, PWGTP for person file
 repwlist = rep(paste0(weight,1:80))
 
 # save copy of original data
@@ -173,7 +169,7 @@ table(fijian = people$fijian, nhpi_race = people$RACNHPI)    # check how many fi
 # nhpi_race
 # fijian      0      1
 # 0 656916   3720
-# 1     36    277                                            #88.5%with Fijian ancestry are correctly marked as NHPI race. 36 people did not mark it.
+# 1     36    277                                            #88.5% with Fijian ancestry are correctly marked as NHPI race. 36 people did not mark it.
 table(fijian = people$fijian, nhpi_anc = people$nhpi)        # check that all fijian ancestry rows are also marked nhpi ancestry
 # nhpi_anc
 # fijian      0      1
@@ -236,8 +232,8 @@ screen_unw_count <- full_join(
   right_join(aapi_incl, by = "anc_label") %>% 
   arrange(tot_count) %>%
   mutate(unw_flag = ifelse(tot_count < 100, 1, 0))
-message("there are 7 groups who don't meet ERI's screening threshold.")
-screen_unw_count %>% filter(unw_flag == 1)
+message("there are 8 groups who don't meet ERI's screening threshold.")
+View(screen_unw_count %>% filter(unw_flag == 1))
 
 rm(aapi_filtered)
 
@@ -247,18 +243,30 @@ screen_rate_cv_pop <- table_state %>%
   mutate(rate_cv_flag = ifelse(rate_cv > cv_threshold, 1, 0), 
          pop_flag = ifelse(pop < pop_threshold, 1, 0)) %>%  # screen on pop bc these are indicator data
   arrange(desc(rate_cv), desc(num))
-message("only 1 suppressed estimate is for 'low quality':")
-screen_rate_cv_pop %>% filter(rate_cv_flag == 1 | pop_flag == 1)
+nrow(screen_rate_cv_pop %>% filter(rate_cv_flag == 1 | pop_flag == 1))
+message("22 suppressed estimates for 'low quality':")
+View(screen_rate_cv_pop %>% filter(rate_cv_flag == 1 | pop_flag == 1))
 
-# The 1 'livable' estimate suppressed by our method also gets suppressed by ERI's method (Bhutanese).
-
+# All of the 'low quality' estimates suppressed by our method also get suppressed by ERI's method.
+## Note there are some on the ERI list that do not get suppressed in our method bc they have no 'low quality' estimates (Bhutanese, Tibetan).
 
 #### Step 7: Screen data (incl. recoding suppressed subgroups & recalcs) ####
-# STATE-LEVEL ONLY: Recode Bhutanese as other_asian. If we present county data, we could recode any suppressed grps for that county too.
+# STATE-LEVEL ONLY: Recode suppressed asian subgroups as other_asian and same for nhpi. If we present county data, we could recode any suppressed grps for that county too.
+
+recode_asian <- screen_rate_cv_pop %>%
+  filter(housing_quality == 'low_quality'& (rate_cv_flag == 1 | pop_flag == 1)) %>%
+  select(group, subgroup) %>%
+  filter(group == 'asian')
+
+recode_nhpi <- screen_rate_cv_pop %>%
+  filter(housing_quality == 'low_quality'& (rate_cv_flag == 1 | pop_flag == 1)) %>%
+  select(group, subgroup) %>%
+  filter(group == 'nhpi')
+
 oth_asian_srvy <- ppl_state %>%
   mutate(subgroup = case_when(
-    bhutanese == 1 | other_asian == 1 ~ 'other_asian',  # recode bhutanese as oth_asian
-    TRUE ~ 'total')) %>%                                # recode non-bhutanese as total
+    if_any(all_of(recode_asian$subgroup), ~ . == 1) ~ "other_asian",
+    TRUE ~ "total")) %>%
   as_survey_rep(
     variables        = c(geoid, geoname, asian, subgroup, !!sym(indicator)),
     weights          = !!sym(weight),
@@ -299,8 +307,65 @@ num_df_oth_asian <- oth_asian_srvy %>%
     count_cv  = ifelse(num > 0, (num_se / num) * 100, NA_real_)
   )
 
+
+oth_nhpi_srvy <- ppl_state %>%
+  mutate(subgroup = case_when(
+    if_any(all_of(recode_nhpi$subgroup), ~ . == 1) ~ "other_pacific",
+    TRUE ~ "total")) %>%
+  as_survey_rep(
+    variables        = c(geoid, geoname, nhpi, subgroup, !!sym(indicator)),
+    weights          = !!sym(weight),
+    repweights       = all_of(repwlist),
+    combined_weights = TRUE,
+    mse              = TRUE,
+    type             = "other",
+    scale            = 4/80,
+    rscale           = rep(1, 80)
+  ) %>%
+  filter(!is.na(!!sym(indicator))) %>%
+  filter(subgroup == 'other_pacific')
+
+# Denominators (nhpi group-level stats) ────
+den_oth_nhpi <- oth_nhpi_srvy %>%
+  group_by(geoid, geoname) %>%
+  summarise(pop = survey_total(na.rm = TRUE), .groups = "drop")
+
+
+# Numerator
+num_df_oth_nhpi <- oth_nhpi_srvy %>%
+  group_by(geoid, geoname, !!sym(indicator)) %>%
+  summarise(
+    num  = survey_total(na.rm = TRUE),
+    rate  = survey_mean(na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  
+  # Join + metrics
+  left_join(den_oth_nhpi, by = c("geoid", "geoname")) %>%
+  mutate(
+    subgroup  = 'other_pacific',
+    group     = 'nhpi',
+    rate_moe  = rate_se * 1.645 * 100,
+    rate_cv   = ifelse(rate > 0, (rate_se / rate) * 100, NA_real_),
+    rate      = rate * 100,
+    count_moe = num_se * 1.645,
+    count_cv  = ifelse(num > 0, (num_se / num) * 100, NA_real_)
+  )
+
+
 # combine re-calc'd other_asian and pop_table_state, drop old 'other_asian' row
-table_state <- rbind(num_df_oth_asian, table_state %>% filter(subgroup != 'other_asian'))
+table_state <- rbind(num_df_oth_asian, num_df_oth_nhpi, table_state %>% filter(!subgroup %in% c('other_asian','other_pacific')))
+
+# recheck state screening
+screen_rate_cv_pop2 <- table_state %>%
+  filter(.[[indicator]] == indicator_val) %>%
+  mutate(rate_cv_flag = ifelse(rate_cv > cv_threshold, 1, 0), 
+         pop_flag = ifelse(pop < pop_threshold, 1, 0)) %>%  # screen on pop bc these are indicator data
+  arrange(desc(rate_cv), desc(num))
+nrow(screen_rate_cv_pop2 %>% filter(rate_cv_flag == 1 | pop_flag == 1))
+message("20 suppressed estimates for 'low quality'. other_asian and other_pacific are now NOT suppressed.")
+View(screen_rate_cv_pop2 %>% filter(rate_cv_flag == 1 | pop_flag == 1))
+
 
 table_cs <- rbind(table_state, table_county) %>%
   rename('indicator' = indicator) %>%      # update to generic colname
@@ -441,8 +506,6 @@ source <- paste0("ACS PUMS (", start_yr, "-", curr_yr, ")")
 
 #send tables to postgres
 to_postgres(county_table,state_table,"mosaic")
-
-
 
 
 # #close connection
