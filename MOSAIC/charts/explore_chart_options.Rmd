@@ -84,8 +84,9 @@ low_bw_rc_reshape <- low_birthweight_rc %>%
   select(group, subgroup, count, rate) 
 
 low_birthweight <- rbind(low_bw_asian_reshape, low_bw_rc_reshape) %>%
-  # round rates
-  mutate(rate=round(rate, 1))
+  mutate(
+    # round rates
+    rate=round(rate, 1)) 
 
 # define rc colors we want to use
 rc_blue <-  "#070024" # primary
@@ -105,12 +106,24 @@ base_colors <- c(
 
 custom_theme <- hc_theme(
   chart = list(
-    style = list(fontFamily = "Roboto", color = rc_blue)),
-  title = list(style = list(color = rc_blue)),
-  subtitle = list(style = list(color = rc_blue)),
+    style = list(
+      fontFamily = "Roboto", 
+      color = rc_blue,
+      fontSize="1em")),
+  title = list(
+    style = list(
+      color = rc_blue,
+      fontSize ="1.2em",
+      fontWeight="bold")),
+  subtitle = list(
+    style = list(
+      color = rc_blue)),
   legend = list(itemStyle = list(color = rc_blue)),
   xAxis = list(
-    labels = list(style = list(color = rc_blue))),
+    labels = list(
+      style = list(
+        color = rc_blue,
+        fontSize ="0.8em"))),
   yAxis = list(
     lineWidth = 1,      # Keep the main baseline
     tickWidth = 0,       # Remove the small tick marks
@@ -139,7 +152,7 @@ low_birthweight_chart1 <- low_birthweight %>%
   # remove nphi for now
   filter(group!="nhpi") 
   # mutate(subgroup = ifelse(group=="nhpi", sprintf("%s (nhpi)", subgroup), subgroup)) %>%
-  # mutate(group= ifelse(group=="nhpi", "asian", group)) 
+  # mutate(group= ifelse(group=="nhpi", "ASIAN", group)) 
   
 
 low_birthweight <- low_birthweight %>%
@@ -154,7 +167,7 @@ low_birthweight <- low_birthweight %>%
   ) %>%
   filter(group!="total"&subgroup!="total") %>%
   # mutate(subgroup = ifelse(group=="nhpi", sprintf("%s (nhpi)", subgroup), subgroup)) %>%
-  # mutate(group= ifelse(group=="nhpi", "asian", group)) %>%
+  # mutate(group= ifelse(group=="nhpi", "ASIAN", group)) %>%
   mutate(rate=round(rate, 2))
 
 # use indicator best direction to arrange "shared struggle" groups at top
@@ -171,28 +184,36 @@ if(low_birthweight_asbest=="min") {
     arrange(desc(rate))
 }
 
+# make groups all caps per RC style
+low_birthweight$group <- toupper(low_birthweight$group)
+low_birthweight_chart1$group <- toupper(low_birthweight_chart1$group)
+low_birthweight$subgroup <- toupper(low_birthweight$subgroup)
+low_birthweight_chart1$subgroup <- toupper(low_birthweight_chart1$subgroup)
+
+
+
 ```
 
 ```{r}
 
 base_bw_df <- low_birthweight_chart1 %>%
-  filter(subgroup=="total") %>%
+  filter(subgroup=="TOTAL") %>%
   select(-subgroup) %>%
   mutate(color = case_when(
-    group == "asian" ~ base_colors[["asian"]],
-    group == "total" ~ base_colors[["total"]],
+    group == "ASIAN" ~ base_colors[["asian"]],
+    group == "TOTAL" ~ base_colors[["total"]],
     TRUE ~ base_colors[["default"]]
   ))
 drilldown_bw_df <- low_birthweight_chart1 %>%
-  filter(subgroup!="total") %>%
+  filter(subgroup!="TOTAL") %>%
   group_nest(group) %>%
   mutate(
     id = group,
     type = "bar",
     # Assign color based on group
     color = case_when(
-      group == "asian" ~ base_colors[["asian subgroups"]],
-      group == "total" ~ base_colors[["total"]],
+      group == "ASIAN" ~ base_colors[["asian subgroups"]],
+      group == "TOTAL" ~ base_colors[["total"]],
       .default = base_colors[["default"]]
     ),
     # Store both rate-sorted and count-sorted versions
@@ -205,7 +226,7 @@ drilldown_bw_df <- low_birthweight_chart1 %>%
     }),
     data_count_sorted = map2(data, group, function(df, grp) {
       low_birthweight_chart1 %>%
-        filter(group == grp, subgroup != "total") %>%
+        filter(group == grp, subgroup != "TOTAL") %>%
         arrange(desc(count)) %>%
         mutate(name = subgroup, y = count, y2 = rate) %>%
         select(name, y, y2) %>%
@@ -215,7 +236,7 @@ drilldown_bw_df <- low_birthweight_chart1 %>%
   select(id, type, color, data, data_count_sorted)
 
 total_rate_bw <- base_bw_df %>%
-  filter(group=="total") %>%
+  filter(group=="TOTAL") %>%
   pull(rate) %>%
   round(2)
 
@@ -245,7 +266,7 @@ drilldown_bw_js <- paste0("function(e) {
     width: 2,
     dashStyle: 'ShortDash',
     zIndex: 5,
-    label: { text: 'State Average: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 5 }
+    label: { text: 'STATE AVERAGE: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 5 }
   });
   
   // Reset state - always start with rates
@@ -321,7 +342,7 @@ drilldown_bw_js <- paste0("function(e) {
             width: 2,
             dashStyle: 'ShortDash',
             zIndex: 5,
-            label: { text: 'State Average: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 5 }
+            label: { text: 'STATE AVERAGE: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 5 }
           });
           
           // Update all drilled-down series to show rates
@@ -365,8 +386,6 @@ drilldown_bw_js <- paste0("function(e) {
       }
     )
     .css({
-      fontWeight: 'bold',
-      fontSize: '12px',
       color: '", rc_white, "'
     })
     .attr({ zIndex: 7 })  // Add this line to put on top of gridlines
@@ -488,9 +507,7 @@ hc <- hchart(
   hc_xAxis(
     title=list(text=NULL),
     labels = list(
-      enabled = TRUE,
-      style = list(
-        fontSize = "11px"))) %>%
+      enabled = TRUE)) %>%
   hc_yAxis(title = list(text = "Rate"),
            labels=list(enabled=FALSE)) %>%# remove labels from rate axis) 
   hc_legend(enabled=FALSE) %>%
@@ -568,9 +585,9 @@ series_data_rates <- low_birthweight %>%
     })
     
     # Assign color based on group
-    series_color <- if(df$group[1] == "asian subgroups") {
+    series_color <- if(df$group[1] == "ASIAN SUBGROUPS") {
       base_colors[["asian subgroups"]]
-    } else if(df$group[1] == "asian average") {
+    } else if(df$group[1] == "ASIAN AVERAGE") {
       base_colors[["asian average"]]
     } else {
       base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
@@ -599,9 +616,9 @@ series_data_counts <- low_birthweight %>%
     })
     
     # Assign same color based on group
-    series_color <- if(df$group[1] == "asian subgroups") {
+    series_color <- if(df$group[1] == "ASIAN SUBGROUPS") {
       base_colors[["asian subgroups"]]
-    } else if(df$group[1] == "asian average") {
+    } else if(df$group[1] == "ASIAN AVERAGE") {
       base_colors[["asian"]]
     } else {
       base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
@@ -694,7 +711,7 @@ hc <- highchart() %>%
                   color: '%s' ,
                   width: 2,
                   dashStyle: 'ShortDash',
-                  label: {text: 'State Average: %s', align: 'left', rotation: 0, y: -8, x: 5},
+                  label: {text: 'STATE AVERAGE: %s', align: 'left', rotation: 0, y: -8, x: 5},
                   zIndex: 5
                 });
                 chart.update({
@@ -730,8 +747,6 @@ hc <- highchart() %>%
             }
           )
           .css({
-            fontWeight: 'bold',
-            fontSize: '12px',
             color: '", rc_white, "'
           })
           .attr({ zIndex: 7 })  // Add this line to put on top of gridlines
@@ -782,8 +797,7 @@ hc <- highchart() %>%
   hc_xAxis(
     categories = rate_order,
     labels = list(
-      enabled = TRUE,
-      style = list(fontSize = "11px")
+      enabled = TRUE
     ),
     gridLineWidth = 1,
     gridLineColor = '#e6e6e6') %>%
@@ -799,7 +813,7 @@ hc <- highchart() %>%
         color = rc_blue,
         width = 2,
         dashStyle = 'ShortDash',
-        label = list(text = paste('State Average:', total_rate_bw), align = 'left', rotation=0, y=-8, x=5),
+        label = list(text = paste('STATE AVERAGE:', total_rate_bw), align = 'left', rotation=0, y=-8, x=5),
         zIndex = 5
       )
     )
