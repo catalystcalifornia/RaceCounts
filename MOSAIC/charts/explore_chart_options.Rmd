@@ -202,11 +202,19 @@ custom_theme <- hc_theme(
       style=list(
         color = rc_black,
         fontSize="0.8em",
-        fontWeight="bold")))
+        fontWeight="bold"))),
+  plotOptions = list(
+    bar = list(
+      dataLabels = list(
+        enabled=TRUE,
+        allowOverlap=TRUE,
+        crop=FALSE,
+        overflow="justify",
+        style = list(
+          color = rc_black,
+          textOutline = "1px contrast",
+          fontWeight = "bold"))))
 )
-
-
-
 
 ```
 
@@ -709,37 +717,36 @@ hc <- highchart() %>%
               // Update button text, y-axis, x-axis categories, and data label formatter
               if (showingRates) {
                 chart.customToggleButton.attr({text: 'Show Rates'});
-                // Use this instead of .update()
                 chart.yAxis[0].setTitle({ text: 'COUNT' }, false); 
-
                 chart.xAxis[0].update({categories: countOrder}, false);
                 chart.yAxis[0].removePlotLine('state-average-line');
+                
                 chart.update({
                   plotOptions: {
                     bar: {
                       dataLabels: {
                         formatter: function() {
-                          return this.y.toLocaleString('en-US');
+                          return Highcharts.numberFormat(this.y, 0, '.', ',');
                         }
                       }
                     }
                   }
-                }, false);
+                }, true);
+                
               } else {
                 chart.customToggleButton.attr({text: 'Show Counts'});
-                // Use this instead of .update()
                 chart.yAxis[0].setTitle({ text: 'RATE' }, false); 
-
                 chart.xAxis[0].update({categories: rateOrder}, false);
                 chart.yAxis[0].addPlotLine({
                   id: 'state-average-line',
                   value: %s,
-                  color: '%s' ,
+                  color: '%s',
                   width: 2,
                   dashStyle: 'ShortDash',
                   label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: %s', align: 'left', rotation: 0, y: -8, x: 5},
                   zIndex: 5
                 });
+                
                 chart.update({
                   plotOptions: {
                     bar: {
@@ -750,10 +757,10 @@ hc <- highchart() %>%
                       }
                     }
                   }
-                }, false);
-              }
+                }, true);
+              } 
               
-              chart.redraw();
+              // Remove the chart.redraw() call since we're now using redraw: true in update
             },
             {
               fill: '", rc_blue, "' ,
@@ -811,8 +818,7 @@ hc <- highchart() %>%
         enabled = TRUE,
         align = "right",
         inside = FALSE,
-        style = list(color = "black"),
-        formatter = JS("function() { return this.y; }")),
+        style = list(color = "black")),
       pointWidth = 20,
       grouping = FALSE,
       pointPadding = 0,
@@ -856,12 +862,10 @@ hc <- highchart() %>%
   hc_tooltip(enabled = FALSE) %>%
   hc_title(
     text = "Low Birthweight by Race/Ethnicity",
-    align = "center" 
-  ) %>% 
+    align = "center") %>% 
   hc_subtitle(
     text = "Toggle groups on/off by clicking the legend labels below",
-    align = "center"
-  ) %>%
+    align = "center") %>%
   hc_add_theme(custom_theme)
 
 # Add RATES series (visible by default)
@@ -870,7 +874,10 @@ for (series in series_data_rates) {
     name = series$name,
     data = series$data,
     id = series$id,
-    color = series$color  # Use pre-assigned color
+    color = series$color,  # Use pre-assigned color
+    dataLabels = list(
+      formatter = JS("function() { return this.y; }")
+    )
   )
 }
 
@@ -882,7 +889,10 @@ for (series in series_data_counts) {
     id = series$id,
     visible = FALSE,
     showInLegend = FALSE,
-    color = series$color  # Use pre-assigned color
+    color = series$color,  # Use pre-assigned color
+    dataLabels = list(
+      formatter = JS("function() { return this.y.toLocaleString('en-US'); }")
+    )
   )
 }
 
