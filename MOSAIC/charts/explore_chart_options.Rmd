@@ -34,15 +34,15 @@ low_birthweight_asbest <- low_birthweight_rc %>% pull(asbest)
 low_birthweight_rc <- low_birthweight_rc %>%
   select(ends_with("_raw"), ends_with("_rate"))
 
-homeownership_asian <- dbGetQuery(con, "SELECT * FROM v7.asian_hous_homeownership_state_2025;") %>%
-  select(ends_with("_raw"), ends_with("_rate")) 
-homeownership_nhpi <- dbGetQuery(con, "SELECT * FROM v7.nhpi_hous_homeownership_state_2025;") %>%
-  select(ends_with("_raw"), ends_with("_rate"))
-homeownership_rc <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_homeownership_state_2025;") 
-
-homeownership_asbest <- homeownership_rc %>% pull(asbest)
-homeownership_rc <- homeownership_rc %>%
-  select(ends_with("_raw"), ends_with("_rate"))
+# homeownership_asian <- dbGetQuery(con, "SELECT * FROM v7.asian_hous_homeownership_state_2025;") %>%
+#   select(ends_with("_raw"), ends_with("_rate")) 
+# homeownership_nhpi <- dbGetQuery(con, "SELECT * FROM v7.nhpi_hous_homeownership_state_2025;") %>%
+#   select(ends_with("_raw"), ends_with("_rate"))
+# homeownership_rc <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_homeownership_state_2025;") 
+# 
+# homeownership_asbest <- homeownership_rc %>% pull(asbest)
+# homeownership_rc <- homeownership_rc %>%
+#   select(ends_with("_raw"), ends_with("_rate"))
 
 dbDisconnect(con)
 dbDisconnect(con_rc)
@@ -84,42 +84,56 @@ low_bw_rc_reshape <- low_birthweight_rc %>%
   select(group, subgroup, count, rate) 
 
 low_birthweight <- rbind(low_bw_asian_reshape, low_bw_rc_reshape) %>%
-  # round rates
-  mutate(rate=round(rate, 1))
+  mutate(
+    # round rates
+    rate=round(rate, 1)) 
 
-# Set colors for bars
-base_colors <- c(
-  "asian" = "#070024", 
-  "total" = "#ac0068",
-  "default" = "#cccccc")
+# A bit more indicator prep for chart mock ups
+# Test highcharter
 
-drilldown_colors <- c(
-  "asian subgroups" = "#7cb5ec", 
-  "total" = "#ac0068",
-  "default" = "#cccccc"
-)
+low_birthweight_chart1 <- low_birthweight %>%
+  # remove nphi for now
+  filter(group!="nhpi") 
+  # mutate(subgroup = ifelse(group=="nhpi", sprintf("%s (nhpi)", subgroup), subgroup)) %>%
+  # mutate(group= ifelse(group=="nhpi", "ASIAN", group)) 
+  
 
-color_map <- c(
-  "asian subgroups" = "#7cb5ec", 
-  "asian" = "#070024",             
-  "other" = "#ac0068",
-  "total" = "#ac0068",
-  "default" = "#cccccc"
-)
+low_birthweight <- low_birthweight %>%
+  filter(group!="nhpi") %>%
+  mutate(
+    group = case_when(group=="total" & subgroup != "total" ~ "other major race groups",
+                      group=="asian" & subgroup != "total" ~ "asian subgroups",
+                      group=="asian" & subgroup=="total" ~ "asian average",
+                      .default=group),
+    subgroup = case_when(group=="asian average" ~ "asian average",
+                         .default=subgroup)
+  ) %>%
+  filter(group!="total"&subgroup!="total") %>%
+  # mutate(subgroup = ifelse(group=="nhpi", sprintf("%s (nhpi)", subgroup), subgroup)) %>%
+  # mutate(group= ifelse(group=="nhpi", "ASIAN", group)) %>%
+  mutate(rate=round(rate, 2)) %>%
+  mutate(count=ifelse(group=="asian average", 2892, count)) # placeholder to test counts
 
-custom_theme <- hc_theme(
-  chart = list(
-    style = list(fontFamily = "Roboto", color = "#070024")),
-  title = list(style = list(color = "#070024")),
-  subtitle = list(style = list(color = "#070024")),
-  legend = list(itemStyle = list(color = "#070024")),
-  xAxis = list(
-    labels = list(style = list(color = "#070024"))),
-  yAxis = list(
-    lineWidth = 1,      # Keep the main baseline
-    tickWidth = 0,       # Remove the small tick marks
-    labels = list(style = list(color = "#070024")))
-)
+# use indicator best direction to arrange "shared struggle" groups at top
+if(low_birthweight_asbest=="min") {
+  low_birthweight <- low_birthweight %>%
+    arrange(desc(rate))
+  low_birthweight_chart1 <- low_birthweight_chart1 %>%
+    arrange(desc(rate))
+  
+} else{
+  low_birthweight <- low_birthweight %>%
+    arrange(rate)
+  low_birthweight_chart1 <- low_birthweight_chart1 %>%
+    arrange(desc(rate))
+}
+
+# make groups all caps per RC style
+low_birthweight$group <- toupper(low_birthweight$group)
+low_birthweight_chart1$group <- toupper(low_birthweight_chart1$group)
+low_birthweight$subgroup <- toupper(low_birthweight$subgroup)
+low_birthweight_chart1$subgroup <- toupper(low_birthweight_chart1$subgroup)
+
 
 ```
 
@@ -136,68 +150,87 @@ Make the case for disaggregation. Highlight racial disparities faced by CA’s A
 This is an example of a "drilldown" chart. You can select Asian or Total and the chart will drilldown to show the subgroups in each. Once you drilldown, you have another option to toggle to counts or stay on rates. When drilling down and viewing rates, a vertical line will appear with the state average. 
 
 ```{r}
-# A bit more indicator prep for chart mock ups
-# Test highcharter
+# define global styling elements
 
-low_birthweight_chart1 <- low_birthweight %>%
-  # remove nphi for now
-  filter(group!="nhpi") 
-  # mutate(subgroup = ifelse(group=="nhpi", sprintf("%s (nhpi)", subgroup), subgroup)) %>%
-  # mutate(group= ifelse(group=="nhpi", "asian", group)) 
-  
+# define rc colors we want to use
+rc_blue <-  "#070024" # primary
+rc_orange <- "#FF6B02" # accent
+rc_magenta <- "#a63273" # using slightly desaturated version to help plotline rendering "#ac0068" # accent
+rc_grey <- "#cccccc" # neutral
+rc_white <- "#ffffff" # neutral
+rc_black <- "#333333" # neutral
+rc_purple <- "#362178" # accent
 
-low_birthweight <- low_birthweight %>%
-  filter(group!="nhpi") %>%
-  mutate(
-    group = case_when(group=="total" & subgroup != "total" ~ "race counts groups",
-                      group=="asian" & subgroup != "total" ~ "asian subgroups",
-                      group=="asian" & subgroup=="total" ~ "asian average",
-                      .default=group),
-    subgroup = case_when(group=="asian average" ~ "asian average",
-                         .default=subgroup)
-  ) %>%
-  filter(group!="total"&subgroup!="total") %>%
-  # mutate(subgroup = ifelse(group=="nhpi", sprintf("%s (nhpi)", subgroup), subgroup)) %>%
-  # mutate(group= ifelse(group=="nhpi", "asian", group)) %>%
-  mutate(rate=round(rate, 2))
 
-# use indicator best direction to arrange "shared struggle" groups at top
-if(low_birthweight_asbest=="min") {
-  low_birthweight <- low_birthweight %>%
-    arrange(desc(rate))
-  low_birthweight_chart1 <- low_birthweight_chart1 %>%
-    arrange(desc(rate))
-  
-} else{
-  low_birthweight <- low_birthweight %>%
-    arrange(rate)
-  low_birthweight_chart1 <- low_birthweight_chart1 %>%
-    arrange(desc(rate))
-}
+# Set colors for bars
+base_colors <- c(
+  "asian" = rc_orange,
+  "asian subgroups" = rc_orange,
+  "asian average"= rc_blue,
+  "total" = rc_magenta,
+  "other" = rc_magenta,
+  "default" = rc_grey)
+
+custom_theme <- hc_theme(
+  chart = list(
+    style = list(
+      fontFamily = "Roboto", 
+      color = rc_black,
+      fontSize="1em")),
+  title = list(
+    style = list(
+      color = rc_black,
+      fontSize ="1.2em",
+      fontWeight="bold")),
+  subtitle = list(
+    style = list(
+      color = rc_black)),
+  legend = list(itemStyle = list(color = rc_black)),
+  xAxis = list(
+    lineColor = rc_black,
+    lineWidth = 2,
+    labels = list(
+      style = list(
+        color = rc_black,
+        fontSize ="0.8em",
+        fontWeight="bold"))),
+  yAxis = list(
+    lineColor = rc_black,
+    lineWidth = 1,      # Keep the main baseline
+    tickWidth = 0,       # Remove the small tick marks
+    title = list(
+      style=list(
+        color = rc_black,
+        fontSize="0.8em",
+        fontWeight="bold")))
+)
+
+
+
 
 ```
 
 ```{r}
 
 base_bw_df <- low_birthweight_chart1 %>%
-  filter(subgroup=="total") %>%
+  filter(subgroup=="TOTAL") %>%
   select(-subgroup) %>%
   mutate(color = case_when(
-    group == "asian" ~ color_map[["asian"]],
-    group == "total" ~ color_map[["total"]],
+    group == "ASIAN" ~ base_colors[["asian"]],
+    group == "TOTAL" ~ base_colors[["total"]],
     TRUE ~ base_colors[["default"]]
   ))
 drilldown_bw_df <- low_birthweight_chart1 %>%
-  filter(subgroup!="total") %>%
+  filter(subgroup!="TOTAL") %>%
   group_nest(group) %>%
   mutate(
     id = group,
     type = "bar",
     # Assign color based on group
     color = case_when(
-      group == "asian" ~ color_map[["asian subgroups"]],
-      group == "total" ~ color_map[["total"]],
-      .default = color_map[["default"]]
+      group == "ASIAN" ~ base_colors[["asian subgroups"]],
+      group == "TOTAL" ~ base_colors[["total"]],
+      .default = base_colors[["default"]]
     ),
     # Store both rate-sorted and count-sorted versions
     data = map(data, function(df) {
@@ -209,7 +242,7 @@ drilldown_bw_df <- low_birthweight_chart1 %>%
     }),
     data_count_sorted = map2(data, group, function(df, grp) {
       low_birthweight_chart1 %>%
-        filter(group == grp, subgroup != "total") %>%
+        filter(group == grp, subgroup != "TOTAL") %>%
         arrange(desc(count)) %>%
         mutate(name = subgroup, y = count, y2 = rate) %>%
         select(name, y, y2) %>%
@@ -219,7 +252,7 @@ drilldown_bw_df <- low_birthweight_chart1 %>%
   select(id, type, color, data, data_count_sorted)
 
 total_rate_bw <- base_bw_df %>%
-  filter(group=="total") %>%
+  filter(group=="TOTAL") %>%
   pull(rate) %>%
   round(2)
 
@@ -245,11 +278,11 @@ drilldown_bw_js <- paste0("function(e) {
   chart.yAxis[0].addPlotLine({
     id: 'total-line',
     value: ", total_rate_bw, ",
-    color: '#FF0000',
+    color: '", rc_black, "' ,
     width: 2,
-    dashStyle: 'Dash',
+    dashStyle: 'ShortDash',
     zIndex: 5,
-    label: { text: 'State Average: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 5 }
+    label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 5 }
   });
   
   // Reset state - always start with rates
@@ -272,8 +305,9 @@ drilldown_bw_js <- paste0("function(e) {
       }
     }
   }, false);
-  
-  chart.yAxis[0].update({title: {text: 'Rate'}}, false);
+
+  chart.yAxis[0].setTitle({ text: 'RATE' }, false); 
+
   
   // Add toggle button if it doesn't exist
   if (!chart.customToggleButton) {
@@ -285,7 +319,9 @@ drilldown_bw_js <- paste0("function(e) {
         if (chart.currentView === 'rates') {
           // Switch to counts
           chart.currentView = 'counts';
-          chart.yAxis[0].update({title: {text: 'Count'}}, false);
+          // Use this instead of .update()
+          chart.yAxis[0].setTitle({ text: 'COUNT' }, false); 
+
           chart.customToggleButton.attr({text: 'Show Rates'});
           
           // Remove the state average line
@@ -300,7 +336,7 @@ drilldown_bw_js <- paste0("function(e) {
           
           // Update data label formatter for counts
           chart.update({
-            plotOptions: {
+            plotOptions: { 
               bar: {
                 dataLabels: {
                   formatter: function() {
@@ -314,18 +350,19 @@ drilldown_bw_js <- paste0("function(e) {
         } else {
           // Switch to rates
           chart.currentView = 'rates';
-          chart.yAxis[0].update({title: {text: 'Rate'}}, false);
+          chart.yAxis[0].setTitle({ text: 'RATE' }, false); 
+
           chart.customToggleButton.attr({text: 'Show Counts'});
           
           // Re-add the state average line
           chart.yAxis[0].addPlotLine({
             id: 'total-line',
             value: ", total_rate_bw, ",
-            color: '#f91105',
+            color: '", rc_black, "' ,
             width: 2,
-            dashStyle: 'Dash',
+            dashStyle: 'ShortDash',
             zIndex: 5,
-            label: { text: 'State Average: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 5 }
+            label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 5 }
           });
           
           // Update all drilled-down series to show rates
@@ -352,23 +389,24 @@ drilldown_bw_js <- paste0("function(e) {
         chart.redraw();
       },
       {
-        fill: '#fec009',
-        stroke: '#fec009',
+        fill: '", rc_blue, "' ,
+        stroke: '", rc_blue, "' ,
+        style: { color: '", rc_white, "' },
         'stroke-width': 1,
         r: 3,
         padding: 8
       },
       {
-        fill: '#fec009'
+        fill: '", rc_blue, "' ,
+        style: { color: '", rc_white, "' }  // Add this so font color stays white in hover state
       },
       {
-        fill: '#fec009'
+        fill: '", rc_blue, "' ,
+        style: { color: '", rc_white, "' }  // Add this so font color stays white for active/pressed state
       }
     )
     .css({
-      //color: '#070024',
-      fontWeight: 'bold',
-      fontSize: '12px'
+      color: '", rc_white, "'
     })
     .attr({ zIndex: 7 })  // Add this line to put on top of gridlines
     .add();
@@ -398,7 +436,7 @@ drilldown_bw_js <- paste0("function(e) {
   chart.redraw();
 }")
 
-drillup_bw_js <- "function() { 
+drillup_bw_js <- paste0("function() { 
   var chart = this;
   chart.yAxis[0].removePlotLine('total-line');
   
@@ -423,7 +461,9 @@ drillup_bw_js <- "function() {
   chart.currentView = null;
   
   // Reset to rates view
-  chart.yAxis[0].update({title: {text: 'Rate'}}, false);
+  // Use this instead of .update()
+  chart.yAxis[0].setTitle({ text: 'RATE' }, false); 
+
   
   // Reset data label formatter
   chart.update({
@@ -439,7 +479,7 @@ drillup_bw_js <- "function() {
   }, false);
   
   chart.redraw();
-}"
+}")
 
 hc <- hchart(
   base_bw_df,
@@ -458,12 +498,12 @@ hc <- hchart(
     allowPointDrilldown = TRUE,
   series = list_parse(drilldown_bw_df),
   activeDataLabelStyle = list(
-    color = "#070024",
+    color = rc_black,
     textDecoration = "none",
     fontWeight = "normal"
   ),
   activeAxisLabelStyle = list(
-    color = "#070024",
+    color = rc_black,
     textDecoration = "none",
     cursor = "pointer"
   ),
@@ -489,10 +529,8 @@ hc <- hchart(
   hc_xAxis(
     title=list(text=NULL),
     labels = list(
-      enabled = TRUE,
-      style = list(
-        fontSize = "11px"))) %>%
-  hc_yAxis(title = list(text = "Rate"),
+      enabled = TRUE)) %>%
+  hc_yAxis(title = list(text = "RATE"),
            labels=list(enabled=FALSE)) %>%# remove labels from rate axis) 
   hc_legend(enabled=FALSE) %>%
   hc_add_theme(custom_theme)
@@ -569,12 +607,12 @@ series_data_rates <- low_birthweight %>%
     })
     
     # Assign color based on group
-    series_color <- if(df$group[1] == "asian subgroups") {
-      color_map[["asian subgroups"]]
-    } else if(df$group[1] == "asian average") {
-      color_map[["asian"]]
+    series_color <- if(df$group[1] == "ASIAN SUBGROUPS") {
+      base_colors[["asian subgroups"]]
+    } else if(df$group[1] == "ASIAN AVERAGE") {
+      base_colors[["asian average"]]
     } else {
-      color_map[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
+      base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
     }
     
     list(
@@ -600,12 +638,12 @@ series_data_counts <- low_birthweight %>%
     })
     
     # Assign same color based on group
-    series_color <- if(df$group[1] == "asian subgroups") {
-      color_map[["asian subgroups"]]
-    } else if(df$group[1] == "asian average") {
-      color_map[["asian"]]
+    series_color <- if(df$group[1] == "ASIAN SUBGROUPS") {
+      base_colors[["asian subgroups"]]
+    } else if(df$group[1] == "ASIAN AVERAGE") {
+      base_colors[["asian average"]]
     } else {
-      color_map[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
+      base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
     }
     
     list(
@@ -622,7 +660,7 @@ hc <- highchart() %>%
     type = "bar",
     reflow = TRUE,
     events = list(
-      load = htmlwidgets::JS(sprintf("
+      load = htmlwidgets::JS(sprintf(paste0("
         function() {
           var chart = this;
           var rateOrder = %s;
@@ -671,7 +709,9 @@ hc <- highchart() %>%
               // Update button text, y-axis, x-axis categories, and data label formatter
               if (showingRates) {
                 chart.customToggleButton.attr({text: 'Show Rates'});
-                chart.yAxis[0].update({title: {text: 'Count'}}, false);
+                // Use this instead of .update()
+                chart.yAxis[0].setTitle({ text: 'COUNT' }, false); 
+
                 chart.xAxis[0].update({categories: countOrder}, false);
                 chart.yAxis[0].removePlotLine('state-average-line');
                 chart.update({
@@ -687,15 +727,17 @@ hc <- highchart() %>%
                 }, false);
               } else {
                 chart.customToggleButton.attr({text: 'Show Counts'});
-                chart.yAxis[0].update({title: {text: 'Rate'}}, false);
+                // Use this instead of .update()
+                chart.yAxis[0].setTitle({ text: 'RATE' }, false); 
+
                 chart.xAxis[0].update({categories: rateOrder}, false);
                 chart.yAxis[0].addPlotLine({
                   id: 'state-average-line',
                   value: %s,
-                  color: '#f91105',
+                  color: '%s' ,
                   width: 2,
-                  dashStyle: 'Dash',
-                  label: {text: 'State Average: %s', align: 'left', rotation: 0, y: -8, x: 5},
+                  dashStyle: 'ShortDash',
+                  label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: %s', align: 'left', rotation: 0, y: -8, x: 5},
                   zIndex: 5
                 });
                 chart.update({
@@ -714,22 +756,24 @@ hc <- highchart() %>%
               chart.redraw();
             },
             {
-              fill: '#fec009',
-              stroke: '#fec009',
+              fill: '", rc_blue, "' ,
+              stroke: '", rc_blue, "' ,
+              style: { color: '", rc_white, "' },  // Add this so font color persists
               'stroke-width': 1,
               r: 3,
               padding: 8
             },
             {
-              fill: '#fec009'
+              fill: '", rc_blue, "' ,
+              style: { color: '", rc_white, "' }  // Add this so font color persists in hover state
             },
             {
-              fill: '#fec009'
+              fill: '", rc_blue, "' ,
+              style: { color: '", rc_white, "' }  // Add this so font color persists in active/pressed state
             }
           )
           .css({
-            fontWeight: 'bold',
-            fontSize: '12px'
+            color: '", rc_white, "'
           })
           .attr({ zIndex: 7 })  // Add this line to put on top of gridlines
           .add();
@@ -752,7 +796,13 @@ hc <- highchart() %>%
             x: rightEdge - buttonWidth
           });
               }
-      ", jsonlite::toJSON(rate_order), jsonlite::toJSON(count_order), total_rate_bw, total_rate_bw))
+      "), 
+      jsonlite::toJSON(rate_order), # rate order
+      jsonlite::toJSON(count_order), # count order
+      total_rate_bw, # value
+      rc_black, # color
+      total_rate_bw) # state average
+      )
     )
   ) %>%
   hc_plotOptions(
@@ -773,13 +823,12 @@ hc <- highchart() %>%
   hc_xAxis(
     categories = rate_order,
     labels = list(
-      enabled = TRUE,
-      style = list(fontSize = "11px")
+      enabled = TRUE
     ),
     gridLineWidth = 1,
     gridLineColor = '#e6e6e6') %>%
   hc_yAxis(
-    title = list(text = "Rate"),
+    title = list(text = "RATE"),
     labels=list(enabled=FALSE), # remove labels from rate axis
     gridLineWidth=0,
     offset = 0,
@@ -787,10 +836,14 @@ hc <- highchart() %>%
       list(
         id = 'state-average-line',
         value = total_rate_bw,
-        color = '#f91105',
+        color = rc_black,
         width = 2,
-        dashStyle = 'Dash',
-        label = list(text = paste('State Average:', total_rate_bw), align = 'left', rotation=0, y=-8, x=5),
+        dashStyle = 'ShortDash',
+        label = list(
+          style=list(fontWeight='bold', fontSize='0.8em'),
+          text = paste('STATE AVERAGE:', total_rate_bw), 
+          align = 'left', 
+          rotation=0, y=-8, x=5),
         zIndex = 5
       )
     )
