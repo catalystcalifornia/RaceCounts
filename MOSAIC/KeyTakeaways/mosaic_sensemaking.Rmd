@@ -272,6 +272,8 @@ lbw_plot <- chart_fx(lbw_list, lbw_meta, "asian", cdc_racenote)
 
 #### Note that the Asian/NHPI/Total rates displayed as vertical lines are sourced from our 'regular' RC data. The data sources and methods vary slightly by necessity from those of MOSAIC analysis. Once we select indicators, we will recalculate the Asian/NHPI/Total rates using the MOSAIC sources/methods for more direct comparison.
 
+#### The data sources listed here are correct, the actual data years for the MOSAIC analysis may vary based on data availability. Some datasets are older than shown here (ACS), some are more updated (CHIS). All data years will be accurately displayed on report page.
+
 
 # Asian Disaggregation {#asian}
 
