@@ -24,7 +24,7 @@ safe_sum <- function(x) {
 }
 
 #### Automate writing API calls and pull ACS SPT detailed Asian & NHPI race tables for city/county/state ####
-get_detailed_race <- function(table, race, year = 2021) {
+get_detailed_race <- function(table, race, year_ = 2021) {
   # race = for MOSAIC, either 'asian' or 'nhpi', case-insensitive
   # table = ACS table name, eg: "B25003" or "S2701", case-insensitive
   # year = ACS data year, defaults to 2021 if none specified
@@ -42,17 +42,17 @@ get_detailed_race <- function(table, race, year = 2021) {
   
   table_name <- toupper(table)
   
-  city_api_call <- sprintf(
-    "https://api.census.gov/data/%s/acs/acs5/spt?get=group(%s)&POPGROUP=pseudo(%s)&ucgid=pseudo(0400000US06$1600000)",
-    year, table_name, race_code)
-  
-  county_api_call <- sprintf(
-    "https://api.census.gov/data/%s/acs/acs5/spt?get=group(%s)&POPGROUP=pseudo(%s)&ucgid=pseudo(0400000US06$0500000)",
-    year, table_name, race_code)
-  
-  state_api_call <- sprintf(
-    "https://api.census.gov/data/%s/acs/acs5/spt?get=group(%s)&POPGROUP=pseudo(%s)&ucgid=0400000US06",
-    year, table_name, race_code)
+    city_api_call <- sprintf(
+      "https://api.census.gov/data/%s/acs/acs5/spt?get=group(%s)&POPGROUP=pseudo(%s)&ucgid=pseudo(0400000US06$1600000)",
+      year_, table_name, race_code)
+    
+    county_api_call <- sprintf(
+      "https://api.census.gov/data/%s/acs/acs5/spt?get=group(%s)&POPGROUP=pseudo(%s)&ucgid=pseudo(0400000US06$0500000)",
+      year_, table_name, race_code)
+    
+    state_api_call <- sprintf(
+      "https://api.census.gov/data/%s/acs/acs5/spt?get=group(%s)&POPGROUP=pseudo(%s)&ucgid=0400000US06",
+      year_, table_name, race_code)
   
   api_call_list <- c(city_api_call, county_api_call, state_api_call)  
   
@@ -87,7 +87,7 @@ get_detailed_race <- function(table, race, year = 2021) {
     mutate(across(contains(table_name), as.numeric))         # assign numeric cols to numeric type
   clean_data <- clean_data %>%
     filter(!if_all(where(is.numeric), is.na))                # drop rows where all numeric values are NA, this also removes the extra 'header' rows
-  clean_data$geoid <- str_replace(clean_data$GEO_ID, ".*US", "")  # clean geoids
+  clean_data$geoid <- str_replace(clean_data$GEO_ID, ".*US", "")   # clean geoids
   clean_data$geolevel <- case_when(                                # add geolevel bc it's a multigeo table
     nchar(clean_data$geoid) == 2 ~ 'state',
     nchar(clean_data$geoid) == 5 ~ 'county',
@@ -125,7 +125,7 @@ get_detailed_race <- function(table, race, year = 2021) {
   
   # prep metadata
   metadata <- clean_data %>%
-    pivot_longer(cols = starts_with("B"),
+    pivot_longer(cols = starts_with(substr(table_name, 1, 1)),
                  names_to = "var",
                  values_to = "raw")
   
@@ -134,11 +134,12 @@ get_detailed_race <- function(table, race, year = 2021) {
     unique() %>%
     mutate(var_suff = sub(".*_", "", var),
            generic_var = gsub(("E|M"), "", var),
-           new_var = tolower(paste0(table_code, "_", POPGROUP, "_", var_suff)))
+           new_var = tolower(paste0(tolower(table_name), "_", POPGROUP, "_", var_suff)))
   
   # load variable names
-  v21 <- load_variables(year, "acs5", cache = TRUE)
-  table_vars <- v21 %>% filter(grepl(table_name, name))
+  vars <- load_variables(year_, "acs5", cache = TRUE)
+  
+  table_vars <- vars %>% filter(grepl(table_name, name))
   
   # join variable names to metadata
   metadata <- metadata %>% 
@@ -162,9 +163,8 @@ get_detailed_race <- function(table, race, year = 2021) {
   
   names(data_list) <- c(paste0(race,"_df"), "metadata")
   
-return(data_list)
+  return(data_list)
 }
-
 
 #### Send raw detailed tables to postgres - info for postgres tables automatically updates ####
 send_to_mosaic <- function(acs_table, df_list, table_schema){
@@ -234,7 +234,7 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   
   # renaming rules will change depending on type of census table
   if (startsWith(table_code, "b") && startsWith(table_name, "nhpi")) {
-      
+    
     table_051_code = paste0(table_code, "_051_")
     table_052_code = paste0(table_code, "_052_")
     table_053_code = paste0(table_code, "_053_")
@@ -371,56 +371,56 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   }
   
   if(endsWith(table_code, "b25014")) {  # LF edited Overcrowding
-
-     x_long <- x %>%
-          pivot_longer(
-            cols = -c(geoid, name, geolevel),
-            names_to = c("ethnic_group", "line", "stat"),
-            names_pattern = "^(.*?)(001|005|006|007|011|012|013)(e|m)$",
-            values_to = "val"
-          ) %>%
-          pivot_wider(
-            names_from = stat,
-            values_from = val
-          ) %>%
-          rename(
-            value = e,
-            moe = m
-          ) %>%
-          mutate(
-            measure = case_when(
-              line == "001" ~ "pop",
-              line != "001" ~ "raw"
-            )
-          )
-        
-        get_b25014 <- function(df) {
-          
-          df %>%
-            group_by(name, geoid, geolevel, ethnic_group, measure) %>%
-            summarise(
-              agg_value = safe_sum(value),
-              agg_moe   = moe_sum(moe = moe, estimate = value),
-              .groups   = "drop"
-            ) %>%
-            pivot_wider(
-              names_from  = measure,
-              values_from = c(agg_value, agg_moe),
-              names_glue  = "{measure}_{.value}"
-            ) %>%
-            rename(
-              pop     = pop_agg_value,
-              pop_moe = pop_agg_moe,
-              raw     = raw_agg_value,
-              raw_moe = raw_agg_moe
-            ) %>%
-            mutate(
-              rate     = ifelse(pop <= 0, NA, raw / pop * 100),
-              rate_moe = moe_prop(raw, pop, raw_moe, pop_moe) * 100
-            )
-        }
-        
-      x_long <- get_b25014(x_long)
+    
+    x_long <- x %>%
+      pivot_longer(
+        cols = -c(geoid, name, geolevel),
+        names_to = c("ethnic_group", "line", "stat"),
+        names_pattern = "^(.*?)(001|005|006|007|011|012|013)(e|m)$",
+        values_to = "val"
+      ) %>%
+      pivot_wider(
+        names_from = stat,
+        values_from = val
+      ) %>%
+      rename(
+        value = e,
+        moe = m
+      ) %>%
+      mutate(
+        measure = case_when(
+          line == "001" ~ "pop",
+          line != "001" ~ "raw"
+        )
+      )
+    
+    get_b25014 <- function(df) {
+      
+      df %>%
+        group_by(name, geoid, geolevel, ethnic_group, measure) %>%
+        summarise(
+          agg_value = safe_sum(value),
+          agg_moe   = moe_sum(moe = moe, estimate = value),
+          .groups   = "drop"
+        ) %>%
+        pivot_wider(
+          names_from  = measure,
+          values_from = c(agg_value, agg_moe),
+          names_glue  = "{measure}_{.value}"
+        ) %>%
+        rename(
+          pop     = pop_agg_value,
+          pop_moe = pop_agg_moe,
+          raw     = raw_agg_value,
+          raw_moe = raw_agg_moe
+        ) %>%
+        mutate(
+          rate     = ifelse(pop <= 0, NA, raw / pop * 100),
+          rate_moe = moe_prop(raw, pop, raw_moe, pop_moe) * 100
+        )
+    }
+    
+    x_long <- get_b25014(x_long)
   }
   
   if(endsWith(table_code, "b19301")) {
@@ -461,37 +461,68 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
              rate_moe = moe_prop(raw, pop, raw_moe, pop_moe)*100)
     
   }
-
+  
   if(endsWith(table_code, "b27001")) {  # LF edited Insurance
-     # pivot longer
-      x_long <- x %>%
-        pivot_longer(
-          cols = -c(geoid, name, geolevel),
-          names_to = c("ethnic_group", "line", "stat"),
-          names_pattern = "^(.*?)(001|002)(e|m)$",
-          values_to = "value"
-        ) %>%
-        mutate(
-          measure = case_when(
-            line == "001" & stat == "e" ~ "pop",
-            line == "001" & stat == "m" ~ "pop_moe",
-            line == "002" & stat == "e" ~ "raw",
-            line == "002" & stat == "m" ~ "raw_moe"
-          )
-        ) %>%
-        select(-line, -stat) %>%
-        pivot_wider(
-          names_from = measure,
-          values_from = value
+    # pivot longer
+    x_long <- x %>%
+      pivot_longer(
+        cols = -c(geoid, name, geolevel),
+        names_to = c("ethnic_group", "line", "stat"),
+        names_pattern = "^(.*?)(001|002)(e|m)$",
+        values_to = "value"
+      ) %>%
+      mutate(
+        measure = case_when(
+          line == "001" & stat == "e" ~ "pop",
+          line == "001" & stat == "m" ~ "pop_moe",
+          line == "002" & stat == "e" ~ "raw",
+          line == "002" & stat == "m" ~ "raw_moe"
         )
-      
-      # calc raced rates
-      x_long <- x_long %>%
-        mutate(rate = ifelse(pop <= 0, NA, raw / pop * 100),
-               rate_moe = moe_prop(raw, pop, raw_moe, pop_moe)*100)
-      
+      ) %>%
+      select(-line, -stat) %>%
+      pivot_wider(
+        names_from = measure,
+        values_from = value
+      )
+    
+    # calc raced rates
+    x_long <- x_long %>%
+      mutate(rate = ifelse(pop <= 0, NA, raw / pop * 100),
+             rate_moe = moe_prop(raw, pop, raw_moe, pop_moe)*100)
+    
   }
   
+  if(endsWith(table_code, "b25070") | endsWith(table_code, "b25091")) {  # LF edited Rent/Own Housing Burden
+    # pivot longer
+    x_long <- x %>%
+      select(-contains("003")) %>%    # drop not cost-burdened
+      pivot_longer(
+        cols = -c(geoid, name, geolevel),
+        names_to = c("ethnic_group", "line", "stat"),
+        names_pattern = "^(.*?)(001|002)(e|m)$",
+        values_to = "value"
+      ) %>%
+      mutate(
+        measure = case_when(
+          line == "001" & stat == "e" ~ "pop",
+          line == "001" & stat == "m" ~ "pop_moe",
+          line == "002" & stat == "e" ~ "raw",
+          line == "002" & stat == "m" ~ "raw_moe"
+        )
+      ) %>%
+      select(-line, -stat) %>%
+      pivot_wider(
+        names_from = measure,
+        values_from = value
+      )
+    
+    # calc raced rates
+    x_long <- x_long %>%
+      mutate(rate = ifelse(pop <= 0, NA, raw / pop * 100),
+             rate_moe = moe_prop(raw, pop, raw_moe, pop_moe)*100)
+    
+  }
+
   if (startsWith(table_code, "s2802")) {
     
     old_names <- colnames(x)[-(1:3)]
@@ -605,7 +636,7 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   ### Coefficient of Variation (CV) CALCS #####
   
   ### calc cv's
-  # Calculate CV values for all rates - store in columns as cv_[race]_rate
+  ## Calculate CV values for all rates - store in columns as cv_[race]_rate
   if (!is.na(cv_threshold)){
     x_long$rate_cv <- ifelse(x_long$rate==0, NA, x_long$rate_moe/1.645/x_long$rate*100)
   }
@@ -618,35 +649,32 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     # if pop_threshold exists and cv_threshold is NA, do pop check but no CV check (doesn't apply to any at this time, may need to add _raw screens later.)
     ## Screen out low populations
     df$rate <- ifelse(df$pop < pop_threshold, NA, df$rate)
-
+    
   } else if (is.na(pop_threshold) & !is.na(cv_threshold)){
     # if pop_threshold is NA and cv_threshold exists, check cv only (i.e. only B19301). As of now, the only table that uses this does not have _raw values, may need to add _raw screens later.
     ## Screen out rates with high CVs
     df$rate <- ifelse(df$rate_cv > cv_threshold, NA, df$rate)
-
+    
   } else if (!is.na(pop_threshold) & !is.na(cv_threshold)){
     # if pop_threshold exists and cv_threshold exists, check population and cv (i.e. B25003, B27001, S2301, S2802, S2701, B25014)
     ## Screen out rates with high CVs and low populations
     df$rate <- ifelse(df$rate_cv > cv_threshold, NA, ifelse(df$pop < pop_threshold, NA, df$rate))
     df$raw <- ifelse(df$rate_cv > cv_threshold, NA, ifelse(df$pop < pop_threshold, NA, df$raw))
-
+    
   } else {
     # Only DP05 should hit this condition
     # Will use to change population values < 0 to NA (negative values are Census annotations)
     pop_columns <- colnames(dplyr::select(df, ends_with("_pop")))
     df[,pop_columns] <- sapply(df[,pop_columns], function(x_long) ifelse(x_long<0, NA, x_long))
-
+    
   }
-
+  
   df_wide <- pivot_wider(df,
                          names_from = ethnic_group,
                          values_from = c(pop, pop_moe, raw, raw_moe, rate, rate_moe, rate_cv),
                          names_glue = "{ethnic_group}_{.value}")
   
   df_wide$total_rate <- NA   # add dummy total_rate col so RC_Functions work as-is
-  
-  df_wide <- df_wide %>%
-    mutate(across(everything(), ~ifelse(is.nan(.), NA, .)))  # replace NaN with NA
   
   return(df_wide)
 }
