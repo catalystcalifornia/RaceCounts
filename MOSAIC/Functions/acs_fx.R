@@ -523,28 +523,8 @@ prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
     
   }
 
-  if (startsWith(table_code, "s2802")) {
-    
-    old_names <- colnames(x)[-(1:3)]
-    new_names <- c("total_pop", "black_pop", "aian_pop", "asian_pop", "pacisl_pop",
-                   "other_pop", "twoormor_pop", "latino_pop", "nh_white_pop", 
-                   "total_raw", "black_raw", "aian_raw", "asian_raw", "pacisl_raw",
-                   "other_raw", "twoormor_raw", "latino_raw", "nh_white_raw", 
-                   "total_rate", "black_rate", "aian_rate", "asian_rate", "pacisl_rate",
-                   "other_rate", "twoormor_rate", "latino_rate", "nh_white_rate", 
-                   "total_pop_moe", "black_pop_moe", "aian_pop_moe", "asian_pop_moe", "pacisl_pop_moe",
-                   "other_pop_moe", "twoormor_pop_moe", "latino_pop_moe", "nh_white_pop_moe",
-                   "total_raw_moe", "black_raw_moe", "aian_raw_moe", "asian_raw_moe",
-                   "pacisl_raw_moe", "other_raw_moe", "twoormor_raw_moe", "latino_raw_moe",
-                   "nh_white_raw_moe", 
-                   "total_rate_moe", "black_rate_moe", "aian_rate_moe", "asian_rate_moe",
-                   "pacisl_rate_moe", "other_rate_moe", "twoormor_rate_moe", "latino_rate_moe",
-                   "nh_white_rate_moe")
-    x <- x %>%
-      rename_with(~ new_names[which(old_names == .x)], .cols = old_names)
-  }
-  
-  if(endsWith(table_code, "b28002")) {  # JZ updating code for internet indicator using table B28002
+ 
+ if(endsWith(table_code, "b28002")) {  # JZ updating code for internet indicator using table B28002
     
     # pivot longer
     x_long <- x %>%
