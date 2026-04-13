@@ -235,10 +235,9 @@ agg_counts <- function(counts_list1, counts_list2, geo) {
 denied <- agg_counts(denied_c, denied_st, "geoid")
 loans <- agg_counts(loans_c, loans_st, "geoid")
 
-# check state aggregation is sum of county counts
-filter(denied %>% filter(geoid == '06')) %>% select(asian_aoic_denied)  # 97,944
-sum(denied$asian_aoic_denied, na.rm=TRUE) - 97944  # should equal 97,944
-
+# sum of county rows should equal the state row
+sum(denied$asian_aoic_denied[denied$geoid != '06'], na.rm=TRUE)  # sum of counties # 97,944
+denied$asian_aoic_denied[denied$geoid == '06']                    # state row - should match # should equal 97,944
 
 ## Add census geonames
 census_api_key(census_key1, overwrite=TRUE)
@@ -315,9 +314,9 @@ calc_totals <- function(x, subgroup_list) {
         rowSums(across(ends_with("_originated")), na.rm = TRUE)
       ),
       total_raw = if_else(
-        if_all(ends_with("_originated"), ~ is.na(.)),
+        if_all(ends_with("_raw"), ~ is.na(.)),
         NA_real_,
-        rowSums(across(ends_with("_originated")), na.rm = TRUE)
+        rowSums(across(ends_with("_raw")), na.rm = TRUE)
       ),
       total_denied = if_else(
         if_all(ends_with("_denied"), ~ is.na(.)),
