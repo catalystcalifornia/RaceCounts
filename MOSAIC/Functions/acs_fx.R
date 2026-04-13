@@ -18,6 +18,10 @@ for(pkg in packages){
   library(pkg, character.only = TRUE) 
 } 
 
+safe_sum <- function(x) { # Sum ignoring NA when there are non-NA values, return NA when all values are NA
+  if (all(is.na(x))) NA_real_ else sum(x, na.rm = TRUE)
+}
+
 
 #### Automate writing API calls and pull ACS SPT detailed Asian & NHPI race tables for city/county/state ####
 get_detailed_race <- function(table, race, year_ = 2021) {

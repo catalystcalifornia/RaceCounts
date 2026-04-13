@@ -73,14 +73,14 @@ table_code = 'b25070'          # Select relevant indicator table name
 # nhpi_long <- nhpi_long %>%
 #   mutate(
 #     type      = if_else(str_ends(variable, "e"), "e", "m"),
-#     table_num = str_extract(variable, "(?<=b27001_)[a-z0-9]+(?=_)"),
+#     table_num = str_extract(variable, "(?<=b25070_)[a-z0-9]+(?=_)"),
 #     var_num   = str_extract(variable, "\\d{3}(?=[em]$)")
 #   )
 # 
 # asian_long <- asian_long %>%
 #   mutate(
 #     type      = if_else(str_ends(variable, "e"), "e", "m"),
-#     table_num = str_extract(variable, "(?<=b27001_)[a-z0-9]+(?=_)"),
+#     table_num = str_extract(variable, "(?<=b25070_)[a-z0-9]+(?=_)"),
 #     var_num   = str_extract(variable, "\\d{3}(?=[em]$)")
 #   )
 # 
