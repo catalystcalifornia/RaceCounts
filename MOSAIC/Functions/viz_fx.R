@@ -1,7 +1,7 @@
 ### These are fx used to create MOSAIC bar charts ###
 
 ### Function 1: generate custom metadata ###
-metadata_fx <- function(issue, ind, race, meta, geo = "state") {
+metadata_fx <- function(issue, ind, race, meta, tot_yr, geo = "state") {
   # issue: demo, econ, hlth, hben, hous, crim
   # ind: metadata$api_name
   # race: asian, nhpi (mosaic only covers subgroups w/i these 2 races)
@@ -51,9 +51,15 @@ metadata_fx <- function(issue, ind, race, meta, geo = "state") {
 
 
 ### Function 2: generate custom indicator dataframe ###
-data_fx <- function(meta, race) {
+data_fx <- function(meta, race, tot_schema) {
   # meta: indicator+geolevel metadata df with 1 row
   # race: asian, nhpi (mosaic only covers subgroups w/i these 2 races)
+  
+  tot_yr <- case_when(
+              tot_schema == 'v5' ~ '2023',
+              tot_schema == 'v6' ~ '2024',
+              tot_schema == 'v7' ~ '2025',
+              TRUE ~ NA)
   
   # get total, asian, nhpi rates -- dummy data is v7 which is not an exact data match
   tot_df <- dbGetQuery(con2, paste0("SELECT * FROM ", tot_schema, ".", meta$tot_table_name)) %>% 
@@ -62,7 +68,7 @@ data_fx <- function(meta, race) {
     rename_with(~ "pacisl_rate", matches("^.*pacisl.*$")[1])      # rename nhpi rate col to generic
   
   df_wide <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".", meta$table_name)) %>%
-    select(-starts_with("na_"), starts_with("unknown_")) %>%
+    select(-starts_with("na_"), -starts_with("unknown_")) %>%
     { # Keep only "aoic" cols for ACS indicators. Keep only geoname, raw, rate cols for all indicators.
       if (grepl("American Community Survey", meta$datasource[1]) & !grepl("PUMS", meta$datasource[1])) {
         select(., ends_with("_name"), (ends_with("_raw") & contains("aoic")), (ends_with("_rate") & contains("aoic"))) %>%
@@ -188,7 +194,7 @@ chart_fx <- function(data_list, meta, race, racenote) {
     
     hc_subtitle(
       text = paste0(meta$subtitle_text),
-      align = "left" 
+      align = "left", y = 50
     ) %>% 
     
     hc_caption(

@@ -83,9 +83,7 @@ con2 <- connect_to_db("racecounts")
 
 # set variables
 rc_schema <- 'v7'
-tot_schema <- 'v5'  # 2017-21 total_rate data source
 curr_yr <- '2025'
-tot_yr <- '2023'
 
 ####################
 #### Style Guide ###
@@ -212,10 +210,10 @@ cdc_racenote <- "Data Note: Subgroups include foreign-born birthing parents only
 
 #### OVERCROWDED ####
 # Run metadata fx
-overcrowd_meta <- metadata_fx("hous", "overcrowded", "asian", metadata)
+overcrowd_meta <- metadata_fx("hous", "overcrowded", "asian", metadata, "2023")
 
 # Run data fx
-overcrowd_list <- data_fx(overcrowd_meta, "asian")
+overcrowd_list <- data_fx(overcrowd_meta, "asian", "v5")
 
 # Run chart fx
 overcrowd_plot <- chart_fx(overcrowd_list, overcrowd_meta, "asian", acs_racenote)
@@ -223,21 +221,43 @@ overcrowd_plot <- chart_fx(overcrowd_list, overcrowd_meta, "asian", acs_racenote
 
 #### HOMEOWNERSHIP ####
 # Run metadata fx
-homeown_meta <- metadata_fx("hous", "homeownership", "asian", metadata)
+homeown_meta <- metadata_fx("hous", "homeownership", "asian", metadata, "2023")
 
 # Run data fx
-homeown_list <- data_fx(homeown_meta, "asian")
+homeown_list <- data_fx(homeown_meta, "asian", "v5")
 
 # Run chart fx
 homeown_plot <- chart_fx(homeown_list, homeown_meta, "asian", acs_racenote)
 
 
-#### UNINSURED ####
+#### RENTER COST BURDEN ####
 # Run metadata fx
-uninsured_meta <- metadata_fx("hlth", "health_insurance", "asian", metadata)
+renter_meta <- metadata_fx("hous", "cost_burden_renter", "asian", metadata, "2025")
 
 # Run data fx
-uninsured_list <- data_fx(uninsured_meta, "asian")
+renter_list <- data_fx(renter_meta, "asian", "v7")
+
+# Run chart fx
+renter_plot <- chart_fx(renter_list, renter_meta, "asian", acs_racenote)
+
+
+#### OWNER COST BURDEN ####
+# Run metadata fx
+owner_meta <- metadata_fx("hous", "cost_burden_owner", "asian", metadata, "2025")
+
+# Run data fx
+owner_list <- data_fx(owner_meta, "asian", "v7")
+
+# Run chart fx
+owner_plot <- chart_fx(owner_list, owner_meta, "asian", acs_racenote)
+
+
+#### UNINSURED ####
+# Run metadata fx
+uninsured_meta <- metadata_fx("hlth", "health_insurance", "asian", metadata, "2023")
+
+# Run data fx
+uninsured_list <- data_fx(uninsured_meta, "asian", "v5")
 
 # Run chart fx
 uninsured_plot <- chart_fx(uninsured_list, uninsured_meta, "asian", cdc_racenote)
@@ -245,10 +265,10 @@ uninsured_plot <- chart_fx(uninsured_list, uninsured_meta, "asian", cdc_racenote
 
 #### LOW BIRTHWEIGHT ####
 # Run metadata fx
-lbw_meta <- metadata_fx("hlth", "low_birthweight", "asian", metadata)
+lbw_meta <- metadata_fx("hlth", "low_birthweight", "asian", metadata, "2025")
 
 # Run data fx
-lbw_list <- data_fx(lbw_meta, "asian")
+lbw_list <- data_fx(lbw_meta, "asian", "v7")
 
 # Run chart fx
 lbw_plot <- chart_fx(lbw_list, lbw_meta, "asian", cdc_racenote)
@@ -287,6 +307,16 @@ overcrowd_plot
 homeown_plot
 ```
 
+### Renter Cost Burden
+```{r, echo=FALSE}
+renter_plot
+```
+
+### Owner Cost Burden
+```{r, echo=FALSE}
+owner_plot
+```
+
 ### Uninsured
 ```{r, echo=FALSE}
 uninsured_plot
@@ -316,10 +346,10 @@ hmda_racenote <- "Data Note: Subgroups Latinx-inclusive and Alone or in Combinat
 
 #### CONNECTED YOUTH ####
 # Run metadata fx
-youth_meta <- metadata_fx("econ", "connected_youth", "nhpi", metadata)
+youth_meta <- metadata_fx("econ", "connected_youth", "nhpi", metadata, "2025")
 
 # Run data fx
-youth_list <- data_fx(youth_meta, "nhpi")
+youth_list <- data_fx(youth_meta, "nhpi", "v7")
 
 # Run chart fx
 youth_plot <- chart_fx(youth_list, youth_meta, "nhpi", acs_racenote)
@@ -338,10 +368,10 @@ youth_plot <- chart_fx(youth_list, youth_meta, "nhpi", acs_racenote)
 
 #### OVERCROWDED ####
 # Run metadata fx
-overcrowd_meta <- metadata_fx("hous", "overcrowded", "nhpi", metadata)
+overcrowd_meta <- metadata_fx("hous", "overcrowded", "nhpi", metadata, "2023")
 
 # Run data fx
-overcrowd_list <- data_fx(overcrowd_meta, "nhpi")
+overcrowd_list <- data_fx(overcrowd_meta, "nhpi", "v5")
 
 # Run chart fx
 overcrowd_plot <- chart_fx(overcrowd_list, overcrowd_meta, "nhpi", acs_racenote)
@@ -349,21 +379,21 @@ overcrowd_plot <- chart_fx(overcrowd_list, overcrowd_meta, "nhpi", acs_racenote)
 
 #### HOMEOWNERSHIP ####
 # Run metadata fx
-homeown_meta <- metadata_fx("hous", "homeownership", "nhpi", metadata)
+homeown_meta <- metadata_fx("hous", "homeownership", "nhpi", metadata, "2023")
 
 # Run data fx
-homeown_list <- data_fx(homeown_meta, "nhpi")
+homeown_list <- data_fx(homeown_meta, "nhpi", "v5")
 
 # Run chart fx
 homeown_plot <- chart_fx(homeown_list, homeown_meta, "nhpi", acs_racenote)
 
 
-#### DENIED MORTGAGEW ####
+#### DENIED MORTGAGE ####
 # Run metadata fx
-mtg_meta <- metadata_fx("hous", "denied_mortgages", "nhpi", metadata)
+mtg_meta <- metadata_fx("hous", "denied_mortgages", "nhpi", metadata, "2025")
 
 # Run data fx
-mtg_list <- data_fx(mtg_meta, "nhpi")
+mtg_list <- data_fx(mtg_meta, "nhpi", "v7")
 
 # Run chart fx
 mtg_plot <- chart_fx(mtg_list, mtg_meta, "nhpi", hmda_racenote)
@@ -371,10 +401,10 @@ mtg_plot <- chart_fx(mtg_list, mtg_meta, "nhpi", hmda_racenote)
 
 #### LOW BIRTHWEIGHT ####
 # Run metadata fx
-lbw_meta <- metadata_fx("hlth", "low_birthweight", "nhpi", metadata)
+lbw_meta <- metadata_fx("hlth", "low_birthweight", "nhpi", metadata, "2025")
 
 # Run data fx
-lbw_list <- data_fx(lbw_meta, "nhpi")
+lbw_list <- data_fx(lbw_meta, "nhpi", "v7")
 
 # Run chart fx
 lbw_plot <- chart_fx(lbw_list, lbw_meta, "nhpi", cdc_racenote)
