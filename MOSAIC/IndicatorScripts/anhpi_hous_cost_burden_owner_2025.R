@@ -29,7 +29,7 @@ curr_yr = 2021      # Data year
 rc_yr = '2025'      # you MUST UPDATE each year
 rc_schema ="v7"     # you MUST UPDATE each year
 schema = 'v7'
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_HousingBurden_Owner-MOSAIC.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_HousingBurden_Owner - MOSAIC.docx"
 
 cv_threshold = 40         
 pop_threshold = 100      # in this case, a screen on number of housing units, not population       
@@ -307,7 +307,7 @@ state_table_name <- paste0(tolower(race_name), "_hous_cost_burden_owner_state_",
 city_table_name <- paste0(tolower(race_name), "_hous_cost_burden_owner_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
 start_yr <- curr_yr-4
 
-indicator <- paste0("The percentage of rented housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
+indicator <- paste0("The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
 source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table ", toupper(table_code), ", https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## ASIAN: SEND TO POSTGRES #######
@@ -386,7 +386,7 @@ state_table_name <- paste0(tolower(race_name), "_hous_cost_burden_owner_state_",
 city_table_name <- paste0(tolower(race_name), "_hous_cost_burden_owner_city_", rc_yr)          # See most recent RC Workflow SQL Views for table name (remember to update year)
 start_yr <- curr_yr-4
 
-indicator <- paste0("The percentage of owners experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
+indicator <- paste0("The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income ", toupper(race_name), " Detailed Groups ONLY")  # See most recent Indicator Methodology for indicator description
 source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, SPT Table ", toupper(table_code), ", https://data.census.gov/cedsci/ . QA doc: ", qa_filepath)   # See most recent Indicator Methodology for source info
 
 ############## NHPI: SEND TO POSTGRES #######
