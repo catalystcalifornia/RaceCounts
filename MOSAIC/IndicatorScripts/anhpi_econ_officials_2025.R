@@ -373,9 +373,18 @@ geo_subgroup_combos <- table_screened %>%
   group_by(geoname) %>%
   summarise(unique_subgroups = n_distinct(subgroup))  # max = 43. up to 40 subgroups + 2 groups + 1 total
 
+
+############## OFFICIALS/MGRS ONLY: CONVERT PERCENT TO RATE PER 1K ##############
 table_screened <- table_screened %>%
-  select(-c(num_se, rate_se, pop_se)) %>%    # drop unneeded cols
+  mutate(rate_pct = rate,
+         rate = rate * 10) # calc rate per 1k from percent
+
+table_screened <- table_screened %>%
+  select(-c(rate_pct, num_se, rate_se, pop_se)) %>%    # drop unneeded cols, incl percents
   mutate(geolevel = ifelse(geoid == '06', 'state', 'county'))
+
+
+
 
 
 ############## ASIAN: CALC RACE COUNTS STATS ##############
