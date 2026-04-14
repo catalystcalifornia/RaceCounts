@@ -359,17 +359,6 @@ hmda_racenote <- "Data Note: Subgroups Latinx-inclusive and Alone or in Combinat
 # # Run chart fx
 # internet_plot <- chart_fx(internet_list, internet_meta, "nhpi", acs_racenote)
 
-#### CONNECTED YOUTH ####
-# Run metadata fx
-youth_meta <- metadata_fx("econ", "connected_youth", "nhpi", metadata, "2025")
-
-# Run data fx
-youth_list <- data_fx(youth_meta, "nhpi", "v7")
-
-# Run chart fx
-youth_plot <- chart_fx(youth_list, youth_meta, "nhpi", acs_racenote)
-
-
 #### UNINSURED ####
 # # Run metadata fx 
 # uninsured_meta <- metadata_fx("hlth", "health_insurance", "nhpi", metadata)
@@ -379,6 +368,17 @@ youth_plot <- chart_fx(youth_list, youth_meta, "nhpi", acs_racenote)
 # 
 # # Run chart fx
 # uninsured_plot <- chart_fx(uninsured_list, uninsured_meta, "nhpi", cdc_racenote)
+
+
+#### CONNECTED YOUTH ####
+# Run metadata fx
+youth_meta <- metadata_fx("econ", "connected_youth", "nhpi", metadata, "2025")
+
+# Run data fx
+youth_list <- data_fx(youth_meta, "nhpi", "v7")
+
+# Run chart fx
+youth_plot <- chart_fx(youth_list, youth_meta, "nhpi", acs_racenote)
 
 
 #### OVERCROWDED ####
