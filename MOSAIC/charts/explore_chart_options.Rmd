@@ -15,34 +15,29 @@ body { margin: 0; }
 ```{r, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 # load libraries and test data
-source("W:\\RDA Team\\R\\credentials_source.R")
+library(here)
 library(dplyr)
 library(purrr)
 library(highcharter)
 library(htmltools)
+
+source("W:\\RDA Team\\R\\credentials_source.R")
+source(here("MOSAIC", "charts", "chart_style_vars.R"))
+
 con <- connect_to_db("mosaic")
 con_rc <- connect_to_db("racecounts")
 
 low_birthweight_asian<- dbGetQuery(con, "SELECT * FROM v7.asian_hlth_low_birthweight_state_2025;") %>%
+  select(-starts_with("total_")) %>%
   select(ends_with("_raw"), ends_with("_rate"))
-low_birthweight_nhpi <- dbGetQuery(con, "SELECT * FROM v7.nhpi_hlth_low_birthweight_state_2025;") %>%
-  select(ends_with("_raw"), ends_with("_rate"))
+# low_birthweight_nhpi <- dbGetQuery(con, "SELECT * FROM v7.nhpi_hlth_low_birthweight_state_2025;") %>%
+#   select(ends_with("_raw"), ends_with("_rate"))
 low_birthweight_rc <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hlth_low_birthweight_state_2025;") 
 
 low_birthweight_asbest <- low_birthweight_rc %>% pull(asbest)
 
 low_birthweight_rc <- low_birthweight_rc %>%
   select(ends_with("_raw"), ends_with("_rate"))
-
-# homeownership_asian <- dbGetQuery(con, "SELECT * FROM v7.asian_hous_homeownership_state_2025;") %>%
-#   select(ends_with("_raw"), ends_with("_rate")) 
-# homeownership_nhpi <- dbGetQuery(con, "SELECT * FROM v7.nhpi_hous_homeownership_state_2025;") %>%
-#   select(ends_with("_raw"), ends_with("_rate"))
-# homeownership_rc <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_homeownership_state_2025;") 
-# 
-# homeownership_asbest <- homeownership_rc %>% pull(asbest)
-# homeownership_rc <- homeownership_rc %>%
-#   select(ends_with("_raw"), ends_with("_rate"))
 
 dbDisconnect(con)
 dbDisconnect(con_rc)
@@ -54,7 +49,6 @@ dbDisconnect(con_rc)
 # should have at minimum: group (asian, nhpi, total); subgroup (bangladesh, philippines, etc); count, rate
 
 # colnames(low_birthweight_asian)
-# colnames(homeownership_asian)
 
 low_bw_asian_reshape <- low_birthweight_asian %>%
    pivot_longer(
@@ -65,14 +59,14 @@ low_bw_asian_reshape <- low_birthweight_asian %>%
   mutate(group = "asian") %>%
   select(group, subgroup, count, rate) 
 
-low_bw_nhpi_reshape <- low_birthweight_nhpi %>%
-   pivot_longer(
-    cols = matches("_raw$|_rate$"),
-    names_to = c("subgroup", ".value"),
-    names_pattern = "^(.+)_(raw|rate)$") %>%
-  rename(count = raw) %>%
-  mutate(group = "nhpi") %>%
-  select(group, subgroup, count, rate)
+# low_bw_nhpi_reshape <- low_birthweight_nhpi %>%
+#    pivot_longer(
+#     cols = matches("_raw$|_rate$"),
+#     names_to = c("subgroup", ".value"),
+#     names_pattern = "^(.+)_(raw|rate)$") %>%
+#   rename(count = raw) %>%
+#   mutate(group = "nhpi") %>%
+#   select(group, subgroup, count, rate)
 
 low_bw_rc_reshape <- low_birthweight_rc %>%
    pivot_longer(
@@ -81,59 +75,61 @@ low_bw_rc_reshape <- low_birthweight_rc %>%
     names_pattern = "^(.+)_(raw|rate)$") %>%
   rename(count = raw) %>%
   mutate(group = "total") %>%
-  select(group, subgroup, count, rate) 
+  select(group, subgroup, count, rate)  
 
-low_birthweight <- rbind(low_bw_asian_reshape, low_bw_rc_reshape) %>%
+low_birthweight <- rbind(low_bw_asian_reshape, low_bw_rc_reshape) 
+
+low_birthweight <- low_birthweight %>%
   mutate(
     # round rates
-    rate=round(rate, 1)) 
+    rate=round(rate, 1)) %>%
+  # remove nphi for now
+  filter(group!="nhpi") %>%
+  # mutate(subgroup = ifelse(group=="nhpi", sprintf("%s (nhpi)", subgroup), subgroup)) %>%
+  # mutate(group= ifelse(group=="nhpi", "ASIAN", group)) 
+  mutate(
+    group = case_when(
+      group=="total" & subgroup=="nh_asian" ~ "asian",
+      group=="total" & subgroup != "total" ~ "other major race groups",
+      group=="asian" & subgroup != "total" ~ "asian subgroups",
+      .default=group),
+    subgroup = case_when(group=="asian" ~ "asian total",
+                         .default=subgroup))
 
+  
 # A bit more indicator prep for chart mock ups
 # Test highcharter
 
 low_birthweight_chart1 <- low_birthweight %>%
-  # remove nphi for now
-  filter(group!="nhpi") 
-  # mutate(subgroup = ifelse(group=="nhpi", sprintf("%s (nhpi)", subgroup), subgroup)) %>%
-  # mutate(group= ifelse(group=="nhpi", "ASIAN", group)) 
-  
+  mutate(subgroup = ifelse(subgroup == "asian total", "total", subgroup)) %>%
+  # Will want to include asian in total and as its own bar
+  bind_rows(low_birthweight %>% filter(group=="asian") %>% mutate(group="other major race groups", subgroup="nh_asian")) 
 
-low_birthweight <- low_birthweight %>%
-  filter(group!="nhpi") %>%
-  mutate(
-    group = case_when(group=="total" & subgroup != "total" ~ "other major race groups",
-                      group=="asian" & subgroup != "total" ~ "asian subgroups",
-                      group=="asian" & subgroup=="total" ~ "asian average",
-                      .default=group),
-    subgroup = case_when(group=="asian average" ~ "asian average",
-                         .default=subgroup)
-  ) %>%
-  filter(group!="total"&subgroup!="total") %>%
-  # mutate(subgroup = ifelse(group=="nhpi", sprintf("%s (nhpi)", subgroup), subgroup)) %>%
-  # mutate(group= ifelse(group=="nhpi", "ASIAN", group)) %>%
-  mutate(rate=round(rate, 2)) %>%
-  mutate(count=ifelse(group=="asian average", 2892, count)) # placeholder to test counts
+low_birthweight_chart2 <- low_birthweight %>%
+  filter(group!="total" & subgroup!="total") %>%
+  mutate(group = ifelse(group=="asian", "asian total", group))
+   
 
 # use indicator best direction to arrange "shared struggle" groups at top
 if(low_birthweight_asbest=="min") {
-  low_birthweight <- low_birthweight %>%
+  low_birthweight_chart2 <- low_birthweight_chart2 %>%
     arrange(desc(rate))
   low_birthweight_chart1 <- low_birthweight_chart1 %>%
     arrange(desc(rate))
   
 } else{
-  low_birthweight <- low_birthweight %>%
+  low_birthweight_chart2 <- low_birthweight_chart2 %>%
     arrange(rate)
   low_birthweight_chart1 <- low_birthweight_chart1 %>%
     arrange(desc(rate))
 }
 
 # make groups all caps per RC style
-low_birthweight$group <- toupper(low_birthweight$group)
 low_birthweight_chart1$group <- toupper(low_birthweight_chart1$group)
-low_birthweight$subgroup <- toupper(low_birthweight$subgroup)
 low_birthweight_chart1$subgroup <- toupper(low_birthweight_chart1$subgroup)
 
+low_birthweight_chart2$group <- toupper(low_birthweight_chart2$group)
+low_birthweight_chart2$subgroup <- toupper(low_birthweight_chart2$subgroup)
 
 ```
 
@@ -150,122 +146,65 @@ Make the case for disaggregation. Highlight racial disparities faced by CA’s A
 This is an example of a "drilldown" chart. You can select Asian or Total and the chart will drilldown to show the subgroups in each. Once you drilldown, you have another option to toggle to counts or stay on rates. When drilling down and viewing rates, a vertical line will appear with the state average. 
 
 ```{r}
-# define global styling elements
 
-# define rc colors we want to use
-rc_blue <-  "#070024" # primary
-rc_orange <- "#FF6B02" # accent
-rc_magenta <- "#a63273" # using slightly desaturated version to help plotline rendering "#ac0068" # accent
-rc_grey <- "#cccccc" # neutral
-rc_white <- "#ffffff" # neutral
-rc_black <- "#333333" # neutral
-rc_purple <- "#362178" # accent
+## Drilldown/drillup set up
 
-
-# Set colors for bars
-base_colors <- c(
-  "asian" = rc_orange,
-  "asian subgroups" = rc_orange,
-  "asian average"= rc_blue,
-  "total" = rc_magenta,
-  "other" = rc_magenta,
-  "default" = rc_grey)
-
-custom_theme <- hc_theme(
-  chart = list(
-    style = list(
-      fontFamily = "Roboto", 
-      color = rc_black,
-      fontSize="1em")),
-  title = list(
-    style = list(
-      color = rc_black,
-      fontSize ="1.2em",
-      fontWeight="bold")),
-  subtitle = list(
-    style = list(
-      color = rc_black)),
-  legend = list(itemStyle = list(color = rc_black)),
-  xAxis = list(
-    lineColor = rc_black,
-    lineWidth = 2,
-    labels = list(
-      style = list(
-        color = rc_black,
-        fontSize ="0.8em",
-        fontWeight="bold"))),
-  yAxis = list(
-    lineColor = rc_black,
-    lineWidth = 1,      # Keep the main baseline
-    tickWidth = 0,       # Remove the small tick marks
-    title = list(
-      style=list(
-        color = rc_black,
-        fontSize="0.8em",
-        fontWeight="bold"))),
-  plotOptions = list(
-    bar = list(
-      dataLabels = list(
-        enabled=TRUE,
-        allowOverlap=TRUE,
-        crop=FALSE,
-        overflow="justify",
-        style = list(
-          color = rc_black,
-          textOutline = "1px contrast",
-          fontWeight = "bold"))))
-)
-
-```
-
-```{r}
-
+# define df initial chart of drilldown (asian and total bars only)
 base_bw_df <- low_birthweight_chart1 %>%
   filter(subgroup=="TOTAL") %>%
   select(-subgroup) %>%
-  mutate(color = case_when(
-    group == "ASIAN" ~ base_colors[["asian"]],
-    group == "TOTAL" ~ base_colors[["total"]],
-    TRUE ~ base_colors[["default"]]
-  ))
+  mutate(
+    color = case_when(
+      group == "ASIAN" ~ base_colors[["asian"]],
+      group == "TOTAL" ~ base_colors[["total"]],
+      TRUE ~ base_colors[["default"]]))
+
+# define df for drilldown charts (asian subgroups and total subgroups)
 drilldown_bw_df <- low_birthweight_chart1 %>%
   filter(subgroup!="TOTAL") %>%
   group_nest(group) %>%
   mutate(
-    id = group,
-    type = "bar",
-    # Assign color based on group
-    color = case_when(
-      group == "ASIAN" ~ base_colors[["asian subgroups"]],
-      group == "TOTAL" ~ base_colors[["total"]],
-      .default = base_colors[["default"]]
+    id = case_when(
+      group == "ASIAN SUBGROUPS" ~ "ASIAN",
+      group == "OTHER MAJOR RACE GROUPS" ~ "TOTAL",
+      .default = group
     ),
+    type = "bar",
+    color = case_when(
+      id == "ASIAN" ~ base_colors[["asian"]],
+      id == "TOTAL" ~ base_colors[["total"]],
+      .default = base_colors[["default"]]),
     # Store both rate-sorted and count-sorted versions
     data = map(data, function(df) {
       df %>%
         arrange(desc(rate)) %>%
         mutate(name = subgroup, y = rate, y2 = count) %>%
         select(name, y, y2) %>%
-        list_parse()
-    }),
+        list_parse()}),
     data_count_sorted = map2(data, group, function(df, grp) {
       low_birthweight_chart1 %>%
         filter(group == grp, subgroup != "TOTAL") %>%
         arrange(desc(count)) %>%
         mutate(name = subgroup, y = count, y2 = rate) %>%
         select(name, y, y2) %>%
-        list_parse()
-    })
-  ) %>%
+        list_parse()})) %>%
   select(id, type, color, data, data_count_sorted)
 
 total_rate_bw <- base_bw_df %>%
+  # Filter out state total (will add as a vertical line)
   filter(group=="TOTAL") %>%
   pull(rate) %>%
   round(2)
 
+
+# define JS to control behavior or drilldown
 drilldown_bw_js <- paste0("function(e) {
   var chart = this;
+  
+  // Check if seriesOptions exists first
+  if (!e.seriesOptions) {
+    return;
+  }
   
   // Store the original drilldown data before any modifications
   var seriesId = e.seriesOptions.id;
@@ -489,6 +428,11 @@ drillup_bw_js <- paste0("function() {
   chart.redraw();
 }")
 
+
+```
+
+```{r}
+# Create Chart 1 (drilldown)
 hc <- hchart(
   base_bw_df,
   "bar",
@@ -576,7 +520,6 @@ htmltools::tagList(
 )
 
 ```
-#
 
 ## Goal 2 Example
 Counter the model minority myth by showing the “shared struggle”. Highlight where AAPI subgroup rates are on par with other BIPOC rates. 
@@ -584,24 +527,26 @@ Counter the model minority myth by showing the “shared struggle”. Highlight 
 Here is an example of the second chart type. The initial view shows rates for all subgroups and aggregated groups (like traditional Race Counts race/ethnic groups) for initial comparison. You can interact by toggling on/off different series or by changing the view to display counts instead of rates. 
 
 ```{r}
+# Prep for chart 2
+
 all_subgroups <- unique(low_birthweight$subgroup)
 
 # Create ordered categories for RATES (descending by rate)
-rate_order <- low_birthweight %>%
+rate_order <- low_birthweight_chart2 %>%
   arrange(desc(rate)) %>%
   pull(subgroup)
 
 # Create ordered categories for COUNTS (descending by count)
-count_order <- low_birthweight %>%
+count_order <- low_birthweight_chart2 %>%
   arrange(desc(count)) %>%
   pull(subgroup)
 
 # Get unique groups for color assignment
-groups <- unique(low_birthweight$group)
+groups <- unique(low_birthweight_chart2$group)
 
 
 # Create series data for RATES with colors
-series_data_rates <- low_birthweight %>%
+series_data_rates <- low_birthweight_chart2 %>%
   group_by(group) %>%
   group_split() %>%
   map(function(df) {
@@ -617,8 +562,8 @@ series_data_rates <- low_birthweight %>%
     # Assign color based on group
     series_color <- if(df$group[1] == "ASIAN SUBGROUPS") {
       base_colors[["asian subgroups"]]
-    } else if(df$group[1] == "ASIAN AVERAGE") {
-      base_colors[["asian average"]]
+    } else if(df$group[1] == "ASIAN TOTAL") {
+      base_colors[["asian total"]]
     } else {
       base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
     }
@@ -632,7 +577,7 @@ series_data_rates <- low_birthweight %>%
   })
 
 # Create series data for COUNTS with same colors
-series_data_counts <- low_birthweight %>%
+series_data_counts <- low_birthweight_chart2 %>%
   group_by(group) %>%
   group_split() %>%
   map(function(df) {
@@ -648,8 +593,8 @@ series_data_counts <- low_birthweight %>%
     # Assign same color based on group
     series_color <- if(df$group[1] == "ASIAN SUBGROUPS") {
       base_colors[["asian subgroups"]]
-    } else if(df$group[1] == "ASIAN AVERAGE") {
-      base_colors[["asian average"]]
+    } else if(df$group[1] == "ASIAN TOTAL") {
+      base_colors[["asian total"]]
     } else {
       base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
     }
@@ -663,6 +608,11 @@ series_data_counts <- low_birthweight %>%
     )
   })
 
+
+```
+```{r}
+
+# Create chart 2 
 hc <- highchart() %>%
   hc_chart(
     type = "bar",
@@ -809,9 +759,7 @@ hc <- highchart() %>%
       total_rate_bw, # value
       rc_black, # color
       total_rate_bw) # state average
-      )
-    )
-  ) %>%
+      ))) %>%
   hc_plotOptions(
     bar = list(
       dataLabels = list(
@@ -928,7 +876,6 @@ htmltools::tagList(
 )
 
 ```
-
 
 ## Other notes
 Questions to answer regarding feasibility:
