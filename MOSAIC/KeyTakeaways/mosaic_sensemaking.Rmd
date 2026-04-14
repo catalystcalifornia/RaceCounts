@@ -207,6 +207,16 @@ cdc_racenote <- "Data Note: Subgroups include foreign-born birthing parents only
 # # Run chart fx
 # internet_plot <- chart_fx(internet_list, internet_meta, "asian", acs_racenote)
 
+#### OFFICIALS ####
+# Run metadata fx
+officials_meta <- metadata_fx("econ", "officials", "asian", metadata, "2025")
+
+# Run data fx
+officials_list <- data_fx(officials_meta, "asian", "v7")
+
+# Run chart fx
+officials_plot <- chart_fx(officials_list, officials_meta, "asian", pums_racenote)
+
 
 #### OVERCROWDED ####
 # Run metadata fx
@@ -296,6 +306,11 @@ lbw_plot <- chart_fx(lbw_list, lbw_meta, "asian", cdc_racenote)
 
 
 # Asian Disaggregation {#asian}
+
+### Officials & Managers
+```{r, echo=FALSE}
+officials_plot
+```
 
 ### Overcrowded Housing
 ```{r, echo=FALSE}

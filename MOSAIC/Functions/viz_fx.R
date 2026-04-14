@@ -129,9 +129,12 @@ chart_fx <- function(data_list, meta, race, racenote) {
     type = "bar", 
     hcaes(y = round(rate, 1), x = subgroup_label), 
     color = mainblue,
-    tooltip = list(
-      pointFormat = paste0("Rate: {point.rate:.1f}%<br>", 
-                           str_to_sentence(meta$raw_descriptor), ": {point.raw:,.0f}")),
+    tooltip = list(   # Add % when max value <= 100 (aka values are percents)
+      pointFormat = paste0(
+        "Rate: {point.rate:.1f}", if (max(data_list$df$rate, na.rm = TRUE) > 100) "" else "%",
+        "<br>", str_to_sentence(meta$raw_descriptor), ": {point.raw:,.0f}"
+      )
+    ),
   ) %>% 
     
     hc_tooltip(crosshairs = TRUE) %>% 
@@ -141,8 +144,10 @@ chart_fx <- function(data_list, meta, race, racenote) {
     ) %>% 
     
     hc_yAxis(title = list(text = ""),
-             labels = list(format = "{value}%"), list(step = 1), padding = 0,   # this is for rate indicators only adding % signs 
-             max = min(100, max(data_list$df$rate, na.rm = TRUE) * 1.1),        # data max + 10% buffer, capped at 100
+             labels = list(  # # Add % when max value <= 100 (aka values are percents)
+               format = if (max(race_rate, na.rm = TRUE) > 100) "{value}" else "{value}%"
+             ), list(step = 1), padding = 0,    # this is for rate indicators only adding % signs
+             max = min(1000, max(data_list$df$rate, na.rm = TRUE) * 1.1),        # data max + 10% buffer, capped at 100
              plotLines = list(
                list(
                  value = data_list$tot_df$total_rate,   # total value
@@ -151,7 +156,11 @@ chart_fx <- function(data_list, meta, race, racenote) {
                  dashStyle = "Solid",     # "Solid", "Dash", "Dot", "DashDot"
                  zIndex = 5,              # draw on top of bars
                  label = list(
-                   text = paste0("Total Rate: ", round(data_list$tot_df$total_rate, 1), "%"),
+                   text = paste0(
+                     "Total Rate: ",  # Add % when max value <= 100 (aka values are percents)
+                     round(data_list$tot_df$total_rate, 1),
+                     if (max(data_list$tot_df$total_rate, na.rm = TRUE) > 100) "" else "%"
+                   ),
                    align = "right",       # place label to the left of the line
                    verticalAlign = "bottom",
                    rotation = 0,          # make labels horizontal
@@ -166,7 +175,11 @@ chart_fx <- function(data_list, meta, race, racenote) {
                  dashStyle = "Solid",     # "Solid", "Dash", "Dot", "DashDot"
                  zIndex = 5,              # draw on top of bars
                  label = list(
-                   text = paste0(race_label, " Rate: ", round(race_rate, 1), "%"),
+                   text = paste0(
+                     race_label, " Rate: ",   # Add % when max value <= 100 (aka values are percents)
+                     round(race_rate, 1),
+                     if (max(race_rate, na.rm = TRUE) > 100) "" else "%"
+                   ),
                    align = "right",       # place label to the left of the line
                    verticalAlign = "bottom",
                    rotation = 0,          # make labels horizontal
