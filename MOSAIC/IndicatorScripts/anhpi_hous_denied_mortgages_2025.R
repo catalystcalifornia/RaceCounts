@@ -194,10 +194,12 @@ nrow(filter(reclass_denied[[5]], japanese_aoic == 1))
 calc_counts <- function(x, subgroup_list, geo, type) {
   x %>%
     group_by(across(all_of(geo))) %>%
-    summarise(across(
-      all_of(subgroup_list$subgroup_label),
-      ~ if (all(is.na(.))) NA_real_ else sum(. * wt_val, na.rm = TRUE)
-    )) %>%
+    summarise(
+      across(
+        all_of(subgroup_list$subgroup_label),
+        \(.) if (all(is.na(.))) NA_real_ else sum(. * wt_val, na.rm = TRUE)
+      )  
+    ) %>%
     rename_with(~ paste0(., "_", type), all_of(subgroup_list$subgroup_label)) %>%
     ungroup() %>%
     rename(geoid = all_of(geo))
@@ -225,10 +227,12 @@ agg_counts <- function(counts_list1, counts_list2, geo) {
   c(counts_list1, counts_list2) %>%
     bind_rows() %>%
     group_by(across(all_of(geo))) %>%
-    summarise(across(
-      everything(),
-      ~ if (all(is.na(.))) NA_integer_ else sum(., na.rm = TRUE)
-    )) %>%
+    summarise(
+      across(
+        everything(),
+        \(.) if (all(is.na(.))) NA_integer_ else sum(., na.rm = TRUE)
+      )
+    ) %>%
     ungroup()
 }
 
@@ -239,6 +243,8 @@ loans <- agg_counts(loans_c, loans_st, "geoid")
 filter(denied %>% filter(geoid == '06')) %>% select(asian_aoic_denied)  # 97,944
 sum(denied$asian_aoic_denied, na.rm=TRUE) - 97944  # should equal 97,944
 
+sum(denied$asian_aoic_denied[denied$geoid != '06'], na.rm=TRUE)  # sum of counties # 97,944
+denied$asian_aoic_denied[denied$geoid == '06']                    # state row - should match # should equal 97,944
 
 ## Add census geonames
 census_api_key(census_key1, overwrite=TRUE)
@@ -314,20 +320,25 @@ calc_totals <- function(x, subgroup_list) {
         NA_real_,
         rowSums(across(ends_with("_originated")), na.rm = TRUE)
       ),
-      total_raw = if_else(
-        if_all(ends_with("_originated"), ~ is.na(.)),
+      total_raw = if_else(  # unscreened
+        if_all(ends_with("_denied"), ~ is.na(.)),
         NA_real_,
-        rowSums(across(ends_with("_originated")), na.rm = TRUE)
+        rowSums(across(ends_with("_denied")), na.rm = TRUE)
       ),
       total_denied = if_else(
         if_all(ends_with("_denied"), ~ is.na(.)),
         NA_real_,
         rowSums(across(ends_with("_denied")), na.rm = TRUE)
-      ),
+      )
+    ) %>%
+    # screened total_raw / total_rate
+    mutate(
+      total_raw = if_else(total_originated > threshold, total_raw, NA_real_)
+    ) %>%
+    mutate(
       total_rate = if_else(
-        is.na(total_originated) | is.na(total_denied) | total_originated == 0,
-        NA_real_,
-        total_denied / total_originated * 100
+        (is.na(total_originated) | is.na(total_denied) | total_originated == 0), NA_real_,
+        total_raw / total_originated * 100
       )
     )
 }
@@ -406,7 +417,8 @@ View(county_table)
 
 #rename geoid to state_id, county_id, city_id, leg_id
 state_table <- rename(state_table, state_id = geoid, state_name = geoname)
-county_table <- rename(county_table, county_id = geoid, county_name = geoname)
+county_table <- rename(county_table, county_id = geoid, county_name = geoname) %>%
+  select(where(~!all(is.na(.))))    # drop cols where all values are NA
 
 ###update info for postgres tables###
 county_table_name <- paste0(race,"_hous_denied_mortgages_county_", rc_yr)
@@ -456,7 +468,8 @@ View(county_table)
 
 #rename geoid to state_id, county_id, city_id, leg_id
 state_table <- rename(state_table, state_id = geoid, state_name = geoname)
-county_table <- rename(county_table, county_id = geoid, county_name = geoname)
+county_table <- rename(county_table, county_id = geoid, county_name = geoname) %>%
+  select(where(~!all(is.na(.))))    # drop cols where all values are NA
 
 ###update info for postgres tables###
 county_table_name <- paste0(race,"_hous_denied_mortgages_county_", rc_yr)
