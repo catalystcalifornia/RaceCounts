@@ -288,9 +288,9 @@ num_df_oth_asian <- oth_asian_srvy %>%
   mutate(
     subgroup  = 'other_asian',
     group     = 'asian',
-    rate_moe  = rate_se * 1.645 * 100,
+    rate_moe  = rate_se * 1.645 * 1000,
     rate_cv   = ifelse(rate > 0, (rate_se / rate) * 100, NA_real_),
-    rate      = rate * 100,
+    rate      = rate * 1000,
     count_moe = num_se * 1.645,
     count_cv  = ifelse(num > 0, (num_se / num) * 100, NA_real_)
   )
@@ -333,9 +333,9 @@ num_df_oth_nhpi <- oth_nhpi_srvy %>%
   mutate(
     subgroup  = 'other_pacific',
     group     = 'nhpi',
-    rate_moe  = rate_se * 1.645 * 100,
+    rate_moe  = rate_se * 1.645 * 1000,
     rate_cv   = ifelse(rate > 0, (rate_se / rate) * 100, NA_real_),
-    rate      = rate * 100,
+    rate      = rate * 1000,
     count_moe = num_se * 1.645,
     count_cv  = ifelse(num > 0, (num_se / num) * 100, NA_real_)
   )
