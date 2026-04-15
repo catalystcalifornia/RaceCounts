@@ -77,7 +77,7 @@ people$state_geoid <- "06"
 people$puma_id <- paste0(people$state_geoid, people$PUMA)
 
 #### Step 4: Join subgroup labels to data ####
-people <- anhpi_reclass(people, curr_yr, ancestry_list)  # returns list containing people (reclassified pums data) and aapi_incl (list of AAPI ancestries in data)
+people <- anhpi_reclass(people, ancestry_list)  # returns list containing people (reclassified pums data) and aapi_incl (list of AAPI ancestries in data)
 list2env(people, .GlobalEnv)
 
 # Add a new column for each anc_label, populated with 1 or 0

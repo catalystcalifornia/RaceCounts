@@ -1,4 +1,4 @@
-### Disaggregated Asian and NHPI Living Wage RC v7###
+### Disaggregated Asian and NHPI Connected Youth RC v7###
 
 # Set up workspace --------------------------------------------------------
 # Install packages if not already installed
@@ -28,7 +28,7 @@ con2 <- connect_to_db("mosaic")
 ancestry_list <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\Asian_NHPI_Ancestry_2024.xlsx", sheet = "ancestry") # list of ANHPI ANC1P/ANC2P codes
 
 # update QA doc filepath
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Living_Wage_MOSAIC.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Connected_Youth_MOSAIC.docx"
 
 #### Step 1: Define Variables ####
 root <- "W:/Data/Demographics/PUMS/CA_2020_2024/"
@@ -36,15 +36,14 @@ rc_yr = '2025'      # you MUST UPDATE each year
 curr_yr <- 2024
 start_yr <- curr_yr - 4
 rc_schema <- 'v7'
-lw <- 15.50    # update living wage value as needed
 
 
 ## CHECK FOR UPDATES EACH YEAR
 ### define common inputs for calc_pums{} and pums_screen{}
-indicator = 'living_wage'         # name of column that contains indicator data, eg: 'living_wage' which contains values 'livable' and 'not livable'
-indicator_val = 'livable'         # desired indicator value, eg: 'livable' (not 'not livable')        
+indicator = 'connected'         # name of column that contains indicator data, eg: 'connected_youth' which contains values 'connected' and 'not connected'
+indicator_val = 'connected'         # desired indicator value, eg: 'connected' (not 'not connected')        
 weight = 'PWGTP'                  # PWGTP for person-level (psam_p06.csv) or WGTP for housing unit-level (psam_h06.csv) analysis
-cv_threshold <- 30                # threshold and CV must be displayed as a percentage not decimal, eg: 30 not .3
+cv_threshold <- 20                # threshold and CV must be displayed as a percentage not decimal, eg: 30 not .3
 raw_rate_threshold <- 0           # data values less than threshold are screened, for RC indicators threshold is 0.
 pop_threshold <- 400              # data for geos+race combos with pop smaller than threshold are screened.
 
@@ -73,10 +72,9 @@ cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0))    # get all PUMS
 cols_wts <- grep("^PWGTP*", cols, value = TRUE)                   # filter for PUMS weight colnames
 
 ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE, select = c(cols_wts, "RT", "SERIALNO", "AGEP", "ESR", "SCH", "PUMA",
-                                                                                                   "ANC1P", "ANC2P", "HISP", "RAC1P", "RACASN", "RACPI", "RACNH", 
-                                                                                                   "ADJINC", "WAGP", "COW", "WKHP", "WRK", "WKWN"),
-             colClasses = list(character = c("PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RACASN", "RACPI", "RACNH", 
-                                             "ADJINC", "WAGP", "COW", "WKHP", "ESR", "WRK", "WKWN")))
+                                                                                         "ANC1P", "ANC2P", "HISP", "RAC1P", "RACASN", "RACPI", "RACNH"),
+             colClasses = list(character = c("PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RACASN", "RACPI", "RACNH"
+             )))
 
 # Add state_geoid to ppl, add state_geoid to PUMA id, so it aligns with puma-county xwalk
 ppl$state_geoid <- "06"
@@ -94,70 +92,32 @@ ppl$RACNHPI <- case_when(
   TRUE ~ 0
 )
 
-#### Step 4: Subset Data & Calc Living Wage ####
-# Adjust wage or salary income in past 12 months: WAGP (adjust with ADJINC)----
-# trying wages first then will try earnings 
-ppl$wages_adj <- (as.numeric(ppl$WAGP)*(as.numeric(ppl$ADJINC)/1000000))
+#### Step 4: Subset Data & Calc Connected Youth ####
+# Keep records only for those ages 16-24
+ppl <- ppl %>% filter(AGEP >= 16 & AGEP <= 24)
 
-# Filter data for pop of interest  ----
-# Keep records only for those ages 18-64
-ppl <- ppl %>% filter(AGEP >= 18 & AGEP <= 64)
+# Filtering for those unemployed or not in the labor force 
+ppl$employment <- ifelse(ppl$ESR %in% c(3,6), "not employed", "employed")
 
-# Keep records for those with non-zero earnings in past year
-ppl <- ppl %>% filter(wages_adj>0)
+# Filtering for those not attending school and in school
+ppl$schl_enroll <-  ifelse(ppl$SCH == 1, "not attending school", "in school")
 
-# Keep records for those who were at work last week OR had a job but were not at work last week
-ppl <- ppl %>% filter(WRK=='1' | ESR %in% c(1, 2, 3, 4, 5))
+# verify coding 
+table(ppl$employment, ppl$ESR, useNA = "always")
+table(ppl$SCH, ppl$schl_enroll, useNA = "always")
+table(ppl$employment, ppl$schl_enroll, useNA = "always")
 
-# Filter for those who were not self-employed or unpaid family workers
-## 6-8 which are self-employed and then employed in family business do seem to have different average earnings than others
-ppl <- ppl %>% filter(!COW %in% c('6','7','8'))
-
-####### Calculate Living Wage ###
-# Calculate hourly wage --
-# First calculate number of hours worked based on weekly hours and weeks worked
-## convert usual hours worked per week past 12 months: WKHP to integer
-ppl$wkly_hrs <- as.integer(ppl$WKHP)
-
-## number of weeks worked in past 12 months: WKWN
-ppl$wks_worked <- as.numeric(ppl$WKWN)
-
-# review
-table(ppl$wks_worked, ppl$WKWN, useNA = "always")
-## View(ppl[c("RT","SERIALNO","wages_adj","WKWN","wks_worked")])
-
-# Then calculate hourly wage
-## Used 15.50 since that went into effect January 2023
-ppl$hrly_wage <- as.numeric(ppl$wages_adj/(ppl$wks_worked * ppl$wkly_hrs))
-## View(ppl[c("RT","SERIALNO","wages_adj","WKHP","WKWN","wks_worked","wkly_hrs","hrly_wage")])
-
-# Code for Living Wage Indicator --
-# When lw or more, code as livable. When less than lw code as not livable. All other values code as NULL.
-ppl$living_wage <- case_when(ppl$hrly_wage >= lw ~ "livable", ppl$hrly_wage < lw ~ "not livable", TRUE ~ "NA")
-# View(ppl[c("RT","SERIALNO","COW","ESR","wages_adj","WKHP","WKWN","wks_worked","wkly_hrs","hrly_wage","living_wage")])
-
-# Convert to factor for indicator
-ppl$indicator <- as.factor(ppl$living_wage)
-ppl$living_wage <- as.factor(ppl$living_wage)
+# Combine both conditions to create connected/disconnected variable 
+ppl$connected <- ifelse(ppl$employment == "not employed" & ppl$schl_enroll =="not attending school", "not connected", "connected")
+ppl$connected <- as.factor(ppl$connected)
+ppl$indicator <- as.factor(ppl$connected)
 
 #review
-#table(ppl$indicator, useNA = "always")
-table(ppl$living_wage, useNA = "always")
+summary(ppl$indicator)
+table(ppl$indicator, useNA = "always")
 
-# Test disparities for state
-# install.packages("spatstat")
-# library(spatstat)
-# median_race<-ppl%>%
-#   group_by(race)%>%
-#   summarize(median_hrly_wages=weighted.median(hrly_wage,PWGTP, na.rm=TRUE))
-# ppl$living_wage_num <- ifelse(ppl$hrly_wage >= lw, 1, 0)
-# living_wage_race<-ppl%>%
-#   group_by(race)%>%
-#   summarize(living_wage=weighted.mean(living_wage_num,PWGTP, na.rm=TRUE))
-## looks as expected
+#### Step 5: Join subgroup labels to data ###
 
-
-#### Step 5: Join subgroup labels to data ####
 ppl_ <- anhpi_reclass(ppl, ancestry_list)  # returns list containing ppl (reclassified pums data) and aapi_incl (list of AAPI ancestries in data)
 list2env(ppl_, .GlobalEnv)  # creates dfs 'people' and 'aapi_incl'
 
@@ -265,10 +225,10 @@ screen_rate_cv_pop <- table_state %>%
   mutate(rate_cv_flag = ifelse(rate_cv > cv_threshold, 1, 0), 
          pop_flag = ifelse(pop < pop_threshold, 1, 0)) %>%  # screen on pop bc these are indicator data
   arrange(desc(rate_cv), desc(num))
-message("only 1 suppressed estimate is for 'livable':")
+message("only 1 suppressed estimate is for 'connected':")
 screen_rate_cv_pop %>% filter(rate_cv_flag == 1 | pop_flag == 1)
 
-# The 1 'livable' estimate suppressed by our method also gets suppressed by ERI's method (Bhutanese).
+# The 1 'connected' estimate suppressed by our method also gets suppressed by ERI's method (Bhutanese).
 
 
 #### Step 7: Screen data (incl. recoding suppressed subgroups & recalcs) ####
@@ -322,9 +282,9 @@ table_state <- rbind(num_df_oth_asian, table_state %>% filter(subgroup != 'other
 
 table_cs <- rbind(table_state, table_county) %>%
   rename('indicator' = indicator) %>%      # update to generic colname
-  filter(indicator == indicator_val) %>%   # keep only the rows with indicator value we want, eg: keep livable, and drop  not livable
+  filter(indicator == indicator_val) %>%   # keep only the rows with indicator value we want, eg: keep connected, and drop  not connected
   filter(!is.na(geoid))                    # drop rows for responses that are not incl. in our county-xwalk (rows where geoid is NA)
-  
+
 # RC screening method (CV and pop thresholds), see screen_rate_cv_pop above
 table_screened <- table_cs %>%
   mutate(rate = ifelse(rate_cv > cv_threshold | pop < pop_threshold, NA, rate), 
@@ -343,7 +303,7 @@ geo_subgroup_combos <- table_screened %>%
 table_screened <- table_screened %>%
   select(-c(num_se, rate_se, pop_se)) %>%    # drop unneeded cols
   mutate(geolevel = ifelse(geoid == '06', 'state', 'county'))
-  
+
 
 ############## ASIAN: CALC RACE COUNTS STATS ##############
 race_name <- 'asian'  # this var is used to create the RC table name
@@ -392,9 +352,9 @@ county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "count
 
 
 ###update info for postgres tables###
-county_table_name <- paste0(race_name, "_econ_living_wage_county_", rc_yr)
-state_table_name <- paste0(race_name, "_econ_living_wage_state_", rc_yr)
-indicator <- paste0("Percent of workers earning above living wage (", lw, ") for ", race_name, " Ancestry at state and county level. Includes workers ages 18-64 who were at work last week or were employed but not at work. Excludes those with zero earnings and self-employed or unpaid family workers. PUMAs are assigned to counties based on Geocorr 2022 crosswalks. We also screened by pop (400) and CV (30%). QA Doc:", qa_filepath, ". This data is")
+county_table_name <- paste0(race_name, "_econ_connected_youth_county_", rc_yr)
+state_table_name <- paste0(race_name, "_econ_connected_youth_state_", rc_yr)
+indicator <- paste0("Connected Youth out of all Youth (%). Connected Youth are those ages 16-24 who are in school and/or employed for ", race_name, " Ancestry at state and county level. PUMAs are assigned to counties based on Geocorr 2022 crosswalks. We also screened by pop (400) and CV (20%). QA Doc:", qa_filepath, ". This data is")
 source <- paste0("ACS PUMS (", start_yr, "-", curr_yr, ")")
 
 #send tables to postgres
@@ -450,16 +410,13 @@ county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "count
 
 
 ###update info for postgres tables###
-county_table_name <- paste0(race_name, "_econ_living_wage_county_", rc_yr)
-state_table_name <- paste0(race_name, "_econ_living_wage_state_", rc_yr)
-indicator <- paste0("Percent of workers earning above living wage (", lw, ") for ", race_name, " Ancestry at state and county level. Includes workers ages 18-64 who were at work last week or were employed but not at work. Excludes those with zero earnings and self-employed or unpaid family workers. PUMAs are assigned to counties based on Geocorr 2022 crosswalks. We also screened by pop (400) and CV (30%). QA Doc:", qa_filepath, ". This data is")
+county_table_name <- paste0(race_name, "_econ_connected_youth_county_", rc_yr)
+state_table_name <- paste0(race_name, "_econ_connected_youth_state_", rc_yr)
+indicator <- paste0("Connected Youth out of all Youth (%). Connected Youth are those ages 16-24 who are in school and/or employed for ", race_name, " Ancestry at state and county level. PUMAs are assigned to counties based on Geocorr 2022 crosswalks. We also screened by pop (400) and CV (20%). QA Doc:", qa_filepath, ". This data is")
 source <- paste0("ACS PUMS (", start_yr, "-", curr_yr, ")")
 
 #send tables to postgres
 to_postgres(county_table,state_table,"mosaic")
-
-
-
 
 # #close connection
 # dbDisconnect(con)

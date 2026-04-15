@@ -1,4 +1,4 @@
-### Disaggregated Asian and NHPI Living Wage RC v7###
+### Disaggregated Asian and NHPI Housing Quality RC v7###
 
 # Set up workspace --------------------------------------------------------
 # Install packages if not already installed
@@ -28,7 +28,7 @@ con2 <- connect_to_db("mosaic")
 ancestry_list <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\Asian_NHPI_Ancestry_2024.xlsx", sheet = "ancestry") # list of ANHPI ANC1P/ANC2P codes
 
 # update QA doc filepath
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Living_Wage_MOSAIC.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_housing_quality_MOSAIC.docx"
 
 #### Step 1: Define Variables ####
 root <- "W:/Data/Demographics/PUMS/CA_2020_2024/"
@@ -36,17 +36,16 @@ rc_yr = '2025'      # you MUST UPDATE each year
 curr_yr <- 2024
 start_yr <- curr_yr - 4
 rc_schema <- 'v7'
-lw <- 15.50    # update living wage value as needed
 
 
 ## CHECK FOR UPDATES EACH YEAR
 ### define common inputs for calc_pums{} and pums_screen{}
-indicator = 'living_wage'         # name of column that contains indicator data, eg: 'living_wage' which contains values 'livable' and 'not livable'
-indicator_val = 'livable'         # desired indicator value, eg: 'livable' (not 'not livable')        
-weight = 'PWGTP'                  # PWGTP for person-level (psam_p06.csv) or WGTP for housing unit-level (psam_h06.csv) analysis
-cv_threshold <- 30                # threshold and CV must be displayed as a percentage not decimal, eg: 30 not .3
+indicator = 'housing_quality'         # name of column that contains indicator data, eg: 'housing_quality' which contains values 'livable' and 'not livable'
+indicator_val = 'low_quality'         # desired indicator value, eg: 'livable' (not 'not livable')        
+weight = 'WGTP'                  # PWGTP for person-level (psam_p06.csv) or WGTP for housing unit-level (psam_h06.csv) analysis
+cv_threshold <- 35                # threshold and CV must be displayed as a percentage not decimal, eg: 30 not .3
 raw_rate_threshold <- 0           # data values less than threshold are screened, for RC indicators threshold is 0.
-pop_threshold <- 400              # data for geos+race combos with pop smaller than threshold are screened.
+pop_threshold <- 100              # data for geos+race combos with pop smaller than threshold are screened.
 
 
 #### Step 2: GET PUMA CROSSWALKS ######
@@ -67,23 +66,32 @@ county_crosswalk <- crosswalk %>%
 
 
 #### Step 3: GET PUMS DATA ######
-# Data Dictionary: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
+# Data Dictionary: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2024.pdf
+
 # Load ONLY the PUMS columns needed for this indicator
-cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0))    # get all PUMS cols 
-cols_wts <- grep("^PWGTP*", cols, value = TRUE)                   # filter for PUMS weight colnames
+# Load the people PUMS data, excluding wts bc this indicator is based on housing units
+ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE, 
+             select = c("SPORDER", "SERIALNO", "PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RACASN",  "RACPI", "RACNH"),
+             colClasses = list(character = c("SERIALNO", "PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RACASN", "RACPI", "RACNH")))
 
-ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE, select = c(cols_wts, "RT", "SERIALNO", "AGEP", "ESR", "SCH", "PUMA",
-                                                                                                   "ANC1P", "ANC2P", "HISP", "RAC1P", "RACASN", "RACPI", "RACNH", 
-                                                                                                   "ADJINC", "WAGP", "COW", "WKHP", "WRK", "WKWN"),
-             colClasses = list(character = c("PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RACASN", "RACPI", "RACNH", 
-                                             "ADJINC", "WAGP", "COW", "WKHP", "ESR", "WRK", "WKWN")))
+# Load the housing PUMS data, including wts bc this indicator is based on housing units
+cols <- colnames(fread(paste0(root, "psam_h06.csv"), nrows=0)) # get all PUMS cols 
+cols_ <- grep(paste0("^", weight, "*"), cols, value = TRUE)                                 # filter for PUMS weight colnames
+housing <- fread(paste0(root, "psam_h06.csv"), header = TRUE, data.table = FALSE, 
+                 select = c(cols_, "KIT", "HFL", "PLM", "TYPEHUGQ", "SERIALNO", "PUMA"),
+                 colClasses = list(character = c("KIT", "HFL", "PLM", "TYPEHUGQ", "SERIALNO", "PUMA")))
 
-# Add state_geoid to ppl, add state_geoid to PUMA id, so it aligns with puma-county xwalk
+# # join housing data to people data
+# # drop non-joined duplicate columns in housing
+ppl <- left_join(ppl, housing, # left join  to the ppl column. Removed a few columns from housing before join.
+                 by=c("SERIALNO", "PUMA"))    # specify the join field
+
+# Add state_id to ppl
 ppl$state_geoid <- "06"
 ppl$puma_id <- paste0(ppl$state_geoid, ppl$PUMA)
 
-# create list of replicate weights
-repwlist = rep(paste0(weight, 1:80))
+# create list of replicate weights defined at top of script: WGTP for housing file, PWGTP for person file
+repwlist = rep(paste0(weight,1:80))
 
 # save copy of original data
 orig_data <- ppl
@@ -94,67 +102,20 @@ ppl$RACNHPI <- case_when(
   TRUE ~ 0
 )
 
-#### Step 4: Subset Data & Calc Living Wage ####
-# Adjust wage or salary income in past 12 months: WAGP (adjust with ADJINC)----
-# trying wages first then will try earnings 
-ppl$wages_adj <- (as.numeric(ppl$WAGP)*(as.numeric(ppl$ADJINC)/1000000))
+#### Step 4: Subset Data & Calc Housing Quality ####
+##### Define Housing Quality ###########
+# filter data to include people who live in houses & householder records only
+ppl <- ppl[ppl$TYPEHUGQ == "1" & ppl$SPORDER == "1", ]
 
-# Filter data for pop of interest  ----
-# Keep records only for those ages 18-64
-ppl <- ppl %>% filter(AGEP >= 18 & AGEP <= 64)
-
-# Keep records for those with non-zero earnings in past year
-ppl <- ppl %>% filter(wages_adj>0)
-
-# Keep records for those who were at work last week OR had a job but were not at work last week
-ppl <- ppl %>% filter(WRK=='1' | ESR %in% c(1, 2, 3, 4, 5))
-
-# Filter for those who were not self-employed or unpaid family workers
-## 6-8 which are self-employed and then employed in family business do seem to have different average earnings than others
-ppl <- ppl %>% filter(!COW %in% c('6','7','8'))
-
-####### Calculate Living Wage ###
-# Calculate hourly wage --
-# First calculate number of hours worked based on weekly hours and weeks worked
-## convert usual hours worked per week past 12 months: WKHP to integer
-ppl$wkly_hrs <- as.integer(ppl$WKHP)
-
-## number of weeks worked in past 12 months: WKWN
-ppl$wks_worked <- as.numeric(ppl$WKWN)
-
-# review
-table(ppl$wks_worked, ppl$WKWN, useNA = "always")
-## View(ppl[c("RT","SERIALNO","wages_adj","WKWN","wks_worked")])
-
-# Then calculate hourly wage
-## Used 15.50 since that went into effect January 2023
-ppl$hrly_wage <- as.numeric(ppl$wages_adj/(ppl$wks_worked * ppl$wkly_hrs))
-## View(ppl[c("RT","SERIALNO","wages_adj","WKHP","WKWN","wks_worked","wkly_hrs","hrly_wage")])
-
-# Code for Living Wage Indicator --
-# When lw or more, code as livable. When less than lw code as not livable. All other values code as NULL.
-ppl$living_wage <- case_when(ppl$hrly_wage >= lw ~ "livable", ppl$hrly_wage < lw ~ "not livable", TRUE ~ "NA")
-# View(ppl[c("RT","SERIALNO","COW","ESR","wages_adj","WKHP","WKWN","wks_worked","wkly_hrs","hrly_wage","living_wage")])
-
-# Convert to factor for indicator
-ppl$indicator <- as.factor(ppl$living_wage)
-ppl$living_wage <- as.factor(ppl$living_wage)
-
+# create indicator for low-quality houses. 1=low quality, 0=not low quality.
+ppl$housing_quality <- ifelse((ppl$PLM == "2" | ppl$KIT == "2" | ppl$HFL == "9"), "low_quality", "not_low_quality")
 #review
-#table(ppl$indicator, useNA = "always")
-table(ppl$living_wage, useNA = "always")
+summary(ppl$housing_quality)
 
-# Test disparities for state
-# install.packages("spatstat")
-# library(spatstat)
-# median_race<-ppl%>%
-#   group_by(race)%>%
-#   summarize(median_hrly_wages=weighted.median(hrly_wage,PWGTP, na.rm=TRUE))
-# ppl$living_wage_num <- ifelse(ppl$hrly_wage >= lw, 1, 0)
-# living_wage_race<-ppl%>%
-#   group_by(race)%>%
-#   summarize(living_wage=weighted.mean(living_wage_num,PWGTP, na.rm=TRUE))
-## looks as expected
+ppl$housing_quality <- as.factor(ppl$housing_quality)
+ppl$indicator <- as.factor(ppl$housing_quality)
+#review
+table(ppl$housing_quality, useNA = "always")
 
 
 #### Step 5: Join subgroup labels to data ####
@@ -188,20 +149,37 @@ people$nhpi <- as.integer(
 
 ## check a few of the new ancestry & asian/nhpi cols
 table(thai = people$thai, asian_race = people$RACASN)        # check how many thai ancestry rows are also marked Asian race
+# asian_race
+# thai      0      1
+# 0 539598 120357
+# 1      7    987                                            # 99.3% of people with Thai ancestry also marked Asian race so the ancestry to race assignment looks good
 table(thai = people$thai, asian_anc = people$asian)          # check that all thai ancestry rows are also marked asian ancestry
+# asian_anc
+# thai      0      1
+# 0 557403 102552
+# 1      0    994
+
 table(asian_anc = people$asian, asian_race = people$RACASN)  # 1,609 responses w/ asian ancestry who are not coded race = Asian
-#       asian_race
-# thai         0      1
-#       0 579993 160147
-#       1     11   1336
+# asian_race
+# asian_anc      0      1
+# 0 538427  18976
+# 1   1178 102368
 
 table(fijian = people$fijian, nhpi_race = people$RACNHPI)    # check how many fijian ancestry rows are also marked NHPI race
+# nhpi_race
+# fijian      0      1
+# 0 656916   3720
+# 1     36    277                                            #88.5% with Fijian ancestry are correctly marked as NHPI race. 36 people did not mark it.
 table(fijian = people$fijian, nhpi_anc = people$nhpi)        # check that all fijian ancestry rows are also marked nhpi ancestry
+# nhpi_anc
+# fijian      0      1
+# 0 658684   1952
+# 1      0    313
 table(nhpi_anc = people$nhpi, nhpi_race = people$RACNHPI)    # 353 responses w/ nhpi ancestry who are not coded race = NHPI
-#       nhpi_race
-# fijian        0     1
-#       0 735552   5500
-#       1     46    389
+# nhpi_race
+# nhpi_anc      0      1
+# 0 656701   1983
+# 1    251   2014
 
 # For this analysis, we include anyone with an Asian ancestry and anyone with an NHPI ancestry, regardless of race.
 ## E.g. For NHPI, we include all records where nhpi == 1 regardless of RACNHPI value.
@@ -254,8 +232,8 @@ screen_unw_count <- full_join(
   right_join(aapi_incl, by = "anc_label") %>% 
   arrange(tot_count) %>%
   mutate(unw_flag = ifelse(tot_count < 100, 1, 0))
-message("there are 7 groups who don't meet ERI's screening threshold.")
-screen_unw_count %>% filter(unw_flag == 1)
+message("there are 8 groups who don't meet ERI's screening threshold.")
+View(screen_unw_count %>% filter(unw_flag == 1))
 
 rm(aapi_filtered)
 
@@ -265,18 +243,30 @@ screen_rate_cv_pop <- table_state %>%
   mutate(rate_cv_flag = ifelse(rate_cv > cv_threshold, 1, 0), 
          pop_flag = ifelse(pop < pop_threshold, 1, 0)) %>%  # screen on pop bc these are indicator data
   arrange(desc(rate_cv), desc(num))
-message("only 1 suppressed estimate is for 'livable':")
-screen_rate_cv_pop %>% filter(rate_cv_flag == 1 | pop_flag == 1)
+nrow(screen_rate_cv_pop %>% filter(rate_cv_flag == 1 | pop_flag == 1))
+message("22 suppressed estimates for 'low quality':")
+View(screen_rate_cv_pop %>% filter(rate_cv_flag == 1 | pop_flag == 1))
 
-# The 1 'livable' estimate suppressed by our method also gets suppressed by ERI's method (Bhutanese).
-
+# All of the 'low quality' estimates suppressed by our method also get suppressed by ERI's method.
+## Note there are some on the ERI list that do not get suppressed in our method bc they have no 'low quality' estimates (Bhutanese, Tibetan).
 
 #### Step 7: Screen data (incl. recoding suppressed subgroups & recalcs) ####
-# STATE-LEVEL ONLY: Recode Bhutanese as other_asian. If we present county data, we could recode any suppressed grps for that county too.
+# STATE-LEVEL ONLY: Recode suppressed asian subgroups as other_asian and same for nhpi. If we present county data, we could recode any suppressed grps for that county too.
+
+recode_asian <- screen_rate_cv_pop %>%
+  filter(housing_quality == 'low_quality'& (rate_cv_flag == 1 | pop_flag == 1)) %>%
+  select(group, subgroup) %>%
+  filter(group == 'asian')
+
+recode_nhpi <- screen_rate_cv_pop %>%
+  filter(housing_quality == 'low_quality'& (rate_cv_flag == 1 | pop_flag == 1)) %>%
+  select(group, subgroup) %>%
+  filter(group == 'nhpi')
+
 oth_asian_srvy <- ppl_state %>%
   mutate(subgroup = case_when(
-    bhutanese == 1 | other_asian == 1 ~ 'other_asian',  # recode bhutanese as oth_asian
-    TRUE ~ 'total')) %>%                                # recode non-bhutanese as total
+    if_any(all_of(recode_asian$subgroup), ~ . == 1) ~ "other_asian",
+    TRUE ~ "total")) %>%
   as_survey_rep(
     variables        = c(geoid, geoname, asian, subgroup, !!sym(indicator)),
     weights          = !!sym(weight),
@@ -317,14 +307,71 @@ num_df_oth_asian <- oth_asian_srvy %>%
     count_cv  = ifelse(num > 0, (num_se / num) * 100, NA_real_)
   )
 
+
+oth_nhpi_srvy <- ppl_state %>%
+  mutate(subgroup = case_when(
+    if_any(all_of(recode_nhpi$subgroup), ~ . == 1) ~ "other_pacific",
+    TRUE ~ "total")) %>%
+  as_survey_rep(
+    variables        = c(geoid, geoname, nhpi, subgroup, !!sym(indicator)),
+    weights          = !!sym(weight),
+    repweights       = all_of(repwlist),
+    combined_weights = TRUE,
+    mse              = TRUE,
+    type             = "other",
+    scale            = 4/80,
+    rscale           = rep(1, 80)
+  ) %>%
+  filter(!is.na(!!sym(indicator))) %>%
+  filter(subgroup == 'other_pacific')
+
+# Denominators (nhpi group-level stats) ────
+den_oth_nhpi <- oth_nhpi_srvy %>%
+  group_by(geoid, geoname) %>%
+  summarise(pop = survey_total(na.rm = TRUE), .groups = "drop")
+
+
+# Numerator
+num_df_oth_nhpi <- oth_nhpi_srvy %>%
+  group_by(geoid, geoname, !!sym(indicator)) %>%
+  summarise(
+    num  = survey_total(na.rm = TRUE),
+    rate  = survey_mean(na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  
+  # Join + metrics
+  left_join(den_oth_nhpi, by = c("geoid", "geoname")) %>%
+  mutate(
+    subgroup  = 'other_pacific',
+    group     = 'nhpi',
+    rate_moe  = rate_se * 1.645 * 100,
+    rate_cv   = ifelse(rate > 0, (rate_se / rate) * 100, NA_real_),
+    rate      = rate * 100,
+    count_moe = num_se * 1.645,
+    count_cv  = ifelse(num > 0, (num_se / num) * 100, NA_real_)
+  )
+
+
 # combine re-calc'd other_asian and pop_table_state, drop old 'other_asian' row
-table_state <- rbind(num_df_oth_asian, table_state %>% filter(subgroup != 'other_asian'))
+table_state <- rbind(num_df_oth_asian, num_df_oth_nhpi, table_state %>% filter(!subgroup %in% c('other_asian','other_pacific')))
+
+# recheck state screening
+screen_rate_cv_pop2 <- table_state %>%
+  filter(.[[indicator]] == indicator_val) %>%
+  mutate(rate_cv_flag = ifelse(rate_cv > cv_threshold, 1, 0), 
+         pop_flag = ifelse(pop < pop_threshold, 1, 0)) %>%  # screen on pop bc these are indicator data
+  arrange(desc(rate_cv), desc(num))
+nrow(screen_rate_cv_pop2 %>% filter(rate_cv_flag == 1 | pop_flag == 1))
+message("20 suppressed estimates for 'low quality'. other_asian and other_pacific are now NOT suppressed.")
+View(screen_rate_cv_pop2 %>% filter(rate_cv_flag == 1 | pop_flag == 1))
+
 
 table_cs <- rbind(table_state, table_county) %>%
   rename('indicator' = indicator) %>%      # update to generic colname
   filter(indicator == indicator_val) %>%   # keep only the rows with indicator value we want, eg: keep livable, and drop  not livable
   filter(!is.na(geoid))                    # drop rows for responses that are not incl. in our county-xwalk (rows where geoid is NA)
-  
+
 # RC screening method (CV and pop thresholds), see screen_rate_cv_pop above
 table_screened <- table_cs %>%
   mutate(rate = ifelse(rate_cv > cv_threshold | pop < pop_threshold, NA, rate), 
@@ -343,7 +390,7 @@ geo_subgroup_combos <- table_screened %>%
 table_screened <- table_screened %>%
   select(-c(num_se, rate_se, pop_se)) %>%    # drop unneeded cols
   mutate(geolevel = ifelse(geoid == '06', 'state', 'county'))
-  
+
 
 ############## ASIAN: CALC RACE COUNTS STATS ##############
 race_name <- 'asian'  # this var is used to create the RC table name
@@ -357,11 +404,13 @@ d <- d %>%
               names_glue = "{subgroup}_{.value}") %>%
   select(where(~!all(is.na(.))))      # drop cols where all values are NA
 
-
+# then explicitly check what _rate cols survived
+rate_cols <- grep("_rate$", colnames(d), value = TRUE)
+rate_cols  # inspect before proceeding
 #set source for RC Functions script
 source("./Functions/RC_Functions.R")
 
-d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
+d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
 
 d <- count_values(d) #calculate number of "_rate" values
 d <- calc_best(d) #calculate best rates -- be sure to update previous line of code accordingly before running this function.
@@ -392,9 +441,9 @@ county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "count
 
 
 ###update info for postgres tables###
-county_table_name <- paste0(race_name, "_econ_living_wage_county_", rc_yr)
-state_table_name <- paste0(race_name, "_econ_living_wage_state_", rc_yr)
-indicator <- paste0("Percent of workers earning above living wage (", lw, ") for ", race_name, " Ancestry at state and county level. Includes workers ages 18-64 who were at work last week or were employed but not at work. Excludes those with zero earnings and self-employed or unpaid family workers. PUMAs are assigned to counties based on Geocorr 2022 crosswalks. We also screened by pop (400) and CV (30%). QA Doc:", qa_filepath, ". This data is")
+county_table_name <- paste0(race_name, "_hous_housing_quality_county_", rc_yr)
+state_table_name <- paste0(race_name, "_hous_housing_quality_state_", rc_yr)
+indicator <- paste0("The percentage of low-quality housing units out of all housing units (lack of available kitchen, heating, or plumbing) for ", race_name, " of head of household. PUMAs are assigned to counties based on Geocorr 2022 crosswalks. We also screened by pop (400) and CV (35%). QA Doc: ", qa_filepath, ". This data is")
 source <- paste0("ACS PUMS (", start_yr, "-", curr_yr, ")")
 
 #send tables to postgres
@@ -419,7 +468,7 @@ d <- d %>%
 #set source for RC Functions script
 source("./Functions/RC_Functions.R")
 
-d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
+d$asbest = 'min'    #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max'
 
 d <- count_values(d) #calculate number of "_rate" values
 d <- calc_best(d) #calculate best rates -- be sure to update previous line of code accordingly before running this function.
@@ -439,9 +488,9 @@ View(state_table)
 #split COUNTY into separate table
 county_table <- d[d$geolevel == 'county', ]
 
-#calculate COUNTY z-scores
-county_table <- calc_z(county_table)
-county_table <- calc_ranks(county_table)
+# #calculate COUNTY z-scores #there aren't enough ancestries that survive screening to calculate ranks so I'm commenting it out for this script
+# county_table <- calc_z(county_table)
+# county_table <- calc_ranks(county_table)
 View(county_table)
 
 state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
@@ -450,15 +499,13 @@ county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "count
 
 
 ###update info for postgres tables###
-county_table_name <- paste0(race_name, "_econ_living_wage_county_", rc_yr)
-state_table_name <- paste0(race_name, "_econ_living_wage_state_", rc_yr)
-indicator <- paste0("Percent of workers earning above living wage (", lw, ") for ", race_name, " Ancestry at state and county level. Includes workers ages 18-64 who were at work last week or were employed but not at work. Excludes those with zero earnings and self-employed or unpaid family workers. PUMAs are assigned to counties based on Geocorr 2022 crosswalks. We also screened by pop (400) and CV (30%). QA Doc:", qa_filepath, ". This data is")
+county_table_name <- paste0(race_name, "_hous_housing_quality_county_", rc_yr)
+state_table_name <- paste0(race_name, "_hous_housing_quality_state_", rc_yr)
+indicator <- paste0("The percentage of low-quality housing units out of all housing units (lack of available kitchen, heating, or plumbing) for ", race_name, " of head of household. PUMAs are assigned to counties based on Geocorr 2022 crosswalks. We also screened by pop (400) and CV (35%). QA Doc: ", qa_filepath, ". This data is")
 source <- paste0("ACS PUMS (", start_yr, "-", curr_yr, ")")
 
 #send tables to postgres
 to_postgres(county_table,state_table,"mosaic")
-
-
 
 
 # #close connection
