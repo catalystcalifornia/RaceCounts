@@ -188,7 +188,6 @@ reclass_loans <- map(loans_all, ~ anhpi_reclass(.x, subgroup_list))
 nrow(denied_all[[5]] %>% filter(if_any(starts_with("applicant_race-"), ~ . == 24)))
 nrow(filter(reclass_denied[[5]], japanese_aoic == 1))
 
-
 #### FX TO GET SUBGROUP AND TOTAL COUNTS ----------------------------------------
 # Fx to calc counts by subgroup for each geo for each year using weighted values
 calc_counts <- function(x, subgroup_list, geo, type) {
@@ -379,8 +378,10 @@ split_tables <- function(x, subgroup_list) {
 }
 
 tables <- split_tables(df_screen, subgroup_list)
-asian_df <- tables$asian
-nhpi_df  <- tables$nhpi
+asian_df <- tables$asian %>% 
+  select(-matches("^na_|^unknown_|^white_|^black_|^aian_")) # remove groups not in Asian or NHPI
+nhpi_df  <- tables$nhpi %>% 
+  select(-matches("^na_|^unknown_|^white_|^black_|^aian_")) # remove groups not in Asian or NHPI
 
 ############## ASIAN: CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
