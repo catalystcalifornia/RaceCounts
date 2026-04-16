@@ -144,11 +144,6 @@ chart_fx <- function(data_list, meta, race, racenote) {
   dynamic_height <- (nrow(data_list$df) * 40) + 150
   # Set constraints so it doesn't get too small or too huge
   chart_height <- pmax(350, pmin(dynamic_height, 800))
-  # chart_height <- case_when(
-  #   nrow(data_list$df) >= 13 ~ 700,
-  #   nrow(data_list$df) >= 5  ~ 500,  # Lowered threshold from 8 to 5
-  #   TRUE                     ~ 400   # Increased minimum from 300 to 400
-  # )
   
   # build chart
   b_chart <- hchart(
