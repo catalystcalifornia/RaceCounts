@@ -170,6 +170,16 @@ hmda_racenote <- "Data Note: Subgroups Latinx-inclusive and Alone or in Combinat
 
 ```
 
+# Introduction {#intro}
+<span style="font-size: 15px;">These are draft visuals for internal sensemaking only. These visuals do not reflect what final visuals on MOSAIC report page will look or behave like.</style>
+<br><br>
+<span style="font-size: 15px;">Note that the Asian/NHPI/Total rates displayed as vertical lines are sourced from our 'regular' RC data for the most part. The data sources and methods vary slightly by necessity from those of MOSAIC analysis. Once we select indicators, we will recalculate the Total and raced rates using the MOSAIC sources/methods for more direct comparison. Some charts may have Asian, NHPI, and other race bars - those reflect MOSAIC calculations of those rates.</style>
+<br><br>
+<span style="font-size: 15px;">The data sources listed here are mostly correct, the actual data years for the MOSAIC analysis may vary based on data availability. Some datasets are older than shown here (ACS), some are more updated (CHIS). All data years will be accurately displayed on report page.</style>
+
+
+# Asian Disaggregation {#asian}
+
 ```{r asian-charts, include=FALSE}
 
 #### INTERNET ####
@@ -409,9 +419,45 @@ voter_plot <- b_chart <- hchart(
     hc_add_theme(tnp_theme)
 
 
-
-
 ```
+
+### Officials & Managers
+```{r, echo=FALSE}
+officials_plot
+```
+
+### Overcrowded Housing
+```{r, echo=FALSE}
+overcrowd_plot
+```
+
+### Homeownership
+```{r, echo=FALSE}
+homeown_plot
+```
+
+### Renter Cost Burden
+```{r, echo=FALSE}
+renter_plot
+```
+
+### Owner Cost Burden
+```{r, echo=FALSE}
+owner_plot
+```
+
+### Uninsured
+```{r, echo=FALSE}
+uninsured_plot
+```
+
+### Voter Engagement
+```{r, echo=FALSE}
+voter_plot
+```
+
+
+# NHPI Disaggregation {#nhpi}
 
 ```{r nhpi-charts, include=FALSE}
 
@@ -492,54 +538,6 @@ lbw_plot <- chart_fx(lbw_list, lbw_meta, "nhpi", cdc_racenote)
 
 
 ```
-
-# Introduction {#intro}
-<span style="font-size: 15px;">These are draft visuals for internal sensemaking only. These visuals do not reflect what final visuals on MOSAIC report page will look or behave like.</style>
-<br><br>
-<span style="font-size: 15px;">Note that the Asian/NHPI/Total rates displayed as vertical lines are sourced from our 'regular' RC data for the most part. The data sources and methods vary slightly by necessity from those of MOSAIC analysis. Once we select indicators, we will recalculate the Total and raced rates using the MOSAIC sources/methods for more direct comparison. Some charts may have Asian, NHPI, and other race bars - those reflect MOSAIC calculations of those rates.</style>
-<br><br>
-<span style="font-size: 15px;">The data sources listed here are mostly correct, the actual data years for the MOSAIC analysis may vary based on data availability. Some datasets are older than shown here (ACS), some are more updated (CHIS). All data years will be accurately displayed on report page.</style>
-
-
-# Asian Disaggregation {#asian}
-
-### Officials & Managers
-```{r, echo=FALSE}
-officials_plot
-```
-
-### Overcrowded Housing
-```{r, echo=FALSE}
-overcrowd_plot
-```
-
-### Homeownership
-```{r, echo=FALSE}
-homeown_plot
-```
-
-### Renter Cost Burden
-```{r, echo=FALSE}
-renter_plot
-```
-
-### Owner Cost Burden
-```{r, echo=FALSE}
-owner_plot
-```
-
-### Uninsured
-```{r, echo=FALSE}
-uninsured_plot
-```
-
-### Voter Engagement
-```{r, echo=FALSE}
-voter_plot
-```
-
-
-# NHPI Disaggregation {#nhpi}
 
 ### Connected Youth
 ```{r, echo=FALSE}

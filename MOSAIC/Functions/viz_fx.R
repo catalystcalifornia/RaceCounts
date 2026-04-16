@@ -88,7 +88,8 @@ data_fx <- function(meta, race, tot_schema) {
     ) %>%
     # make clean subgroup labels
     mutate(subgroup_label = gsub("_aoic", "", subgroup)) %>%
-    mutate(subgroup_label = str_to_title(gsub("_", " ", subgroup_label)))
+    mutate(subgroup_label = str_to_title(gsub("_", " ", subgroup_label))) %>%
+    filter(!is.na(rate) & !is.na(raw))
   
   data_list <- list(df = df, tot_df = tot_df
   )
@@ -116,12 +117,10 @@ chart_fx <- function(data_list, meta, race, racenote) {
     TRUE ~ "Native Hawaiian or Pacific Islander"
   )
   
-  # dynamic height based on number of bars bc there are many more Asian subgroups
-  chart_height <- case_when(
-    nrow(data_list$df) >= 13 ~ 700,
-    nrow(data_list$df) >= 8  ~ 500,
-    TRUE                     ~ 300
-  )
+  # Calculate height based on number of rows (e.g., 40px per bar + 150px for headers/labels)
+  dynamic_height <- (nrow(data_list$df) * 40) + 150
+  # Set constraints so it doesn't get too small or too huge
+  chart_height <- pmax(350, pmin(dynamic_height, 800))
   
   # build chart
   b_chart <- hchart(
