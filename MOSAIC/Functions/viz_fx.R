@@ -69,8 +69,8 @@ data_fx <- function(meta, race, tot_schema) {
   
   df_wide <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".", meta$table_name)) %>%
     select(-starts_with("na_"), -starts_with("unknown_")) %>%
-    { # Keep only "aoic" cols for ACS indicators. Keep only geoname, raw, rate cols for all indicators.
-      if (grepl("American Community Survey", meta$datasource[1]) & !grepl("PUMS", meta$datasource[1])) {
+    { # Keep only "aoic" cols for ACS & CHAS indicators. Keep only geoname, raw, rate cols for all indicators.
+      if (grepl(("American Community Survey|Comprehensive Housing Affordability Strategy|CHAS"), meta$datasource[1]) & !grepl("PUMS", meta$datasource[1])) {
         select(., ends_with("_name"), (ends_with("_raw") & contains("aoic")), (ends_with("_rate") & contains("aoic"))) %>%
           rename_with(~ "geoname", matches("^.*name.*$")[1])
       } else {
