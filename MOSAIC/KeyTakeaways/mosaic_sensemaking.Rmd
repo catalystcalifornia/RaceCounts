@@ -471,16 +471,6 @@ voter_plot
 # # Run chart fx
 # internet_plot <- chart_fx(internet_list, internet_meta, "nhpi", acs_racenote)
 
-#### UNINSURED ####
-# # Run metadata fx 
-# uninsured_meta <- metadata_fx("hlth", "health_insurance", "nhpi", metadata)
-# 
-# # Run data fx
-# uninsured_list <- data_fx(uninsured_meta, "nhpi")
-# 
-# # Run chart fx
-# uninsured_plot <- chart_fx(uninsured_list, uninsured_meta, "nhpi", cdc_racenote)
-
 
 #### CONNECTED YOUTH ####
 # Run metadata fx
@@ -526,6 +516,17 @@ mtg_list <- data_fx(mtg_meta, "nhpi", "v7")
 mtg_plot <- chart_fx(mtg_list, mtg_meta, "nhpi", hmda_racenote)
 
 
+### UNINSURED ####
+# Run metadata fx
+uninsured_meta <- metadata_fx("hlth", "health_insurance", "nhpi", metadata, "2023")
+
+# Run data fx
+uninsured_list <- data_fx(uninsured_meta, "nhpi", "v5")
+
+# Run chart fx
+uninsured_plot <- chart_fx(uninsured_list, uninsured_meta, "nhpi", acs_racenote)
+
+
 #### LOW BIRTHWEIGHT ####
 # Run metadata fx
 lbw_meta <- metadata_fx("hlth", "low_birthweight", "nhpi", metadata, "2025")
@@ -542,6 +543,11 @@ lbw_plot <- chart_fx(lbw_list, lbw_meta, "nhpi", cdc_racenote)
 ### Connected Youth
 ```{r, echo=FALSE}
 youth_plot
+```
+
+### Uninsured
+```{r, echo=FALSE}
+uninsured_plot
 ```
 
 ### Low Birthweight Births
