@@ -64,18 +64,22 @@ data_fx <- function(meta, race, tot_schema) {
   # get total, asian, nhpi rates -- dummy data is v7 which is not an exact data match
   tot_df <- dbGetQuery(con2, paste0("SELECT * FROM ", tot_schema, ".", meta$tot_table_name)) %>% 
     select(total_rate, ends_with("asian_rate"), ends_with("pacisl_rate")) %>%
-    rename_with(~ "asian_rate", matches("^.*asian.*$")[1]) %>%    # rename asian rate col to generic
-    rename_with(~ "pacisl_rate", matches("^.*pacisl.*$")[1])      # rename nhpi rate col to generic
+    rename_with(~ "asian_rate", ends_with("asian_rate")) %>% # rename asian rate col to generic
+    rename_with(~ "pacisl_rate", ends_with("pacisl_rate")) # rename nhpi rate col to generic
   
   df_wide <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".", meta$table_name)) %>%
     select(-starts_with("na_"), -starts_with("unknown_")) %>%
     { # Keep only "aoic" cols for ACS indicators. Keep only geoname, raw, rate cols for all indicators.
+
       if (grepl("American Community Survey", meta$datasource[1]) & !grepl("PUMS", meta$datasource[1])) {
         select(., ends_with("_name"), (ends_with("_raw") & contains("aoic")), (ends_with("_rate") & contains("aoic"))) %>%
-          rename_with(~ "geoname", matches("^.*name.*$")[1])
+          rename_with(~ "geoname", ends_with("_name"))
+      } else if (grepl("Comprehensive Housing Affordability Strategy|CHAS", meta$datasource[1])) {
+        select(., ends_with("_name"), (ends_with("_raw") & contains("aoic")), (ends_with("_rate") & contains("aoic"))) %>%
+          rename_with(~ "geoname", ends_with("_name"))
       } else {
         select(., ends_with("_name"), ends_with("_raw"), ends_with("_rate"), -contains("total")) %>%
-          rename_with(~ "geoname", matches("^.*name.*$")[1])
+          rename_with(~ "geoname", ends_with("_name"))
       }
     }
   
@@ -88,7 +92,8 @@ data_fx <- function(meta, race, tot_schema) {
     ) %>%
     # make clean subgroup labels
     mutate(subgroup_label = gsub("_aoic", "", subgroup)) %>%
-    mutate(subgroup_label = str_to_title(gsub("_", " ", subgroup_label)))
+    mutate(subgroup_label = str_to_title(gsub("_", " ", subgroup_label))) %>%
+    filter(!is.na(rate) & !is.na(raw))
   
   data_list <- list(df = df, tot_df = tot_df
   )
@@ -105,7 +110,8 @@ chart_fx <- function(data_list, meta, race, racenote) {
   
   # select Asian or NHPI race rate as comparison
   race_ <- ifelse(race == 'nhpi', 'pacisl', 'asian')
-  
+  print(names(data_list$tot_df))
+  print(race_)
   race_rate <- data_list$tot_df %>%
     select(contains(tolower(race_))) %>%
     as.numeric()

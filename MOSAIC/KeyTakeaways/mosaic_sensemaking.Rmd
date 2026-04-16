@@ -207,24 +207,24 @@ officials_plot <- chart_fx(officials_list, officials_meta, "asian", pums_racenot
 
 #### OVERCROWDED ####
 # Run metadata fx
-overcrowd_meta <- metadata_fx("hous", "overcrowded", "asian", metadata, "2023")
+asian_overcrowd_meta <- metadata_fx("hous", "overcrowded", "asian", metadata, "2023")
 
 # Run data fx
-overcrowd_list <- data_fx(overcrowd_meta, "asian", "v5")
+asian_overcrowd_list <- data_fx(asian_overcrowd_meta, "asian", "v5")
 
 # Run chart fx
-overcrowd_plot <- chart_fx(overcrowd_list, overcrowd_meta, "asian", acs_racenote)
+asian_overcrowd_plot <- chart_fx(asian_overcrowd_list, asian_overcrowd_meta, "asian", acs_racenote)
 
 
 #### HOMEOWNERSHIP ####
 # Run metadata fx
-homeown_meta <- metadata_fx("hous", "homeownership", "asian", metadata, "2023")
+asian_homeown_meta <- metadata_fx("hous", "homeownership", "asian", metadata, "2023")
 
 # Run data fx
-homeown_list <- data_fx(homeown_meta, "asian", "v5")
+asian_homeown_list <- data_fx(asian_homeown_meta, "asian", "v5")
 
 # Run chart fx
-homeown_plot <- chart_fx(homeown_list, homeown_meta, "asian", acs_racenote)
+asian_homeown_plot <- chart_fx(asian_homeown_list, asian_homeown_meta, "asian", acs_racenote)
 
 
 #### RENTER COST BURDEN ####
@@ -449,24 +449,24 @@ youth_plot <- chart_fx(youth_list, youth_meta, "nhpi", acs_racenote)
 
 #### OVERCROWDED ####
 # Run metadata fx
-overcrowd_meta <- metadata_fx("hous", "overcrowded", "nhpi", metadata, "2023")
+nhpi_overcrowd_meta <- metadata_fx("hous", "overcrowded", "nhpi", metadata, "2023")
 
 # Run data fx
-overcrowd_list <- data_fx(overcrowd_meta, "nhpi", "v5")
+nhpi_overcrowd_list <- data_fx(nhpi_overcrowd_meta, "nhpi", "v5")
 
 # Run chart fx
-overcrowd_plot <- chart_fx(overcrowd_list, overcrowd_meta, "nhpi", acs_racenote)
+nhpi_overcrowd_plot <- chart_fx(nhpi_overcrowd_list, nhpi_overcrowd_meta, "nhpi", acs_racenote)
 
 
 #### HOMEOWNERSHIP ####
 # Run metadata fx
-homeown_meta <- metadata_fx("hous", "homeownership", "nhpi", metadata, "2023")
+nhpi_homeown_meta <- metadata_fx("hous", "homeownership", "nhpi", metadata, "2023")
 
 # Run data fx
-homeown_list <- data_fx(homeown_meta, "nhpi", "v5")
+nhpi_homeown_list <- data_fx(nhpi_homeown_meta, "nhpi", "v5")
 
 # Run chart fx
-homeown_plot <- chart_fx(homeown_list, homeown_meta, "nhpi", acs_racenote)
+nhpi_homeown_plot <- chart_fx(nhpi_homeown_list, nhpi_homeown_meta, "nhpi", acs_racenote)
 
 
 #### DENIED MORTGAGE ####
@@ -510,12 +510,12 @@ officials_plot
 
 ### Overcrowded Housing
 ```{r, echo=FALSE}
-overcrowd_plot
+asian_overcrowd_plot
 ```
 
 ### Homeownership
 ```{r, echo=FALSE}
-homeown_plot
+asian_homeown_plot
 ```
 
 ### Renter Cost Burden
@@ -553,12 +553,12 @@ lbw_plot
 
 ### Overcrowded Housing
 ```{r, echo=FALSE}
-overcrowd_plot
+nhpi_overcrowd_plot
 ```
 
 ### Homeownership
 ```{r, echo=FALSE}
-homeown_plot
+nhpi_homeown_plot
 ```
 
 ### Denied Mortgages
