@@ -78,9 +78,18 @@ data_fx <- function(meta, race, tot_schema) {
         select(., ends_with("_name"), (ends_with("_raw") & contains("aoic")), (ends_with("_rate") & contains("aoic"))) %>%
           rename_with(~ "geoname", ends_with("_name"))
       } else {
-        select(., ends_with("_name"), ends_with("_raw"), ends_with("_rate"), -contains("total")) %>%
-          rename_with(~ "geoname", ends_with("_name"))
-      }
+        # ONLY select _raw and _rate. Do NOT select _originated.
+        # This prevents the pivot from creating duplicate/empty rows.
+        select(., 
+               geoname = ends_with("_name"), 
+               contains("_raw"), 
+               contains("_rate"), 
+               -contains("total"),
+               -contains("originated"),
+               -contains("diff"),      # Exclude these from your dump
+               -contains("disparity")   # Exclude these from your dump
+        )       
+        }
     }
   
   # convert data to long form
@@ -89,8 +98,16 @@ data_fx <- function(meta, race, tot_schema) {
       cols = -geoname,
       names_to = c("subgroup", ".value"),
       names_pattern = "^(.+)_(raw|rate)$"
-    ) %>%
-    # make clean subgroup labels
+    )
+  
+  # DEBUG: Run these in your console to see what's being dropped
+  print("Pre-filter subgroups found:")
+  print(unique(df$subgroup))
+  
+  print("Rows with NAs that will be dropped:")
+  print(df %>% filter(is.na(rate) | is.na(raw)))
+  
+  df <- df %>%
     mutate(subgroup_label = gsub("_aoic", "", subgroup)) %>%
     mutate(subgroup_label = str_to_title(gsub("_", " ", subgroup_label))) %>%
     filter(!is.na(rate) & !is.na(raw))
@@ -123,11 +140,15 @@ chart_fx <- function(data_list, meta, race, racenote) {
   )
   
   # dynamic height based on number of bars bc there are many more Asian subgroups
-  chart_height <- case_when(
-    nrow(data_list$df) >= 13 ~ 700,
-    nrow(data_list$df) >= 8  ~ 500,
-    TRUE                     ~ 300
-  )
+  # Calculate height based on number of rows (e.g., 40px per bar + 150px for headers/labels)
+  dynamic_height <- (nrow(data_list$df) * 40) + 150
+  # Set constraints so it doesn't get too small or too huge
+  chart_height <- pmax(350, pmin(dynamic_height, 800))
+  # chart_height <- case_when(
+  #   nrow(data_list$df) >= 13 ~ 700,
+  #   nrow(data_list$df) >= 5  ~ 500,  # Lowered threshold from 8 to 5
+  #   TRUE                     ~ 400   # Increased minimum from 300 to 400
+  # )
   
   # build chart
   b_chart <- hchart(
