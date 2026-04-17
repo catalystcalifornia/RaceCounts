@@ -262,29 +262,3 @@ all.equal(state_orig, state)  # should be TRUE
 
 dbDisconnect(con)
 
-
-
-
-
-
-
-
-
-
-
-
-
-# 2. Update the existing table from temp table
-dbExecute(con, "
-  UPDATE v7.asian_demo_voter_engagement_state_2025 
-  SET new_col_name = temp_data.new_col_name 
-  FROM temp_data 
-  WHERE v7.asian_demo_voter_engagement_state_2025.state_id = temp_data.state_id")
-
-
-
-
-
-# Identify which columns to append (exclude any that already exist in the PG table)
-existing_cols <- dbListFields(con, Id(schema = "v7", table = "asian_demo_voter_engagement_county_2025"))
-new_cols <- setdiff(names(df_county), existing_cols)
