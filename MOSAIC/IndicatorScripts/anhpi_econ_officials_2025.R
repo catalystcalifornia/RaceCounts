@@ -1,4 +1,4 @@
-### Disaggregated Asian and NHPI Connected Youth RC v7###
+### Disaggregated Asian and NHPI Officials & Mangers RC v7###
 
 # Set up workspace --------------------------------------------------------
 # Install packages if not already installed
@@ -28,7 +28,7 @@ con2 <- connect_to_db("mosaic")
 ancestry_list <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\Asian_NHPI_Ancestry_2024.xlsx", sheet = "ancestry") # list of ANHPI ANC1P/ANC2P codes
 
 # update QA doc filepath
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Connected_Youth_MOSAIC.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Officials_Mgrs_MOSAIC.docx"
 
 #### Step 1: Define Variables ####
 root <- "W:/Data/Demographics/PUMS/CA_2020_2024/"
@@ -40,8 +40,8 @@ rc_schema <- 'v7'
 
 ## CHECK FOR UPDATES EACH YEAR
 ### define common inputs for calc_pums{} and pums_screen{}
-indicator = 'connected'         # name of column that contains indicator data, eg: 'connected_youth' which contains values 'connected' and 'not connected'
-indicator_val = 'connected'         # desired indicator value, eg: 'connected' (not 'not connected')        
+indicator = 'officials'         # name of column that contains indicator data, eg: 'connected_youth' which contains values 'connected' and 'not connected'
+indicator_val = 'officials'         # desired indicator value, eg: 'connected' (not 'not connected')        
 weight = 'PWGTP'                  # PWGTP for person-level (psam_p06.csv) or WGTP for housing unit-level (psam_h06.csv) analysis
 cv_threshold <- 20                # threshold and CV must be displayed as a percentage not decimal, eg: 30 not .3
 raw_rate_threshold <- 0           # data values less than threshold are screened, for RC indicators threshold is 0.
@@ -71,8 +71,8 @@ county_crosswalk <- crosswalk %>%
 cols <- colnames(fread(paste0(root, "psam_p06.csv"), nrows=0))    # get all PUMS cols 
 cols_wts <- grep("^PWGTP*", cols, value = TRUE)                   # filter for PUMS weight colnames
 
-ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE, select = c(cols_wts, "RT", "SERIALNO", "AGEP", "ESR", "SCH", "PUMA",
-                                                                                         "ANC1P", "ANC2P", "HISP", "RAC1P", "RACASN", "RACPI", "RACNH"),
+ppl <- fread(paste0(root, "psam_p06.csv"), header = TRUE, data.table = FALSE, select = c(cols_wts, "RT", "SERIALNO", "AGEP", "ESR", "SCH", "SOCP",
+                                                                               "PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RACASN", "RACPI", "RACNH"),
              colClasses = list(character = c("PUMA", "ANC1P", "ANC2P", "HISP", "RAC1P", "RACASN", "RACPI", "RACNH"
              )))
 
@@ -92,29 +92,35 @@ ppl$RACNHPI <- case_when(
   TRUE ~ 0
 )
 
-#### Step 4: Subset Data & Calc Connected Youth ####
+#### Step 4: Subset Data & Calc Officials/Managers ####
 # Keep records only for those ages 16-24
-ppl <- ppl %>% filter(AGEP >= 16 & AGEP <= 24)
+ppl <- ppl %>% filter(AGEP >= 16 & AGEP <= 64)
 
-# Filtering for those unemployed or not in the labor force 
-ppl$employment <- ifelse(ppl$ESR %in% c(3,6), "not employed", "employed")
+## Tag people who are officials or managers: SOCP value starts with "11" 
+###### See p110 in W:\Data\Demographics\PUMS\CA_2019_2024\PUMS_Data_Dictionary_2024.pdf
+ppl$offmgr <- 
+  case_when(
+    grepl('^11', ppl$SOCP) ~ as.integer(1),
+    TRUE ~ as.integer(0))
 
-# Filtering for those not attending school and in school
-ppl$schl_enroll <-  ifelse(ppl$SCH == 1, "not attending school", "in school")
+# review
+summary(ppl$offmgr)
 
-# verify coding 
-table(ppl$employment, ppl$ESR, useNA = "always")
-table(ppl$SCH, ppl$schl_enroll, useNA = "always")
-table(ppl$employment, ppl$schl_enroll, useNA = "always")
+## Code for labor force status: ESR on p56 of PUMS_Data_Dictionary_2024.pdf
+table(ppl$ESR, useNA = "always")
 
-# Combine both conditions to create connected/disconnected variable 
-ppl$connected <- ifelse(ppl$employment == "not employed" & ppl$schl_enroll =="not attending school", "not connected", "connected")
-ppl$connected <- as.factor(ppl$connected)
-ppl$indicator <- as.factor(ppl$connected)
+# NOTE: 'This includes 4-Armed forces, at work' and '5-Armed forces, with a job but not at work'. It excludes '6-Not in labor force'.
+ppl$emply <- as.factor(ifelse(ppl$ESR %in% c(1, 2, 3, 4, 5), "in labor force", "not in labor force")) 
+ppl <- filter(ppl, emply=='in labor force')
 
-#review
-summary(ppl$indicator)
+## Factor for Officials & Managers
+ppl$officials <- ifelse(ppl$offmgr == 1, "officials", "not official")
+ppl$officials <- as.factor(ppl$officials)
+ppl$indicator <- as.factor(ppl$officials)
+
+## check officials results
 table(ppl$indicator, useNA = "always")
+
 
 #### Step 5: Join subgroup labels to data ###
 
@@ -149,19 +155,19 @@ people$nhpi <- as.integer(
 ## check a few of the new ancestry & asian/nhpi cols
 table(thai = people$thai, asian_race = people$RACASN)        # check how many thai ancestry rows are also marked Asian race
 table(thai = people$thai, asian_anc = people$asian)          # check that all thai ancestry rows are also marked asian ancestry
-table(asian_anc = people$asian, asian_race = people$RACASN)  # 1,609 responses w/ asian ancestry who are not coded race = Asian
+table(asian_anc = people$asian, asian_race = people$RACASN)  # 1,845 responses w/ asian ancestry who are not coded race = Asian
 #       asian_race
 # thai         0      1
-#       0 579993 160147
-#       1     11   1336
+#       0 676109  38313
+#       1   1845 146299
 
 table(fijian = people$fijian, nhpi_race = people$RACNHPI)    # check how many fijian ancestry rows are also marked NHPI race
 table(fijian = people$fijian, nhpi_anc = people$nhpi)        # check that all fijian ancestry rows are also marked nhpi ancestry
-table(nhpi_anc = people$nhpi, nhpi_race = people$RACNHPI)    # 353 responses w/ nhpi ancestry who are not coded race = NHPI
+table(nhpi_anc = people$nhpi, nhpi_race = people$RACNHPI)    # 400 responses w/ nhpi ancestry who are not coded race = NHPI
 #       nhpi_race
 # fijian        0     1
-#       0 735552   5500
-#       1     46    389
+#       0 855404   3423
+#       1    400   3339
 
 # For this analysis, we include anyone with an Asian ancestry and anyone with an NHPI ancestry, regardless of race.
 ## E.g. For NHPI, we include all records where nhpi == 1 regardless of RACNHPI value.
@@ -225,18 +231,30 @@ screen_rate_cv_pop <- table_state %>%
   mutate(rate_cv_flag = ifelse(rate_cv > cv_threshold, 1, 0), 
          pop_flag = ifelse(pop < pop_threshold, 1, 0)) %>%  # screen on pop bc these are indicator data
   arrange(desc(rate_cv), desc(num))
-message("only 1 suppressed estimate is for 'connected':")
+nrow(screen_rate_cv_pop %>% filter(rate_cv_flag == 1 | pop_flag == 1))
+message("15 suppressed estimates are for 'officials':")
 screen_rate_cv_pop %>% filter(rate_cv_flag == 1 | pop_flag == 1)
 
-# The 1 'connected' estimate suppressed by our method also gets suppressed by ERI's method (Bhutanese).
+# Six of the 7 estimates suppressed by ERI's method are also suppressed by our method.
 
 
 #### Step 7: Screen data (incl. recoding suppressed subgroups & recalcs) ####
-# STATE-LEVEL ONLY: Recode Bhutanese as other_asian. If we present county data, we could recode any suppressed grps for that county too.
+# STATE-LEVEL ONLY: Recode suppressed asian subgroups as other_asian and same for nhpi. If we present county data, we could recode any suppressed grps for that county too.
+
+recode_asian <- screen_rate_cv_pop %>%
+  filter(officials == 'officials'& (rate_cv_flag == 1 | pop_flag == 1)) %>%
+  select(group, subgroup) %>%
+  filter(group == 'asian')
+
+recode_nhpi <- screen_rate_cv_pop %>%
+  filter(officials == 'officials'& (rate_cv_flag == 1 | pop_flag == 1)) %>%
+  select(group, subgroup) %>%
+  filter(group == 'nhpi')
+
 oth_asian_srvy <- ppl_state %>%
   mutate(subgroup = case_when(
-    bhutanese == 1 | other_asian == 1 ~ 'other_asian',  # recode bhutanese as oth_asian
-    TRUE ~ 'total')) %>%                                # recode non-bhutanese as total
+    if_any(all_of(recode_asian$subgroup), ~ . == 1) ~ "other_asian",
+    TRUE ~ "total")) %>%
   as_survey_rep(
     variables        = c(geoid, geoname, asian, subgroup, !!sym(indicator)),
     weights          = !!sym(weight),
@@ -277,9 +295,64 @@ num_df_oth_asian <- oth_asian_srvy %>%
     count_cv  = ifelse(num > 0, (num_se / num) * 100, NA_real_)
   )
 
-# combine re-calc'd other_asian and pop_table_state, drop old 'other_asian' row
-table_state <- rbind(num_df_oth_asian, table_state %>% filter(subgroup != 'other_asian'))
 
+oth_nhpi_srvy <- ppl_state %>%
+  mutate(subgroup = case_when(
+    if_any(all_of(recode_nhpi$subgroup), ~ . == 1) ~ "other_pacific",
+    TRUE ~ "total")) %>%
+  as_survey_rep(
+    variables        = c(geoid, geoname, nhpi, subgroup, !!sym(indicator)),
+    weights          = !!sym(weight),
+    repweights       = all_of(repwlist),
+    combined_weights = TRUE,
+    mse              = TRUE,
+    type             = "other",
+    scale            = 4/80,
+    rscale           = rep(1, 80)
+  ) %>%
+  filter(!is.na(!!sym(indicator))) %>%
+  filter(subgroup == 'other_pacific')
+
+# Denominators (nhpi group-level stats) ────
+den_oth_nhpi <- oth_nhpi_srvy %>%
+  group_by(geoid, geoname) %>%
+  summarise(pop = survey_total(na.rm = TRUE), .groups = "drop")
+
+
+# Numerator
+num_df_oth_nhpi <- oth_nhpi_srvy %>%
+  group_by(geoid, geoname, !!sym(indicator)) %>%
+  summarise(
+    num  = survey_total(na.rm = TRUE),
+    rate  = survey_mean(na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  
+  # Join + metrics
+  left_join(den_oth_nhpi, by = c("geoid", "geoname")) %>%
+  mutate(
+    subgroup  = 'other_pacific',
+    group     = 'nhpi',
+    rate_moe  = rate_se * 1.645 * 100,
+    rate_cv   = ifelse(rate > 0, (rate_se / rate) * 100, NA_real_),
+    rate      = rate * 100,
+    count_moe = num_se * 1.645,
+    count_cv  = ifelse(num > 0, (num_se / num) * 100, NA_real_)
+  )
+
+
+# combine re-calc'd other_asian and pop_table_state, drop old 'other_asian' row
+table_state <- rbind(num_df_oth_asian, num_df_oth_nhpi, table_state %>% filter(!subgroup %in% c('other_asian','other_pacific')))
+
+# recheck state screening
+screen_rate_cv_pop2 <- table_state %>%
+  filter(.[[indicator]] == indicator_val) %>%
+  mutate(rate_cv_flag = ifelse(rate_cv > cv_threshold, 1, 0), 
+         pop_flag = ifelse(pop < pop_threshold, 1, 0)) %>%  # screen on pop bc these are indicator data
+  arrange(desc(rate_cv), desc(num))
+nrow(screen_rate_cv_pop2 %>% filter(rate_cv_flag == 1 | pop_flag == 1))
+message("13 suppressed estimates for 'officials'. other_asian and other_pacific are now NOT suppressed.")
+View(screen_rate_cv_pop2 %>% filter(rate_cv_flag == 1 | pop_flag == 1))
 table_cs <- rbind(table_state, table_county) %>%
   rename('indicator' = indicator) %>%      # update to generic colname
   filter(indicator == indicator_val) %>%   # keep only the rows with indicator value we want, eg: keep connected, and drop  not connected
@@ -300,9 +373,18 @@ geo_subgroup_combos <- table_screened %>%
   group_by(geoname) %>%
   summarise(unique_subgroups = n_distinct(subgroup))  # max = 43. up to 40 subgroups + 2 groups + 1 total
 
+
+############## OFFICIALS/MGRS ONLY: CONVERT PERCENT TO RATE PER 1K ##############
 table_screened <- table_screened %>%
-  select(-c(num_se, rate_se, pop_se)) %>%    # drop unneeded cols
+  mutate(rate_pct = rate,
+         rate = rate * 10) # calc rate per 1k from percent
+
+table_screened <- table_screened %>%
+  select(-c(rate_pct, num_se, rate_se, pop_se)) %>%    # drop unneeded cols, incl percents
   mutate(geolevel = ifelse(geoid == '06', 'state', 'county'))
+
+
+
 
 
 ############## ASIAN: CALC RACE COUNTS STATS ##############
@@ -352,9 +434,9 @@ county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "count
 
 
 ###update info for postgres tables###
-county_table_name <- paste0(race_name, "_econ_connected_youth_county_", rc_yr)
-state_table_name <- paste0(race_name, "_econ_connected_youth_state_", rc_yr)
-indicator <- paste0("Connected Youth out of all Youth (%). Connected Youth are those ages 16-24 who are in school and/or employed for ", race_name, " Ancestry at state and county level. PUMAs are assigned to counties based on Geocorr 2022 crosswalks. We also screened by pop (400) and CV (20%). QA Doc:", qa_filepath, ". This data is")
+county_table_name <- paste0(race_name, "_econ_officials_county_", rc_yr)
+state_table_name <- paste0(race_name, "_econ_officials_state_", rc_yr)
+indicator <- paste0("Number of Officials & Managers per 1k People by ", race_name, " Ancestry at state and county level. Only people ages 18-64 who are in the labor force are included. PUMAs are assigned to counties based on Geocorr 2022 crosswalks. We also screened by pop (", pop_threshold, ") and CV (", cv_threshold, "%). QA Doc:", qa_filepath, ". This data is")
 source <- paste0("ACS PUMS (", start_yr, "-", curr_yr, ")")
 
 #send tables to postgres
@@ -401,7 +483,6 @@ county_table <- d[d$geolevel == 'county', ]
 
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
-county_table <- calc_ranks(county_table)
 View(county_table)
 
 state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
@@ -410,9 +491,9 @@ county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "count
 
 
 ###update info for postgres tables###
-county_table_name <- paste0(race_name, "_econ_connected_youth_county_", rc_yr)
-state_table_name <- paste0(race_name, "_econ_connected_youth_state_", rc_yr)
-indicator <- paste0("Connected Youth out of all Youth (%). Connected Youth are those ages 16-24 who are in school and/or employed for ", race_name, " Ancestry at state and county level. PUMAs are assigned to counties based on Geocorr 2022 crosswalks. We also screened by pop (400) and CV (20%). QA Doc:", qa_filepath, ". This data is")
+county_table_name <- paste0(race_name, "_econ_officials_county_", rc_yr)
+state_table_name <- paste0(race_name, "_econ_officials_state_", rc_yr)
+indicator <- paste0("Number of Officials & Managers per 1k People by ", race_name, " Ancestry at state and county level. Only people ages 18-64 who are in the labor force are included. PUMAs are assigned to counties based on Geocorr 2022 crosswalks. We also screened by pop (", pop_threshold, ") and CV (", cv_threshold, "%). QA Doc:", qa_filepath, ". This data is")
 source <- paste0("ACS PUMS (", start_yr, "-", curr_yr, ")")
 
 #send tables to postgres

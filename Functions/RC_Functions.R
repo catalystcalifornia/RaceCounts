@@ -44,7 +44,6 @@ count_values <- function(x) {
   return(x)
 }
 
-
 #####calculate best rate#####
 calc_best <- function(x) {
   # disable scientific notation
