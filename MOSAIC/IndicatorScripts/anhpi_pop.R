@@ -24,16 +24,16 @@ con <- connect_to_db("mosaic")
 
 
 ############## UPDATE VARIABLES ##############
-curr_yr = 2023      # you MUST UPDATE each year
+curr_yr = 2024      # you MUST UPDATE each year
 rc_yr = '2025'      # you MUST UPDATE each year
 rc_schema <- "v7"   # you MUST UPDATE each year
 schema = 'demographics'
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\QA_Sheet_AAPI_Pop.docx"
 
 # Only run this section if the table has not been created yet: Create Table B02018 / B02019 in Postgres db
-# source(".\\acs_rda_shared_tables.R")
-# B02019 <- update_acs(curr_yr, 'B02019', "W://Project//RACE COUNTS//2025_v7//RC_Github//LF//RaceCounts//IndicatorScripts//Demographics//aapi_pop.R")
-# B02018 <- update_acs(curr_yr, 'B02018', "W://Project//RACE COUNTS//2025_v7//RC_Github//LF//RaceCounts//IndicatorScripts//Demographics//aapi_pop.R")
+ source("W:\\RDA Team\\R\\Github\\RDA Functions\\LF\\RDA-Functions\\acs_rda_shared_tables.R")
+ B02019 <- update_acs(curr_yr, 'B02019', "W://Project//RACE COUNTS//2025_v7//RC_Github//LF//RaceCounts//IndicatorScripts//Demographics//aapi_pop.R")
+ B02018 <- update_acs(curr_yr, 'B02018', "W://Project//RACE COUNTS//2025_v7//RC_Github//LF//RaceCounts//IndicatorScripts//Demographics//aapi_pop.R")
 
 # Get AA and NHPI Pop variables --------
 acs_var <- load_variables(curr_yr, 'acs5')
