@@ -32,8 +32,8 @@ qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Demographics\\QA_Sheet_AAPI_P
 
 # Only run this section if the table has not been created yet: Create Table B02018 / B02019 in Postgres db
  source("W:\\RDA Team\\R\\Github\\RDA Functions\\LF\\RDA-Functions\\acs_rda_shared_tables.R")
- B02019 <- update_acs(curr_yr, 'B02019', "W://Project//RACE COUNTS//2025_v7//RC_Github//LF//RaceCounts//IndicatorScripts//Demographics//aapi_pop.R")
- B02018 <- update_acs(curr_yr, 'B02018', "W://Project//RACE COUNTS//2025_v7//RC_Github//LF//RaceCounts//IndicatorScripts//Demographics//aapi_pop.R")
+ B02019 <- update_acs(curr_yr, 'B02019', "W://Project//RACE COUNTS//2025_v7//RC_Github//LF//RaceCounts//IndicatorScripts//Demographics//anhpi_pop.R")
+ B02018 <- update_acs(curr_yr, 'B02018', "W://Project//RACE COUNTS//2025_v7//RC_Github//LF//RaceCounts//IndicatorScripts//Demographics//anhpi_pop.R")
 
 # Get AA and NHPI Pop variables --------
 acs_var <- load_variables(curr_yr, 'acs5')
@@ -100,7 +100,7 @@ B02019_pop <- calc_pct(B02019, B02019$b02019_001e)
 ### info for postgres tables automatically updates ###
 send_to_postgres <- function(acs_table, var_table, df, table_schema){
 
-  table_name <- ifelse(acs_table == 'b02018', paste0("aa_pop_", acs_table), paste0("pacisl_pop_", acs_table))    
+  table_name <- ifelse(acs_table == 'b02018', paste0("aa_pop_", acs_table), paste0("nhpi_pop_", acs_table))    
   group <- ifelse(acs_table == 'b02018', "Asian", "NHPI")
   indicator <-  paste0("Disaggregated ", group, " population alone or in combination with another race by City, County, State Senate, State Assembly, and State population")       
   source <- paste0("ACS ", curr_yr - 4, "-", curr_yr, ", Table ", toupper(acs_table)) 
