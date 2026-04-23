@@ -6,7 +6,7 @@ metadata_fx <- function(issue, ind, race, meta, tot_yr, geo = "state") {
   # ind: metadata$api_name
   # race: asian, nhpi (mosaic only covers subgroups w/i these 2 races)
   # meta: df with metadata
-  # geo: geolevel: state, county, etc.
+  # geo: geolevel - state, county, etc.
   
   # Filter metadata to selected indicator before pulling in metadata details
   meta_ <- metadata %>%
@@ -98,12 +98,11 @@ data_fx <- function(meta, race, tot_schema) {
 
 
 ### Function 3: generate custom indicator horizontal barchart with subgroup data, total line, and Asian or NHPI line ###
-chart_fx <- function(data_list, meta, race, racenote) {
+chart_fx <- function(data_list, meta, race) {
   # data_list: list containing indicator data in element called "df" and total/asian/nhpi data in element called "tot_df"
   # meta: indicator+geolevel metadata df with 1 row
   # race: asian, nhpi (mosaic only covers subgroups w/i these 2 races)
-  # racenote: notes on definition of subgroups
-  
+
   # select Asian or NHPI race rate as comparison
   race_ <- ifelse(race == 'nhpi', 'pacisl', 'asian')
   
@@ -198,20 +197,21 @@ chart_fx <- function(data_list, meta, race, racenote) {
     
     # title elements
     hc_title(
-      text = paste0(meta$title_text),
+      text = meta$title_text,
       #margin = 20,
       align = "left", 
-      style = list(useHTML = TRUE, fontWeight = "bold", fontSize='30px')
+      style = list(useHTML = TRUE, fontSize = "1.5em", fontWeight = "bold") # Scales with container
+      #style = list(useHTML = TRUE, fontWeight = "bold", fontSize='30px')
     ) %>% 
     
     hc_subtitle(
-      text = paste0(meta$subtitle_text),
+      text = meta$subtitle_text,
       align = "left", y = 50
-    ) %>% 
+      ) %>% 
     
     hc_caption(
       text = paste0("<br>Data Source: ", meta$datasource,
-                    "<br>",racenote),
+                    "<br>Race/Ethnicity Note: ", meta$racenote),
       style=list(fontSize='15px')
       #align = "left"
     ) %>% 

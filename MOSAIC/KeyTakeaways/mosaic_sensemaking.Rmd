@@ -37,6 +37,7 @@ library(tidyr)
 library(showtext)
 library(scales)
 library(highcharter)
+library(readxl)
 
 options(scipen=999)
 
@@ -155,17 +156,12 @@ options(highcharter.lang = lang)
 
 ```{r metadata, include=FALSE}
 
-### Metadata: Dummy is v7 county/state, WILL NEED TO BE REPLACED WITH MOSAIC INDICATOR METADATA TABLE
-metadata <- dbGetQuery(con2, paste0("SELECT * FROM ", rc_schema, ".", "arei_indicator_list_cntyst"))
+### Dummy Metadata: v7 county/state, WILL NEED TO BE REPLACED WITH MOSAIC INDICATOR METADATA TABLE
+# metadata <- dbGetQuery(con2, paste0("SELECT * FROM ", rc_schema, ".", "arei_indicator_list_cntyst"))
 # metadata$api_name
 
-acs_racenote <- "Data Note: Subgroups are Latinx-inclusive and Alone or in Combination, which means they include all people who identify as the subgroup\nincluding in combination with other subroups, races, and/or ethnicities."
-
-pums_racenote <- "Data Note: Subgroups are Latinx-inclusive and Alone or in Combination, which means they include all people who identify as the subgroup\nincluding in combination with other subroups, races, and/or ethnicities. Subgroups are defined by Ancestry."
-
-cdc_racenote <- "Data Note: Subgroups include foreign-born birthing parents only and are defined by country of birth."
-
-hmda_racenote <- "Data Note: Subgroups Latinx-inclusive and Alone or in Combination, which means they include all people who identify as the subgroup\nincluding in combination with other subroups, races, and/or ethnicities. This data differs from regular RC because it is based on only applicant race, not a combination of applicant and co-applicant."
+### MOSAIC Metadata
+metadata <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\MOSAIC\\indicator_list.xlsx")
 
 
 ```
@@ -173,9 +169,9 @@ hmda_racenote <- "Data Note: Subgroups Latinx-inclusive and Alone or in Combinat
 # Introduction {#intro}
 <span style="font-size: 15px;">These are draft visuals for internal sensemaking only. These visuals do not reflect what final visuals on MOSAIC report page will look or behave like.</style>
 <br><br>
-<span style="font-size: 15px;">Note that the Asian/NHPI/Total rates displayed as vertical lines are sourced from our 'regular' RC data for the most part. The data sources and methods vary slightly by necessity from those of MOSAIC analysis. Once we select indicators, we will recalculate the Total and raced rates using the MOSAIC sources/methods for more direct comparison. Some charts may have Asian, NHPI, and other race bars - those reflect MOSAIC calculations of those rates.</style>
+<!--<span style="font-size: 15px;">Note that the Asian/NHPI/Total rates displayed as vertical lines are sourced from our 'regular' RC data for the most part. The data sources and methods vary slightly by necessity from those of MOSAIC analysis. Once we select indicators, we will recalculate the Total and raced rates using the MOSAIC sources/methods for more direct comparison. Some charts may have Asian, NHPI, and other race bars - those reflect MOSAIC calculations of those rates.</style>
 <br><br>
-<span style="font-size: 15px;">The data sources listed here are mostly correct, the actual data years for the MOSAIC analysis may vary based on data availability. Some datasets are older than shown here (ACS), some are more updated (CHIS). All data years will be accurately displayed on report page.</style>
+<span style="font-size: 15px;">The data sources listed here are mostly correct, the actual data years for the MOSAIC analysis may vary based on data availability. Some datasets are older than shown here (ACS), some are more updated (CHIS). All data years will be accurately displayed on report page.</style>-->
 
 
 # Asian Disaggregation {#asian}
@@ -190,7 +186,7 @@ hmda_racenote <- "Data Note: Subgroups Latinx-inclusive and Alone or in Combinat
 # internet_list <- data_fx(internet_meta, "asian")
 # 
 # # Run chart fx
-# internet_plot <- chart_fx(internet_list, internet_meta, "asian", acs_racenote)
+# internet_plot <- chart_fx(internet_list, internet_meta, "asian")
 
 
 # #### CONNECTED YOUTH ####
@@ -201,7 +197,7 @@ hmda_racenote <- "Data Note: Subgroups Latinx-inclusive and Alone or in Combinat
 # youth_list <- data_fx(youth_meta, "asian", "v7")
 # 
 # # Run chart fx
-# youth_plot <- chart_fx(youth_list, youth_meta, "asian", acs_racenote)
+# youth_plot <- chart_fx(youth_list, youth_meta, "asian")
 
 
 #### OFFICIALS ####
@@ -210,9 +206,10 @@ officials_meta <- metadata_fx("econ", "officials", "asian", metadata, "2025")
 
 # Run data fx
 officials_list <- data_fx(officials_meta, "asian", "v7")
-
+officials_list$df <- officials_list$df %>% filter(subgroup != "other_asian") # drop this rate - need to dbl check it
+  
 # Run chart fx
-officials_plot <- chart_fx(officials_list, officials_meta, "asian", pums_racenote)
+officials_plot <- chart_fx(officials_list, officials_meta, "asian")
 
 
 #### OVERCROWDED ####
@@ -223,40 +220,40 @@ overcrowd_meta <- metadata_fx("hous", "overcrowded", "asian", metadata, "2023")
 overcrowd_list <- data_fx(overcrowd_meta, "asian", "v5")
 
 # Run chart fx
-overcrowd_plot <- chart_fx(overcrowd_list, overcrowd_meta, "asian", acs_racenote)
+overcrowd_plot <- chart_fx(overcrowd_list, overcrowd_meta, "asian")
 
 
 #### HOMEOWNERSHIP ####
-# Run metadata fx
-homeown_meta <- metadata_fx("hous", "homeownership", "asian", metadata, "2023")
-
-# Run data fx
-homeown_list <- data_fx(homeown_meta, "asian", "v5")
-
-# Run chart fx
-homeown_plot <- chart_fx(homeown_list, homeown_meta, "asian", acs_racenote)
+# # Run metadata fx
+# homeown_meta <- metadata_fx("hous", "homeownership", "asian", metadata, "2023")
+# 
+# # Run data fx
+# homeown_list <- data_fx(homeown_meta, "asian", "v5")
+# 
+# # Run chart fx
+# homeown_plot <- chart_fx(homeown_list, homeown_meta, "asian")
 
 
 #### RENTER COST BURDEN ####
 # Run metadata fx
-renter_meta <- metadata_fx("hous", "cost_burden_renter", "asian", metadata, "2025")
-
-# Run data fx
-renter_list <- data_fx(renter_meta, "asian", "v7")
-
-# Run chart fx
-renter_plot <- chart_fx(renter_list, renter_meta, "asian", acs_racenote)
+# renter_meta <- metadata_fx("hous", "cost_burden_renter", "asian", metadata, "2025")
+# 
+# # Run data fx
+# renter_list <- data_fx(renter_meta, "asian", "v7")
+# 
+# # Run chart fx
+# renter_plot <- chart_fx(renter_list, renter_meta, "asian")
 
 
 #### OWNER COST BURDEN ####
 # Run metadata fx
-owner_meta <- metadata_fx("hous", "cost_burden_owner", "asian", metadata, "2025")
-
-# Run data fx
-owner_list <- data_fx(owner_meta, "asian", "v7")
-
-# Run chart fx
-owner_plot <- chart_fx(owner_list, owner_meta, "asian", acs_racenote)
+# owner_meta <- metadata_fx("hous", "cost_burden_owner", "asian", metadata, "2025")
+# 
+# # Run data fx
+# owner_list <- data_fx(owner_meta, "asian", "v7")
+# 
+# # Run chart fx
+# owner_plot <- chart_fx(owner_list, owner_meta, "asian")
 
 
 #### UNINSURED ####
@@ -267,21 +264,22 @@ uninsured_meta <- metadata_fx("hlth", "health_insurance", "asian", metadata, "20
 uninsured_list <- data_fx(uninsured_meta, "asian", "v5")
 
 # Run chart fx
-uninsured_plot <- chart_fx(uninsured_list, uninsured_meta, "asian", cdc_racenote)
+uninsured_plot <- chart_fx(uninsured_list, uninsured_meta, "asian")
 
 
 #### LOW BIRTHWEIGHT ####
 # Run metadata fx
-lbw_meta <- metadata_fx("hlth", "low_birthweight", "asian", metadata, "2025")
+# lbw_meta <- metadata_fx("hlth", "low_birthweight", "asian", metadata, "2025")
+# 
+# # Run data fx
+# lbw_list <- data_fx(lbw_meta, "asian", "v7")
+# 
+# # Run chart fx
+# lbw_plot <- chart_fx(lbw_list, lbw_meta, "asian")
 
-# Run data fx
-lbw_list <- data_fx(lbw_meta, "asian", "v7")
 
-# Run chart fx
-lbw_plot <- chart_fx(lbw_list, lbw_meta, "asian", cdc_racenote)
-
-
-#### VOTER ENGAGEMENT ####  Does not work with functions bc not in RC v7
+#### VOTER ENGAGEMENT ########
+## Does not work with functions bc not in RC v7
 # Run metadata fx
 voter_data <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".", "asian_demo_voter_engagement_state_2025")) %>%
     pivot_longer(
@@ -295,16 +293,16 @@ voter_data <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".", "asian_de
     na.omit()
 
 race_ <- 'asian'
-raw_descriptor <- 'US citizens always or frequently engaged'
-asbest <- 'max'
-title_text <- 'Voter Engagement'
-subtitle_text <- 'US citizens always or frequently engaged in national, state, and local elections'
-datasource <- 'CHIS 2019-2024'
-racenote <- "Data Note: Subgroups are Latinx-inclusive and Alone or in Combination, which means they include all people who identify as the subgroup\nincluding in combination with other subroups, races, and/or ethnicities."
+raw_descriptor <- metadata %>% filter(api_name == 'voter_engagement') %>% select(raw_descriptor) %>% as.character()
+asbest <- metadata %>% filter(api_name == 'voter_engagement') %>% select(arei_best)
+title_text <- metadata %>% filter(api_name == 'voter_engagement') %>% select(bar_chart_header) %>% as.character()
+subtitle_text <- metadata %>% filter(api_name == 'voter_engagement') %>% select(methodology) %>% as.character()
+datasource <- metadata %>% filter(api_name == 'voter_engagement') %>% select(data_source) %>% as.character()
+racenote <- metadata %>% filter(api_name == 'voter_engagement') %>% select(racenote) %>% as.character()
 
 
 # pulled from: W:\Project\RACE COUNTS\2025_v7\MOSAIC\QA_Sheet_Sensemaking.docx
-race_rate <- 54.6
+race_rate <- 54.6 # asian aoic latinx-incl. mosaic postgres has nh_asian.
 total_rate <- 65.1
   
   # generate race rate label
@@ -313,12 +311,10 @@ total_rate <- 65.1
     TRUE ~ "Native Hawaiian or Pacific Islander"
   )
   
-  # dynamic height based on number of bars bc there are many more Asian subgroups
-  chart_height <- case_when(
-    nrow(voter_data) >= 13 ~ 700,
-    nrow(voter_data) >= 8  ~ 500,
-    TRUE                     ~ 300
-  )
+  # Calculate height based on number of rows (e.g., 40px per bar + 150px for headers/labels)
+  dynamic_height <- (nrow(voter_data) * 40) + 150
+  # Set constraints so it doesn't get too small or too huge
+  chart_height <- pmax(350, pmin(dynamic_height, 800))
   
   # build chart
 voter_plot <- b_chart <- hchart(
@@ -331,7 +327,7 @@ voter_plot <- b_chart <- hchart(
         "Rate: {point.rate:.1f}", if (max(voter_data$rate, na.rm = TRUE) > 100) "" else "%",
         "<br>", str_to_sentence(raw_descriptor), ": {point.raw:,.0f}"
       )
-    ),
+    )
   ) %>% 
     
     hc_tooltip(crosshairs = TRUE) %>% 
@@ -396,20 +392,21 @@ voter_plot <- b_chart <- hchart(
     
     # title elements
     hc_title(
-      text = paste0(title_text),
+      text = title_text,
       #margin = 20,
       align = "left", 
-      style = list(useHTML = TRUE, fontWeight = "bold", fontSize='30px')
+      style = list(useHTML = TRUE, fontSize = "1.5em", fontWeight = "bold") # Scales with container
+      #style = list(useHTML = TRUE, fontWeight = "bold", fontSize='30px')
     ) %>% 
     
     hc_subtitle(
-      text = paste0(subtitle_text),
+      text = subtitle_text,
       align = "left", y = 50
-    ) %>% 
+      ) %>% 
     
     hc_caption(
-      text = paste0("<br>Data Source: ", datasource,
-                    "<br>",racenote),
+      text = str_wrap(paste0("<br>Data Source: ", datasource,
+                    "<br>Race/Ethnicity Note: ", racenote), width = 50),
       style=list(fontSize='15px')
       #align = "left"
     ) %>% 
@@ -429,21 +426,6 @@ officials_plot
 ### Overcrowded Housing
 ```{r, echo=FALSE}
 overcrowd_plot
-```
-
-### Homeownership
-```{r, echo=FALSE}
-homeown_plot
-```
-
-### Renter Cost Burden
-```{r, echo=FALSE}
-renter_plot
-```
-
-### Owner Cost Burden
-```{r, echo=FALSE}
-owner_plot
 ```
 
 ### Uninsured
@@ -469,7 +451,7 @@ voter_plot
 # internet_list <- data_fx(internet_meta, "nhpi")
 # 
 # # Run chart fx
-# internet_plot <- chart_fx(internet_list, internet_meta, "nhpi", acs_racenote)
+# internet_plot <- chart_fx(internet_list, internet_meta, "nhpi")
 
 
 #### CONNECTED YOUTH ####
@@ -480,7 +462,7 @@ youth_meta <- metadata_fx("econ", "connected_youth", "nhpi", metadata, "2025")
 youth_list <- data_fx(youth_meta, "nhpi", "v7")
 
 # Run chart fx
-youth_plot <- chart_fx(youth_list, youth_meta, "nhpi", acs_racenote)
+youth_plot <- chart_fx(youth_list, youth_meta, "nhpi")
 
 
 #### OVERCROWDED ####
@@ -491,29 +473,29 @@ overcrowd_meta <- metadata_fx("hous", "overcrowded", "nhpi", metadata, "2023")
 overcrowd_list <- data_fx(overcrowd_meta, "nhpi", "v5")
 
 # Run chart fx
-overcrowd_plot <- chart_fx(overcrowd_list, overcrowd_meta, "nhpi", acs_racenote)
+overcrowd_plot <- chart_fx(overcrowd_list, overcrowd_meta, "nhpi")
 
 
 #### HOMEOWNERSHIP ####
-# Run metadata fx
-homeown_meta <- metadata_fx("hous", "homeownership", "nhpi", metadata, "2023")
-
-# Run data fx
-homeown_list <- data_fx(homeown_meta, "nhpi", "v5")
-
-# Run chart fx
-homeown_plot <- chart_fx(homeown_list, homeown_meta, "nhpi", acs_racenote)
+# # Run metadata fx
+# homeown_meta <- metadata_fx("hous", "homeownership", "nhpi", metadata, "2023")
+# 
+# # Run data fx
+# homeown_list <- data_fx(homeown_meta, "nhpi", "v5")
+# 
+# # Run chart fx
+# homeown_plot <- chart_fx(homeown_list, homeown_meta, "nhpi")
 
 
 #### DENIED MORTGAGE ####
-# Run metadata fx
-mtg_meta <- metadata_fx("hous", "denied_mortgages", "nhpi", metadata, "2025")
-
-# Run data fx
-mtg_list <- data_fx(mtg_meta, "nhpi", "v7")
-
-# Run chart fx
-mtg_plot <- chart_fx(mtg_list, mtg_meta, "nhpi", hmda_racenote)
+# # Run metadata fx
+# mtg_meta <- metadata_fx("hous", "denied_mortgages", "nhpi", metadata, "2025")
+# 
+# # Run data fx
+# mtg_list <- data_fx(mtg_meta, "nhpi", "v7")
+# 
+# # Run chart fx
+# mtg_plot <- chart_fx(mtg_list, mtg_meta, "nhpi")
 
 
 ### UNINSURED ####
@@ -524,18 +506,18 @@ uninsured_meta <- metadata_fx("hlth", "health_insurance", "nhpi", metadata, "202
 uninsured_list <- data_fx(uninsured_meta, "nhpi", "v5")
 
 # Run chart fx
-uninsured_plot <- chart_fx(uninsured_list, uninsured_meta, "nhpi", acs_racenote)
+uninsured_plot <- chart_fx(uninsured_list, uninsured_meta, "nhpi")
 
 
 #### LOW BIRTHWEIGHT ####
-# Run metadata fx
-lbw_meta <- metadata_fx("hlth", "low_birthweight", "nhpi", metadata, "2025")
-
-# Run data fx
-lbw_list <- data_fx(lbw_meta, "nhpi", "v7")
-
-# Run chart fx
-lbw_plot <- chart_fx(lbw_list, lbw_meta, "nhpi", cdc_racenote)
+# # Run metadata fx
+# lbw_meta <- metadata_fx("hlth", "low_birthweight", "nhpi", metadata, "2025")
+# 
+# # Run data fx
+# lbw_list <- data_fx(lbw_meta, "nhpi", "v7")
+# 
+# # Run chart fx
+# lbw_plot <- chart_fx(lbw_list, lbw_meta, "nhpi")
 
 
 ```
@@ -550,22 +532,7 @@ youth_plot
 uninsured_plot
 ```
 
-### Low Birthweight Births
-```{r, echo=FALSE}
-lbw_plot
-```
-
 ### Overcrowded Housing
 ```{r, echo=FALSE}
 overcrowd_plot
-```
-
-### Homeownership
-```{r, echo=FALSE}
-homeown_plot
-```
-
-### Denied Mortgages
-```{r, echo=FALSE}
-mtg_plot
 ```
