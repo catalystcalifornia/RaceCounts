@@ -1,5 +1,5 @@
 ---
-title: "RACE COUNTS Indicator Methodology"
+title: "RACE COUNTS: MOSAIC Indicator Methodology"
 output: 
   html_document:
     css: "W:\\Project\\RACE COUNTS\\2025_v7\\RC_Github\\LF\\RaceCounts\\Methodology\\rc_style.css"
@@ -73,7 +73,7 @@ indicators <- function(x) {
     cat(x$method_long[i], "\n", "\n")
     cat("**Source:** ", x$data_source[i], "\n", "\n")
     cat("**Link(s):** ", x$links[i], "\n", "\n")
-    cat("**Racial-Ethnic Categories:** ", x$race_eth[i], "\n", "\n")
+    cat("**Racial-Ethnic Categories:** ", x$racenote[i], "\n", "\n")
     cat("\n")
   }
 }
@@ -92,9 +92,12 @@ indicators <- function(x) {
 
 
 <span style="font-family: 'Rubik', sans serif; font-size=23px; font-weight: 600; font-color: dark_blue;">Notes on Racial-Ethnic Categories</span><br>
-Race is a social construct and a biological construct, neither of which are discussed in depth in this analysis. Thus, we use a simplified view of race to portray racial data to a broader audience. Ethnicity is also treated lightly, and while Latinx is an ethnicity, it is generally treated and spoken about as a race, even though Latinxs can be of any race. Additionally, each data source uses slightly different terminology and categorization. Considering all these factors, we use one simplified set of labels for the RACE COUNTS website and publications for consistency while maintaining fidelity to the data sources as much as possible. To find out more, please see our <a href="https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md" target="_blank">Race & Ethnicity Methodology</a> documentation. 
 
-In this document, groups marked with * are Latinx-inclusive, those without * are non-Latinx. Groups marked with ^ are that race alone or in combination with another race, groups without ^ are that one race alone. Latinx always includes Latinxs of any race.
+Race is a social construct and a biological construct, neither of which are discussed in depth in this analysis. Thus, we use a simplified view of race to portray racial data to a broader audience. Ethnicity is also treated lightly, and while Latinx is an ethnicity, it is generally treated and spoken about as a race, even though Latinxs can be of any race. Additionally, each data source uses slightly different terminology and categorization. Considering all these factors, we use one simplified set of labels for the RACE COUNTS website and publications for consistency while maintaining fidelity to the data sources as much as possible. 
+
+This analysis focuses on disaggregation of the Asian and Native Hawaiian / Pacific Islander races. Due to data limitations, the names and number of subgroups for each indicator varies. We have used the subgroup names provided by the data source for each indicator.
+
+To find out more about our race and ethnicity methods, please see our <a href="https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md" target="_blank">Race & Ethnicity Methodology</a> documentation. 
 
 \pagebreak
 
