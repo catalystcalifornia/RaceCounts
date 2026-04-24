@@ -1,8 +1,8 @@
 # Export MOSAIC RC data and metadata
-# Adapted from: .RaceCounts/Data/export_rc_data.R
+# Adapted from: ./RaceCounts/Data/export_rc_data.R
 
 # Set up workspace ----------------------------------------------------------------
-packages <- c("tidyverse", "RPostgres", "xfun", "usethis", "writexl", "openxlsx") 
+packages <- c("tidyverse", "RPostgres", "xfun", "usethis", "writexl", "openxlsx", "tidycensus") 
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
 if(length(install_packages) > 0) {
@@ -25,7 +25,7 @@ con <- connect_to_db("mosaic")
 # Update schema and year variables --------------------------------------------------
 curr_schema <- 'v7' # update each year, this field populates most table and file names automatically
 curr_yr <- '2025'   # update each year, this field populates most table and file names automatically
-
+acs_yr <- '2024'    # update this year, this field used to pull ACS vars
 
 
 # Fx to update race names ----------------------------------------------------
@@ -34,6 +34,7 @@ curr_yr <- '2025'   # update each year, this field populates most table and file
 update_race <- function(x) {
   # x is the dataframe which must contain a column with standard RC postgres race names
   x <- x %>%
+  # update race names
     mutate(new_race = case_when (
       str_detect(race, "api") ~ "Asian / Native Hawaiian / Pacific Islander",
       str_detect(race, "aian") ~ "American Indian / Alaska Native",
@@ -52,12 +53,14 @@ update_race <- function(x) {
       TRUE ~ str_to_title(gsub("_", " ", race))
     )
     ) %>%
+    # add Latinx-inclusive/Non-Latinx col
     mutate(latinx_inclusive = case_when (
       str_detect(race, "nh_") ~ "Non-Latinx",
       str_detect(race, "total") ~ "Latinx-inclusive",
       TRUE ~ "Latinx-inclusive"
     )
     ) %>%
+    # add One Race Alone/Alone or in Combo/In Combination col
     mutate(alone_incombo = case_when (
       str_detect(race, "aoic") ~ "Alone or in Combination",
       str_detect(race, "twoormor") ~ "In Combination",
@@ -65,7 +68,8 @@ update_race <- function(x) {
       TRUE ~ NA_character_
     )
     ) %>%
-    group_by(indicator) %>%  # for indicators with aoic AND one race alone version of subgroups
+    # Refine alone_incombo col for indicators with aoic AND one race alone version of subgroups
+    group_by(indicator) %>%  
     mutate(
       alone_incombo = case_when(
         !str_ends(race, "_aoic") & paste0(race, "_aoic") %in% race ~ "One Race Alone",
@@ -76,25 +80,52 @@ update_race <- function(x) {
     ungroup() %>%
     
     relocate(new_race, .after = race) %>%
-    relocate(latinx_inclusive, .after = new_race)
+    relocate(latinx_inclusive, .after = new_race) %>%
+    relocate(alone_incombo, .after = latinx_inclusive)
   
-  return(x)
+  
+return(x)
 }
 
 
-# Load pop tables and create RC table list ----------------------------------------------------
-# pull in geo level ids with name. I don't do this directly in the data in case names differ and we have issues merging later
- 
-anhpi_pop_pums <- dbGetQuery(con, paste0("SELECT geoid, geoname, num, rate, pop, subgroup, group_ FROM ", curr_schema, ".anhpi_pop_pums")) 
- 
+# Load pop tables ----------------------------------------------------
+asian_pop <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".aa_pop_b02018")) %>% filter(geolevel != 'place')
+nhpi_pop <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".nhpi_pop_b02019")) %>% filter(geolevel != 'place')
+  
+acs_var <- load_variables(acs_yr, 'acs5')
+pop_vars <- acs_var %>%
+  filter(grepl(("B02018|B02019"), name)) %>%
+  select(-geography) %>%
+  mutate(name = paste0(tolower(name), "e")) %>%
+  # add dupe rows to become percent metadata
+  { bind_rows(
+    mutate(., type = "orig"),
+    mutate(., type = "dupe")
+  )} %>%
+  # update name/label for percent rows
+  mutate(., name = ifelse(type == "dupe", gsub("e$", "_pct", name), name)) %>%
+  mutate(., label = ifelse(type == "dupe", gsub("Estimate", "Percent", label), label)) %>%
+  # update label for Total rows
+  mutate(., label = ifelse(grepl("b02018_001", name), paste0(label, "!!Asian Alone or in Any Combination"), label)) %>%
+  mutate(., label = ifelse(grepl("b02019_001", name), paste0(label, "!!Native Hawaiian and Other Pacific Islander Alone or in Any Combination"), label)) 
+
+# Update pop dataframe col names
+asian_pop_ <- asian_pop %>%
+  rename_with(~deframe(pop_vars[, c("name", "label")])[.x], 
+              .cols = intersect(pop_vars$name, names(.))) %>%
+  select(-ends_with("m"))
+
+nhpi_pop_ <- nhpi_pop %>%
+  rename_with(~deframe(pop_vars[, c("name", "label")])[.x], 
+              .cols = intersect(pop_vars$name, names(.))) %>%
+  select(-ends_with("m"))
+
+# Load indicator tables ----------------------------------------------------
 rc_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", curr_schema, "' AND table_name LIKE '%_", curr_yr, "';")
 
-rc_list <- dbGetQuery(con, rc_list_query) %>% 
-  filter(!grepl("index", table_name))   # drop index table names
+rc_list <- dbGetQuery(con, rc_list_query)
 
-
-
-# County & State Indicator Tables ------------------------------------------------------
+# County & State Indicator Tables
 ## Function based on (.\\Functions\\Export_RCdata.R") 
 #### Updates include: 
 ####### Remove 'arei' from geotype_list filter
@@ -211,33 +242,24 @@ df_state <- update_race(df_state) %>%
   rename(race = new_race)
 
 
-# County & State Pop Table ------------------------------------------------------
-## Pull in regular ACS tables too?
-
-
-# County/State Indicator metadata table from curr_schema.arei_indicator_list_cntyst ------------------------------------------------------
-
-# metadata <- dbGetQuery(con, paste0("SELECT * FROM ", curr_schema, ".arei_indicator_list_cntyst"))
-# 
-# metadata <- metadata %>% select(-c(api_name,  arei_issue_area_id, arei_indicator_id, prefix, race_type, ind_order, site_year, data_year, raw_rounding, rate_rounding, y_label, ind_show_on_dev, ind_show_on_site, newoid))
-# 
-# metadata <- metadata %>% dplyr::rename("indicator" = "arei_indicator",
-#                                        "issue" = "arei_issue_area",
-#                                        "best" = "arei_best") %>%
-#   select(issue, indicator, everything()) %>%
-#   mutate(issue = case_when(
-#     issue == 'Crime & Justice' ~ 'Safety & Justice',
-#     TRUE ~ issue))
-# 
-# metadata <- metadata[order(metadata$issue, metadata$indicator), ]
+# Pull in Indicator metadata table ------------------------------------------------------
+metadata <- read.xlsx("W:\\Project\\RACE COUNTS\\2025_v7\\MOSAIC\\indicator_list.xlsx", sheet = "metadata")
+ 
+metadata <- metadata %>%
+  dplyr::rename("indicator" = "arei_indicator",
+                "issue" = "arei_issue_area",
+                "best value" = "arei_best",
+                "indicator_short" = "api_name") %>%
+  select(issue, indicator, everything()) %>%
+  select(-c(type, raw_rounding, rate_rounding, arei_indicator_id, prefix, y_label, site_year, link2))
 
 
 ############### ADD IN POP PUMS (AND MAYBE REGULAR ACS POP) AS A TAB ################
 # Put county data, state data and metadata into a list
-list_cntyst <- list("County" = df_county, "State" = df_state, "PUMS Pop" = anhpi_pop_pums, "ACS Pop" = acs_pop, Metadata" = metadata)
+list_data <- list("County" = df_county, "State" = df_state, "Asian Pop" = asian_pop_, "NHPI Pop" = nhpi_pop_,"Metadata" = metadata)
 
 # Export to Excel
-write_xlsx(list_cntyst, ".\\Data\\rc_county_state_data.xlsx")
+write_xlsx(list_data, ".\\MOSAIC\\mosaic_county_state_data.xlsx")
 
 
 #close connection
