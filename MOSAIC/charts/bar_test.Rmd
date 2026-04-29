@@ -1,0 +1,374 @@
+---
+title: ""
+output: 
+  html_document:
+    self_contained: true
+---
+<style>
+.html-widget {
+    width: 100vw !important;
+    height: 100vh !important;
+}
+body { margin: 0; }
+</style>
+
+```{r, include=FALSE}
+# # load libraries and test data
+library(here)
+
+source(here("MOSAIC", "charts", "data_prep.R"))
+knitr::opts_chunk$set(echo = FALSE)
+
+```
+
+
+```{r}
+# Prep for chart 2
+
+all_subgroups <- unique(low_birthweight$subgroup)
+
+# Create ordered categories for RATES (descending by rate)
+rate_order <- low_birthweight_chart2 %>%
+  arrange(desc(rate)) %>%
+  pull(subgroup)
+
+# Create ordered categories for COUNTS (descending by count)
+count_order <- low_birthweight_chart2 %>%
+  arrange(desc(count)) %>%
+  pull(subgroup)
+
+# Get unique groups for color assignment
+groups <- unique(low_birthweight_chart2$group)
+
+
+# Create series data for RATES with colors
+series_data_rates <- low_birthweight_chart2 %>%
+  group_by(group) %>%
+  group_split() %>%
+  map(function(df) {
+    data_points <- map(1:nrow(df), function(i) {
+      x_index <- which(rate_order == df$subgroup[i]) - 1
+      list(
+        x = unname(x_index),
+        y = df$rate[i],
+        name = df$subgroup[i]
+      )
+    })
+    
+    # Assign color based on group
+    series_color <- if(df$group[1] == "ASIAN SUBGROUPS") {
+      base_colors[["asian subgroups"]]
+    } else if(df$group[1] == "ASIAN TOTAL") {
+      base_colors[["asian total"]]
+    } else {
+      base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
+    }
+    
+    list(
+      name = df$group[1],
+      data = data_points,
+      id = paste0("rates-", df$group[1]),
+      color = series_color
+    )
+  })
+
+# Create series data for COUNTS with same colors
+series_data_counts <- low_birthweight_chart2 %>%
+  group_by(group) %>%
+  group_split() %>%
+  map(function(df) {
+    data_points <- map(1:nrow(df), function(i) {
+      x_index <- which(count_order == df$subgroup[i]) - 1
+      list(
+        x = unname(x_index),
+        y = df$count[i],
+        name = df$subgroup[i]
+      )
+    })
+    
+    # Assign same color based on group
+    series_color <- if(df$group[1] == "ASIAN SUBGROUPS") {
+      base_colors[["asian subgroups"]]
+    } else if(df$group[1] == "ASIAN TOTAL") {
+      base_colors[["asian total"]]
+    } else {
+      base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
+    }
+    
+    list(
+      name = df$group[1],
+      data = data_points,
+      id = paste0("counts-", df$group[1]),
+      visible = FALSE,
+      color = series_color
+    )
+  })
+
+
+```
+
+```{r}
+# Create chart 2 
+hc <- highchart() %>%
+  hc_chart(
+    type = "bar",
+    reflow = TRUE,
+    events = list(
+      load = htmlwidgets::JS(sprintf(paste0("
+        function() {
+          var chart = this;
+          var rateOrder = %s;
+          var countOrder = %s;
+          
+          // Create toggle button
+          chart.customToggleButton = chart.renderer.button(
+            'Show Counts',
+            chart.chartWidth - 106,           
+            chart.chartHeight / 2 - 50,       
+            function() {
+              var showingRates = true;
+              
+              // Check if rates are currently visible
+              chart.series.forEach(function(s) {
+                if (s.userOptions.id && s.userOptions.id.startsWith('rates-')) {
+                  showingRates = s.visible;
+                }
+              });
+              
+              // Toggle all series and update x-axis
+              chart.series.forEach(function(s) {
+                if (s.userOptions.id) {
+                  if (showingRates) {
+                    // Switch to counts
+                    if (s.userOptions.id.startsWith('rates-')) {
+                      s.update({showInLegend: false}, false);
+                      s.hide();
+                    } else if (s.userOptions.id.startsWith('counts-')) {
+                      s.update({showInLegend: true}, false);
+                      s.show();
+                    }
+                  } else {
+                    // Switch to rates
+                    if (s.userOptions.id.startsWith('counts-')) {
+                      s.update({showInLegend: false}, false);
+                      s.hide();
+                    } else if (s.userOptions.id.startsWith('rates-')) {
+                      s.update({showInLegend: true}, false);
+                      s.show();
+                    }
+                  }
+                }
+              });
+              
+              // Update button text, y-axis, x-axis categories, and data label formatter
+              if (showingRates) {
+                chart.customToggleButton.attr({text: 'Show Rates'});
+                chart.yAxis[0].setTitle({ text: 'COUNT' }, false); 
+                chart.xAxis[0].update({categories: countOrder}, false);
+                chart.yAxis[0].removePlotLine('state-average-line');
+                
+                chart.update({
+                  plotOptions: {
+                    bar: {
+                      dataLabels: {
+                        formatter: function() {
+                          return Highcharts.numberFormat(this.y, 0, '.', ',');
+                        }
+                      }
+                    }
+                  }
+                }, true);
+                
+              } else {
+                chart.customToggleButton.attr({text: 'Show Counts'});
+                chart.yAxis[0].setTitle({ text: 'RATE' }, false); 
+                chart.xAxis[0].update({categories: rateOrder}, false);
+                chart.yAxis[0].addPlotLine({
+                  id: 'state-average-line',
+                  value: %s,
+                  color: '%s',
+                  width: 2,
+                  dashStyle: 'ShortDash',
+                  label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: %s', align: 'left', rotation: 0, y: -8, x: 5},
+                  zIndex: 5
+                });
+                
+                chart.update({
+                  plotOptions: {
+                    bar: {
+                      dataLabels: {
+                        formatter: function() {
+                          return this.y;
+                        }
+                      }
+                    }
+                  }
+                }, true);
+              } 
+              
+              // Remove the chart.redraw() call since we're now using redraw: true in update
+            },
+            {
+              fill: '", rc_blue, "' ,
+              stroke: '", rc_blue, "' ,
+              style: { color: '", rc_white, "' },  // Add this so font color persists
+              'stroke-width': 1,
+              r: 3,
+              padding: 8
+            },
+            {
+              fill: '", rc_blue, "' ,
+              style: { color: '", rc_white, "' }  // Add this so font color persists in hover state
+            },
+            {
+              fill: '", rc_blue, "' ,
+              style: { color: '", rc_white, "' }  // Add this so font color persists in active/pressed state
+            }
+          )
+          .css({
+            color: '", rc_white, "'
+          })
+          .attr({ zIndex: 7 })  // Add this line to put on top of gridlines
+          .add();
+          
+          // Add event listener to reposition on redraw/resize
+          Highcharts.addEvent(chart, 'redraw', function() {
+            if (chart.customToggleButton) {
+              var buttonWidth = chart.customToggleButton.getBBox().width;
+              var rightEdge = chart.chartWidth - chart.spacing[1];
+              chart.customToggleButton.attr({
+                x: rightEdge - buttonWidth
+              });
+            }
+          });
+          
+          // Initial positioning
+          var buttonWidth = chart.customToggleButton.getBBox().width;
+          var rightEdge = chart.chartWidth - chart.spacing[1];
+          chart.customToggleButton.attr({
+            x: rightEdge - buttonWidth
+          });
+              }
+      "), 
+      jsonlite::toJSON(rate_order), # rate order
+      jsonlite::toJSON(count_order), # count order
+      total_rate_bw, # value
+      rc_black, # color
+      total_rate_bw) # state average
+      ))) %>%
+  hc_plotOptions(
+    bar = list(
+      dataLabels = list(
+        enabled = TRUE,
+        align = "right",
+        inside = FALSE,
+        style = list(color = "black")),
+      pointWidth = 20,
+      grouping = FALSE,
+      pointPadding = 0,
+      groupPadding = 0.1),
+    series = 
+      list(enableMouseTracking=FALSE), # removes all highlighting from hovering over bars and legend groups
+      clip = FALSE) %>%
+  hc_xAxis(
+    categories = rate_order,
+    labels = list(
+      enabled = TRUE
+    ),
+    gridLineWidth = 1,
+    gridLineColor = '#e6e6e6') %>%
+  hc_yAxis(
+    title = list(text = "RATE"),
+    labels=list(enabled=FALSE), # remove labels from rate axis
+    gridLineWidth=0,
+    offset = 0,
+    plotLines = list(
+      list(
+        id = 'state-average-line',
+        value = total_rate_bw,
+        color = rc_black,
+        width = 2,
+        dashStyle = 'ShortDash',
+        label = list(
+          style=list(fontWeight='bold', fontSize='0.8em'),
+          text = paste('STATE AVERAGE:', total_rate_bw), 
+          align = 'left', 
+          rotation=0, y=-8, x=5),
+        zIndex = 5
+      )
+    )
+  ) %>%
+  hc_legend(
+    enabled = TRUE,
+    verticalAlign = "top",
+    margin = 20
+  ) %>%
+  hc_tooltip(enabled = FALSE) %>%
+  hc_title(
+    text = "Low Birthweight by Race/Ethnicity",
+    align = "center") %>% 
+  hc_subtitle(
+    text = "Toggle groups on/off by clicking the legend labels below",
+    align = "center") %>%
+  hc_add_theme(custom_theme)
+
+# Add RATES series (visible by default)
+for (series in series_data_rates) {
+  hc <- hc %>% hc_add_series(
+    name = series$name,
+    data = series$data,
+    id = series$id,
+    color = series$color,  # Use pre-assigned color
+    dataLabels = list(
+      formatter = JS("function() { return this.y; }")
+    )
+  )
+}
+
+# Add COUNTS series (hidden by default)
+for (series in series_data_counts) {
+  hc <- hc %>% hc_add_series(
+    name = series$name,
+    data = series$data,
+    id = series$id,
+    visible = FALSE,
+    showInLegend = FALSE,
+    color = series$color,  # Use pre-assigned color
+    dataLabels = list(
+      formatter = JS("function() { return this.y.toLocaleString('en-US'); }")
+    )
+  )
+}
+
+# Wrap with constrained width
+htmltools::tagList(
+  htmltools::tags$div(
+    class = "chart-wrapper",
+    style = "max-width: 1200px; width: 100%; margin: 0 auto;",
+    htmltools::tags$div(
+      class = "chart-container",
+      style = "height: auto; overflow: hidden; border: 1px solid #ccc;",
+      hc
+    )
+  ),
+  htmltools::tags$script(HTML("
+    function resizeChart() {
+      if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
+        Highcharts.charts.forEach(function(chart) {
+          if (chart) {
+            var wrapper = document.querySelector('.chart-wrapper');
+            if (wrapper) {
+              var targetWidth = wrapper.offsetWidth - 40;
+              chart.setSize(targetWidth, null, false);
+            }
+          }
+        });
+      }
+    }
+    
+    setTimeout(resizeChart, 100);
+    window.addEventListener('resize', resizeChart);
+  "))
+)
+
+```
