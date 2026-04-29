@@ -1,0 +1,349 @@
+---
+title: ""
+output: 
+  html_document:
+    self_contained: true
+---
+<style>
+.html-widget {
+    width: 100vw !important;
+    height: 100vh !important;
+}
+body { margin: 0; }
+</style>
+
+```{r, include=FALSE}
+# # load libraries and test data
+library(here)
+
+source(here("MOSAIC", "charts", "data_prep.R"))
+knitr::opts_chunk$set(echo = FALSE)
+
+```
+
+```{r}
+
+# define JS to control behavior or drilldown
+drilldown_bw_js <- paste0("function(e) {
+  var chart = this;
+  
+  // Check if seriesOptions exists first
+  if (!e.seriesOptions) {
+    return;
+  }
+  
+  // Store the original drilldown data before any modifications
+  var seriesId = e.seriesOptions.id;
+  
+  if (!chart.originalDrilldownData) {
+    chart.originalDrilldownData = {};
+  }
+  
+  // Store both rate and count sorted data from the drilldown series options
+  if (e.seriesOptions.data && e.seriesOptions.data_count_sorted) {
+    chart.originalDrilldownData[seriesId] = {
+      rateSorted: JSON.parse(JSON.stringify(e.seriesOptions.data)),
+      countSorted: JSON.parse(JSON.stringify(e.seriesOptions.data_count_sorted))
+    };
+  }
+  
+  // Add plot line (only for rates view)
+  chart.yAxis[0].addPlotLine({
+    id: 'total-line',
+    value: ", total_rate_bw, ",
+    color: '", rc_black, "' ,
+    width: 2,
+    dashStyle: 'ShortDash',
+    zIndex: 5,
+    label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 5 }
+  });
+  
+  // Reset state - always start with rates
+  chart.currentView = 'rates';
+  
+  // Update data label formatter for rates (initial state)
+  chart.update({
+    plotOptions: {
+      bar: {
+        states: {
+          hover: {
+            enabled: false  // Disable hover in drilldown
+          }
+        },
+        dataLabels: {
+          formatter: function() {
+            return this.y;
+          }
+        }
+      }
+    }
+  }, false);
+
+  chart.yAxis[0].setTitle({ text: 'RATE' }, false); 
+
+  
+  // Add toggle button if it doesn't exist
+  if (!chart.customToggleButton) {
+    chart.customToggleButton = chart.renderer.button(
+      'Show Counts',
+      chart.chartWidth - 106,           // Match drillup horizontal position
+      chart.chartHeight / 2 - 50,       // Above the middle where drillup sits
+      function() {
+        if (chart.currentView === 'rates') {
+          // Switch to counts
+          chart.currentView = 'counts';
+          // Use this instead of .update()
+          chart.yAxis[0].setTitle({ text: 'COUNT' }, false); 
+
+          chart.customToggleButton.attr({text: 'Show Rates'});
+          
+          // Remove the state average line
+          chart.yAxis[0].removePlotLine('total-line');
+          
+          // Update all drilled-down series to show counts
+          chart.series.forEach(function(s) {
+            if (s.options.id && chart.originalDrilldownData[s.options.id]) {
+              s.setData(chart.originalDrilldownData[s.options.id].countSorted, false);
+            }
+          });
+          
+          // Update data label formatter for counts
+          chart.update({
+            plotOptions: { 
+              bar: {
+                dataLabels: {
+                  formatter: function() {
+                    return this.y.toLocaleString('en-US');
+                  }
+                }
+              }
+            }
+          }, false);
+          
+        } else {
+          // Switch to rates
+          chart.currentView = 'rates';
+          chart.yAxis[0].setTitle({ text: 'RATE' }, false); 
+
+          chart.customToggleButton.attr({text: 'Show Counts'});
+          
+          // Re-add the state average line
+          chart.yAxis[0].addPlotLine({
+            id: 'total-line',
+            value: ", total_rate_bw, ",
+            color: '", rc_black, "' ,
+            width: 2,
+            dashStyle: 'ShortDash',
+            zIndex: 5,
+            label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 5 }
+          });
+          
+          // Update all drilled-down series to show rates
+          chart.series.forEach(function(s) {
+            if (s.options.id && chart.originalDrilldownData[s.options.id]) {
+              s.setData(chart.originalDrilldownData[s.options.id].rateSorted, false);
+            }
+          });
+          
+          // Update data label formatter for rates
+          chart.update({
+            plotOptions: {
+              bar: {
+                dataLabels: {
+                  formatter: function() {
+                    return this.y;
+                  }
+                }
+              }
+            }
+          }, false);
+        }
+        
+        chart.redraw();
+      },
+      {
+        fill: '", rc_blue, "' ,
+        stroke: '", rc_blue, "' ,
+        style: { color: '", rc_white, "' },
+        'stroke-width': 1,
+        r: 3,
+        padding: 8
+      },
+      {
+        fill: '", rc_blue, "' ,
+        style: { color: '", rc_white, "' }  // Add this so font color stays white in hover state
+      },
+      {
+        fill: '", rc_blue, "' ,
+        style: { color: '", rc_white, "' }  // Add this so font color stays white for active/pressed state
+      }
+    )
+    .css({
+      color: '", rc_white, "'
+    })
+    .attr({ zIndex: 7 })  // Add this line to put on top of gridlines
+    .add();
+    
+    // Add event listener to reposition on redraw/resize
+    Highcharts.addEvent(chart, 'redraw', function() {
+      if (chart.customToggleButton) {
+        var buttonWidth = chart.customToggleButton.getBBox().width;
+        var rightEdge = chart.chartWidth - chart.spacing[1];
+        chart.customToggleButton.attr({
+          x: rightEdge - buttonWidth
+        });
+      }
+    });
+    
+    // Initial positioning
+    var buttonWidth = chart.customToggleButton.getBBox().width;
+    var rightEdge = chart.chartWidth - chart.spacing[1];
+    chart.customToggleButton.attr({
+      x: rightEdge - buttonWidth
+    });
+  } else {
+    // Button exists, reset it
+    chart.customToggleButton.attr({text: 'Show Counts'});
+  }
+  
+  chart.redraw();
+}")
+
+drillup_bw_js <- paste0("function() { 
+  var chart = this;
+  chart.yAxis[0].removePlotLine('total-line');
+  
+  // CRITICAL: Reset all drilldown series data back to rate-sorted BEFORE drilling up
+  // This ensures the next drilldown starts with the correct data
+  if (chart.originalDrilldownData && chart.options.drilldown && chart.options.drilldown.series) {
+    chart.options.drilldown.series.forEach(function(drilldownSeries) {
+      var seriesId = drilldownSeries.id;
+      if (chart.originalDrilldownData[seriesId]) {
+        drilldownSeries.data = chart.originalDrilldownData[seriesId].rateSorted;
+      }
+    });
+  }
+  
+  // Remove toggle button on drillup
+  if (chart.customToggleButton) {
+    chart.customToggleButton.destroy();
+    chart.customToggleButton = null;
+  }
+  
+  // Clear state
+  chart.currentView = null;
+  
+  // Reset to rates view
+  // Use this instead of .update()
+  chart.yAxis[0].setTitle({ text: 'RATE' }, false); 
+
+  
+  // Reset data label formatter
+  chart.update({
+    plotOptions: {
+      bar: {
+        dataLabels: {
+          formatter: function() {
+            return this.y;
+          }
+        }
+      }
+    }
+  }, false);
+  
+  chart.redraw();
+}")
+
+
+```
+
+```{r}
+# Create Chart 1 (drilldown)
+hc <- hchart(
+  base_bw_df,
+  "bar",
+  hcaes(x = group, y = rate, drilldown = group, y2 = count, color=color),
+  name = "Overview",
+  colorByPoint = FALSE) %>%
+  hc_chart(
+    height = 400, 
+    scrollablePlotArea = list(minHeight = 500, opacity = 0.9),
+    events = list(
+      drilldown = JS(drilldown_bw_js),
+      drillup = JS(drillup_bw_js))) %>%
+  hc_tooltip(enabled = FALSE) %>%
+  hc_drilldown(
+    allowPointDrilldown = TRUE,
+  series = list_parse(drilldown_bw_df),
+  activeDataLabelStyle = list(
+    color = rc_black,
+    textDecoration = "none",
+    fontWeight = "normal"
+  ),
+  activeAxisLabelStyle = list(
+    color = rc_black,
+    textDecoration = "none",
+    cursor = "pointer"
+  ),
+  drillUpButton = list(
+    relativeTo = "spacingBox",
+    position = list(
+      align = "right",
+      verticalAlign = "middle"
+    )
+  )) %>%
+  hc_title(
+    text = "Low Birthweight by Race/Ethnicity",
+    align = "center" ) %>% 
+  hc_subtitle(
+    text = "Click the Asian or Total bar below to disaggregate data",
+    align = "center") %>%
+  hc_plotOptions(
+    bar = list(
+      dataLabels = list(
+        enabled = TRUE,
+        align = "right",
+        inside = FALSE))) %>% 
+  hc_xAxis(
+    title=list(text=NULL),
+    labels = list(
+      enabled = TRUE)) %>%
+  hc_yAxis(title = list(text = "RATE"),
+           labels=list(enabled=FALSE)) %>%# remove labels from rate axis) 
+  hc_legend(enabled=FALSE) %>%
+  hc_add_theme(custom_theme)
+
+
+# Wrap with constrained width
+htmltools::tagList(
+  htmltools::tags$div(
+    class = "chart-wrapper",
+    style = "max-width: 1200px; width: 100%; margin: 0 auto;",
+    htmltools::tags$div(
+      class = "chart-container",
+      style = "height: auto; overflow: hidden; border: 1px solid #ccc;",
+      hc
+    )
+  ),
+  htmltools::tags$script(HTML("
+    function resizeChart() {
+      if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
+        Highcharts.charts.forEach(function(chart) {
+          if (chart) {
+            var wrapper = document.querySelector('.chart-wrapper');
+            if (wrapper) {
+              var targetWidth = wrapper.offsetWidth - 40;
+              chart.setSize(targetWidth, null, false);
+            }
+          }
+        });
+      }
+    }
+    
+    setTimeout(resizeChart, 100);
+    window.addEventListener('resize', resizeChart);
+  "))
+)
+
+```
+
