@@ -47,19 +47,37 @@ state_tables_ <- lapply(state_tables_, function(x) x %>% select(state_id, state_
          mutate(variable = gsub(paste0("_state_", rc_yr), "", variable)))                                                 # clean indicator name column
 
 
+### by disparity_z (same as key_findings methodology)
 #most disparate issue area
-most_disp_issue <- rbindlist(state_tables_) %>% select(issue_area, index_of_disparity) %>% group_by(issue_area) %>% summarise(avg_id = mean(index_of_disparity)) %>%
-                      arrange(, desc(avg_id))  # sort from most disparate to least disparate issue
+most_disp_issuez <- rbindlist(state_tables_) %>% select(issue_area, disparity_z) %>% group_by(issue_area) %>% summarise(avg_id = mean(disparity_z)) %>%
+  arrange(, desc(avg_id))  # sort from most disparate to least disparate issue
 View(most_disp_issue)
 
 #most disparate indicators
-most_disp_indicators <- rbindlist(state_tables_) %>% select(variable, index_of_disparity) %>% arrange(, desc(index_of_disparity))  # sort from most disparate to least disparate indicator
-View(most_disp_indicators)
+most_disp_indicatorsz <- rbindlist(state_tables_) %>% select(variable, disparity_z) %>% arrange(, desc(disparity_z))  # sort from most disparate to least disparate indicator
+View(most_disp_indicatorsz)
 
 #most disparate indicator by issue
-most_disp_indicator_by_issue <- rbindlist(state_tables_) %>% select(issue_area, variable, index_of_disparity) %>% group_by(issue_area) %>% slice_max(index_of_disparity) %>%
-  arrange(, desc(index_of_disparity))  # sort from most disparate to least disparate indicator
-View(most_disp_indicator_by_issue)
+most_disp_indicator_by_issuez <- rbindlist(state_tables_) %>% select(issue_area, variable, disparity_z) %>% group_by(issue_area) %>% slice_max(disparity_z) %>%
+  arrange(, desc(disparity_z))  # sort from most disparate to least disparate indicator
+View(most_disp_indicator_by_issuez)
+
+
+
+# ### by ID
+# #most disparate issue area
+# most_disp_issue <- rbindlist(state_tables_) %>% select(issue_area, index_of_disparity) %>% group_by(issue_area) %>% summarise(avg_id = mean(index_of_disparity)) %>%
+#                       arrange(, desc(avg_id))  # sort from most disparate to least disparate issue
+# View(most_disp_issue)
+# 
+# #most disparate indicators
+# most_disp_indicators <- rbindlist(state_tables_) %>% select(variable, index_of_disparity) %>% arrange(, desc(index_of_disparity))  # sort from most disparate to least disparate indicator
+# View(most_disp_indicators)
+# 
+# #most disparate indicator by issue
+# most_disp_indicator_by_issue <- rbindlist(state_tables_) %>% select(issue_area, variable, index_of_disparity) %>% group_by(issue_area) %>% slice_max(index_of_disparity) %>%
+#   arrange(, desc(index_of_disparity))  # sort from most disparate to least disparate indicator
+# View(most_disp_indicator_by_issue)
 
 dbDisconnect(con)
 
