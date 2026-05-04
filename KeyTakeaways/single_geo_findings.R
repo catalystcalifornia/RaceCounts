@@ -83,7 +83,7 @@ View(most_disp_indicatorsz)
 most_disp_indicator_by_issuez <- rbindlist(data_tables_) %>%
   select(issue_area, variable, disparity_z) %>%
   group_by(issue_area) %>%
-  slice_max(disparity_z) %>%
+  slice_max(disparity_z) %>%    # max bc highest disp_z is worst
   arrange(, desc(disparity_z))  # sort from most disparate to least disparate indicator
 View(most_disp_indicator_by_issuez)
 
@@ -105,7 +105,8 @@ View(worst_outc_indicatorsz)
 #worst outcome indicator by issue
 worst_outc_indicator_by_issuez <- rbindlist(data_tables_) %>%
   select(issue_area, variable, performance_z) %>%
-  group_by(issue_area) %>% slice_min(performance_z) %>%
+  group_by(issue_area) %>%
+  slice_min(performance_z) %>%  # min bc lowest perf_z is worst
   arrange(, performance_z)  # sort from worst outcome to best outcome indicator
 View(worst_outc_indicator_by_issuez)
 
