@@ -66,31 +66,46 @@ data_tables_ <- lapply(data_tables_, function(x) x %>% select(ends_with("_id"), 
 
 ### by disparity_z (same as key_findings methodology)
 #most disparate issue area
-most_disp_issuez <- rbindlist(data_tables_) %>% select(issue_area, disparity_z) %>% group_by(issue_area) %>% summarise(avg_id = mean(disparity_z)) %>%
+most_disp_issuez <- rbindlist(data_tables_) %>%
+  select(issue_area, disparity_z) %>%
+  group_by(issue_area) %>%
+  summarise(avg_id = mean(disparity_z)) %>%
   arrange(, desc(avg_id))  # sort from most disparate to least disparate issue (compares across issues in 1 geo, not across geos)
 View(most_disp_issuez)
 
 #most disparate indicators
-most_disp_indicatorsz <- rbindlist(data_tables_) %>% select(variable, disparity_z) %>% arrange(, desc(disparity_z))  # sort from most disparate to least disparate indicator
+most_disp_indicatorsz <- rbindlist(data_tables_) %>%
+  select(variable, disparity_z) %>%
+  arrange(, desc(disparity_z))  # sort from most disparate to least disparate indicator
 View(most_disp_indicatorsz)
 
 #most disparate indicator by issue
-most_disp_indicator_by_issuez <- rbindlist(data_tables_) %>% select(issue_area, variable, disparity_z) %>% group_by(issue_area) %>% slice_max(disparity_z) %>%
+most_disp_indicator_by_issuez <- rbindlist(data_tables_) %>%
+  select(issue_area, variable, disparity_z) %>%
+  group_by(issue_area) %>%
+  slice_max(disparity_z) %>%
   arrange(, desc(disparity_z))  # sort from most disparate to least disparate indicator
 View(most_disp_indicator_by_issuez)
 
 ### by performance_z (same as key_findings methodology)
 #worst outcomes issue area
-worst_outc_issuez <- rbindlist(data_tables_) %>% select(issue_area, performance_z) %>% group_by(issue_area) %>% summarise(avg_perf = mean(performance_z)) %>%
+worst_outc_issuez <- rbindlist(data_tables_) %>%
+  select(issue_area, performance_z) %>%
+  group_by(issue_area) %>%
+  summarise(avg_perf = mean(performance_z)) %>%
   arrange(, avg_perf)  # sort from worst outcome to best outcome issue
 View(worst_outc_issuez)
 
-#worst indicators
-worst_outc_indicatorsz <- rbindlist(data_tables_) %>% select(variable, performance_z) %>% arrange(, performance_z)  # sort from worst outcome to best outcome indicator
+#worst outcome indicators
+worst_outc_indicatorsz <- rbindlist(data_tables_) %>%
+  select(variable, performance_z) %>%
+  arrange(, performance_z)  # sort from worst outcome to best outcome indicator
 View(worst_outc_indicatorsz)
 
 #worst outcome indicator by issue
-worst_outc_indicator_by_issuez <- rbindlist(data_tables_) %>% select(issue_area, variable, performance_z) %>% group_by(issue_area) %>% slice_min(performance_z) %>%
+worst_outc_indicator_by_issuez <- rbindlist(data_tables_) %>%
+  select(issue_area, variable, performance_z) %>%
+  group_by(issue_area) %>% slice_min(performance_z) %>%
   arrange(, performance_z)  # sort from worst outcome to best outcome indicator
 View(worst_outc_indicator_by_issuez)
 
