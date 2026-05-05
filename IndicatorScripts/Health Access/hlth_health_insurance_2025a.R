@@ -115,7 +115,7 @@ state_table_name <- paste0("arei_hlth_health_insurance_state_", rc_yr)
 # city_table_name <- paste0("arei_hlth_health_insurance_city_", rc_yr)        
 # leg_table_name <- paste0("arei_econ_employment_leg_", rc_yr)
 
-indicator <- "MOSAIC comparisoin data. Uninsured Population (%)"   
+indicator <- "MOSAIC comparison data. Uninsured Population (%)"   
 qa_filepath <- "Asana task: https://app.asana.com/1/110506578179264/project/1208663329421768/task/1214500131777383?focus=true"
 start_yr <- curr_yr-4
 source <- paste0(start_yr,"-",curr_yr," ACS 5-Year Estimates, Table S2701, https://data.census.gov/cedsci/. QA Doc: ", qa_filepath)   
