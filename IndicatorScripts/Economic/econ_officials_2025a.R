@@ -1,4 +1,4 @@
-### Officials & Managers RC v7 ###
+### Officials & Managers RC v7a - PUMS 2020-24 for MOSAIC comparison ###
 
 # Install packages if not already installed
 packages <- c("data.table", "readxl", "stringr", "dplyr", "RPostgres", "dbplyr", "srvyr", "tidycensus", "rpostgis",  "tidyr", "here", "sf", "usethis") 
@@ -21,11 +21,11 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
 # update QA doc filepath
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Officials_Mgers.docx"
+qa_filepath <- "Asana task https://app.asana.com/1/110506578179264/project/1208663329421768/task/1214500131777385?focus=true"
 
 # define variables used throughout - update each year
-curr_yr <- 2023 
-rc_yr <- '2025'
+curr_yr <- 2024 
+rc_yr <- '2025a'
 rc_schema <- 'v7'
 
 ### define common inputs for calc_pums{} and pums_screen{}
@@ -52,8 +52,8 @@ county_crosswalk <- crosswalk %>%
 # length(unique(county_crosswalk$geoid))  # this number should be lower bc it is filtered xwalk
 # length(unique(crosswalk$geoid))         # this number should be higher bc it is unfiltered xwalk
 
-assm_crosswalk <- dbGetQuery(con, "select geo_id AS puma, sldl24 AS geoid, num_dist AS num_assm from crosswalks.puma_2020_state_assembly_2024")
-sen_crosswalk <- dbGetQuery(con, "select geo_id AS puma, sldu24 AS geoid, num_dist AS num_sen from crosswalks.puma_2020_state_senate_2024")
+# assm_crosswalk <- dbGetQuery(con, "select geo_id AS puma, sldl24 AS geoid, num_dist AS num_assm from crosswalks.puma_2020_state_assembly_2024")
+# sen_crosswalk <- dbGetQuery(con, "select geo_id AS puma, sldu24 AS geoid, num_dist AS num_sen from crosswalks.puma_2020_state_senate_2024")
 
 # Get PUMS Data -----------------------------------------------------------
 # Data Dictionary: https://www2.census.gov/programs-surveys/acs/tech_docs/pums/data_dict/PUMS_Data_Dictionary_2023.pdf
@@ -80,7 +80,7 @@ repwlist = rep(paste0("PWGTP", 1:80))
 orig_data <- ppl
 
 ##### Reclassify Race/Ethnicity ########
-source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/PUMS_Functions_new.R")    
+source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/PUMS_Functions_new.R")    
 # check how many records there are for RACAIAN (AIAN alone/combo) versus RAC1P (AIAN alone) and same for NHPI
 #View(subset(ppl, RACAIAN =="1"))
 #View(subset(ppl, RAC1P >= 3 & ppl$RAC1P <=5))
@@ -137,42 +137,42 @@ table(ppl$indicator, useNA = "always")
 ppl_cs <- left_join(ppl, county_crosswalk, by=c("puma_id" = "puma"))   # join FILTERED county-puma crosswalk
 
 
-# join assm crosswalk to data
-ppl_assm <- left_join(ppl, assm_crosswalk, by=c("puma_id" = "puma")) 
-## Add geonames
-census_api_key(census_key1, overwrite=TRUE)
-assm_name <- get_acs(geography = "State Legislative District (Lower Chamber)", 
-                     variables = c("B01001_001"), 
-                     state = "CA", 
-                     year = curr_yr)
-
-assm_name <- assm_name[,1:2]
-assm_name$NAME <- str_remove(assm_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
-assm_name$NAME <- gsub("; California", "", assm_name$NAME)
-names(assm_name) <- c("geoid", "geoname")
-# View(assm_name)
-
-# add geonames to data
-ppl_assm <- merge(x=assm_name,y=ppl_assm, by="geoid", all=T)# %>% filter(if_all(starts_with("PWGTP"), ~ !is.na(.))) 
-
-
-# join sen crosswalk to data
-ppl_sen <- left_join(ppl, sen_crosswalk, by=c("puma_id" = "puma")) 
-## Add geonames
+# # join assm crosswalk to data
+# ppl_assm <- left_join(ppl, assm_crosswalk, by=c("puma_id" = "puma")) 
+# ## Add geonames
 # census_api_key(census_key1, overwrite=TRUE)
-sen_name <- get_acs(geography = "State Legislative District (Upper Chamber)", 
-                    variables = c("B01001_001"), 
-                    state = "CA", 
-                    year = curr_yr)
-
-sen_name <- sen_name[,1:2]
-sen_name$NAME <- str_remove(sen_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
-sen_name$NAME <- gsub("; California", "", sen_name$NAME)
-names(sen_name) <- c("geoid", "geoname")
-# View(sen_name)
-
-# add geonames to WA
-ppl_sen <- merge(x=sen_name,y=ppl_sen, by="geoid", all=T)# %>% filter(if_all(starts_with("PWGTP"), ~ !is.na(.))) 
+# assm_name <- get_acs(geography = "State Legislative District (Lower Chamber)", 
+#                      variables = c("B01001_001"), 
+#                      state = "CA", 
+#                      year = curr_yr)
+# 
+# assm_name <- assm_name[,1:2]
+# assm_name$NAME <- str_remove(assm_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
+# assm_name$NAME <- gsub("; California", "", assm_name$NAME)
+# names(assm_name) <- c("geoid", "geoname")
+# # View(assm_name)
+# 
+# # add geonames to data
+# ppl_assm <- merge(x=assm_name,y=ppl_assm, by="geoid", all=T)# %>% filter(if_all(starts_with("PWGTP"), ~ !is.na(.))) 
+# 
+# 
+# # join sen crosswalk to data
+# ppl_sen <- left_join(ppl, sen_crosswalk, by=c("puma_id" = "puma")) 
+# ## Add geonames
+# # census_api_key(census_key1, overwrite=TRUE)
+# sen_name <- get_acs(geography = "State Legislative District (Upper Chamber)", 
+#                     variables = c("B01001_001"), 
+#                     state = "CA", 
+#                     year = curr_yr)
+# 
+# sen_name <- sen_name[,1:2]
+# sen_name$NAME <- str_remove(sen_name$NAME,  "\\s*\\(.*\\)\\s*")  # clean geoname for sldl/sldu
+# sen_name$NAME <- gsub("; California", "", sen_name$NAME)
+# names(sen_name) <- c("geoid", "geoname")
+# # View(sen_name)
+# 
+# # add geonames to WA
+# ppl_sen <- merge(x=sen_name,y=ppl_sen, by="geoid", all=T)# %>% filter(if_all(starts_with("PWGTP"), ~ !is.na(.))) 
 
 
 # prep state df
@@ -184,14 +184,14 @@ rc_county <- calc_pums(d = ppl_cs, indicator, indicator_val, weight)   # Calc co
 rc_county$geolevel <- 'county'
 View(rc_county)
 
-rc_assm <- calc_pums(d = ppl_assm, indicator, indicator_val, weight)    # Calc assembly
-rc_assm$geolevel <- 'sldl'
-View(rc_assm)
-
-rc_sen <- calc_pums(d = ppl_sen, indicator, indicator_val, weight)      # Calc senate
-rc_sen$geolevel <- 'sldu'
-rc_sen$geoname <- gsub("State ", "", rc_sen$geoname)  # clean geonames
-View(rc_sen)
+# rc_assm <- calc_pums(d = ppl_assm, indicator, indicator_val, weight)    # Calc assembly
+# rc_assm$geolevel <- 'sldl'
+# View(rc_assm)
+# 
+# rc_sen <- calc_pums(d = ppl_sen, indicator, indicator_val, weight)      # Calc senate
+# rc_sen$geolevel <- 'sldu'
+# rc_sen$geoname <- gsub("State ", "", rc_sen$geoname)  # clean geonames
+# View(rc_sen)
 
 rc_state <- calc_pums(d = ppl_state, indicator, indicator_val, weight)  # Calc state
 rc_state$geolevel <- 'state'
@@ -199,7 +199,8 @@ View(rc_state)
 
 
 ############ COMBINE & SCREEN DATA ############# 
-rc_all <- rbind(rc_state, rc_county, rc_assm, rc_sen) %>%        # combine all geolevel df's before screening
+rc_all <- rbind(rc_state, rc_county) %>%        # combine all geolevel df's before screening
+#rc_all <- rbind(rc_state, rc_county, rc_assm, rc_sen) %>%        # combine all geolevel df's before screening
   select(-c(starts_with("count_moe"), starts_with("count_cv")))  # drop fields not needed for RC tables
 
 colnames(rc_all) <- sub("count", "num", colnames(rc_all))  # rename some cols to RC colnames
@@ -242,44 +243,42 @@ county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
 View(county_table)
 
-#split LEG DIST into separate tables
-upper_table <- d[d$geolevel == 'sldu', ]
-lower_table <- d[d$geolevel == 'sldl', ]
-
-#calculate SLDU z-scores and ranks
-upper_table <- calc_z(upper_table)
-
-upper_table <- calc_ranks(upper_table)
-#View(upper_table)
-
-#calculate SLDL z-scores and ranks
-lower_table <- calc_z(lower_table)
-
-lower_table <- calc_ranks(lower_table)
-#View(lower_table)
-
-## Bind sldu and sldl tables into one leg_table##
-leg_table <- rbind(upper_table, lower_table)
-View(leg_table)
+# #split LEG DIST into separate tables
+# upper_table <- d[d$geolevel == 'sldu', ]
+# lower_table <- d[d$geolevel == 'sldl', ]
+# 
+# #calculate SLDU z-scores and ranks
+# upper_table <- calc_z(upper_table)
+# 
+# upper_table <- calc_ranks(upper_table)
+# #View(upper_table)
+# 
+# #calculate SLDL z-scores and ranks
+# lower_table <- calc_z(lower_table)
+# 
+# lower_table <- calc_ranks(lower_table)
+# #View(lower_table)
+# 
+# ## Bind sldu and sldl tables into one leg_table##
+# leg_table <- rbind(upper_table, lower_table)
+# View(leg_table)
 
 state_table <- state_table %>% dplyr::rename("state_name" = "geoname", "state_id" = "geoid")
 county_table <- county_table %>% dplyr::rename("county_name" = "geoname", "county_id" = "geoid")
-leg_table <- leg_table %>% dplyr::rename("leg_name" = "geoname", "leg_id" = "geoid")
+# leg_table <- leg_table %>% dplyr::rename("leg_name" = "geoname", "leg_id" = "geoid")
 
 
 ###update info for postgres tables###
-leg_table_name <- paste0("arei_econ_officials_leg_", rc_yr)
+# leg_table_name <- paste0("arei_econ_officials_leg_", rc_yr)
 county_table_name <- paste0("arei_econ_officials_county_", rc_yr)
 state_table_name <- paste0("arei_econ_officials_state_", rc_yr)
-# city_table_name <- paste0("arei_econ_officials_city_", rc_yr)
 start_yr <- curr_yr - 4
-indicator <- paste0("Number of Officials & Managers per 1k People by Race. Only people ages 18-64 who are in the labor force are included. We also screened by pop and CV. City: White, Black, Asian, AIAN, NHPI, Another are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. Leg/County/State: White, Black, Asian, Another are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN, NHPI, SWANA are Latinx-inclusive so they are also included in Latinx counts. AIAN, SWANA, and NHPI include AIAN, SWANA, and NHPI Alone and in Combo, so non-Latinx AIAN, SWANA, and NHPI in combo are also included in Two or More. This data is")
-source <- paste0("County, Leg, State: ACS PUMS (", start_yr, "-", curr_yr, "). City: ACS EEO (2014-2018) (https://www.census.gov/acs/www/data/eeo-data/)")
+indicator <- paste0("MOSAIC comparison. Number of Officials & Managers per 1k People by Race. Only people ages 18-64 who are in the labor force are included. We also screened by pop and CV. City: White, Black, Asian, AIAN, NHPI, Another are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. Leg/County/State: White, Black, Asian, Another are one race alone and Latinx-exclusive. Two or More is Latinx-exclusive. AIAN, NHPI, SWANA are Latinx-inclusive so they are also included in Latinx counts. AIAN, SWANA, and NHPI include AIAN, SWANA, and NHPI Alone and in Combo, so non-Latinx AIAN, SWANA, and NHPI in combo are also included in Two or More. This data is")
+source <- paste0("County, State: ACS PUMS (", start_yr, "-", curr_yr, ")")
 
 #send tables to postgres
 to_postgres()
-leg_to_postgres()
-# city_to_postgres()
+# leg_to_postgres()
 
 #close connection
 dbDisconnect(con)
