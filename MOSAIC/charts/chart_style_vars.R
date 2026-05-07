@@ -32,6 +32,11 @@ custom_theme <- hc_theme(
   subtitle = list(
     style = list(
       color = rc_black)),
+  caption = list(
+    style = list(
+      color = rc_black,
+      fontSize ="11px",
+      style = list(lineHeight = "1.25rem"))),
   legend = list(itemStyle = list(color = rc_black)),
   xAxis = list(
     lineColor = rc_black,
