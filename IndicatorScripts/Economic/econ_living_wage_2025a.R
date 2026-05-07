@@ -25,7 +25,7 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
 # update QA doc filepath
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Living_Wage_2020_24.docx"
+qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Economic\\QA_Living_Wage_2025a.docx"
 
 # define variables used throughout - update each year
 curr_yr <- 2024
@@ -173,9 +173,9 @@ table(ppl$living_wage, useNA = "always")
 
 ############### CALC LEG DIST, COUNTY, STATE ESTIMATES/CVS ETC. ############### 
 # join county crosswalk to data
-# ppl_cs <- left_join(ppl, county_crosswalk, by=c("puma_id" = "puma"))   # join FILTERED county-puma crosswalk
-# 
-# 
+ppl_cs <- left_join(ppl, county_crosswalk, by=c("puma_id" = "puma"))   # join FILTERED county-puma crosswalk
+
+
 # # join assm crosswalk to data
 # ppl_assm <- left_join(ppl, assm_crosswalk, by=c("puma_id" = "puma")) 
 # ## Add geonames
