@@ -128,7 +128,7 @@ state_table_name <- paste0("arei_hous_overcrowded_state_", rc_yr)        # See m
 start_yr <- curr_yr -4
 
 indicator <- "MOSAIC comparision data. Overcrowded Housing Units (%) (> 1 person per room)"                         # See most recent Indicator Methodology for indicator description
-source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, Tables B25014B-I, https://data.census.gov/cedsci/") # See most recent Indicator Methodology for indicator description
+source <- paste0("ACS (", start_yr, "-", curr_yr,") 5-Year Estimates, Tables B25014B-I, https://data.census.gov/cedsci/ Asana task:", qa_filepath) # See most recent Indicator Methodology for indicator description
 
 ####### SEND TO POSTGRES #######
 to_postgres(county_table,state_table)
