@@ -42,6 +42,9 @@ prep_method <- function (geo, curr_yr, curr_schema) {
     select(arei_indicator, arei_issue_area, bar_chart_header, data_source, racenote, method_long, link1, link2)
   methodology$links = ifelse(!is.na(methodology$link2), paste0(gsub(" &&&", ",", methodology$link1), ", ", methodology$link2), gsub(" &&&", ",", methodology$link1))
   
+  # replace line breaks with HTML line breaks
+  methodology$method_long <- gsub("\r?\n|\r", "<br><br>", methodology$method_long)
+  
   # join api_name_short and race_eth to methodology
   methodology <- methodology %>% left_join(issues)
   

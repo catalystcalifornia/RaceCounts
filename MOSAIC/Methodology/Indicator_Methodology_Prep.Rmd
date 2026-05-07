@@ -95,7 +95,7 @@ indicators <- function(x) {
 
 Race is a social construct and a biological construct, neither of which are discussed in depth in this analysis. Thus, we use a simplified view of race to portray racial data to a broader audience. Ethnicity is also treated lightly, and while Latinx is an ethnicity, it is generally treated and spoken about as a race, even though Latinxs can be of any race. Additionally, each data source uses slightly different terminology and categorization. Considering all these factors, we use one simplified set of labels for the RACE COUNTS website and publications for consistency while maintaining fidelity to the data sources as much as possible. 
 
-This analysis focuses on disaggregation of the Asian and Native Hawaiian / Pacific Islander races. Due to data limitations, the names and number of subgroups for each indicator varies. We have used the subgroup names provided by the data source for each indicator.
+This analysis focuses on disaggregation of the Asian and Pacific Islander races. Due to data limitations, the names and number of subgroups for each indicator varies. We have used the subgroup names provided by the data source for each indicator.
 
 To find out more about our race and ethnicity methods, please see our <a href="https://github.com/catalystcalifornia/RaceCounts/blob/main/Methodology/README_Race_Ethnicity.md" target="_blank">Race & Ethnicity Methodology</a> documentation. 
 
