@@ -162,7 +162,7 @@ lbw <- rbind(county_lbw_asian_nhpi, state_lbw_asian_nhpi)
 lbw <- rename(lbw, raw = "births")
 
 ## Births & LBW final clean up & rate calc
-final_data <- left_join(lbw, births) %>%
+final_data <- left_join(lbw, births) %>%  # keeps records that exist in the lbw dataset
   # calculate lbw rate
   mutate(rate = raw/births * 100,
          geolevel = ifelse(geoname == 'California', 'state', 'county')) %>%
