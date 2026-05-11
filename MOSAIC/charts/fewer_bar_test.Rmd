@@ -7,7 +7,7 @@ output:
 <style>
 .html-widget {
     width: 910px !important;
-    height: 975px !important;
+    height: 550px !important;
 }
 body { margin: 0; }
 </style>
@@ -24,16 +24,22 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ```{r}
 # Prep for chart 2
+low_birthweight_reduced <- low_birthweight %>%
+  filter(group == "asian" | group == "total" | group == "other major race groups" | subgroup %in% c("bangladesh", "burma", "cambodia", "china", "india", "japan", "nepal"))
 
-all_subgroups <- unique(low_birthweight$subgroup)
+low_birthweight_reduced_chart2 <- low_birthweight_chart2 %>%
+  filter(group == "ASIAN TOTAL" | group == "OTHER MAJOR RACE GROUPS" | 
+           subgroup %in% c("BANGLADESH", "BURMA", "CAMBODIA", "CHINA", "INDIA", "JAPAN", "NEPAL"))
+
+all_subgroups <- unique(low_birthweight_reduced$subgroup)
 
 # Create ordered categories for RATES (descending by rate)
-rate_order <- low_birthweight_chart2 %>%
+rate_order <- low_birthweight_reduced_chart2 %>%
   arrange(desc(rate)) %>%
   pull(subgroup)
 
 # Create ordered categories for COUNTS (descending by count)
-count_order <- low_birthweight_chart2 %>%
+count_order <- low_birthweight_reduced_chart2 %>%
   arrange(desc(count)) %>%
   pull(subgroup)
 
@@ -42,7 +48,7 @@ groups <- unique(low_birthweight_chart2$group)
 
 
 # Create series data for RATES with colors
-series_data_rates <- low_birthweight_chart2 %>%
+series_data_rates <- low_birthweight_reduced_chart2 %>%
   group_by(group) %>%
   group_split() %>%
   map(function(df) {
@@ -73,7 +79,7 @@ series_data_rates <- low_birthweight_chart2 %>%
   })
 
 # Create series data for COUNTS with same colors
-series_data_counts <- low_birthweight_chart2 %>%
+series_data_counts <- low_birthweight_reduced_chart2 %>%
   group_by(group) %>%
   group_split() %>%
   map(function(df) {

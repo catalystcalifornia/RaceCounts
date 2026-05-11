@@ -6,8 +6,8 @@ output:
 ---
 <style>
 .html-widget {
-    width: 100vw !important;
-    height: 100vh !important;
+    width: 910px !important;
+    height: 975px !important;
 }
 body { margin: 0; }
 </style>
