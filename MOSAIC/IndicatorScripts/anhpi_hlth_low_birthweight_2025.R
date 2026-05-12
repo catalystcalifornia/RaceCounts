@@ -67,13 +67,7 @@ read_data_asian_nhpi <- function(x, y) {  # x = cdc birth or lbw data, y = birth
   # join to (filter) Asian/NHPI birth country list
   cdc_data <- right_join(cdc_data, birth_countries, by = c("mother_s_birth_country" = "country"))
   
-  # filter for NHPI AOIC or Asian AOIC and add new asian and nhpi fields
-  cdc_data <- cdc_data %>%
-    filter(grepl("Asian|NHOPI", mother_s_single_multi_race_31)) %>%
-    mutate(asian = ifelse(grepl("Asian", mother_s_single_multi_race_31), 1, 0),
-           nhpi =  ifelse(grepl("NHOPI", mother_s_single_multi_race_31), 1, 0))
-  
-return(cdc_data)
+  return(cdc_data)
 }
 
 
@@ -95,40 +89,19 @@ clean_data <- function(z){
     mutate(cdc_country = tolower(gsub(",", "", cdc_country))) %>%
     mutate(cdc_country = ifelse(grepl("micronesia", cdc_country), "micronesia", cdc_country)) %>%
     mutate(geoname = gsub(" County, CA", "", geoname)) %>%
-    select(geoid, geoname, mother_s_single_multi_race_31, asian, nhpi, cdc_country, births, asian_or_nhpi) %>%
+    select(geoid, geoname, cdc_country, births, asian_or_nhpi) %>%
     relocate(geoid, .before = geoname) 
   return(z)
 }
 
-# Function to split Asian and NHPI birth data -----------------------------------
-clean_data2 <- function(x) {
-  ## keep rows where birthing parent was born in an Asian country and birthing parent is Asian AOIC
-  ## keep rows where birthing parent was born in an NHPI country and birthing parent is NHPI AOIC
-  ## drop rows where birthing parent was born in an Asian country and is NOT Asian AOIC and vice versa
-  asian <- x %>% filter(asian == 1 & asian_or_nhpi == 'Asian')
-  nhpi <- x %>% filter(nhpi == 1 & asian_or_nhpi == 'NHPI')
-  
-  y <- bind_rows(asian, nhpi) %>%  # put data back together
-    select(-c(mother_s_single_multi_race_31, asian, nhpi)) %>% # drop unneeded cols
-    group_by(geoid, geoname, cdc_country, asian_or_nhpi) %>%
-    summarise(births = sum(births, na.rm=TRUE))  # sum births by cdc_country
-
-return(y)
-}
 
 # Read & Clean Birth Data ---------------------------------------------------------
 ## Data downloaded from: https://wonder.cdc.gov/natality-expanded-current.html
-# Asian or NHPI AOIC Foreign-Born Birthing Parents
-state_births_asian_nhpi <- read_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," state expanded all AOIC.csv"), birth_countries) %>% # Get State ASIAN / NHPI Births
-  clean_data() %>%
-  clean_data2()
+state_births_asian_nhpi <- read_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," state expanded all.csv"), birth_countries) %>% # Get State ASIAN / NHPI Births
+  clean_data()
 
-state_lbw_asian_nhpi <- read_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," state expanded lbw AOIC.csv"), birth_countries) %>% # Get State ASIAN / NHPI LBW
-  clean_data() %>%
-  clean_data2()
-
-# check no cdc_country of birth values are duplicated, meaning births in a country are assigned to both NHPI and Asian
-duplicated(state_births_asian_nhpi$cdc_country)  # should be all FALSE
+state_lbw_asian_nhpi <- read_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," state expanded lbw.csv"), birth_countries) %>% # Get State ASIAN / NHPI LBW
+  clean_data()
 
 state_births <- read.csv(paste0(cdc_dir, "Natality, ",curr_yr," state all.csv"), nrows = 1, colClasses = c(rep("character",3), "numeric")) %>% # Get State total births
   clean_names() %>% select(-notes) %>% rename(geoname = state_of_residence, geoid = state_of_residence_code) %>% select(geoid, everything())
@@ -136,13 +109,11 @@ state_births <- read.csv(paste0(cdc_dir, "Natality, ",curr_yr," state all.csv"),
 state_lbw <- read.csv(paste0(cdc_dir, "Natality, ",curr_yr," state lbw.csv"), nrows = 1, colClasses = c(rep("character",3), "numeric")) %>% # Get State total births
   clean_names() %>% select(-notes) %>% rename(geoname = state_of_residence, geoid = state_of_residence_code, raw = births) %>% select(geoid, everything())
 
-county_births_asian_nhpi <- read_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," county expanded all AOIC.csv"), birth_countries) %>% # Get county ASIAN / NHPI Births
-  clean_data() %>%
-  clean_data2()
+county_births_asian_nhpi <- read_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," county expanded all.csv"), birth_countries) %>% # Get county ASIAN / NHPI Births
+  clean_data()
 
-county_lbw_asian_nhpi <- read_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," county expanded lbw AOIC.csv"), birth_countries) %>% # Get county ASIAN / NHPI LBW
-  clean_data() %>%
-  clean_data2()
+county_lbw_asian_nhpi <- read_data_asian_nhpi(paste0(cdc_dir, "Natality, ",curr_yr," county expanded lbw.csv"), birth_countries) %>% # Get county ASIAN / NHPI LBW
+  clean_data()
 
 county_births <- read.csv(paste0(cdc_dir, "Natality, ",curr_yr," county all.csv"), nrows = 35, colClasses = c(rep("character",3), "numeric")) %>% # Get State total births
   clean_names() %>% select(-notes) %>% rename(geoname = county_of_residence, geoid = county_of_residence_code) %>% select(geoid, everything())
@@ -162,15 +133,15 @@ lbw <- rbind(county_lbw_asian_nhpi, state_lbw_asian_nhpi)
 lbw <- rename(lbw, raw = "births")
 
 ## Births & LBW final clean up & rate calc
-final_data <- left_join(lbw, births) %>%  # keeps records that exist in the lbw dataset
+final_data <- left_join(lbw, births) %>%
   # calculate lbw rate
   mutate(rate = raw/births * 100,
          geolevel = ifelse(geoname == 'California', 'state', 'county')) %>%
   select(geoid, geoname, cdc_country, asian_or_nhpi, births, raw, rate, geolevel) %>%
   # filter records >= lbw and birth thresholds
   filter(raw >= lbw_threshold & births >= birth_threshold)
-  
-# unique(final_data$cdc_country)  # list of birth countries included, n = 26
+
+# unique(final_data$cdc_country)  # list of birth countries included, n = 30
 
 # add totals
 total_births <- rbind(state_births, county_births)
@@ -185,16 +156,16 @@ asian_wide <- final_data %>%
   pivot_wider(names_from = cdc_country, 
               names_glue = "{cdc_country}_{.value}", 
               values_from = c(births, raw, rate)) %>%
-  remove_empty("cols") %>%       # drop 0 rate cols where all vals are NA, there were 11 using data not filtered by race
+  remove_empty("cols") %>%       # drop 11 rate cols where all vals are NA
   select(-asian_or_nhpi)
-  
+
 
 nhpi_wide <- final_data %>% 
   filter(asian_or_nhpi == 'NHPI') %>%
   pivot_wider(names_from = cdc_country, 
               names_glue = "{cdc_country}_{.value}", 
               values_from = c(births, raw, rate)) %>%
-  remove_empty("cols") %>%       # drop 0 rate cols where all vals are NA. there were 22 using data not filtered by race
+  remove_empty("cols") %>%       # drop 22 rate cols where all vals are NA
   select(-asian_or_nhpi)  
 
 ############## CALC ASIAN RACE COUNTS STATS ##############
@@ -240,7 +211,7 @@ View(county_table)
 county_table_name <- paste0("asian_hlth_low_birthweight_county_",rc_yr)
 state_table_name <- paste0("asian_hlth_low_birthweight_state_",rc_yr)
 
-indicator <- paste0("Percentage of infants born at low birthweight (less than 2,500 grams or about 5lbs. 5oz) of all live births, by Asian country birth of mother for mothers who are Asian AOIC. This data is")
+indicator <- paste0("Percentage of infants born at low birthweight (less than 2,500 grams or about 5lbs. 5oz) of all live births, by Asian country of birth of mother. This data is")
 source <- paste0("US Department of Health and Human Services, Centers for Disease Control and Prevention (CDC), National Center for Health Statistics, Division of Vital Statistics, CDC WONDER Online Database (",curr_yr,"): https://wonder.cdc.gov/natality-expanded-current.html. Mothers birth country selected based on W:\\Data\\Health\\Births\\CDC\\Asian and NHPI countries.xlsx. QA doc: ", qa_filepath)
 
 #send tables to postgres
@@ -296,5 +267,4 @@ source <- paste0("US Department of Health and Human Services, Centers for Diseas
 
 #send tables to postgres
 # to_postgres(county_table,state_table,"mosaic")
-
 
