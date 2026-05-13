@@ -21,7 +21,7 @@ con2 <- connect_to_db("mosaic")
 
 # Update each year --------------------------------------------------------
 curr_schema <- 'v7'
-curr_yr <- '2025'
+rc_yr <- '2025'
 
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\MOSAIC\\QA_Summary_Table.docx"
 
@@ -53,7 +53,7 @@ indicator_tables_clean <- map2(indicator_tables_clean, names(indicator_tables_cl
 # indicator_tables_clean <- lapply(indicator_tables_clean, function(x) x %>%
   # mutate(indicator1 = gsub("asian_|nhpi_", '', indicator_),  # step 1
   #        indicator2 = substring(indicator1, 6),              # step 2
-  #        indicator = gsub(paste0("_state_",curr_yr), '', indicator2)) %>% # step 3
+  #        indicator = gsub(paste0("_state_",rc_yr), '', indicator2)) %>% # step 3
   # select(-c(indicator_, indicator1, indicator2)))  # drop interim cleaning steps
 
 data_df <- as.data.frame(do.call(cbind, indicator_tables_clean))  # convert list to df
@@ -61,7 +61,7 @@ data_df <- as.data.frame(do.call(cbind, indicator_tables_clean))  # convert list
 # clean col names #
 colnames(data_df) <- gsub("asian_|nhpi_", '', colnames(data_df))            # step 1
 colnames(data_df) <- substring(colnames(data_df), 6)                        # step 2
-colnames(data_df) <- gsub(paste0("_state_",curr_yr), '', colnames(data_df)) # step 3
+colnames(data_df) <- gsub(paste0("_state_",rc_yr), '', colnames(data_df)) # step 3
 
 # step 4 - drop dupe id/name cols
 colnames(data_df) <- ifelse(grepl("_id|_name", colnames(data_df)), sub("^.*\\.", "", colnames(data_df)), colnames(data_df))
