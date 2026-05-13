@@ -21,32 +21,71 @@ con2 <- connect_to_db("mosaic")
 
 # Update each year --------------------------------------------------------
 curr_schema <- 'v7'
-rc_yr <- '2025'
+curr_yr <- '2025'
 
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\MOSAIC\\QA_Summary_Table.docx"
 
-## get pop
+## get pop ##
 asian_pop <- dbGetQuery(con2, paste0("select * from ", curr_schema, ".aa_pop_b02018 where geolevel IN ('county','state')")) # import county & state records only
 nhpi_pop <- dbGetQuery(con2, paste0("select * from ", curr_schema, ".nhpi_pop_b02019 where geolevel IN ('county','state')")) # import county & state records only
 
-## get RC county index tables ##
-# import county index tables
-table_list <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", curr_schema, "' AND table_name NOT LIKE '%_county_%' AND table_name NOT LIKE '%_city_%';")
+## get state indicator tables ##
+table_list <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", curr_schema, "' AND table_name LIKE '%_state_%';")
 rc_list <- dbGetQuery(con2, table_list) %>% dplyr::rename('table' = 'table_name')
 
-index_list <- rc_list[order(rc_list$table), ] # alphabetize list of index tables which transforms into character from list, needed to format list correctly for next steps
-index_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", index_list), index_list), DBI::dbGetQuery, conn = con) # import tables from postgres
+indicator_list <- rc_list[order(rc_list$table), ] # alphabetize list of index tables which transforms into character from list, needed to format list correctly for next steps
+indicator_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", indicator_list), indicator_list), DBI::dbGetQuery, conn = con2) # import tables from postgres
+
+## filter for report page indicators & split into asian and nhpi ##
+asian_tables <- indicator_tables[grepl("asian", names(indicator_tables))]
+asian_tables <- asian_tables[grepl("overcrowd|officials|insurance|voter", names(asian_tables))]
+
+nhpi_tables <- indicator_tables[grepl("nhpi", names(indicator_tables))]
+nhpi_tables <- nhpi_tables[grepl("overcrowd|youth|insurance|wage", names(nhpi_tables))]
+
 
 # format and clean tables
-index_tables_sort <- lapply(index_tables, function(i) i[order(i$county_id),]) # sort all list elements by county_id so they are all in the same order
-index_tables_clean <- lapply(index_tables_sort, function(x) x%>% select(county_id, ends_with(c("disparity_z", "disparity_rank", "performance_z", "performance_rank", "quartile", "quadrant"))))
-index_df <- as.data.frame(do.call(cbind, index_tables_clean))                     # convert list to df
-names(index_df) <- gsub(x = names(index_df), pattern = ".*\\.", replacement = "") # clean up column names
-index_df = index_df[,!duplicated(names(index_df))]                                # drop duplicated county_id columns
+clean_tables <- function(data_list){
+
+indicator_tables_clean <- lapply(data_list, function(x) x %>%
+  select(state_id, state_name, ends_with(c("raw", "rate"))))
+indicator_tables_clean <- map2(indicator_tables_clean, names(indicator_tables_clean), ~ mutate(.x, indicator_ = .y)) # create column with indicator name
+# indicator_tables_clean <- lapply(indicator_tables_clean, function(x) x %>%
+  # mutate(indicator1 = gsub("asian_|nhpi_", '', indicator_),  # step 1
+  #        indicator2 = substring(indicator1, 6),              # step 2
+  #        indicator = gsub(paste0("_state_",curr_yr), '', indicator2)) %>% # step 3
+  # select(-c(indicator_, indicator1, indicator2)))  # drop interim cleaning steps
+
+data_df <- as.data.frame(do.call(cbind, indicator_tables_clean))  # convert list to df
+
+# clean col names #
+colnames(data_df) <- gsub("asian_|nhpi_", '', colnames(data_df))            # step 1
+colnames(data_df) <- substring(colnames(data_df), 6)                        # step 2
+colnames(data_df) <- gsub(paste0("_state_",curr_yr), '', colnames(data_df)) # step 3
+
+# step 4 - drop dupe id/name cols
+colnames(data_df) <- ifelse(grepl("_id|_name", colnames(data_df)), sub("^.*\\.", "", colnames(data_df)), colnames(data_df))
+data_df = data_df[,!duplicated(names(data_df))]
+
+return(data_df)
+}
+
+asian_clean <- clean_tables(asian_tables)
+
+
+# keep only aoic raw/rate cols (drop non-aoic overcrowd and insurance)
+asian_clean <- asian_clean %>%
+  select()
+
 
 # join tables together
-multigeo_list <- left_join(race, county_ids) %>% left_join(region_urban) %>% relocate(county_id, .after = geoid) %>% relocate(region, .after = name) %>% relocate(urban_type, .after = total_pop) %>%
+multigeo_list <- left_join(race, county_ids) %>%
+  left_join(region_urban) %>%
+  relocate(county_id, .after = geoid) %>%
+  relocate(region, .after = name) %>%
+  relocate(urban_type, .after = total_pop) %>%
   dplyr::rename(geo_name = name)
+
 multigeo_list <- left_join(multigeo_list, index_df, by = c("geoid" = "county_id"))
 
 
