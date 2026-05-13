@@ -1,4 +1,4 @@
-## Health Insurance for RC v7 ##
+## Health Insurance for RC v7a - ACS 2017-21 for MOSAIC comparison ##
 
 #install packages if not already installed
 packages <- c("readr","tidyr","dplyr","DBI","RPostgres","tidycensus", "rvest", "tidyverse", "stringr", "usethis", "tigris")
@@ -19,8 +19,8 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
 ############## UPDATE FOR SPECIFIC INDICATOR HERE ##############
-curr_yr = 2023            # You MUST UPDATE each year with the last year from the 5-year ACS you're using
-rc_yr = '2025'            # You MUST UPDATE each year
+curr_yr = 2021            # You MUST UPDATE each year with the last year from the 5-year ACS you're using
+rc_yr = '2025a'           # You MUST UPDATE each year
 rc_schema <- "v7"         # You MUST UPDATE each year
 cv_threshold = 40         # You may need to update
 pop_threshold = 130       # You may need to update
@@ -62,9 +62,9 @@ d <- calc_id(d)
 #split into STATE, COUNTY, CITY tables
 state_table <- d[d$geolevel == 'state', ]
 county_table <- d[d$geolevel == 'county', ]
-city_table <- d[d$geolevel == 'place', ]
-upper_table <- d[d$geolevel == 'sldu', ]
-lower_table <- d[d$geolevel == 'sldl', ]
+# city_table <- d[d$geolevel == 'place', ]
+# upper_table <- d[d$geolevel == 'sldu', ]
+# lower_table <- d[d$geolevel == 'sldl', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table) %>% dplyr::select(-c(geolevel))
@@ -77,34 +77,34 @@ county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table) %>% dplyr::select(-c(geolevel))
 View(county_table)
 
-#calculate CITY z-scores
-city_table <- calc_z(city_table)
-
-## Calc city ranks##
-city_table <- calc_ranks(city_table) %>% dplyr::select(-c(geolevel))
-View(city_table)
-
-#calculate SLDU z-scores and ranks
-upper_table <- calc_z(upper_table)
-
-upper_table <- calc_ranks(upper_table)
-View(upper_table)
-
-#calculate SLDL z-scores and ranks
-lower_table <- calc_z(lower_table)
-
-lower_table <- calc_ranks(lower_table)
-View(lower_table)
-
-## Bind sldu and sldl tables into one leg_table##
-leg_table <- rbind(upper_table, lower_table)
-View(leg_table)
+# #calculate CITY z-scores
+# city_table <- calc_z(city_table)
+# 
+# ## Calc city ranks##
+# city_table <- calc_ranks(city_table) %>% dplyr::select(-c(geolevel))
+# View(city_table)
+# 
+# #calculate SLDU z-scores and ranks
+# upper_table <- calc_z(upper_table)
+# 
+# upper_table <- calc_ranks(upper_table)
+# View(upper_table)
+# 
+# #calculate SLDL z-scores and ranks
+# lower_table <- calc_z(lower_table)
+# 
+# lower_table <- calc_ranks(lower_table)
+# View(lower_table)
+# 
+# ## Bind sldu and sldl tables into one leg_table##
+# leg_table <- rbind(upper_table, lower_table)
+# View(leg_table)
 
 #rename geoid to state_id, county_id, city_id, leg_id
-state_table <- rename(state_table, state_id = geoid, state_name = geoname)
-county_table <- rename(county_table, county_id = geoid, county_name = geoname)
-city_table <- rename(city_table, city_id = geoid, city_name = geoname)
-leg_table <- rename(leg_table, leg_id = geoid, leg_name = geoname)
+state_table <- rename(state_table, state_id = geoid, state_name = name)
+county_table <- rename(county_table, county_id = geoid, county_name = name)
+# city_table <- rename(city_table, city_id = geoid, city_name = geoname)
+# leg_table <- rename(leg_table, leg_id = geoid, leg_name = geoname)
 
 
 ############### COUNTY, STATE, CITY METADATA  ##############
@@ -112,18 +112,18 @@ leg_table <- rename(leg_table, leg_id = geoid, leg_name = geoname)
 ###update info for postgres tables###
 county_table_name <- paste0("arei_hlth_health_insurance_county_", rc_yr)      
 state_table_name <- paste0("arei_hlth_health_insurance_state_", rc_yr)       
-city_table_name <- paste0("arei_hlth_health_insurance_city_", rc_yr)        
-leg_table_name <- paste0("arei_econ_employment_leg_", rc_yr)
+# city_table_name <- paste0("arei_hlth_health_insurance_city_", rc_yr)        
+# leg_table_name <- paste0("arei_econ_employment_leg_", rc_yr)
 
-indicator <- "Uninsured Population (%)"   
-qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Health Access\\QA_Health_Insurance.docx"
+indicator <- "MOSAIC comparison data. Uninsured Population (%)"   
+qa_filepath <- "Asana task: https://app.asana.com/1/110506578179264/project/1208663329421768/task/1214500131777383?focus=true"
 start_yr <- curr_yr-4
 source <- paste0(start_yr,"-",curr_yr," ACS 5-Year Estimates, Table S2701, https://data.census.gov/cedsci/. QA Doc: ", qa_filepath)   
 
 
 ####### SEND TO POSTGRES #######
 to_postgres(county_table, state_table)
-city_to_postgres(city_table)
-leg_to_postgres(leg_table)
+# city_to_postgres(city_table)
+# leg_to_postgres(leg_table)
 
 dbDisconnect(con)
