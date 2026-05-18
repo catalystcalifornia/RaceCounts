@@ -255,6 +255,11 @@ drillup_bw_js <- paste0("function() {
 }")
 
 
+# caption text
+data_source <- "US Department of Health and Human Services, Centers for Disease Control and Prevention (CDC), National Center for Health Statistics, Division of Vital Statistics, CDC WONDER Online Database (2016-2023)"
+data_description <- "The number of infants born weighing less than 2,500 grams or about 5 lbs 8 oz per 100 live births by race/ethnicity of birthing parent. Estimates for racial groups with fewer than ten births or areas with fewer than 100,000 people were excluded to protect privacy. SWANA data includes only foreign-born birthing parents."
+methodology_link <- "<a href='https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html' target='_blank'>Full Methodology</a>"
+
 ```
 
 ```{r}
@@ -311,6 +316,11 @@ hc <- hchart(
   hc_yAxis(title = list(text = "RATE"),
            labels=list(enabled=FALSE)) %>%# remove labels from rate axis) 
   hc_legend(enabled=FALSE) %>%
+  hc_caption(
+    text = paste("<b>About the data:", data_source, "</b>", data_description, methodology_link),
+    useHTML = TRUE,
+    align = "left"
+  ) %>%
   hc_add_theme(custom_theme)
 
 
