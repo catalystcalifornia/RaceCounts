@@ -7,6 +7,7 @@ rc_grey <- "#cccccc" # neutral
 rc_white <- "#ffffff" # neutral
 rc_black <- "#333333" # neutral
 rc_purple <- "#362178" # accent
+rc_yellow <- "#fec009"
 
 
 # Set colors for bars
