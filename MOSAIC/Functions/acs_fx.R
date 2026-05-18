@@ -204,23 +204,13 @@ send_to_mosaic <- function(acs_table, df_list, table_schema){
 
 
 ##### Prep ACS tables for RC fx #####
-prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold, year_) {
+prep_acs <- function(x, race, table_code, cv_threshold, pop_threshold) {
   
   # SQL query to retrieve column names and comments: The query uses the pg_catalog.col_description function
   
   # Define the schema and table name
   table_name <- sprintf("%s_acs_5yr_%s_multigeo_%s",
-                        tolower(race), tolower(table_code), year_)
-  
-  # Get POPGROUP_LABELS
-  meta_api_call <- sprintf(
-    "https://api.census.gov/data/%s/acs/acs5/spt", year_)
-  
-  meta <- GET("https://api.census.gov/data/2021/acs/acs5/spt")
-  
-  meta_content <- content(meta, "text")   # returns the response body as text
-  parsed_meta <- fromJSON(meta_content)
-  View(parsed_meta$variables$POPGROUP$values$item)
+                        tolower(race), tolower(table_code), curr_yr)
   
   #	query <- sprintf("
   #	SELECT
