@@ -282,8 +282,8 @@ county_table <- county_table %>%
 View(county_table)
 
 ###info for postgres tables will auto-update based on variables at top of script###
-county_table_name <- paste0("asian_hlth_low_birthweight_county_",rc_yr,"aoic")
-state_table_name <- paste0("asian_hlth_low_birthweight_state_",rc_yr,"aoic")
+county_table_name <- paste0("asian_hlth_low_birthweight_county_",rc_yr)
+state_table_name <- paste0("asian_hlth_low_birthweight_state_",rc_yr)
 
 indicator <- paste0("Percentage of infants born at low birthweight (less than 2,500 grams or about 5lbs. 5oz) of all live births, by Asian country birth of mother for mothers who are Asian AOIC. This data is")
 source <- paste0("US Department of Health and Human Services, Centers for Disease Control and Prevention (CDC), National Center for Health Statistics, Division of Vital Statistics, CDC WONDER Online Database (",curr_yr,"): https://wonder.cdc.gov/natality-expanded-current.html. Mothers birth country selected based on W:\\Data\\Health\\Births\\CDC\\Asian and NHPI countries.xlsx. QA doc: ", qa_filepath)
@@ -333,8 +333,8 @@ county_table <- county_table %>%
 View(county_table)
 
 ###info for postgres tables will auto-update based on variables at top of script###
-county_table_name <- paste0("nhpi_hlth_low_birthweight_county_",rc_yr,"aoic")
-state_table_name <- paste0("nhpi_hlth_low_birthweight_state_",rc_yr,"aoic")
+county_table_name <- paste0("nhpi_hlth_low_birthweight_county_",rc_yr)
+state_table_name <- paste0("nhpi_hlth_low_birthweight_state_",rc_yr)
 
 indicator <- paste0("Percentage of infants born at low birthweight (less than 2,500 grams or about 5lbs. 5oz) of all live births, by NHPI country of birth of mother for mothers who are NHPI AOIC. This data also includes mothers who are Hawaiian Alone Latinx-inclusive who are US born. This data is")
 source <- paste0("US Department of Health and Human Services, Centers for Disease Control and Prevention (CDC), National Center for Health Statistics, Division of Vital Statistics, CDC WONDER Online Database (",curr_yr,"): https://wonder.cdc.gov/natality-expanded-current.html. Mothers birth country selected based on W:\\Data\\Health\\Births\\CDC\\Asian and NHPI countries.xlsx. QA doc: ", qa_filepath)
