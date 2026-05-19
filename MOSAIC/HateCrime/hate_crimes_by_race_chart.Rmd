@@ -32,7 +32,7 @@ options(highcharter.lang = lang)
 
 #Add database connection and source script with functions for pushing to postgres
 source("W:\\RDA Team\\R\\credentials_source.R")
-source("./MOSAIC/HateCrime/calcs.R")
+source("./calcs.R")
 options(scipen = 999)
 
 #### Step 1: Pull in data ####
