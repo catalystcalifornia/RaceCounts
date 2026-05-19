@@ -33,7 +33,7 @@ swana_pre2020 <- read.xlsx(paste0(filepath, "pre_2020\\pre2020_swana.xlsx"), she
 
 omb_2020 <- read.xlsx(paste0(filepath, "2020\\2020_omb.xlsx"), sheet=1, startRow=8, rows=c(8,10:11), cols=c(1:10,14:16,23:25))
 aian_2020 <- read.xlsx(paste0(filepath, "2020\\2020_aian.xlsx"), sheet=1, startRow=6, rows=c(6,8:9), cols=c(1:4))
-nhpi_2020 <- read.xlsx(paste0(filepath, "2020\\2020_nhpi.xlsx"), sheet=1, startRow=8, rows=c(8,10:11), cols=c(1:4))  # unstable
+nhpi_2020 <- read.xlsx(paste0(filepath, "2020\\2020_nhpi.xlsx"), sheet=1, startRow=8, rows=c(8,10:11), cols=c(1:4))   # unstable
 swana_2020 <- read.xlsx(paste0(filepath, "2020\\2020_swana.xlsx"), sheet=1, startRow=6, rows=c(6,8:9), cols=c(1:4))
 
 omb_2021 <- read.xlsx(paste0(filepath, "2021\\2021_omb.xlsx"), sheet=1, startRow=8, rows=c(8,10:11), cols=c(1:10,14:16,23:25))
@@ -47,12 +47,111 @@ nhpi_2022 <- read.xlsx(paste0(filepath, "2022\\2022_nhpi.xlsx"), sheet=1, startR
 swana_2022 <- read.xlsx(paste0(filepath, "2022\\2022_swana.xlsx"), sheet=1, startRow=8, rows=c(8,10:11), cols=c(1:4))  # unstable
 
 
+
 ##### 3. clean data ##### 
+collect_dfs <- function(..., envir = .GlobalEnv) {
+  # put all df's with specified prefix(es) into a nested list
+  prefixes <- c(...) # allows the fx to accept unlimited # of prefixes (strings)
+  
+  nested_list <- setNames(
+    lapply(prefixes, function(prefix) {
+      all_names <- ls(envir = envir)
+      matching_names <- all_names[startsWith(all_names, prefix)]
+      
+      df_names <- matching_names[sapply(matching_names, function(n) is.data.frame(get(n, envir = envir)))]
+      
+      setNames(
+        lapply(df_names, function(n) get(n, envir = envir)),
+        df_names
+      )
+    }),
+    paste0(prefixes, "_data")
+  )
+  
+  nested_list
+}
 
 
-##### 4. analyze data ##### 
+# put each group's data into a list
+data_list <- collect_dfs("omb", "nhpi", "aian", "swana")
+
+# Fill in missing col names, Drop confidence interval columns (containing "-" in any row) and 'no' rows, Drop first col
+clean_list <- function(d) {
+  # temporarily name empty cols by position
+  names(d) <- ifelse(is.na(names(d)) | trimws(names(d)) == "",
+                     paste0("empty_", seq_along(names(d))),
+                     names(d))
+  
+  d <- d %>%
+    select(where(~ !any(grepl("-", ., fixed = TRUE), na.rm = TRUE))) %>%  # drop cols containing "-"
+    filter(.[, 1] != "No") %>%    # drop 'No' rows
+    rename_with(~ gsub("empty", "raw", .x), starts_with("empty")) %>% # rename raw cols
+    select(-1)
+    
+  return(d)
+}
+
+clean_list <- lapply(data_list, function(sublist) {
+  lapply(sublist, clean_list)
+})
+
+# View(clean_list[[4]][[1]])
+# View(clean_list[[1]][[1]])
+# View(clean_list[[2]][[1]])
+# View(clean_list[[3]][[1]])
+
+# clean SWANA, NHPI, AIAN
+rename_nested_col <- function(nested_list, prefix) {
+  # nested_list is the list containing nested elements for each race group, eg: clean_data
+  # prefix is the prefix on each group's nested elements names, eg: 'swana'
+  element_name <- paste0(prefix, "_data")  # get the nested list element name
+  element <- nested_list[[element_name]]   # get the nested list element
+  
+  updated <- lapply(element, function(x) {
+    x %>%   # rename columns to rate and raw
+      rename(!!paste0(prefix, "_rate") := 1) %>%
+      rename(!!paste0(prefix, "_raw") := 2)
+  })
+  
+  nested_list[[element_name]] <- updated  # put updated list elements back into nested list
+  return(nested_list)
+}
+
+clean_list <- rename_nested_col(clean_list, "swana")
+clean_list <- rename_nested_col(clean_list, "nhpi")
+clean_list <- rename_nested_col(clean_list, "aian")
 
 
+# clean OMB
+# 1. Extract the specific element
+omb_ <- clean_list$omb_data
 
+#View(omb_[[1]]) # use to create omb_colnames
+omb_colnames <- c("latino_rate", "latino_raw", "nh_white_rate", "nh_white_raw", "nh_black_rate", "nh_black_raw",
+                  "nh_asian_rate", "nh_asian_raw", "total_rate", "total_raw")
 
+# 2. Run R code on it 
+code_to_run <- lapply(omb_, setNames, omb_colnames)
+result <- eval(code_to_run)
+
+# 3. Insert the result back or keep the element updated
+clean_list$omb_data <- result 
+      
+                
+# flag unstable estimates
+clean_list2 <- lapply(clean_list, function(sublist) {
+  lapply(sublist, function(d) {
+    rate_cols <- which(grepl("_rate$", names(d)))   # identify rate cols
+    
+    for (i in rev(rate_cols)) {
+      d <- d %>%
+        # add rate_flag column indicating unstable estimates as identified by CHIS
+        mutate(rate_flag = ifelse(grepl("*", .[[i]], fixed = TRUE), "unstable", NA)) %>%
+        relocate(rate_flag, .after = i) %>%
+        # drop * from unstable estimate rate values, make all _rate cols type double
+        mutate(!!names(.)[i] := as.double(gsub("*", "", .[[i]], fixed = TRUE)))
+    }
+    return(d)
+  })
+})
 
