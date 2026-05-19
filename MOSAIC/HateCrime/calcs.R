@@ -3,7 +3,7 @@
 ##### 1. set up the environment ##### 
 
 #install packages if not already installed
-packages <- c("openxlsx", "tidyr", "dplyr", "DBI", "RPostgres", "tidyverse", "stringr", "usethis", "rlang")
+packages <- c("openxlsx", "tidyr", "dplyr", "DBI", "RPostgres", "tidyverse", "stringr", "usethis", "rlang", "purrr")
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
 if(length(install_packages) > 0) { 
@@ -155,3 +155,80 @@ clean_list2 <- lapply(clean_list, function(sublist) {
   })
 })
 
+
+#### Convert to one longform dataframe ####
+
+extract_year_label <- function(key) {
+  if (str_detect(key, "pre")) {
+    return("pre-2020")
+  }
+  match <- str_extract(key, "\\d{4}")
+  if (!is.na(match)) return(match)
+  return(key)
+}
+
+process_race_specific <- function(df, race, year_label) {
+  rate_col  <- paste0(race, "_rate")
+  raw_col   <- paste0(race, "_raw")
+  flag_col  <- "rate_flag"
+  
+  id_cols <- setdiff(names(df), c(rate_col, raw_col, flag_col))
+  
+  df[id_cols] |>
+    mutate(
+      race      = race,
+      year_     = year_label,
+      rate      = if (rate_col %in% names(df)) df[[rate_col]] else NA,
+      raw       = if (raw_col  %in% names(df)) df[[raw_col]]  else NA,
+      rate_flag = if (flag_col %in% names(df)) df[[flag_col]] else NA
+    )
+}
+
+process_omb <- function(group_data) {
+  # Detect race prefixes from columns ending in '_rate'
+  sample_df <- group_data[[1]]
+  races <- names(sample_df) |>
+    keep(~ str_ends(.x, "_rate")) |>
+    str_remove("_rate$")
+  
+  imap(group_data, function(df, year_key) {
+    year_label <- extract_year_label(year_key)
+    id_cols <- setdiff(names(df), unlist(map(races, ~ c(paste0(.x, "_rate"), paste0(.x, "_raw")))))
+    
+    map(races, function(race) {
+      df[id_cols] |>
+        mutate(
+          race      = race,
+          year_     = year_label,
+          rate      = if (paste0(race, "_rate") %in% names(df)) df[[paste0(race, "_rate")]] else NA,
+          raw       = if (paste0(race, "_raw")  %in% names(df)) df[[paste0(race, "_raw")]]  else NA,
+          rate_flag = NA  # omb data does not have any unstable estimates
+        )
+    }) |> bind_rows()
+  }) |> bind_rows()
+}
+
+flatten_clean_list2 <- function(clean_list2) {
+  imap(clean_list2, function(group_data, group_name) {
+    if (group_name == "omb_data") {
+      process_omb(group_data)
+    } else {
+      race <- str_remove(group_name, "_data$")  # 'swana_data' -> 'swana'
+      
+      imap(group_data, function(df, year_key) {
+        year_label <- extract_year_label(year_key)
+        process_race_specific(df, race, year_label)
+      }) |> bind_rows()
+    }
+  }) |> bind_rows()
+}
+
+# Run it
+final_df <- flatten_clean_list2(clean_list2) %>%
+  # add col to order chronologically
+  mutate(chrono = case_when(
+    year_ == "pre-2020" ~ 1,
+    year_ == "2020"     ~ 2,
+    year_ == "2021"     ~ 3,
+    year_ == "2022"     ~ 4
+  ))
