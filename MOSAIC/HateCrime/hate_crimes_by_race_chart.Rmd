@@ -32,22 +32,25 @@ options(highcharter.lang = lang)
 
 #Add database connection and source script with functions for pushing to postgres
 source("W:\\RDA Team\\R\\credentials_source.R")
-source("./calcs.R")
 options(scipen = 999)
 
 #### Step 1: Pull in data ####
-df <- st_read(con, query="SELECT * FROM v7.hate_crime_race_date_") %>%
-  # add code to drop multiracial cols
-  # clean up labels for visuals
-  mutate(race_label=case_when(
-    race=="latinx" ~ "Latine",
-    race=="aian" ~ "AIAN",
-    race=="nh_black" ~ "Black",
-    race=="nhpi" ~ "NHPI",
-    race=="swana" ~ "SWANA",
-    race=="nh_white" ~ "White",
-    race=="nh_asian" ~ 'Asian',
-      TRUE~NA)) 
+source("./calcs.R")
+
+# need to update code below to just rename within the chart fx rather than in the df
+# final_data <- lapply(clean_list2, function(x) x %>%
+#   # add code to drop multiracial cols
+#   # clean up labels for visuals
+#   mutate(race_label=case_when(
+#     race=="latino" ~ "Latine",
+#     race=="aian" ~ "AIAN",
+#     race=="nh_black" ~ "Black",
+#     race=="nhpi" ~ "NHPI",
+#     race=="swana" ~ "SWANA",
+#     race=="nh_white" ~ "White",
+#     race=="nh_asian" ~ 'Asian',
+#       TRUE~NA))
+# )
 
 ## COLORS ## source: W:\RDA Team\Communications\Catalyst California Brand Guide_September 2022.pdf
 orange <- "#F25922"     # 01 row on data vis colors page & brand colors page
