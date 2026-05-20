@@ -19,7 +19,8 @@ output:
 <!--     height: 762px !important; -->
 <!-- } -->
 .main-container {
-    width: 100% !important;
+    width: 1174px !important;
+    max-width: 100% !important;
 }
 
 .html-widget {
