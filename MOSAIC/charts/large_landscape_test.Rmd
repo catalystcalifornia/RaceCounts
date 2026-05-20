@@ -5,11 +5,32 @@ output:
     self_contained: true
 ---
 <style>
+
+<!-- .main-container { -->
+<!--     width: 1174px !important; -->
+<!--     max-width: 1174px !important; -->
+<!--     height: 762px !important; -->
+<!--     max-height: 762px !important; -->
+<!-- } -->
+
+
+<!-- .html-widget { -->
+<!--     width: 1174px !important; -->
+<!--     height: 762px !important; -->
+<!-- } -->
+.main-container {
+    width: 100% !important;
+}
+
 .html-widget {
-    width: 1174px !important;
+    width: 100% !important;
     height: 762px !important;
 }
-body { margin: 0; }
+
+body { 
+    margin: 0; 
+}
+
 </style>
 
 ```{r setup, include=FALSE}
