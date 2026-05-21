@@ -45,7 +45,7 @@ nhpi_tables <- nhpi_tables[grepl("overcrowd|youth|insurance|wage", names(nhpi_ta
 
 
 # format and clean tables
-clean_tables <- function(data_list){
+clean_tables <- function(data_list, race){
 
 indicator_tables_clean <- lapply(data_list, function(x) x %>%
   select(state_id, state_name, ends_with(c("raw", "rate"))))
@@ -59,18 +59,39 @@ indicator_tables_clean <- map2(indicator_tables_clean, names(indicator_tables_cl
 data_df <- as.data.frame(do.call(cbind, indicator_tables_clean))  # convert list to df
 
 # clean col names #
-colnames(data_df) <- gsub("asian_|nhpi_", '', colnames(data_df))            # step 1
-colnames(data_df) <- substring(colnames(data_df), 6)                        # step 2
-colnames(data_df) <- gsub(paste0("_state_",rc_yr), '', colnames(data_df)) # step 3
+data_df <- data_df %>% 
+  rename_with(~ sub(paste0("^",race,"_"), "", .x))   # ^ anchors to start of string only          # step 1
+colnames(data_df) <- substring(colnames(data_df), 6)                         # step 2
+colnames(data_df) <- gsub(paste0("_state_",rc_yr), '', colnames(data_df))    # step 3
 
 # step 4 - drop dupe id/name cols
 colnames(data_df) <- ifelse(grepl("_id|_name", colnames(data_df)), sub("^.*\\.", "", colnames(data_df)), colnames(data_df))
 data_df = data_df[,!duplicated(names(data_df))]
+data_df = data_df %>% select(-contains('indicator_'))  # drop indicator name columns
 
-return(data_df)
+# step 5 - pivot_longer
+df_long <- data_df %>%
+  tidyr::pivot_longer(
+    cols = -c(state_id, state_name),
+    names_to = "name",
+    values_to = "value"
+  ) %>%
+  tidyr::separate(name, 
+                  into = c("topic", "group_metric"), 
+                  sep = "\\.") %>%
+  tidyr::separate(group_metric, 
+                  into = c("group", "metric"), 
+                  sep = "_(?=rate$|raw$)") %>%
+  tidyr::pivot_wider(
+    names_from = metric,
+    values_from = value
+  )
+
+return(df_long)
 }
 
-asian_clean <- clean_tables(asian_tables)
+asian_clean <- clean_tables(asian_tables, 'asian')
+nhpi_clean <- clean_tables(nhpi_tables, 'nhpi')
 
 
 # keep only aoic raw/rate cols (drop non-aoic overcrowd and insurance)
