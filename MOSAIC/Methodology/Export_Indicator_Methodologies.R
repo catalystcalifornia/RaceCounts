@@ -39,7 +39,7 @@ issues <- dbGetQuery(con, paste0("SELECT arei_issue_area, api_name_short FROM ",
 # Function to prep specific geolevel methodology
 prep_method <- function (geo, curr_yr, curr_schema) {
   methodology <- read.xlsx(method_doc, sheet = method_sheet) %>%
-    select(arei_indicator, arei_issue_area, bar_chart_header, data_source, racenote, method_long, link1, link2)
+    select(arei_indicator, arei_issue_area, bar_chart_header, data_source, subgroupnote, racenote, method_long, link1, link2)
   methodology$links = ifelse(!is.na(methodology$link2), paste0(gsub(" &&&", ",", methodology$link1), ", ", methodology$link2), gsub(" &&&", ",", methodology$link1))
   
   # replace line breaks with HTML line breaks

@@ -73,6 +73,7 @@ indicators <- function(x) {
     cat(x$method_long[i], "\n", "\n")
     cat("**Source:** ", x$data_source[i], "\n", "\n")
     cat("**Link(s):** ", x$links[i], "\n", "\n")
+    cat("**Subgroup Categories:** ", x$subgroupnote[i], "\n", "\n")
     cat("**Racial-Ethnic Categories:** ", x$racenote[i], "\n", "\n")
     cat("\n")
   }
