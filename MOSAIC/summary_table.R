@@ -181,6 +181,51 @@ nhpi_df <- rbind(nhpi_clean, nhpi_clean_rc)
 asian_df %>% filter(is.na(type))
 nhpi_df %>% filter(is.na(type))
 
+#add chart labels ####
+asian_final <- asian_df %>%
+  mutate(label = str_to_title(gsub("_", " ", group)))
+# check which labels need to be edited
+unique(asian_final$label)
+
+asian_final <- asian_final %>%
+  mutate(label = gsub(" Aoic|Nh ", "", label)) %>%
+  mutate(label = case_when(
+    label %in% c('Swana', 'Aian') ~ toupper(label),
+    label == 'Latino' ~ 'Latinx',
+    label == 'Pacisl' ~ 'Pacific Islander',
+    label == 'Other' ~ 'Another Race',
+    label == 'Twoormor' ~ 'Multiracial',
+    label == 'Chinese No Taiwan' ~ 'Chinese excl. Taiwan',
+    label == 'Asian Generic' ~ 'Asian not specified',
+    TRUE ~ label
+  ))
+
+unique(asian_final$label)
+
+
+#add chart labels ####
+nhpi_final <- nhpi_df %>%
+  mutate(label = str_to_title(gsub("_", " ", group)))
+# check which labels need to be edited
+unique(nhpi_final$label)
+
+nhpi_final <- nhpi_final %>%
+  mutate(label = gsub(" Aoic|Nh ", "", label)) %>%
+  mutate(label = case_when(
+    label %in% c('Swana', 'Aian') ~ toupper(label),
+    label == 'Latino' ~ 'Latinx',
+    label == 'Pacisl' ~ 'Pacific Islander',
+    label == 'Other' ~ 'Another Race',
+    label == 'Twoormor' ~ 'Multiracial',
+    label == 'Nat Hawaii' ~ 'Native Hawaiian',
+    label == 'Guam Chamorro' ~ 'Guam - Chamorro',
+    TRUE ~ label
+  ))
+unique(nhpi_final$label)
+
+
+
+
 
 # Export Asian Summary table to Postgres ------------------------------------------------------
 
@@ -190,13 +235,13 @@ table_comment <- paste0("COMMENT ON TABLE ", curr_schema, ".", table_name, " IS 
 column_comment <- paste0("COMMENT ON COLUMN ", curr_schema, ".", table_name, ".type IS 'group = asian, subgroup = asian subgroups, race = main rc races except for asian, total = total rate';")
 
 #define col types
-charvect <- c("text", "text", "text", "text", "integer", "numeric", "text")
+charvect <- c("text", "text", "text", "text", "integer", "numeric", "text", "text")
 # add names to the character vector
-names(charvect) <- colnames(asian_df)
+names(charvect) <- colnames(asian_final)
 charvect # check col types before exporting table to database
 
 dbWriteTable(con2,
-              Id(schema = curr_schema, table = table_name), asian_df,
+              Id(schema = curr_schema, table = table_name), asian_final,
               overwrite = FALSE, row.names = FALSE, field.types = charvect)
 
 # send table and column comments to database
@@ -218,13 +263,13 @@ table_comment <- paste0("COMMENT ON TABLE ", curr_schema, ".", table_name, " IS 
 column_comment <- paste0("COMMENT ON COLUMN ", curr_schema, ".", table_name, ".type IS 'group = nhpi, subgroup = nhpi subgroups, race = main rc races except for nhpi, total = total rate';")
 
 #define col types
-charvect <- c("text", "text", "text", "text", "integer", "numeric", "text")
+charvect <- c("text", "text", "text", "text", "integer", "numeric", "text", "text")
 # add names to the character vector
-names(charvect) <- colnames(nhpi_df)
+names(charvect) <- colnames(nhpi_final)
 charvect # check col types before exporting table to database
 
 dbWriteTable(con2,
-             Id(schema = curr_schema, table = table_name), nhpi_df,
+             Id(schema = curr_schema, table = table_name), nhpi_final,
              overwrite = FALSE, row.names = FALSE, field.types = charvect)
 
 # send table and column comments to database
