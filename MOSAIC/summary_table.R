@@ -25,15 +25,18 @@ rc_yr <- '2025'
 
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\MOSAIC\\QA_Summary_Table.docx"
 
-## get pop ##
+# used later to populate 'type' column
+races <- c('latino', 'aian', 'black', 'white', 'twoormor', 'other', 'swana', 'nh_aian', 'nh_black', 'nh_white', 'nh_twoormor', 'nh_other', 'nh_swana')
+
+## get MOSAIC pop data #####
 asian_pop <- dbGetQuery(con2, paste0("select * from ", curr_schema, ".aa_pop_b02018 where geolevel IN ('county','state')")) # import county & state records only
 nhpi_pop <- dbGetQuery(con2, paste0("select * from ", curr_schema, ".nhpi_pop_b02019 where geolevel IN ('county','state')")) # import county & state records only
 
-## get state indicator tables ##
+## get MOSAIC state indicator tables #####
 table_list <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", curr_schema, "' AND table_name LIKE '%_state_%';")
-rc_list <- dbGetQuery(con2, table_list) %>% dplyr::rename('table' = 'table_name')
+m_list <- dbGetQuery(con2, table_list) %>% dplyr::rename('table' = 'table_name')
 
-indicator_list <- rc_list[order(rc_list$table), ] # alphabetize list of index tables which transforms into character from list, needed to format list correctly for next steps
+indicator_list <- m_list[order(m_list$table), ] # alphabetize list of index tables which transforms into character from list, needed to format list correctly for next steps
 indicator_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", indicator_list), indicator_list), DBI::dbGetQuery, conn = con2) # import tables from postgres
 
 ## filter for report page indicators & split into asian and nhpi ##
@@ -43,8 +46,19 @@ asian_tables <- asian_tables[grepl("overcrowd|officials|insurance|voter", names(
 nhpi_tables <- indicator_tables[grepl("nhpi", names(indicator_tables))]
 nhpi_tables <- nhpi_tables[grepl("overcrowd|youth|insurance|wage", names(nhpi_tables))]
 
+## get RC state indicator tables #####
+table_list_rc <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", curr_schema, "' AND table_name LIKE '%_state_%' AND table_name LIKE '%", rc_yr, "a';")
+rc_list <- dbGetQuery(con, table_list_rc) %>% dplyr::rename('table' = 'table_name')
 
-# format and clean tables
+indicator_list_rc <- rc_list[order(rc_list$table), ] # alphabetize list of index tables which transforms into character from list, needed to format list correctly for next steps
+indicator_tables_rc <- lapply(setNames(paste0("select * from ", curr_schema, ".", indicator_list_rc), indicator_list_rc), DBI::dbGetQuery, conn = con) # import tables from postgres
+
+## filter for report page indicators & split into asian and nhpi ####
+asian_tables_rc <- indicator_tables_rc[grepl("overcrowd|officials|insurance|voter", names(indicator_tables_rc))]
+nhpi_tables_rc <- indicator_tables_rc[grepl("overcrowd|youth|insurance|wage", names(indicator_tables_rc))]
+
+
+# format and clean tables####
 clean_tables <- function(data_list, race){
 
 indicator_tables_clean <- lapply(data_list, function(x) x %>%
@@ -90,163 +104,138 @@ df_long <- data_df %>%
 return(df_long)
 }
 
-asian_clean <- clean_tables(asian_tables, 'asian')
-nhpi_clean <- clean_tables(nhpi_tables, 'nhpi')
+#clean mosaic data
+asian_clean <- clean_tables(asian_tables, 'asian') %>%
+  filter(!(group == 'asian' & topic =='officials')) %>% # screen out, will use RC nh_asian as group value
+  filter(!(group == 'total' & topic == 'officials')) %>%
+  mutate(type = ifelse(group %in% c("asian", "nh_asian"), 'group', 'subgroup')) %>%
+  mutate(type = case_when(
+    group %in% races ~ 'race',
+    group %in% c("pacisl", "nh_pacisl") ~ 'race',
+    group == 'total' ~ 'total',
+    TRUE ~ type))
 
-
-# keep only aoic raw/rate cols (drop non-aoic overcrowd and insurance)
+#keep only 'aoic' rows when an indicator has alone and aoic rows for same group
 asian_clean <- asian_clean %>%
-  select()
+  dplyr::group_by(topic, type) %>%
+  dplyr::filter(
+    type != "subgroup" |
+      (type == "subgroup" & (
+        if (any(grepl("aoic", group))) grepl("aoic", group) else TRUE
+      ))
+  ) %>%
+  dplyr::ungroup()
 
 
-# join tables together
-multigeo_list <- left_join(race, county_ids) %>%
-  left_join(region_urban) %>%
-  relocate(county_id, .after = geoid) %>%
-  relocate(region, .after = name) %>%
-  relocate(urban_type, .after = total_pop) %>%
-  dplyr::rename(geo_name = name)
+#clean mosaic data
+nhpi_clean <- clean_tables(nhpi_tables, 'nhpi') %>%
+  filter(group != 'nhpi') %>%  # screen out, will use RC pacisl as group value
+  filter(group != 'total') %>%
+  mutate(type = ifelse(group %in% c("nhpi", "nh_nhpi"), 'group', 'subgroup')) %>%
+  mutate(type = case_when(
+    group %in% races ~ 'race',
+    group %in% c("asian", "nh_asian") ~ 'race',
+    group == 'total' ~ 'total',
+    TRUE ~ type))
 
-multigeo_list <- left_join(multigeo_list, index_df, by = c("geoid" = "county_id"))
-
-
-# City Data ---------------------------------------------------------------
-
-# pull in city race and RC city_id tables from curr_schema
-city_race <- dbGetQuery(con, paste0("select * from ", curr_schema, ".arei_race_multigeo where geolevel = 'place'")) # import city records only
-city_regions <- dbGetQuery(con, paste0("select city_id AS geoid, city_name, region from ", curr_schema, ".arei_city_county_district_table")) %>% unique() # get unique city_regions, regions. postgres table has multiple listings per city depending on how many school dist it has.
-
-## get RC city index table ##
-# import city index table
-city_index <- dbGetQuery(con, paste0("SELECT city_id, disparity_z, disparity_rank, performance_z, performance_rank, disparity_z_quartile, performance_z_quartile, quadrant FROM ", curr_schema, ".arei_composite_index_city_", rc_yr))
-
-# join city tables together
-city_multigeo_list <- left_join(city_race, city_regions) %>% dplyr::rename(geo_name = city_name) %>% select(-name)
-city_multigeo_list <- right_join(city_multigeo_list, city_index, by = c("geoid" = "city_id"))
-
-# bind city table to county/state table
-final_multigeo_list <- plyr::rbind.fill(multigeo_list, city_multigeo_list) # use rbind.fill so cols missing in city table autofill with NA.
-
-# clean geo_name column
-clean_geo_names <- function(x){
-  
-  x$geo_name <- str_remove(x$geo_name, ", California")
-  x$geo_name <- str_remove(x$geo_name, " city")
-  x$geo_name <- str_remove(x$geo_name, " CDP")
-  x$geo_name <- str_remove(x$geo_name, " town")
-  x$geo_name <- gsub(" County", "", x$geo_name)
-  
-  return(x)
-}
-
-final_multigeo_list <- clean_geo_names(final_multigeo_list)
+#keep only 'aoic' rows when an indicator has alone and aoic rows for same group
+nhpi_clean <- nhpi_clean %>%
+  dplyr::group_by(topic, type) %>%
+  dplyr::filter(
+    type != "subgroup" |
+      (type == "subgroup" & (
+        if (any(grepl("aoic", group))) grepl("aoic", group) else TRUE
+      ))
+  ) %>%
+  dplyr::ungroup()
 
 
-# Export County/State/City table to Postgres ------------------------------------------------------
+#clean rc data
+asian_clean_rc <- clean_tables(asian_tables_rc, 'asian') %>%
+  mutate(topic = str_sub(topic, end = -2)) %>%
+  mutate(topic = str_sub(topic, start = 6),
+  type = case_when(
+    grepl('asian|nh_asian', group) ~ 'group',
+    group %in% races ~ 'race',
+    group %in% c("pacisl", "nh_pacisl") ~ 'race',
+    group == 'total' ~ 'total',
+    TRUE ~ NA))
 
-table_name <- "arei_multigeo_list"
-table_comment_source <- paste0("Created ", Sys.Date(), ". Based on arei_race_multigeo, arei_county_region_urban_type, composite index and all issue area index tables for cities and counties. Feeds RC.org scatterplots and map. Source: W:\\Project\\RACE COUNTS\\", rc_yr, "_", curr_schema, "\\RC_Github\\LF\\RaceCounts\\IndexScripts\\arei_multigeo_list.R. QA doc: ", qa_filepath)
+#clean rc data
+nhpi_clean_rc <- clean_tables(nhpi_tables_rc, 'asian') %>%  # use 'asian' here bc it is the correct character count for the fx
+  mutate(topic = str_sub(topic, end = -2)) %>%
+  mutate(topic = str_sub(topic, start = 6),
+         type = case_when(
+           grepl('pacisl|nh_pacisl', group) ~ 'group',
+           group %in% races ~ 'race',
+           group %in% c("asian", "nh_asian") ~ 'race',
+           group == 'total' ~ 'total',
+           TRUE ~ NA))
+nhpi_clean_rc %>% filter(is.na(type))
+
+#bind mosaic and rc data ####
+asian_df <- rbind(asian_clean, asian_clean_rc)
+nhpi_df <- rbind(nhpi_clean, nhpi_clean_rc)
+
+# check all rows have type assigned
+asian_df %>% filter(is.na(type))
+nhpi_df %>% filter(is.na(type))
+
+
+# Export Asian Summary table to Postgres ------------------------------------------------------
+
+table_name <- "asian_summary_for_charts"
+table_comment_source <- paste0("Created ", Sys.Date(), ". ONLY includes indicators selected for the MOSAIC disaggregation report. Subgroup values come from MOSAIC indicator tables. Group, race, and total values come from RC indicator tables. QA doc: ", qa_filepath)
 table_comment <- paste0("COMMENT ON TABLE ", curr_schema, ".", table_name, " IS '", table_comment_source, ".';")
-column_comment <- paste0("COMMENT ON COLUMN ", curr_schema, ".", table_name, ".county_id IS 'This is the RACE COUNTS-specific county id, not county FIPS code.';")
+column_comment <- paste0("COMMENT ON COLUMN ", curr_schema, ".", table_name, ".type IS 'group = asian, subgroup = asian subgroups, race = main rc races except for asian, total = total rate';")
 
-# get list of multigeo col names
-cols <- colnames(multigeo_list)
-text_type <- grep("^geoid|^geo_name|^region|^urban_type|^geolevel|quartile$|quadrant$", cols) # specify which cols should be text (geoid, geo_name, region, urban_type, geolevel)
-cols[text_type] # confirm correct cols are there
-dblprecision_type <- grep("^pct|_z$", cols) # specify which cols should be double precision (pct_, _z)
-cols[dblprecision_type] # confirm correct cols are there
-
-charvect = rep('integer', dim(multigeo_list)[2]) 
-charvect[text_type] <- "text" # specify which cols are text
-charvect[dblprecision_type] <- "double precision" # specify which cols are double precision
-
+#define col types
+charvect <- c("text", "text", "text", "text", "integer", "numeric", "text")
 # add names to the character vector
-names(charvect) <- colnames(multigeo_list)
+names(charvect) <- colnames(asian_df)
 charvect # check col types before exporting table to database
 
-# dbWriteTable(con,
-#               Id(schema = curr_schema, table = table_name), final_multigeo_list,
-#               overwrite = FALSE, row.names = FALSE, field.types = charvect)
-# 
-# # send table and column comments to database
-# # Start a transaction
-# dbBegin(con)
-# dbExecute(con, table_comment)
-# dbExecute(con, column_comment)
-# 
-# # Commit the transaction if everything succeeded
-# dbCommit(con)
+dbWriteTable(con2,
+              Id(schema = curr_schema, table = table_name), asian_df,
+              overwrite = FALSE, row.names = FALSE, field.types = charvect)
+
+# send table and column comments to database
+# Start a transaction
+dbBegin(con2)
+dbExecute(con2, table_comment)
+dbExecute(con2, column_comment)
+
+# Commit the transaction if everything succeeded
+dbCommit(con2)
 
 
-# Legislative District Data ---------------------------------------------------------------
-# pull in race and region/urban type from current schema
-con2 <- connect_to_db("rda_shared_data")
 
-sldl_crosswalk <- dbGetQuery(con2, "SELECT * FROM crosswalks.state_assembly_2024_region")
-sldu_crosswalk <- dbGetQuery(con2, "SELECT * FROM crosswalks.state_senate_2024_region")
-leg_region <- rbind(sldl_crosswalk, sldu_crosswalk) %>% 
-  filter(rank == 1) %>%   # keep only the assigned region with most overlap, eg: in v7 AD02 is assigned to 2 regions
-  select(-c(ct_total_pop, total_pop, pct_total_pop, rank))  # drop unneeded cols
+# Export NHPI Summary table to Postgres ------------------------------------------------------
 
-race <- dbGetQuery(con, paste0("select * from ", curr_schema, ".arei_race_multigeo where geolevel IN ('sldl','sldu')")) # import leg dist records only
-
-
-# import leg index tables
-leg_list <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", curr_schema, "' AND table_name LIKE '%_index_leg_%' AND table_name NOT LIKE '%_city_%'AND table_name NOT LIKE '%_county_%';")
-rc_leg_list <- dbGetQuery(con, leg_list) %>% dplyr::rename('table' = 'table_name')
-
-leg_list <- rc_leg_list[order(rc_leg_list$table), ] # alphabetize list of index tables which transforms into character from list, needed to format list correctly for next steps
-leg_index_tables <- lapply(setNames(paste0("select * from ", curr_schema, ".", leg_list), leg_list), DBI::dbGetQuery, conn = con) # import tables from postgres
-
-# format and clean tables
-leg_index_tables_sort <- lapply(leg_index_tables, function(i) i[order(i$geolevel, i$leg_id),]) # sort all list elements by leg_id so they are all in the same order
-leg_index_tables_clean <- lapply(leg_index_tables_sort, function(x) x%>% select(leg_id, geolevel, ends_with(c("disparity_z", "disparity_rank", "performance_z", "performance_rank", "quartile", "quadrant"))))
-leg_index_df <- as.data.frame(do.call(cbind, leg_index_tables_clean))                     # convert list to df
-names(leg_index_df) <- gsub(x = names(leg_index_df), pattern = ".*\\.", replacement = "") # clean up column names
-leg_index_df = leg_index_df[,!duplicated(names(leg_index_df))]                            # drop duplicated leg_id and geolevel columns
-
-# join tables together
-leg_list <- left_join(race, leg_region, by=c("geoid"="leg_id", "geolevel")) %>%
-  relocate(geolevel, .after = geoid) %>%
-  relocate(region, .after = name) %>%
-  dplyr::rename(geo_name = name)
-leg_list <- left_join(leg_list, leg_index_df, by = c("geoid"="leg_id", "geolevel"))
-
-
-# Export Leg District table to Postgres ------------------------------------------------------
-
-table_name <- "arei_leg_list"
-table_comment_source <- paste0("Created ", Sys.Date(), ". Based on arei_race_multigeo, crosswalks.state_assembly_2024_region, crosswalks.state_senate_2024_region, composite index and all issue area index tables for leg districts. Source: W:\\Project\\RACE COUNTS\\", rc_yr, "_", curr_schema, "\\RC_Github\\LF\\RaceCounts\\IndexScripts\\arei_multigeo_list.R. QA doc: ", qa_filepath)
+table_name <- "nhpi_summary_for_charts"
+table_comment_source <- paste0("Created ", Sys.Date(), ". ONLY includes indicators selected for the MOSAIC disaggregation report. Subgroup values come from MOSAIC indicator tables. Group, race, and total values come from RC indicator tables. QA doc: ", qa_filepath)
 table_comment <- paste0("COMMENT ON TABLE ", curr_schema, ".", table_name, " IS '", table_comment_source, ".';")
-column_comment <- paste0("COMMENT ON COLUMN ", curr_schema, ".", table_name, ".geolevel IS 'sldu = State Senate, sldl = State Assembly.';")
+column_comment <- paste0("COMMENT ON COLUMN ", curr_schema, ".", table_name, ".type IS 'group = nhpi, subgroup = nhpi subgroups, race = main rc races except for nhpi, total = total rate';")
 
-# get list of multigeo col names
-cols <- colnames(leg_list)
-text_type <- grep("^geoid|^geo_name|^region|^geolevel|quartile$|quadrant$", cols) # specify which cols should be text (geoid, geo_name, region, geolevel)
-cols[text_type] # confirm correct cols are there
-dblprecision_type <- grep("^pct|_z$", cols) # specify which cols should be double precision (pct_, _z)
-cols[dblprecision_type] # confirm correct cols are there
-
-charvect = rep('integer', dim(leg_list)[2]) 
-charvect[text_type] <- "text" # specify which cols are text
-charvect[dblprecision_type] <- "double precision" # specify which cols are double precision
-
+#define col types
+charvect <- c("text", "text", "text", "text", "integer", "numeric", "text")
 # add names to the character vector
-names(charvect) <- colnames(leg_list)
+names(charvect) <- colnames(nhpi_df)
 charvect # check col types before exporting table to database
 
-# dbWriteTable(con,
-#               Id(schema = curr_schema, table = table_name), leg_list,
-#               overwrite = FALSE, row.names = FALSE, field.types = charvect)
-# 
-# # send table and column comments to database
-# # Start a transaction
-# dbBegin(con)
-# dbExecute(con, table_comment)
-# dbExecute(con, column_comment)
-# 
-# # Commit the transaction if everything succeeded
-# dbCommit(con)
+dbWriteTable(con2,
+             Id(schema = curr_schema, table = table_name), nhpi_df,
+             overwrite = FALSE, row.names = FALSE, field.types = charvect)
+
+# send table and column comments to database
+# Start a transaction
+dbBegin(con2)
+dbExecute(con2, table_comment)
+dbExecute(con2, column_comment)
+
+# Commit the transaction if everything succeeded
+dbCommit(con2)
 
 
 dbDisconnect(con)
+dbDisconnect(con2)
