@@ -1,0 +1,571 @@
+---
+title: "DRAFT: Internal MOSAIC Sensemaking"
+subtitle: "Do Not Share"
+author: "Catalyst California"
+output:
+  html_document:
+    css: "W:\\RDA Team\\R\\cc_brandguide.css"
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+date: "`r format(Sys.time(), '%d %B %Y')`"
+---
+
+
+```{css, echo=FALSE}
+.highcharts-container,
+.highcharts-root {
+  overflow: visible !important;
+}
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE)
+
+### Set up workspace ####
+#install.packages("extrafont")
+library(extrafont)
+library(here)
+library(dplyr)
+library(RPostgres)
+library(formattable)
+library(svglite)
+library(stringr)
+library(tidyr)
+library(showtext)
+library(scales)
+library(highcharter)
+
+options(scipen=999)
+
+# set global options to ensure that comma separator is a comma for highchart graphs
+
+lang <- getOption("highcharter.lang")
+lang$thousandsSep <- ","
+options(highcharter.lang = lang)
+
+# load the PostgreSQL driver
+source("W:\\RDA Team\\R\\credentials_source.R")
+# load fx
+source(here("MOSAIC/Functions/viz_fx.R"))
+con <- connect_to_db("mosaic")
+con2 <- connect_to_db("racecounts")
+
+
+
+# set variables
+rc_schema <- 'v7'
+curr_yr <- '2025'
+
+####################
+#### Style Guide ###
+####################
+
+## COLORS: There is only blue ##
+black <- "#000000"
+mainblue <- "#22BCB8"
+textgrey <- "#919191"
+linecolor<-"#FF0000"
+
+# define fonts in chart
+font_title <- "Arial"
+font_subtitle <- "Arial"
+font_caption <- "Arial"
+font_bar_label <- "Arial"
+font_axis_label <- "Arial"
+font_table_text<-"Arial"
+
+####################################
+########Highchart theme#############
+####################################
+
+#### Define Highcharts theme #### 
+tnp_theme <- hc_theme(
+  colors = c("#22BCB8"  # main blue
+            
+  ),
+  chart = list(
+    backgroundColor = "white",
+    style = list(
+      fontFamily = font_subtitle
+    ) 
+  ),
+  plotOptions = 
+    list(
+      line = 
+        list(
+          marker = 
+            list(
+              enabled = FALSE
+            )
+        )
+    ),
+  title = list(
+    style = list(
+      color = black,
+      fontFamily = font_title,
+      textAlign="left",
+      fontsize='200px'
+    )
+  ),
+  subtitle = list(
+    style = list(
+      color = black, # medium grey
+      fontFamily = font_subtitle,
+      textAlign="left",
+      fontsize='100px'
+    )
+  ),
+  caption = list(
+    style = list(
+      color = black,
+      fontFamily = font_caption,
+      textAlign = "left",
+      fontsize="12px"
+    ),
+    useHTML = TRUE
+  ),
+  axis = list(
+    style = list(
+      color = black,
+      fontFamily = font_axis_label,
+      fontSize='50px'
+    )
+  ),
+  legend = list(
+    itemStyle = list(
+      fontFamily = font_axis_label,
+      color = black
+    ),
+    itemHoverStyle = list(
+      fontFamily = font_table_text,
+      color = black
+    )
+  )
+)
+
+### Info: Race 
+lang <- getOption("highcharter.lang")
+lang$thousandsSep <- ","
+options(highcharter.lang = lang)
+
+```
+
+```{r metadata, include=FALSE}
+
+### Metadata: Dummy is v7 county/state, WILL NEED TO BE REPLACED WITH MOSAIC INDICATOR METADATA TABLE
+metadata <- dbGetQuery(con2, paste0("SELECT * FROM ", rc_schema, ".", "arei_indicator_list_cntyst"))
+# metadata$api_name
+
+acs_racenote <- "Data Note: Subgroups are Latinx-inclusive and Alone or in Combination, which means they include all people who identify as the subgroup\nincluding in combination with other subroups, races, and/or ethnicities."
+
+pums_racenote <- "Data Note: Subgroups are Latinx-inclusive and Alone or in Combination, which means they include all people who identify as the subgroup\nincluding in combination with other subroups, races, and/or ethnicities. Subgroups are defined by Ancestry."
+
+cdc_racenote <- "Data Note: Subgroups include foreign-born birthing parents only and are defined by country of birth."
+
+hmda_racenote <- "Data Note: Subgroups Latinx-inclusive and Alone or in Combination, which means they include all people who identify as the subgroup\nincluding in combination with other subroups, races, and/or ethnicities. This data differs from regular RC because it is based on only applicant race, not a combination of applicant and co-applicant."
+
+
+```
+
+# Introduction {#intro}
+<span style="font-size: 15px;">These are draft visuals for internal sensemaking only. These visuals do not reflect what final visuals on MOSAIC report page will look or behave like.</style>
+<br><br>
+<span style="font-size: 15px;">Note that the Asian/NHPI/Total rates displayed as vertical lines are sourced from our 'regular' RC data for the most part. The data sources and methods vary slightly by necessity from those of MOSAIC analysis. Once we select indicators, we will recalculate the Total and raced rates using the MOSAIC sources/methods for more direct comparison. Some charts may have Asian, NHPI, and other race bars - those reflect MOSAIC calculations of those rates.</style>
+<br><br>
+<span style="font-size: 15px;">The data sources listed here are mostly correct, the actual data years for the MOSAIC analysis may vary based on data availability. Some datasets are older than shown here (ACS), some are more updated (CHIS). All data years will be accurately displayed on report page.</style>
+
+
+# Asian Disaggregation {#asian}
+
+```{r asian-charts, include=FALSE}
+
+#### INTERNET ####
+# # Run metadata fx - run metadata$api_name if need to find indicator variable name
+# internet_meta <- metadata_fx("econ", "internet", "asian", metadata)
+# 
+# # Run data fx
+# internet_list <- data_fx(internet_meta, "asian")
+# 
+# # Run chart fx
+# internet_plot <- chart_fx(internet_list, internet_meta, "asian", acs_racenote)
+
+
+# #### CONNECTED YOUTH ####
+# # Run metadata fx
+# youth_meta <- metadata_fx("econ", "connected_youth", "asian", metadata, "2025")
+# 
+# # Run data fx
+# youth_list <- data_fx(youth_meta, "asian", "v7")
+# 
+# # Run chart fx
+# youth_plot <- chart_fx(youth_list, youth_meta, "asian", acs_racenote)
+
+
+#### OFFICIALS ####
+# Run metadata fx
+officials_meta <- metadata_fx("econ", "officials", "asian", metadata, "2025")
+
+# Run data fx
+officials_list <- data_fx(officials_meta, "asian", "v7")
+
+# Run chart fx
+officials_plot <- chart_fx(officials_list, officials_meta, "asian", pums_racenote)
+
+
+#### OVERCROWDED ####
+# Run metadata fx
+overcrowd_meta <- metadata_fx("hous", "overcrowded", "asian", metadata, "2023")
+
+# Run data fx
+overcrowd_list <- data_fx(overcrowd_meta, "asian", "v5")
+
+# Run chart fx
+overcrowd_plot <- chart_fx(overcrowd_list, overcrowd_meta, "asian", acs_racenote)
+
+
+#### HOMEOWNERSHIP ####
+# Run metadata fx
+homeown_meta <- metadata_fx("hous", "homeownership", "asian", metadata, "2023")
+
+# Run data fx
+homeown_list <- data_fx(homeown_meta, "asian", "v5")
+
+# Run chart fx
+homeown_plot <- chart_fx(homeown_list, homeown_meta, "asian", acs_racenote)
+
+
+#### RENTER COST BURDEN ####
+# Run metadata fx
+renter_meta <- metadata_fx("hous", "cost_burden_renter", "asian", metadata, "2025")
+
+# Run data fx
+renter_list <- data_fx(renter_meta, "asian", "v7")
+
+# Run chart fx
+renter_plot <- chart_fx(renter_list, renter_meta, "asian", acs_racenote)
+
+
+#### OWNER COST BURDEN ####
+# Run metadata fx
+owner_meta <- metadata_fx("hous", "cost_burden_owner", "asian", metadata, "2025")
+
+# Run data fx
+owner_list <- data_fx(owner_meta, "asian", "v7")
+
+# Run chart fx
+owner_plot <- chart_fx(owner_list, owner_meta, "asian", acs_racenote)
+
+
+#### UNINSURED ####
+# Run metadata fx
+uninsured_meta <- metadata_fx("hlth", "health_insurance", "asian", metadata, "2023")
+
+# Run data fx
+uninsured_list <- data_fx(uninsured_meta, "asian", "v5")
+
+# Run chart fx
+uninsured_plot <- chart_fx(uninsured_list, uninsured_meta, "asian", cdc_racenote)
+
+
+#### LOW BIRTHWEIGHT ####
+# Run metadata fx
+lbw_meta <- metadata_fx("hlth", "low_birthweight", "asian", metadata, "2025")
+
+# Run data fx
+lbw_list <- data_fx(lbw_meta, "asian", "v7")
+
+# Run chart fx
+lbw_plot <- chart_fx(lbw_list, lbw_meta, "asian", cdc_racenote)
+
+
+#### VOTER ENGAGEMENT ####  Does not work with functions bc not in RC v7
+# Run metadata fx
+voter_data <- dbGetQuery(con, paste0("SELECT * FROM ", rc_schema, ".", "asian_demo_voter_engagement_state_2025")) %>%
+    pivot_longer(
+      cols = -state_id,
+      names_to = c("subgroup", ".value"),
+      names_pattern = "^(.+)_(raw|rate)$"
+    ) %>%
+    # make clean subgroup labels
+    mutate(subgroup_label = gsub("_aoic", "", subgroup)) %>%
+    mutate(subgroup_label = str_to_title(gsub("_", " ", subgroup_label))) %>%
+    na.omit()
+
+race_ <- 'asian'
+raw_descriptor <- 'US citizens always or frequently engaged'
+asbest <- 'max'
+title_text <- 'Voter Engagement'
+subtitle_text <- 'US citizens always or frequently engaged in national, state, and local elections'
+datasource <- 'CHIS 2019-2024'
+racenote <- "Data Note: Subgroups are Latinx-inclusive and Alone or in Combination, which means they include all people who identify as the subgroup\nincluding in combination with other subroups, races, and/or ethnicities."
+
+
+# pulled from: W:\Project\RACE COUNTS\2025_v7\MOSAIC\QA_Sheet_Sensemaking.docx
+race_rate <- 54.6
+total_rate <- 65.1
+  
+  # generate race rate label
+  race_label <- case_when(
+    race_ %in% c('asian','Asian') ~ "Asian",
+    TRUE ~ "Native Hawaiian or Pacific Islander"
+  )
+  
+  # dynamic height based on number of bars bc there are many more Asian subgroups
+  chart_height <- case_when(
+    nrow(voter_data) >= 13 ~ 700,
+    nrow(voter_data) >= 8  ~ 500,
+    TRUE                     ~ 300
+  )
+  
+  # build chart
+voter_plot <- b_chart <- hchart(
+    voter_data %>% arrange(if (asbest == 'max') rate else -rate),   # sort asc/desc depending on asbest value
+    type = "bar", 
+    hcaes(y = round(rate, 1), x = subgroup_label), 
+    color = mainblue,
+    tooltip = list(   # Add % when max value <= 100 (aka values are percents)
+      pointFormat = paste0(
+        "Rate: {point.rate:.1f}", if (max(voter_data$rate, na.rm = TRUE) > 100) "" else "%",
+        "<br>", str_to_sentence(raw_descriptor), ": {point.raw:,.0f}"
+      )
+    ),
+  ) %>% 
+    
+    hc_tooltip(crosshairs = TRUE) %>% 
+    
+    hc_xAxis(title = list(text = ""),
+             labels=list(style=list(fontSize='15px'))
+    ) %>% 
+    
+    hc_yAxis(title = list(text = ""),
+             labels = list(  # # Add % when max value <= 100 (aka values are percents)
+               format = if (max(race_rate, na.rm = TRUE) > 100) "{value}" else "{value}%"
+             ), list(step = 1), padding = 0,    # this is for rate indicators only adding % signs
+             max = min(1000, max(voter_data$rate, na.rm = TRUE) * 1.1),        # data max + 10% buffer, capped at 100
+             plotLines = list(
+               list(
+                 value = total_rate,   # total value
+                 color = "red",
+                 width = 2,
+                 dashStyle = "Solid",     # "Solid", "Dash", "Dot", "DashDot"
+                 zIndex = 5,              # draw on top of bars
+                 label = list(
+                   text = paste0(
+                     "Total Rate: ",  # Add % when max value <= 100 (aka values are percents)
+                     round(total_rate, 1),
+                     if (max(total_rate, na.rm = TRUE) > 100) "" else "%"
+                   ),
+                   align = "right",       # place label to the left of the line
+                   verticalAlign = "bottom",
+                   rotation = 0,          # make labels horizontal
+                   y = -15,
+                   style = list(color = "red", fontWeight = "bold")
+                 )
+               ),
+               list(
+                 value = race_rate,   # race group value
+                 color = "black",
+                 width = 2,
+                 dashStyle = "Solid",     # "Solid", "Dash", "Dot", "DashDot"
+                 zIndex = 5,              # draw on top of bars
+                 label = list(
+                   text = paste0(
+                     race_label, " Rate: ",   # Add % when max value <= 100 (aka values are percents)
+                     round(race_rate, 1),
+                     if (max(race_rate, na.rm = TRUE) > 100) "" else "%"
+                   ),
+                   align = "right",       # place label to the left of the line
+                   verticalAlign = "bottom",
+                   rotation = 0,          # make labels horizontal
+                   y = 5,
+                   style = list(color = "black", fontWeight = "bold")
+                 )
+               )  
+             )
+    ) %>%
+    
+    hc_plotOptions(
+      bar = list(
+        groupPadding = 0.05,   # space between groups (default 0.2)
+        pointPadding = 0.01    # width of bars
+      )
+    ) %>%
+    
+    # title elements
+    hc_title(
+      text = paste0(title_text),
+      #margin = 20,
+      align = "left", 
+      style = list(useHTML = TRUE, fontWeight = "bold", fontSize='30px')
+    ) %>% 
+    
+    hc_subtitle(
+      text = paste0(subtitle_text),
+      align = "left", y = 50
+    ) %>% 
+    
+    hc_caption(
+      text = paste0("<br>Data Source: ", datasource,
+                    "<br>",racenote),
+      style=list(fontSize='15px')
+      #align = "left"
+    ) %>% 
+    
+    hc_size(height = chart_height) %>%
+    
+    hc_add_theme(tnp_theme)
+
+
+```
+
+### Officials & Managers
+```{r, echo=FALSE}
+officials_plot
+```
+
+### Overcrowded Housing
+```{r, echo=FALSE}
+overcrowd_plot
+```
+
+### Homeownership
+```{r, echo=FALSE}
+homeown_plot
+```
+
+### Renter Cost Burden
+```{r, echo=FALSE}
+renter_plot
+```
+
+### Owner Cost Burden
+```{r, echo=FALSE}
+owner_plot
+```
+
+### Uninsured
+```{r, echo=FALSE}
+uninsured_plot
+```
+
+### Voter Engagement
+```{r, echo=FALSE}
+voter_plot
+```
+
+
+# NHPI Disaggregation {#nhpi}
+
+```{r nhpi-charts, include=FALSE}
+
+#### INTERNET ####
+# # Run metadata fx - run metadata$api_name if need to find indicator variable name
+# internet_meta <- metadata_fx("econ", "internet", "nhpi", metadata)
+# 
+# # Run data fx
+# internet_list <- data_fx(internet_meta, "nhpi")
+# 
+# # Run chart fx
+# internet_plot <- chart_fx(internet_list, internet_meta, "nhpi", acs_racenote)
+
+
+#### CONNECTED YOUTH ####
+# Run metadata fx
+youth_meta <- metadata_fx("econ", "connected_youth", "nhpi", metadata, "2025")
+
+# Run data fx
+youth_list <- data_fx(youth_meta, "nhpi", "v7")
+
+# Run chart fx
+youth_plot <- chart_fx(youth_list, youth_meta, "nhpi", acs_racenote)
+
+
+#### OVERCROWDED ####
+# Run metadata fx
+overcrowd_meta <- metadata_fx("hous", "overcrowded", "nhpi", metadata, "2023")
+
+# Run data fx
+overcrowd_list <- data_fx(overcrowd_meta, "nhpi", "v5")
+
+# Run chart fx
+overcrowd_plot <- chart_fx(overcrowd_list, overcrowd_meta, "nhpi", acs_racenote)
+
+
+#### HOMEOWNERSHIP ####
+# Run metadata fx
+homeown_meta <- metadata_fx("hous", "homeownership", "nhpi", metadata, "2023")
+
+# Run data fx
+homeown_list <- data_fx(homeown_meta, "nhpi", "v5")
+
+# Run chart fx
+homeown_plot <- chart_fx(homeown_list, homeown_meta, "nhpi", acs_racenote)
+
+
+#### DENIED MORTGAGE ####
+# Run metadata fx
+mtg_meta <- metadata_fx("hous", "denied_mortgages", "nhpi", metadata, "2025")
+
+# Run data fx
+mtg_list <- data_fx(mtg_meta, "nhpi", "v7")
+
+# Run chart fx
+mtg_plot <- chart_fx(mtg_list, mtg_meta, "nhpi", hmda_racenote)
+
+
+### UNINSURED ####
+# Run metadata fx
+uninsured_meta <- metadata_fx("hlth", "health_insurance", "nhpi", metadata, "2023")
+
+# Run data fx
+uninsured_list <- data_fx(uninsured_meta, "nhpi", "v5")
+
+# Run chart fx
+uninsured_plot <- chart_fx(uninsured_list, uninsured_meta, "nhpi", acs_racenote)
+
+
+#### LOW BIRTHWEIGHT ####
+# Run metadata fx
+lbw_meta <- metadata_fx("hlth", "low_birthweight", "nhpi", metadata, "2025")
+
+# Run data fx
+lbw_list <- data_fx(lbw_meta, "nhpi", "v7")
+
+# Run chart fx
+lbw_plot <- chart_fx(lbw_list, lbw_meta, "nhpi", cdc_racenote)
+
+
+```
+
+### Connected Youth
+```{r, echo=FALSE}
+youth_plot
+```
+
+### Uninsured
+```{r, echo=FALSE}
+uninsured_plot
+```
+
+### Low Birthweight Births
+```{r, echo=FALSE}
+lbw_plot
+```
+
+### Overcrowded Housing
+```{r, echo=FALSE}
+overcrowd_plot
+```
+
+### Homeownership
+```{r, echo=FALSE}
+homeown_plot
+```
+
+### Denied Mortgages
+```{r, echo=FALSE}
+mtg_plot
+```
