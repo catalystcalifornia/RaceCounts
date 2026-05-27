@@ -75,10 +75,10 @@ my_colors <- c('#994E77', ccblue, peridot, orange, ccpenny, lavender, ccyellow, 
 
 
 #### Add data for key dates ####
-events <- data.frame(
-  df = c("March 13, 2020"),
-  label = c("First COVID-19 Lockdown")
-)
+# events <- data.frame(
+#   df = c("March 13, 2020"),
+#   label = c("First COVID-19 Lockdown")
+# )
 
 # create a category vector
 x_cats <- df |>
