@@ -97,7 +97,28 @@ clean_data$omb <- omb_
       
                 
 ##### 4. Convert to long form df ##### 
+convert_to_long <- function(data_list) {
+  # data_list is a list of dataframes with columns like 'swana_rate', 'latino_raw'
+  
+  long_list <- lapply(data_list, function(df) {
+    
+    # get all prefixes from column names
+    prefixes <- unique(gsub("_rate$|_raw$", "", grep("_rate$|_raw$", names(df), value = TRUE)))
+    
+    # pivot each prefix and stack
+    prefix_list <- lapply(prefixes, function(prefix) {
+      df %>%
+        select(matches(paste0("^", prefix, "_rate$|^", prefix, "_raw$"))) %>%
+        rename(rate = paste0(prefix, "_rate"),
+               raw = paste0(prefix, "_raw")) %>%
+        mutate(race = prefix)
+    })
+    
+    bind_rows(prefix_list)
+  })
+  
+  bind_rows(long_list) %>%
+    select(race, rate, raw)
+}
 
-
-
-
+final_df <- convert_to_long(clean_data) 

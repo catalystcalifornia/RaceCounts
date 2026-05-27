@@ -1,0 +1,170 @@
+---
+title: ""
+  html_document:
+    css: "W:\\RDA Team\\R\\cc_brandguide.css"
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE
+)
+
+
+#### Setting Up ####
+
+library(usethis)
+library(dplyr)
+library(tidyverse)
+library(htmltools) 
+library(htmlwidgets)
+library(gtExtras)
+library(gt)
+library(sf)
+library(scales)
+library(ggplot2)
+
+lang <- getOption("highcharter.lang")
+lang$thousandsSep <- ","
+options(highcharter.lang = lang)
+
+#Add database connection and source script with functions for pushing to postgres
+source("W:\\RDA Team\\R\\credentials_source.R")
+options(scipen = 999)
+
+#### Step 1: Pull in data ####
+source("./calcs.R")
+df <- final_df 
+
+# need to update code below to just rename within the chart fx rather than in the df
+df <- df %>%
+  # clean up labels for visuals
+  mutate(race_label=case_when(
+    race=="latino" ~ "Latine",
+    race=="aian" ~ "AIAN",
+    race=="nh_black" ~ "Black",
+    race=="nhpi" ~ "PI",
+    race=="swana" ~ "SWANA",
+    race=="nh_white" ~ "White",
+    race=="nh_asian" ~ 'Asian',
+    race=="total" ~ 'Total',
+      TRUE~NA))
+
+
+## COLORS ## source: W:\RDA Team\Communications\Catalyst California Brand Guide_September 2022.pdf
+orange <- "#F25922"     # 01 row on data vis colors page & brand colors page
+peridot <- "#CEEA01"    # 01 row on data vis colors page & brand colors page
+lavender <- "#CEC4E2"   # brand colors page
+meteorite <- "#3A207D"  # brand colors page
+ccblue <- "#0860BC"     # 00 row on data vis colors page 
+ccyellow <-"#FFCC00"    # 01 row on data vis colors page
+ccmagenta <- "#733256"  # 01 row on data vis colors page
+ccpenny <- "#FF9873"    # 03 row on data vis colors page
+
+black <- "#000000"      # brand colors page
+alabaster<-"#FBFBFB"    # brand colors page
+gainsboro <- "#DEDEDE"  # brand colors page
+
+my_colors <- c(meteorite, ccblue, peridot, orange, ccpenny, lavender, ccyellow, black)
+
+
+
+```
+
+To evaluate changes in how many Californians experienced hate crimes or incidents between 2020 and 2022, we analyzed how the number and share of California Health Interview Survey (CHIS) respondents who said they had experienced a hate crime or incident. We include the date the first COVID-19 lock down began as we know that Asians experienced a surge of hate crimes and incidents during the pandemic. 
+
+## Experiences over time
+
+To update: **Since 2020, *the number of people stopped for minor traffic violations* decreased across race groups. Declines appeared before the pretextual stop policy took effect in March 2022.** In fact, most race groups had a slight increase in the number of stops for minor traffic violations between Q3 2022 and Q2 2023. Latine individuals had the most visible increases in stops for minor traffic violations during that period. The number of people stopped for minor traffic violations across race groups remained relatively steady in 2024. **However, there was a sharper increase in the number of people stopped for minor traffic violations for most race groups between Q1 and Q3 2025.** 
+
+```{r}
+############# STATIC VERSION ############# 
+
+# calculate width based on longest label
+max_label_width <- max(nchar(paste0(round(df$rate, 1), "% (", scales::comma(df$raw), ")")))
+chart_width <- max(7, max_label_width * 0.15)
+
+p <- ggplot(df, aes(x = rate, y = reorder(race_label, rate), fill = race)) +
+  geom_col() +
+  geom_text(
+    aes(label = paste0(round(rate, 1), "% (", scales::comma(raw), ")")),
+    hjust = -0.1,
+    size = 3.5
+  ) +
+  scale_fill_manual(values = my_colors) +
+  scale_x_continuous(
+    expand = expansion(mult = c(0, 0.2))
+  ) +
+  labs(
+    x = "Rate",
+    y = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+
+p
+
+
+ggplot2::ggsave("hate_incident_race.png",
+       plot = p,
+       width = 2400,
+       height = 1500,
+       units = "px",
+       dpi = 300,
+       bg = "white")
+
+```
+
+```{r}
+############# INTERACTIVE VERSION ############# 
+
+# chart showing people who experienced hate crimes/incidents by race group
+  hchart(df, type='line', 
+         hcaes(x = year_, y = rate, group = race_label),
+         # tooltip
+         tooltip = list(headerFormat = "", 
+                                pointFormat = "In <strong>{point.year_label}, {point.rate:,.0f}% of {point.race_label}</strong> adults in California experienced a hate crime or incident.<br>That rate represents <strong>{point.raw:,.0f} {point.race_label}</strong> adults.") 
+)  %>%
+  # colors
+  hc_colors(colors=c('#994E77',ccblue,peridot,orange,lavender,ccyellow,meteorite)) %>%
+  # labels
+  hc_xAxis(title = list(text = "Year"),
+             # add plotlines with key events
+             categories = x_cats,
+            plotLines = plot_lines) %>% 
+  hc_yAxis(
+           title = list(text = "% of People Experiencing a Hate Crime or Incident")) %>% 
+  # title
+  hc_title(
+    text = "TO UPDATE: Even before Q2 2022, there was a decline in the number of people stopped for minor traffic violations across race groups.",
+    align = "left", 
+    style = list(useHTML = TRUE, fontWeight = "bold")
+  ) %>% 
+  # caption
+  hc_caption(
+    text = "Race is based on survey respondent's self-identification. AIAN=American Indian or Alaska Native, NHPI=Native Hawaiian or Pacific Islander, SWANA=Southwest Asian or North African. AIAN, NHPI, and SWANA data include people that are one race alone or in combination with another race and Latine-inclusive. Asian, Black, and White data include people that are one race alone and Latine-exclusive. Latine data include people of any race. In the CHIS survey, hate crimes or incidents may include times someone experienced verbal or
+physical abuse, or damages to their property because of their race or ethnicity.
+    
+Data deemed unnreliable by CHIS have been are shown as..... Catalyst California's calculations of California Health Interview Survey Data, 2022 (variables AAPI19A-D).",
+    align = "left",
+     useHTML=TRUE, # add this
+    style = list(width = "750px", # add this (set by sourceWidth minus 50) - probably good to use for all charts
+                 height = "75px")) %>% # add this (set by trial/error)
+  # marker and line width
+  hc_plotOptions(
+    line = list(
+      lineWidth = 2),
+    series = list(
+      marker = list(
+        radius = 3 )))  %>%
+    hc_exporting(
+    enabled = TRUE, sourceWidth=800, sourceHeight=500, 
+        filename = "catalyst_california_race_counts_by_year",
+     chartOptions = list(
+      chart = list(
+        backgroundColor = "#FFFFFF" )))
+
+```
+
