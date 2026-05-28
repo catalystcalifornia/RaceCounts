@@ -434,7 +434,7 @@ clean_geo_names <- function(x){
   x$geoname <- str_remove(x$geoname, " city")
   x$geoname <- str_remove(x$geoname, " CDP")
   x$geoname <- str_remove(x$geoname, " town")
-  x$geoname <- gsub(" County)", ")", x$geoname)
+  x$geoname <- str_remove(x$geoname, " County")
   
   return(x)
 }

@@ -1,6 +1,7 @@
 ## Health Insurance for RC v7 ##
 
 #install packages if not already installed
+packages <- c("readr","tidyr","dplyr","DBI","RPostgres","tidycensus", "rvest", "tidyverse", "stringr", "usethis", "tigris")
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 if(length(install_packages) > 0) { 
   install.packages(install_packages) 
