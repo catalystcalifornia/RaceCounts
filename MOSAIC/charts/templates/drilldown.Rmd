@@ -63,11 +63,12 @@ indicator_df <- dbGetQuery(con, "")
 # Set total_rate
 total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% select(rate) %>% pull()
 
-# Set metadata
+# Set metadata - see documentation above for examples
 indicator_asbest <- ""
 data_source <- ""
 data_description <- ""
-methodology_link <- ""
+mosaic_methodology_link <- ""
+methodology_link <- sprintf("<a href='%s' target='_blank'>Full Methodology</a>", mosaic_methodology_link)
 chart_title <- ""
 chart_subtitle <- ""
 
