@@ -131,11 +131,11 @@ series_data_rates <- indicator_df %>%
     # Assign color based on group
     series_color <- if(df$group[1] == "asian subgroups") {
       base_colors[["asian subgroups"]]
-    } else if(df$group[1] == "asian total") {
+    } else if(df$group[1] == "asian") {
       base_colors[["asian total"]]
     } else if(df$group[1] == "pacisl subgroups") {
       base_colors[["pacisl subgroups"]]
-    } else if(df$group[1] == "pacisl total") {
+    } else if(df$group[1] == "pacisl") {
       base_colors[["pacisl total"]]
     } else {
       base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
@@ -166,11 +166,11 @@ series_data_counts <- indicator_df %>%
     # Assign same color based on group
     series_color <- if(df$group[1] == "asian subgroups") {
       base_colors[["asian subgroups"]]
-    } else if(df$group[1] == "asian total") {
+    } else if(df$group[1] == "asian") {
       base_colors[["asian total"]]
     } else if(df$group[1] == "pacisl subgroups") {
       base_colors[["pacisl subgroups"]]
-    } else if(df$group[1] == "pacisl total") {
+    } else if(df$group[1] == "pacisl") {
       base_colors[["pacisl total"]]
     } else {
       base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
