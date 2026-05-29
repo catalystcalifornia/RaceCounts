@@ -61,93 +61,100 @@ nhpi_tables_rc <- indicator_tables_rc[grepl("overcrowd|youth|insurance|wage", na
 # format and clean tables####
 clean_tables <- function(data_list, race){
 
-indicator_tables_clean <- lapply(data_list, function(x) x %>%
-  select(state_id, state_name, ends_with(c("raw", "rate"))))
-indicator_tables_clean <- map2(indicator_tables_clean, names(indicator_tables_clean), ~ mutate(.x, indicator_ = .y)) # create column with indicator name
-# indicator_tables_clean <- lapply(indicator_tables_clean, function(x) x %>%
+  indicator_tables_clean <- lapply(data_list, function(x) x %>%
+    select(state_id, state_name, ends_with(c("raw", "rate"))))
+  
+  indicator_tables_clean <- map2(indicator_tables_clean, names(indicator_tables_clean), ~ mutate(.x, indicator_ = .y)) # create column with indicator name
+  # indicator_tables_clean <- lapply(indicator_tables_clean, function(x) x %>%
   # mutate(indicator1 = gsub("asian_|nhpi_", '', indicator_),  # step 1
   #        indicator2 = substring(indicator1, 6),              # step 2
   #        indicator = gsub(paste0("_state_",rc_yr), '', indicator2)) %>% # step 3
   # select(-c(indicator_, indicator1, indicator2)))  # drop interim cleaning steps
 
-data_df <- as.data.frame(do.call(cbind, indicator_tables_clean))  # convert list to df
+  data_df <- as.data.frame(do.call(cbind, indicator_tables_clean))  # convert list to df
 
-# clean col names #
-data_df <- data_df %>% 
-  rename_with(~ sub(paste0("^",race,"_"), "", .x))   # ^ anchors to start of string only          # step 1
-colnames(data_df) <- substring(colnames(data_df), 6)                         # step 2
-colnames(data_df) <- gsub(paste0("_state_",rc_yr), '', colnames(data_df))    # step 3
-
-# step 4 - drop dupe id/name cols
-colnames(data_df) <- ifelse(grepl("_id|_name", colnames(data_df)), sub("^.*\\.", "", colnames(data_df)), colnames(data_df))
-data_df = data_df[,!duplicated(names(data_df))]
-data_df = data_df %>% select(-contains('indicator_'))  # drop indicator name columns
-
-# step 5 - pivot_longer
-df_long <- data_df %>%
-  tidyr::pivot_longer(
-    cols = -c(state_id, state_name),
-    names_to = "name",
-    values_to = "value"
-  ) %>%
-  tidyr::separate(name, 
-                  into = c("topic", "group_metric"), 
-                  sep = "\\.") %>%
-  tidyr::separate(group_metric, 
-                  into = c("group", "metric"), 
-                  sep = "_(?=rate$|raw$)") %>%
-  tidyr::pivot_wider(
-    names_from = metric,
-    values_from = value
-  )
-
-return(df_long)
+  # clean col names #
+  data_df <- data_df %>% 
+    rename_with(~ sub(paste0("^",race,"_"), "", .x))   # ^ anchors to start of string only          # step 1
+  colnames(data_df) <- substring(colnames(data_df), 6)                         # step 2
+  colnames(data_df) <- gsub(paste0("_state_",rc_yr), '', colnames(data_df))    # step 3
+  
+  # step 4 - drop dupe id/name cols
+  colnames(data_df) <- ifelse(grepl("_id|_name", colnames(data_df)), sub("^.*\\.", "", colnames(data_df)), colnames(data_df))
+  data_df = data_df[,!duplicated(names(data_df))]
+  data_df = data_df %>% select(-contains('indicator_'))  # drop indicator name columns
+  
+  # step 5 - pivot_longer
+  df_long <- data_df %>%
+    tidyr::pivot_longer(
+      cols = -c(state_id, state_name),
+      names_to = "name",
+      values_to = "value") %>%
+    tidyr::separate(name, 
+                    into = c("topic", "group_metric"), 
+                    sep = "\\.") %>%
+    tidyr::separate(group_metric, 
+                    into = c("group", "metric"), 
+                    sep = "_(?=rate$|raw$)") %>%
+    tidyr::pivot_wider(
+      names_from = metric,
+      values_from = value
+    )
+  
+  return(df_long)
 }
 
-#clean mosaic data
+# clean mosaic data
 asian_clean <- clean_tables(asian_tables, 'asian') %>%
   filter(!(group == 'asian' & topic =='officials')) %>% # screen out, will use RC nh_asian as group value
   filter(!(group == 'total' & topic == 'officials')) %>%
-  mutate(type = ifelse(group %in% c("asian", "nh_asian"), 'group', 'subgroup')) %>%
-  mutate(type = case_when(
-    group %in% races ~ 'race',
-    group %in% c("pacisl", "nh_pacisl") ~ 'race',
-    group == 'total' ~ 'total',
-    TRUE ~ type))
+  mutate(
+    type = ifelse(group %in% c("asian", "nh_asian"), 'group', 'subgroup')) %>%
+  mutate(
+    type = case_when(
+      group %in% races ~ 'race',
+      group %in% c("pacisl", "nh_pacisl") ~ 'race',
+      group == 'total' ~ 'total',
+      TRUE ~ type))
 
-#keep only 'aoic' rows when an indicator has alone and aoic rows for same group
+# check for race groups with aoic data - where aoic and alone exist for the same race and indicator, keep only the aoic data
 asian_clean <- asian_clean %>%
   dplyr::group_by(topic, type) %>%
+  # check if any indicators use aoic
+  dplyr::mutate(
+    has_aoic = any(grepl("aoic", group))) %>%
+  dplyr::ungroup() %>%
+  # keep only 'aoic' rows when an indicator has alone and aoic rows for same group
   dplyr::filter(
     type != "subgroup" |
-      (type == "subgroup" & (
-        if (any(grepl("aoic", group))) grepl("aoic", group) else TRUE
-      ))
-  ) %>%
-  dplyr::ungroup()
+      (type == "subgroup" & (!has_aoic | grepl("aoic", group)))) %>%
+  dplyr::select(-has_aoic)
 
 
 #clean mosaic data
 nhpi_clean <- clean_tables(nhpi_tables, 'nhpi') %>%
   filter(group != 'nhpi') %>%  # screen out, will use RC pacisl as group value
   filter(group != 'total') %>%
-  mutate(type = ifelse(group %in% c("nhpi", "nh_nhpi"), 'group', 'subgroup')) %>%
-  mutate(type = case_when(
-    group %in% races ~ 'race',
-    group %in% c("asian", "nh_asian") ~ 'race',
-    group == 'total' ~ 'total',
-    TRUE ~ type))
+  mutate(
+    type = ifelse(group %in% c("nhpi", "nh_nhpi"), 'group', 'subgroup')) %>%
+  mutate(
+    type = case_when(
+      group %in% races ~ 'race',
+      group %in% c("asian", "nh_asian") ~ 'race',
+      group == 'total' ~ 'total',
+      TRUE ~ type))
 
-#keep only 'aoic' rows when an indicator has alone and aoic rows for same group
+# check for race groups with aoic data - where aoic and alone exist for the same race and indicator, keep only the aoic data
 nhpi_clean <- nhpi_clean %>%
   dplyr::group_by(topic, type) %>%
+  # check if any indicators use aoic
+  dplyr::mutate(has_aoic = any(grepl("aoic", group))) %>%
+  dplyr::ungroup() %>%
+  # keep only 'aoic' rows when an indicator has alone and aoic rows for same group
   dplyr::filter(
     type != "subgroup" |
-      (type == "subgroup" & (
-        if (any(grepl("aoic", group))) grepl("aoic", group) else TRUE
-      ))
-  ) %>%
-  dplyr::ungroup()
+      (type == "subgroup" & (!has_aoic | grepl("aoic", group)))) %>%
+  dplyr::select(-has_aoic)
 
 
 #clean rc data
@@ -171,6 +178,8 @@ nhpi_clean_rc <- clean_tables(nhpi_tables_rc, 'asian') %>%  # use 'asian' here b
            group %in% c("asian", "nh_asian") ~ 'race',
            group == 'total' ~ 'total',
            TRUE ~ NA))
+
+# checks for NA type - there are none
 nhpi_clean_rc %>% filter(is.na(type))
 
 #bind mosaic and rc data ####
@@ -178,12 +187,13 @@ asian_df <- rbind(asian_clean, asian_clean_rc)
 nhpi_df <- rbind(nhpi_clean, nhpi_clean_rc)
 
 # check all rows have type assigned
-asian_df %>% filter(is.na(type))
-nhpi_df %>% filter(is.na(type))
+asian_df %>% filter(is.na(type)) # 0
+nhpi_df %>% filter(is.na(type)) # 0
 
 #add chart labels ####
 asian_final <- asian_df %>%
-  mutate(label = str_to_title(gsub("_", " ", group)))
+  mutate(
+    label = str_to_title(gsub("_", " ", group)))
 # check which labels need to be edited
 unique(asian_final$label)
 
@@ -222,9 +232,6 @@ nhpi_final <- nhpi_final %>%
     TRUE ~ label
   ))
 unique(nhpi_final$label)
-
-
-
 
 
 # Export Asian Summary table to Postgres ------------------------------------------------------
