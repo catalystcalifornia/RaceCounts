@@ -55,8 +55,6 @@ knitr::opts_chunk$set(echo = FALSE)
 # Get indicator df
 indicator_df <- dbGetQuery(con, "")
 
-# note: may need to filter out NA rates/raw
-
 
 # Set metadata - see documentation above for examples
 indicator_name <- indicator_df$topic[1]
@@ -69,6 +67,11 @@ raw_rounding <- indicator_metadata %>% filter(api_name == indicator_name) %>% se
 
 # Set total_rate
 total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% select(rate) %>% pull() %>% round(., rate_rounding)
+
+# need to filter out NA rates/raw and total rate
+indicator_df <- indicator_df %>% 
+  drop_na(rate) %>%
+  filter(subgroup != "total")
 
 # Don't change - pulled in from chart_style_vars
 methodology_link <- sprintf("<a href='%s' target='_blank'>Full Methodology</a>", mosaic_methodology_link)
@@ -130,10 +133,10 @@ series_data_rates <- indicator_df %>%
       base_colors[["asian subgroups"]]
     } else if(df$group[1] == "asian total") {
       base_colors[["asian total"]]
-    } else if(df$group[1] == "nhpi subgroups") {
-      base_colors[["nhpi subgroups"]]
-    } else if(df$group[1] == "nhpi total") {
-      base_colors[["nhpi total"]]
+    } else if(df$group[1] == "pacisl subgroups") {
+      base_colors[["pacisl subgroups"]]
+    } else if(df$group[1] == "pacisl total") {
+      base_colors[["pacisl total"]]
     } else {
       base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
     }
@@ -165,10 +168,10 @@ series_data_counts <- indicator_df %>%
       base_colors[["asian subgroups"]]
     } else if(df$group[1] == "asian total") {
       base_colors[["asian total"]]
-    } else if(df$group[1] == "nhpi subgroups") {
-      base_colors[["nhpi subgroups"]]
-    } else if(df$group[1] == "nhpi total") {
-      base_colors[["nhpi total"]]
+    } else if(df$group[1] == "pacisl subgroups") {
+      base_colors[["pacisl subgroups"]]
+    } else if(df$group[1] == "pacisl total") {
+      base_colors[["pacisl total"]]
     } else {
       base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
     }
