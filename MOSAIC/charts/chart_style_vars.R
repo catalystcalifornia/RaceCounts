@@ -1,4 +1,9 @@
 library(readxl)
+library(here)
+library(dplyr)
+library(purrr)
+library(htmltools)
+library(highcharter)
 
 # define global chart metadata
 mosaic_methodology_link <- "https://catalystcalifornia.github.io/RaceCounts/MOSAIC/Methodology/MOSAIC_Indicator_Methodology.html"
