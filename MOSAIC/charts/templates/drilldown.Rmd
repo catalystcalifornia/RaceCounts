@@ -15,7 +15,7 @@ body { margin: 0; }
 ```{r, include=FALSE}
 # load libraries and test data
 source("W:\\RDA Team\\R\\credentials_source.R")
-source(here("MOSAIC", "charts", "templates", "chart_style_vars.R"))
+source(here("MOSAIC", "charts", "chart_style_vars.R"))
 con <- connect_to_db("mosaic")
 
 knitr::opts_chunk$set(echo = FALSE)
