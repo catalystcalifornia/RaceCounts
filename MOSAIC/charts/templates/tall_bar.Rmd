@@ -109,13 +109,13 @@ indicator_df$subgroup <- toupper(indicator_df$subgroup)
 
 # define df initial chart of drilldown (asian and total bars only)
 base_df <- indicator_df %>%
-  filter(subgroup=="TOTAL") %>%
+  filter(subgroup=="total") %>%
   select(-subgroup) %>%
   mutate(
     color = case_when(
-      group == "ASIAN" ~ base_colors[["asian"]],
-      group == "NHPI" ~ base_colors[["nhpi"]],
-      group == "TOTAL" ~ base_colors[["total"]],
+      group == "asian" ~ base_colors[["asian"]],
+      group == "pacisl" ~ base_colors[["pacisl"]],
+      group == "total" ~ base_colors[["total"]],
       TRUE ~ base_colors[["default"]]))
 
 # all_subgroups <- unique(low_birthweight$subgroup)
@@ -139,10 +139,14 @@ series_data_rates <- indicator_df %>%
     })
     
     # Assign color based on group
-    series_color <- if(df$group[1] == "ASIAN SUBGROUPS") {
+    series_color <- if(df$group[1] == "asian subgroups") {
       base_colors[["asian subgroups"]]
-    } else if(df$group[1] == "ASIAN TOTAL") {
+    } else if(df$group[1] == "asian total") {
       base_colors[["asian total"]]
+    } else if(df$group[1] == "nhpi subgroups") {
+      base_colors[["nhpi subgroups"]]
+    } else if(df$group[1] == "nhpi total") {
+      base_colors[["nhpi total"]]
     } else {
       base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
     }
@@ -170,10 +174,14 @@ series_data_counts <- indicator_df %>%
     })
     
     # Assign same color based on group
-    series_color <- if(df$group[1] == "ASIAN SUBGROUPS") {
+    series_color <- if(df$group[1] == "asian subgroups") {
       base_colors[["asian subgroups"]]
-    } else if(df$group[1] == "ASIAN TOTAL") {
+    } else if(df$group[1] == "asian total") {
       base_colors[["asian total"]]
+    } else if(df$group[1] == "nhpi subgroups") {
+      base_colors[["nhpi subgroups"]]
+    } else if(df$group[1] == "nhpi total") {
+      base_colors[["nhpi total"]]
     } else {
       base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
     }

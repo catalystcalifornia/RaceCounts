@@ -94,29 +94,30 @@ indicator_df$subgroup <- toupper(indicator_df$subgroup)
 
 # define df initial chart of drilldown (asian and total bars only)
 base_df <- indicator_df %>%
-  filter(subgroup=="TOTAL") %>%
+  filter(subgroup=="total") %>%
   select(-subgroup) %>%
   mutate(
     color = case_when(
-      group == "ASIAN" ~ base_colors[["asian"]],
-      group == "NHPI" ~ base_colors[["nhpi"]],
-      group == "TOTAL" ~ base_colors[["total"]],
+      group == "asian" ~ base_colors[["asian"]],
+      group == "pacisl" ~ base_colors[["pacisl"]],
+      group == "total" ~ base_colors[["total"]],
       TRUE ~ base_colors[["default"]]))
 
 drilldown_df <- indicator_df %>%
-  filter(subgroup!="TOTAL") %>%
+  filter(subgroup!="total") %>%
   group_nest(group) %>%
   mutate(
     id = case_when(
-      group == "ASIAN SUBGROUPS" ~ "ASIAN",
-      group == "OTHER MAJOR RACE GROUPS" ~ "TOTAL",
+      group == "asian subgroups" ~ "asian",
+      group == "pacisl subgroups" ~ "pacisl",
+      group == "other major race groups" ~ "total",
       .default = group
     ),
     type = "bar",
     color = case_when(
-      id == "ASIAN" ~ base_colors[["asian"]],
-      id == "TOTAL" ~ base_colors[["total"]],
-      id == "NHPI" ~ base_colors[["asian"]],
+      id == "asian" ~ base_colors[["asian"]],
+      id == "total" ~ base_colors[["total"]],
+      id == "pacisl" ~ base_colors[["pacisl"]],
       .default = base_colors[["default"]]),
     # Store both rate-sorted and count-sorted versions
     data = map(data, function(df) {
@@ -127,7 +128,7 @@ drilldown_df <- indicator_df %>%
         list_parse()}),
     data_count_sorted = map2(data, group, function(df, grp) {
       indicator_df %>%
-        filter(group == grp, subgroup != "TOTAL") %>%
+        filter(group == grp, subgroup != "total") %>%
         arrange(desc(raw)) %>%
         mutate(name = subgroup, y = raw, y2 = rate) %>%
         select(name, y, y2) %>%

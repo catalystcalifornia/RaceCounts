@@ -17,9 +17,10 @@ rc_yellow <- "#fec009"
 base_colors <- c(
   "asian" = rc_orange,
   "asian subgroups" = rc_orange,
-  "nhpi" = rc_orange,
-  "nhpi subgroups" = rc_orange,
+  "pacisl" = rc_orange,
+  "pacisl subgroups" = rc_orange,
   "asian total"= rc_blue,
+  "pacisl total"= rc_blue,
   "total" = rc_magenta,
   "other" = rc_magenta,
   "default" = rc_grey)
