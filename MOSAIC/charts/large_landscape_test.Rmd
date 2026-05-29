@@ -404,12 +404,8 @@ cd_final %>%
 
       // Set map height to remaining space after controls
       var controlsHeight = controlsDiv.offsetHeight;
-      //var remainingHeight = window.innerHeight - controlsHeight;
-      //el.style.height = remainingHeight + 'px';
       console.log('el height before:', el.offsetHeight);
       el.style.setProperty('height', '400px', 'important');
-      console.log('el height after:', el.offsetHeight);
-      console.log('el inline style:', el.style.height);
 
       // Add zoom control back
       L.control.zoom({ position: 'topright' }).addTo(map);
