@@ -24,10 +24,10 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ```{r}
 ##### DOCUMENTATION (can skip to next section for indicator inputs) #####
-### Requirements: drilldown_js
+### Requirements for chart behavior: drilldown_js
 # total_rate - single variable to establish vertical plotline; total/state rate  of the indicator  
 
-### Requirements: drillup_js
+### Requirements for chart behavior: drillup_js
 # none
 
 ### Requirements: Chart Metadata
