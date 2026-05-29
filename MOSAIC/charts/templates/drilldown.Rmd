@@ -23,7 +23,7 @@ knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ```{r}
-##### DOCUMENTATION #####
+##### DOCUMENTATION (can skip to next section for indicator inputs) #####
 ### Requirements: drilldown_js
 # total_rate - single variable to establish vertical plotline; total/state rate  of the indicator  
 
@@ -55,7 +55,7 @@ knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ```{r}
-##### Prep #####
+##### Prep: Get data (must change for each indicator) #####
 # Get indicator df
 indicator_df <- dbGetQuery(con, "")
 
@@ -71,7 +71,11 @@ mosaic_methodology_link <- ""
 methodology_link <- sprintf("<a href='%s' target='_blank'>Full Methodology</a>", mosaic_methodology_link)
 chart_title <- ""
 chart_subtitle <- ""
+```
 
+
+```{r}
+##### Prep: Edit data for chart (don't change) #####
 
 # use indicator best direction to arrange "shared struggle" groups at top
 if(indicator_asbest=="min") {
@@ -102,7 +106,7 @@ base_df <- indicator_df %>%
 
 
 ```{r}
-##### define JS to control behavior of drilldown #####
+##### Chart behavior: define JS to control behavior of drilldown (don't change) #####
 ### Drilldown js ----------------------
 drilldown_js <- paste0("function(e) {
   var chart = this;
@@ -338,7 +342,7 @@ drillup_js <- paste0("function() {
 
 
 ```{r}
-# Create Chart 1 (drilldown)
+##### Chart: Highcharts drilldown (don't change) #####
 hc <- hchart(
   base_df,
   "bar",
