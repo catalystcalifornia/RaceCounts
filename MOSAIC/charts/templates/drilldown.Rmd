@@ -67,10 +67,11 @@ total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% 
 indicator_asbest <- ""
 data_source <- ""
 data_description <- ""
-mosaic_methodology_link <- ""
-methodology_link <- sprintf("<a href='%s' target='_blank'>Full Methodology</a>", mosaic_methodology_link)
 chart_title <- ""
 chart_subtitle <- ""
+
+# Don't change - pulled in from chart_style_vars
+methodology_link <- sprintf("<a href='%s' target='_blank'>Full Methodology</a>", mosaic_methodology_link)
 ```
 
 

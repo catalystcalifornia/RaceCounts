@@ -1,3 +1,6 @@
+# define global chart metadata
+mosaic_methodology_link <- ""
+
 # define global styling elements
 # define rc colors we want to use
 rc_blue <-  "#070024" # primary
