@@ -94,7 +94,7 @@ clean_tables <- function(data_list, race){
                     into = c("topic", "group_metric"), 
                     sep = "\\.") %>%
     tidyr::separate(group_metric, 
-                    into = c("group", "metric"), 
+                    into = c("subgroup", "metric"), 
                     sep = "_(?=rate$|raw$)") %>%
     tidyr::pivot_wider(
       names_from = metric,
@@ -106,15 +106,16 @@ clean_tables <- function(data_list, race){
 
 # clean mosaic data
 asian_clean <- clean_tables(asian_tables, 'asian') %>%
-  filter(!(group == 'asian' & topic =='officials')) %>% # screen out, will use RC nh_asian as group value
-  filter(!(group == 'total' & topic == 'officials')) %>%
+  mutate(original_group = subgroup) %>%
+  filter(!(original_group == 'asian' & topic =='officials')) %>% # screen out, will use RC nh_asian as group value
+  filter(!(original_group == 'total' & topic == 'officials')) %>%
   mutate(
-    type = ifelse(group %in% c("asian", "nh_asian"), 'group', 'subgroup')) %>%
+    type = ifelse(original_group %in% c("asian", "nh_asian"), 'group', 'subgroup')) %>%
   mutate(
     type = case_when(
-      group %in% races ~ 'race',
-      group %in% c("pacisl", "nh_pacisl") ~ 'race',
-      group == 'total' ~ 'total',
+      original_group %in% races ~ 'race',
+      original_group %in% c("pacisl", "nh_pacisl") ~ 'race',
+      original_group == 'total' ~ 'total',
       TRUE ~ type))
 
 # check for race groups with aoic data - where aoic and alone exist for the same race and indicator, keep only the aoic data
@@ -122,61 +123,64 @@ asian_clean <- asian_clean %>%
   dplyr::group_by(topic, type) %>%
   # check if any indicators use aoic
   dplyr::mutate(
-    has_aoic = any(grepl("aoic", group))) %>%
+    has_aoic = any(grepl("aoic", original_group))) %>%
   dplyr::ungroup() %>%
   # keep only 'aoic' rows when an indicator has alone and aoic rows for same group
   dplyr::filter(
     type != "subgroup" |
-      (type == "subgroup" & (!has_aoic | grepl("aoic", group)))) %>%
+      (type == "subgroup" & (!has_aoic | grepl("aoic", original_group)))) %>%
   dplyr::select(-has_aoic)
 
 
 #clean mosaic data
 nhpi_clean <- clean_tables(nhpi_tables, 'nhpi') %>%
-  filter(group != 'nhpi') %>%  # screen out, will use RC pacisl as group value
-  filter(group != 'total') %>%
+  mutate(original_group = subgroup) %>%
+  filter(original_group != 'nhpi') %>%  # screen out, will use RC pacisl as group value
+  filter(original_group != 'total') %>%
   mutate(
-    type = ifelse(group %in% c("nhpi", "nh_nhpi"), 'group', 'subgroup')) %>%
+    type = ifelse(original_group %in% c("nhpi", "nh_nhpi"), 'group', 'subgroup')) %>%
   mutate(
     type = case_when(
-      group %in% races ~ 'race',
-      group %in% c("asian", "nh_asian") ~ 'race',
-      group == 'total' ~ 'total',
+      original_group %in% races ~ 'race',
+      original_group %in% c("asian", "nh_asian") ~ 'race',
+      original_group == 'total' ~ 'total',
       TRUE ~ type))
 
 # check for race groups with aoic data - where aoic and alone exist for the same race and indicator, keep only the aoic data
 nhpi_clean <- nhpi_clean %>%
   dplyr::group_by(topic, type) %>%
   # check if any indicators use aoic
-  dplyr::mutate(has_aoic = any(grepl("aoic", group))) %>%
+  dplyr::mutate(has_aoic = any(grepl("aoic", original_group))) %>%
   dplyr::ungroup() %>%
   # keep only 'aoic' rows when an indicator has alone and aoic rows for same group
   dplyr::filter(
     type != "subgroup" |
-      (type == "subgroup" & (!has_aoic | grepl("aoic", group)))) %>%
+      (type == "subgroup" & (!has_aoic | grepl("aoic", original_group)))) %>%
   dplyr::select(-has_aoic)
 
 
 #clean rc data
 asian_clean_rc <- clean_tables(asian_tables_rc, 'asian') %>%
+  mutate(original_group = subgroup) %>%
   mutate(topic = str_sub(topic, end = -2)) %>%
   mutate(topic = str_sub(topic, start = 6),
   type = case_when(
-    grepl('asian|nh_asian', group) ~ 'group',
-    group %in% races ~ 'race',
-    group %in% c("pacisl", "nh_pacisl") ~ 'race',
-    group == 'total' ~ 'total',
+    grepl('asian|nh_asian', original_group) ~ 'group',
+    original_group %in% races ~ 'race',
+    original_group %in% c("pacisl", "nh_pacisl") ~ 'race',
+    original_group == 'total' ~ 'total',
     TRUE ~ NA))
 
 #clean rc data
 nhpi_clean_rc <- clean_tables(nhpi_tables_rc, 'asian') %>%  # use 'asian' here bc it is the correct character count for the fx
+  mutate(original_group = subgroup) %>%
   mutate(topic = str_sub(topic, end = -2)) %>%
   mutate(topic = str_sub(topic, start = 6),
          type = case_when(
-           grepl('pacisl|nh_pacisl', group) ~ 'group',
-           group %in% races ~ 'race',
-           group %in% c("asian", "nh_asian") ~ 'race',
-           group == 'total' ~ 'total',
+           grepl('pacisl|nh_pacisl', original_group) ~ 'group',
+           original_group %in% races ~ 'race',
+           original_group %in% c("asian", "nh_asian") ~ 'race',
+           original_group == 'total' ~ 'total',
            TRUE ~ NA))
 
 # checks for NA type - there are none
@@ -193,7 +197,7 @@ nhpi_df %>% filter(is.na(type)) # 0
 #add chart labels ####
 asian_final <- asian_df %>%
   mutate(
-    label = str_to_title(gsub("_", " ", group)))
+    label = str_to_title(gsub("_", " ", original_group)))
 # check which labels need to be edited
 unique(asian_final$label)
 
@@ -215,7 +219,7 @@ unique(asian_final$label)
 
 #add chart labels ####
 nhpi_final <- nhpi_df %>%
-  mutate(label = str_to_title(gsub("_", " ", group)))
+  mutate(label = str_to_title(gsub("_", " ", original_group)))
 # check which labels need to be edited
 unique(nhpi_final$label)
 
@@ -233,6 +237,35 @@ nhpi_final <- nhpi_final %>%
   ))
 unique(nhpi_final$label)
 
+# Edits to align with chart templates
+asian_final2 <- asian_final %>%
+  mutate(
+    group = case_when(
+      type == "subgroup" ~ "asian subgroups",
+      type == "group" ~ "asian",
+      type == "race" ~ "other major race groups",
+      .default = type
+    )
+  ) %>%
+  mutate(
+    subgroup = ifelse(group == "asian", "asian total", subgroup)
+  )
+
+nhpi_final2 <- nhpi_final %>%
+  mutate(
+    group = case_when(
+      type == "subgroup" ~ "pacisl subgroups",
+      type == "group" ~ "pacisl",
+      type == "race" ~ "other major race groups",
+      .default = type
+    )
+  ) %>%
+  mutate(
+    subgroup = ifelse(group == "pacisl", "pacisl total", subgroup)
+  )
+
+asian_final <- asian_final2
+nhpi_final <- nhpi_final2
 
 # Export Asian Summary table to Postgres ------------------------------------------------------
 
@@ -242,7 +275,7 @@ table_comment <- paste0("COMMENT ON TABLE ", curr_schema, ".", table_name, " IS 
 column_comment <- paste0("COMMENT ON COLUMN ", curr_schema, ".", table_name, ".type IS 'group = asian, subgroup = asian subgroups, race = main rc races except for asian, total = total rate';")
 
 #define col types
-charvect <- c("text", "text", "text", "text", "integer", "numeric", "text", "text")
+charvect <- c("text", "text", "text", "text", "integer", "numeric", "text", "text", "text", "text")
 # add names to the character vector
 names(charvect) <- colnames(asian_final)
 charvect # check col types before exporting table to database
@@ -270,7 +303,7 @@ table_comment <- paste0("COMMENT ON TABLE ", curr_schema, ".", table_name, " IS 
 column_comment <- paste0("COMMENT ON COLUMN ", curr_schema, ".", table_name, ".type IS 'group = nhpi, subgroup = nhpi subgroups, race = main rc races except for nhpi, total = total rate';")
 
 #define col types
-charvect <- c("text", "text", "text", "text", "integer", "numeric", "text", "text")
+charvect <- c("text", "text", "text", "text", "integer", "numeric", "text", "text", "text", "text")
 # add names to the character vector
 names(charvect) <- colnames(nhpi_final)
 charvect # check col types before exporting table to database
