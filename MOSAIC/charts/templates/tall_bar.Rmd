@@ -111,23 +111,6 @@ if(indicator_asbest=="min") {
     pull(subgroup)
 }
 
-# define df initial chart of drilldown (asian and total bars only)
-base_df <- indicator_df %>%
-  filter(subgroup=="total") %>%
-  select(-subgroup) %>%
-  mutate(
-    color = case_when(
-      group == "asian" ~ base_colors[["asian"]],
-      group == "pacisl" ~ base_colors[["pacisl"]],
-      group == "total" ~ base_colors[["total"]],
-      TRUE ~ base_colors[["default"]]))
-
-# all_subgroups <- unique(low_birthweight$subgroup)
-
-# # Get unique groups for color assignment
-# groups <- unique(indicator_df$group)
-
-
 # Create series data for RATES with colors
 series_data_rates <- indicator_df %>%
   group_by(group) %>%
