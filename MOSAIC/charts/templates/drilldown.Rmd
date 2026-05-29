@@ -92,10 +92,6 @@ if(indicator_asbest=="min") {
            raw = round(raw, raw_rounding))
 }
 
-# make groups all caps per RC style
-indicator_df$group <- toupper(indicator_df$group)
-indicator_df$subgroup <- toupper(indicator_df$subgroup)
-
 # define df initial chart of drilldown (asian and total bars only)
 base_df <- indicator_df %>%
   filter(subgroup=="total") %>%
