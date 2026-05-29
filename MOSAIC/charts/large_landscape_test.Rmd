@@ -6,18 +6,6 @@ output:
 ---
 <style>
 
-<!-- .main-container { -->
-<!--     width: 1174px !important; -->
-<!--     max-width: 1174px !important; -->
-<!--     height: 762px !important; -->
-<!--     max-height: 762px !important; -->
-<!-- } -->
-
-
-<!-- .html-widget { -->
-<!--     width: 1174px !important; -->
-<!--     height: 762px !important; -->
-<!-- } -->
 .main-container {
     width: 1174px !important;
     max-width: 100% !important;
@@ -381,7 +369,57 @@ cd_final %>%
     baseGroups = c("CalFresh Funds", "Medi-Cal Funds",
                    "Title 1 Funds","Title 3 Funds", "Title 3 Immigrant Funds"),
     options = layersControlOptions(collapsed = FALSE, autoZIndex = TRUE)
-  )
+  ) %>%
+  htmlwidgets::onRender("
+  function(el, x) {
+    var map = this;
+
+    // handles format of map on mobile devices
+    if (window.innerWidth < 768) {
+
+      // Restructure DOM
+      var wrapper = document.createElement('div');
+      wrapper.style.cssText = 'display:flex; flex-direction:column; width:100%;';
+      el.parentNode.insertBefore(wrapper, el);
+      wrapper.appendChild(el);
+
+      var controlsDiv = document.createElement('div');
+      controlsDiv.style.cssText = 'display:flex; flex-direction:column; gap:8px; padding:8px; background:#fff;';
+      wrapper.insertBefore(controlsDiv, el);
+
+      var layersControl = el.querySelector('.leaflet-control-layers');
+      var sidebar = el.querySelector('.leaflet-top.leaflet-left');
+
+      if (layersControl) {
+        layersControl.style.cssText = 'position:static; margin:0;';
+        controlsDiv.appendChild(layersControl);
+      }
+
+      if (sidebar) {
+        sidebar.style.cssText = 'position:static; margin:0; width:100%;';
+        var sidebarControl = sidebar.querySelector('.leaflet-control');
+        if (sidebarControl) sidebarControl.style.cssText = 'width:100%; height:auto;';
+        controlsDiv.appendChild(sidebar);
+      }
+
+      // Set map height to remaining space after controls
+      var controlsHeight = controlsDiv.offsetHeight;
+      //var remainingHeight = window.innerHeight - controlsHeight;
+      //el.style.height = remainingHeight + 'px';
+      console.log('el height before:', el.offsetHeight);
+      el.style.setProperty('height', '400px', 'important');
+      console.log('el height after:', el.offsetHeight);
+      console.log('el inline style:', el.style.height);
+
+      // Add zoom control back
+      L.control.zoom({ position: 'topright' }).addTo(map);
+
+      // Reset view for mobile
+      map.setView([37.5, -119], 5);
+
+      map.invalidateSize();
+    }
+  }")
 
 # Add caption
 caption_html <- HTML("
