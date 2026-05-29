@@ -39,8 +39,6 @@ knitr::opts_chunk$set(echo = FALSE)
 
 # chart_title - e.g., "Low Birthweight by Race/Ethnicity"
 
-# chart_subtitle - e.g., "Click the Asian or Total bar below to disaggregate data"
-
 # indicator_asbest - e.g., "min" or "max"
 
 ### Requirements: Chart data / Dataframe structure
@@ -59,16 +57,18 @@ knitr::opts_chunk$set(echo = FALSE)
 # Get indicator df
 indicator_df <- dbGetQuery(con, "")
 
+# note: may need to filter out NA rates/raw
+
 
 # Set total_rate
 total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% select(rate) %>% pull()
 
 # Set metadata - see documentation above for examples
-indicator_asbest <- ""
-data_source <- ""
-data_description <- ""
-chart_title <- ""
-chart_subtitle <- ""
+indicator_name <- indicator_df$topic[1]
+indicator_asbest <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(arei_best) %>% pull()
+data_source <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(data_source) %>% pull()
+data_description <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(methodology) %>% pull()
+chart_title <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(bar_chart_header) %>% pull()
 
 # Don't change - pulled in from chart_style_vars
 methodology_link <- sprintf("<a href='%s' target='_blank'>Full Methodology</a>", mosaic_methodology_link)
@@ -81,11 +81,15 @@ methodology_link <- sprintf("<a href='%s' target='_blank'>Full Methodology</a>",
 # use indicator best direction to arrange "shared struggle" groups at top
 if(indicator_asbest=="min") {
   indicator_df <- indicator_df %>%
-    arrange(desc(rate))
+    arrange(desc(rate)) %>%
+    mutate(rate = round(rate, rate_rounding),
+           raw = round(raw, raw_rounding))
   
 } else{
   indicator_df <- indicator_df %>%
-    arrange(rate)
+    arrange(rate) %>%
+    mutate(rate = round(rate, rate_rounding),
+           raw = round(raw, raw_rounding))
 }
 
 # make groups all caps per RC style
@@ -413,7 +417,7 @@ hc <- hchart(
     text = chart_title,
     align = "center" ) %>% 
   hc_subtitle(
-    text = chart_subtitle,
+    text = "Click the Asian or Total bar below to disaggregate data",
     align = "center") %>%
   hc_plotOptions(
     bar = list(

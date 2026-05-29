@@ -1,5 +1,10 @@
+library(readxl)
+
 # define global chart metadata
 mosaic_methodology_link <- ""
+indicator_metadata <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\MOSAIC\\indicator_list.xlsx")
+
+
 
 # define global styling elements
 # define rc colors we want to use
