@@ -49,7 +49,7 @@ knitr::opts_chunk$set(echo = FALSE)
 # group - name of column with aggregate group name (e.g., Asian, NHPI, Total) - should be all caps
 # subgroup - name of column with subgroup names (Chinese, Indian, etc.) - should be all caps
 # rate - name of column with indicator raced rates
-# count - name of column with indicator raced counts
+# raw - name of column with indicator raced counts
 ```
 
 ```{r}
@@ -85,7 +85,7 @@ if(indicator_asbest=="min") {
 
   # Create ordered categories for COUNTS (descending by count)
   count_order <- indicator_df %>%
-    arrange(desc(count)) %>%
+    arrange(desc(raw)) %>%
     pull(subgroup)
   
 } else{
@@ -98,7 +98,7 @@ if(indicator_asbest=="min") {
 
   # Create ordered categories for COUNTS (descending by count)
   count_order <- indicator_df %>%
-    arrange(count) %>%
+    arrange(raw) %>%
     pull(subgroup)
 }
 
@@ -163,7 +163,7 @@ series_data_counts <- indicator_df %>%
       x_index <- which(count_order == df$subgroup[i]) - 1
       list(
         x = unname(x_index),
-        y = df$count[i],
+        y = df$raw[i],
         name = df$subgroup[i]
       )
     })

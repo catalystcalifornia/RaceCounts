@@ -51,7 +51,7 @@ knitr::opts_chunk$set(echo = FALSE)
 # group - name of column with aggregate group name (e.g., Asian, NHPI, Total) - should be all caps
 # subgroup - name of column with subgroup names (Chinese, Indian, etc.) - should be all caps
 # rate - name of column with indicator raced rates
-# count - name of column with indicator raced counts
+# raw - name of column with indicator raced counts
 ```
 
 ```{r}
@@ -121,14 +121,14 @@ drilldown_df <- indicator_df %>%
     data = map(data, function(df) {
       df %>%
         arrange(desc(rate)) %>%
-        mutate(name = subgroup, y = rate, y2 = count) %>%
+        mutate(name = subgroup, y = rate, y2 = raw) %>%
         select(name, y, y2) %>%
         list_parse()}),
     data_count_sorted = map2(data, group, function(df, grp) {
-      low_birthweight_chart1 %>%
+      indicator_df %>%
         filter(group == grp, subgroup != "TOTAL") %>%
-        arrange(desc(count)) %>%
-        mutate(name = subgroup, y = count, y2 = rate) %>%
+        arrange(desc(raw)) %>%
+        mutate(name = subgroup, y = raw, y2 = rate) %>%
         select(name, y, y2) %>%
         list_parse()})) %>%
   select(id, type, color, data, data_count_sorted)
@@ -377,7 +377,7 @@ drillup_js <- paste0("function() {
 hc <- hchart(
   base_df,
   "bar",
-  hcaes(x = group, y = rate, drilldown = group, y2 = count, color=color),
+  hcaes(x = group, y = rate, drilldown = group, y2 = raw, color=color),
   name = "Overview",
   colorByPoint = FALSE) %>%
   hc_chart(
