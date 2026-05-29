@@ -27,19 +27,22 @@ knitr::opts_chunk$set(echo = FALSE)
 ```{r}
 ##### DOCUMENTATION (can skip to next section for indicator inputs) #####
 ### Requirements for chart behavior: Toggling between rate and counts
-# rate_order
-# count_order
+# rate_order - created automatically by script; helps put bars in the preferred order for rate view
+# count_order - created automatically by script; helps put bars in the preferred order for count view
 
-### Requirements: Chart Metadata
+### Requirements: Chart Metadata (must be provided per indicator)
 # data_source - e.g., "US Department of Health and Human Services, Centers for Disease Control and Prevention (CDC), National Center for Health Statistics, Division of Vital Statistics, CDC WONDER Online Database (2016-2023)"
 
 # data_description - e.g., "The number of infants born weighing less than 2,500 grams or about 5 lbs 8 oz per 100 live births by race/ethnicity of birthing parent. Estimates for racial groups with fewer than ten births or areas with fewer than 100,000 people were excluded to protect privacy. SWANA data includes only foreign-born birthing parents."
 
+# exception: methodology_link is controlled by setting a global variable in chart_style_vars
 # methodology_link - e.g., "<a href='https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html' target='_blank'>Full Methodology</a>"
 
 # chart_title - e.g., "Low Birthweight by Race/Ethnicity"
 
 # indicator_asbest - e.g., "min" or "max"
+
+# total_rate - single variable to establish vertical plotline; total/state rate  of the indicator  
 
 ### Requirements: Chart data / Dataframe structure
 # The ideal shape of the indicator table is long - with columns for group, subgroup, rate, count. It should have both the mosaic group (asian and/or nhpi and total which should include state (subgroup = total) and the RC race subgroups). It should also have Asian/NHPI as a subgroup under total group
