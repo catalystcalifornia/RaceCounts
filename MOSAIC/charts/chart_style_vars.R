@@ -1,7 +1,7 @@
 library(readxl)
 
 # define global chart metadata
-mosaic_methodology_link <- ""
+mosaic_methodology_link <- "https://catalystcalifornia.github.io/RaceCounts/MOSAIC/Methodology/MOSAIC_Indicator_Methodology.html"
 indicator_metadata <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\MOSAIC\\indicator_list.xlsx")
 
 

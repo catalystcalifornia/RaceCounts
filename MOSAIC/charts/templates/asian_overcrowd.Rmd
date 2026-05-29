@@ -14,6 +14,8 @@ body { margin: 0; }
 
 ```{r, include=FALSE}
 # load libraries and test data
+library(here)
+library(highcharter)
 source("W:\\RDA Team\\R\\credentials_source.R")
 source(here("MOSAIC", "charts", "chart_style_vars.R"))
 con <- connect_to_db("mosaic")
@@ -53,10 +55,10 @@ knitr::opts_chunk$set(echo = FALSE)
 ```{r}
 ##### Prep: Get data (must change for each indicator) #####
 # Get indicator df
-indicator_df <- dbGetQuery(con, "")
+indicator_df <- dbGetQuery(con, "SELECT * FROM v7.asian_summary_for_charts WHERE topic = 'overcrowded'")
 
 # note: may need to filter out NA rates/raw
-
+indicator_df <- indicator_df %>% drop_na(rate)
 
 # Set total_rate
 total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% select(rate) %>% pull()
