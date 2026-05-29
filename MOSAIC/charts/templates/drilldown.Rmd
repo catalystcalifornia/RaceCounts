@@ -60,15 +60,15 @@ indicator_df <- dbGetQuery(con, "")
 # note: may need to filter out NA rates/raw
 
 
-# Set total_rate
-total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% select(rate) %>% pull()
-
 # Set metadata - see documentation above for examples
 indicator_name <- indicator_df$topic[1]
 indicator_asbest <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(arei_best) %>% pull()
 data_source <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(data_source) %>% pull()
 data_description <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(methodology) %>% pull()
 chart_title <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(bar_chart_header) %>% pull()
+
+# Set total_rate
+total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% select(rate) %>% pull() %>% round(., rate_rounding)
 
 # Don't change - pulled in from chart_style_vars
 methodology_link <- sprintf("<a href='%s' target='_blank'>Full Methodology</a>", mosaic_methodology_link)
