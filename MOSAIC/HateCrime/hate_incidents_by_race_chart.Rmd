@@ -21,24 +21,26 @@ library(gt)
 library(sf)
 library(scales)
 library(ggplot2)
+library(showtext)
+library(ggtext)
 
-lang <- getOption("highcharter.lang")
-lang$thousandsSep <- ","
-options(highcharter.lang = lang)
+# lang <- getOption("highcharter.lang")
+# lang$thousandsSep <- ","
+# options(highcharter.lang = lang)
 
 #Add database connection and source script with functions for pushing to postgres
 source("W:\\RDA Team\\R\\credentials_source.R")
 options(scipen = 999)
 
 #### Step 1: Pull in data ####
-source("./calcs.R")
+source("./calcs_hateincident.R")
 df <- final_df 
 
 # need to update code below to just rename within the chart fx rather than in the df
 df <- df %>%
   # clean up labels for visuals
   mutate(race_label=case_when(
-    race=="latino" ~ "Latine",
+    race=="latino" ~ "Latinx",
     race=="aian" ~ "AIAN",
     race=="nh_black" ~ "Black",
     race=="nhpi" ~ "PI",
@@ -62,20 +64,26 @@ ccpenny <- "#FF9873"    # 03 row on data vis colors page
 black <- "#000000"      # brand colors page
 alabaster<-"#FBFBFB"    # brand colors page
 gainsboro <- "#DEDEDE"  # brand colors page
+rc_white <- "#F7F7F7"   
 
 my_colors <- c(meteorite, ccblue, peridot, orange, ccpenny, lavender, ccyellow, black)
+
+# ## FONTS ## 
+# # 1. Add the font from Google (e.g., "Roboto")
+# font_add_google("Inter", family = "Inter")
+# 
+# # 2. Enable showtext to render custom fonts
+# showtext_auto()
+
 
 
 
 ```
 
-To evaluate changes in how many Californians experienced hate crimes or incidents between 2020 and 2022, we analyzed how the number and share of California Health Interview Survey (CHIS) respondents who said they had experienced a hate crime or incident. We include the date the first COVID-19 lock down began as we know that Asians experienced a surge of hate crimes and incidents during the pandemic. 
+## People who have Experienced Hate Incidents
 
-## Experiences over time
 
-To update: **Since 2020, *the number of people stopped for minor traffic violations* decreased across race groups. Declines appeared before the pretextual stop policy took effect in March 2022.** In fact, most race groups had a slight increase in the number of stops for minor traffic violations between Q3 2022 and Q2 2023. Latine individuals had the most visible increases in stops for minor traffic violations during that period. The number of people stopped for minor traffic violations across race groups remained relatively steady in 2024. **However, there was a sharper increase in the number of people stopped for minor traffic violations for most race groups between Q1 and Q3 2025.** 
-
-```{r}
+```{r, fig.width=7, fig.height=4.5}
 ############# STATIC VERSION ############# 
 
 # calculate width based on longest label
@@ -94,11 +102,21 @@ p <- ggplot(df, aes(x = rate, y = reorder(race_label, rate), fill = race)) +
     expand = expansion(mult = c(0, 0.2))
   ) +
   labs(
-    x = "Rate",
-    y = NULL
-  ) +
+    title = "People Who Have Experienced a Hate Incident\nin the Last 12 Months (%)",
+    x = "Experienced Hate Incident (%)",
+    y = NULL,
+    caption = 'Data Source: California Health Interview Survey 2023-24 Pooled Estimates. Teens and adults were asked "During the\npast 12 months, do you think you directly experienced a hate incident?"\n\nData Notes: AIAN = American Indian / Alaska Native, PI = Pacific Islander, SWANA = Southwest Asian / North African.\nThose three races include people who identify as that race alone or in combination with another race or ethnicity including\nLatinx. Asian, Black and White races include people who identify as that race alone.'
+    ) +
   theme_minimal() +
   theme(
+    #text = element_text(family="Inter"),
+    plot.title.position = "plot",   # set alignment based on whole image, not chart
+    #plot.title = element_text(size=28, face="bold", hjust=.5, lineheight = .8),  # center align
+    plot.title = element_text(hjust=.5),
+    plot.caption.position = "plot", # set alignment based on whole image, not chart
+    #plot.caption = element_text(hjust=0, lineheight = .8),  # left align
+    plot.caption = element_text(hjust=0),  # left align
+    #axis.title.x = element_text(margin = margin(t = 0, r = 0, b = 20, l = 0)), # add space btwn x-axis title and caption
     panel.grid.major.y = element_blank(),
     panel.grid.minor = element_blank(),
     legend.position = "none"
@@ -106,14 +124,13 @@ p <- ggplot(df, aes(x = rate, y = reorder(race_label, rate), fill = race)) +
 
 p
 
-
 ggplot2::ggsave("hate_incident_race.png",
        plot = p,
-       width = 2400,
-       height = 1500,
-       units = "px",
+       width = 7,
+       height = 4.5,
+       units = "in",
        dpi = 300,
-       bg = "white")
+       bg = rc_white)
 
 ```
 
