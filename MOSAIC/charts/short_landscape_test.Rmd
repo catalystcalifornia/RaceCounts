@@ -52,7 +52,10 @@ total_avg <- chart_df %>%
 # Chart Text
 
 title <- "Low Birthweight Births (%)"
-subtitle <- "Stress from discrimination and living in neighborhoods with limited employment opportunities, abandoned housing, crime, and limited resources are associated with adverse birth outcomes, like low birthweight."
+# Perhaps no subtitle to maximize chart space
+# subtitle <- "Stress from discrimination and living in neighborhoods with limited employment opportunities, abandoned housing, crime, and limited resources are associated with adverse birth outcomes, like low birthweight."
+
+subtitle <- ""
 
 # caption text
 data_source <- "US Department of Health and Human Services, Centers for Disease Control and Prevention (CDC), National Center for Health Statistics, Division of Vital Statistics, CDC WONDER Online Database (2016-2023)"
@@ -152,7 +155,22 @@ hc <- hchart(chart_df,
           "</div>")
     )
   )) %>%
-  hc_add_theme(custom_theme)
+  hc_add_theme(custom_theme) %>% 
+  hc_responsive(
+    rules = list(
+      list(
+        # Omit data_description on small screens
+        condition = list(maxWidth = 768),
+        chartOptions = list(
+          caption = 
+            list(
+              text = paste("<b>About the data:</b>", data_source,
+                         "<a href='...' target='_blank'>Full Methodology</a>")
+            )
+        )
+      )
+    )
+  )
 
 
 # Wrap with constrained width
