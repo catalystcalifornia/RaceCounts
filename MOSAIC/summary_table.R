@@ -267,6 +267,18 @@ nhpi_final2 <- nhpi_final %>%
 asian_final <- asian_final2
 nhpi_final <- nhpi_final2
 
+
+
+## Extra Step for NHPI only ##
+##### Distinguish Pacific Islander group label from PI subgroup label
+nhpi_final_ <- nhpi_final %>%
+  mutate(label = case_when(
+    (topic %in% c("living_wage", "connected_youth") & label == 'Pacific Islander' & group == 'pacisl subgroups') ~ 'Pacific Islander (subgroup)',
+    TRUE ~ label
+  ))
+
+
+
 # Export Asian Summary table to Postgres ------------------------------------------------------
 
 table_name <- "asian_summary_for_charts"
