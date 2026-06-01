@@ -282,8 +282,14 @@ hc <- highchart() %>%
       pointPadding = 0,
       groupPadding = 0.1),
     series = 
-      list(enableMouseTracking=FALSE), # removes all highlighting from hovering over bars and legend groups
-      clip = FALSE) %>%
+      list(
+        enableMouseTracking=FALSE, # removes all highlighting from hovering over bars and legend groups
+        clip = FALSE,
+        # add event to ensure no legend toggling
+        events = list(
+          legendItemClick = htmlwidgets::JS("function() { return false; }")
+          ))
+  ) %>%
   hc_xAxis(
     categories = rate_order,
     labels = list(
@@ -315,14 +321,16 @@ hc <- highchart() %>%
   hc_legend(
     enabled = TRUE,
     verticalAlign = "top",
-    margin = 20
+    margin = 20,
+    itemStyle = list(cursor = "default")  # makes cursor not show pointer - to clarify no series toggling
   ) %>%
   hc_tooltip(enabled = FALSE) %>%
   hc_title(
     text = "Low Birthweight by Race/Ethnicity",
     align = "center") %>% 
   hc_subtitle(
-    text = "Toggle groups on/off by clicking the legend labels below",
+    # Remove toggle for now
+    # text = "Toggle groups on/off by clicking the legend labels below",
     align = "center") %>%
   hc_caption(
     text = paste("<b>About the data:", data_source, "</b>", data_description, methodology_link),
