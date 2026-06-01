@@ -35,6 +35,7 @@ knitr::opts_chunk$set(echo = FALSE)
 
 # data_description - e.g., "The number of infants born weighing less than 2,500 grams or about 5 lbs 8 oz per 100 live births by race/ethnicity of birthing parent. Estimates for racial groups with fewer than ten births or areas with fewer than 100,000 people were excluded to protect privacy. SWANA data includes only foreign-born birthing parents."
 
+# exception: methodology_link is controlled by setting a global variable in chart_style_vars
 # methodology_link - e.g., "<a href='https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html' target='_blank'>Full Methodology</a>"
 
 # chart_title - e.g., "Low Birthweight by Race/Ethnicity"
@@ -60,15 +61,15 @@ indicator_df <- dbGetQuery(con, "")
 # note: may need to filter out NA rates/raw
 
 
-# Set total_rate
-total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% select(rate) %>% pull()
-
 # Set metadata - see documentation above for examples
 indicator_name <- indicator_df$topic[1]
 indicator_asbest <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(arei_best) %>% pull()
 data_source <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(data_source) %>% pull()
 data_description <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(methodology) %>% pull()
 chart_title <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(bar_chart_header) %>% pull()
+
+# Set total_rate
+total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% select(rate) %>% pull() %>% round(., rate_rounding)
 
 # Don't change - pulled in from chart_style_vars
 methodology_link <- sprintf("<a href='%s' target='_blank'>Full Methodology</a>", mosaic_methodology_link)
@@ -91,10 +92,6 @@ if(indicator_asbest=="min") {
     mutate(rate = round(rate, rate_rounding),
            raw = round(raw, raw_rounding))
 }
-
-# make groups all caps per RC style
-indicator_df$group <- toupper(indicator_df$group)
-indicator_df$subgroup <- toupper(indicator_df$subgroup)
 
 # define df initial chart of drilldown (asian and total bars only)
 base_df <- indicator_df %>%

@@ -27,19 +27,22 @@ knitr::opts_chunk$set(echo = FALSE)
 ```{r}
 ##### DOCUMENTATION (can skip to next section for indicator inputs) #####
 ### Requirements for chart behavior: Toggling between rate and counts
-# rate_order
-# count_order
+# rate_order - created automatically by script; helps put bars in the preferred order for rate view
+# count_order - created automatically by script; helps put bars in the preferred order for count view
 
-### Requirements: Chart Metadata
+### Requirements: Chart Metadata (must be provided per indicator)
 # data_source - e.g., "US Department of Health and Human Services, Centers for Disease Control and Prevention (CDC), National Center for Health Statistics, Division of Vital Statistics, CDC WONDER Online Database (2016-2023)"
 
 # data_description - e.g., "The number of infants born weighing less than 2,500 grams or about 5 lbs 8 oz per 100 live births by race/ethnicity of birthing parent. Estimates for racial groups with fewer than ten births or areas with fewer than 100,000 people were excluded to protect privacy. SWANA data includes only foreign-born birthing parents."
 
+# exception: methodology_link is controlled by setting a global variable in chart_style_vars
 # methodology_link - e.g., "<a href='https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html' target='_blank'>Full Methodology</a>"
 
 # chart_title - e.g., "Low Birthweight by Race/Ethnicity"
 
 # indicator_asbest - e.g., "min" or "max"
+
+# total_rate - single variable to establish vertical plotline; total/state rate  of the indicator  
 
 ### Requirements: Chart data / Dataframe structure
 # The ideal shape of the indicator table is long - with columns for group, subgroup, rate, count. It should have both the mosaic group (asian and/or nhpi and total which should include state (subgroup = total) and the RC race subgroups). It should also have Asian/NHPI as a subgroup under total group
@@ -57,12 +60,6 @@ knitr::opts_chunk$set(echo = FALSE)
 # Get indicator df
 indicator_df <- dbGetQuery(con, "SELECT * FROM v7.asian_summary_for_charts WHERE topic = 'overcrowded'")
 
-# note: may need to filter out NA rates/raw
-indicator_df <- indicator_df %>% drop_na(rate)
-
-# Set total_rate
-total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% select(rate) %>% pull()
-
 # Set metadata - see documentation above for examples
 indicator_name <- indicator_df$topic[1]
 indicator_asbest <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(arei_best) %>% pull()
@@ -71,6 +68,14 @@ data_description <- indicator_metadata %>% filter(api_name == indicator_name) %>
 chart_title <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(bar_chart_header) %>% pull()
 rate_rounding <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(rate_rounding) %>% pull() %>% as.integer()
 raw_rounding <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(raw_rounding) %>% pull() %>% as.integer()
+
+# Set total_rate
+total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% select(rate) %>% pull() %>% round(., rate_rounding)
+
+# need to filter out NA rates/raw and total rate
+indicator_df <- indicator_df %>% 
+  drop_na(rate) %>%
+  filter(subgroup != "total")
 
 # Don't change - pulled in from chart_style_vars
 methodology_link <- sprintf("<a href='%s' target='_blank'>Full Methodology</a>", mosaic_methodology_link)
@@ -89,12 +94,12 @@ if(indicator_asbest=="min") {
   # Create ordered categories for RATES (descending by rate)
   rate_order <- indicator_df %>%
     arrange(desc(rate)) %>%
-    pull(subgroup)
+    pull(label)
 
   # Create ordered categories for COUNTS (descending by count)
   count_order <- indicator_df %>%
     arrange(desc(raw)) %>%
-    pull(subgroup)
+    pull(label)
   
 } else{
   indicator_df <- indicator_df %>%
@@ -105,33 +110,13 @@ if(indicator_asbest=="min") {
   # Create ordered categories for RATES (descending by rate)
   rate_order <- indicator_df %>%
     arrange(rate) %>%
-    pull(subgroup)
+    pull(label)
 
   # Create ordered categories for COUNTS (descending by count)
   count_order <- indicator_df %>%
     arrange(raw) %>%
-    pull(subgroup)
+    pull(label)
 }
-
-# make groups all caps per RC style
-indicator_df$group <- toupper(indicator_df$group)
-indicator_df$subgroup <- toupper(indicator_df$subgroup)
-
-# define df initial chart of drilldown (asian and total bars only)
-base_df <- indicator_df %>%
-  filter(subgroup=="total") %>%
-  select(-subgroup) %>%
-  mutate(
-    color = case_when(
-      group == "asian" ~ base_colors[["asian"]],
-      group == "pacisl" ~ base_colors[["pacisl"]],
-      group == "total" ~ base_colors[["total"]],
-      TRUE ~ base_colors[["default"]]))
-
-# all_subgroups <- unique(low_birthweight$subgroup)
-
-# # Get unique groups for color assignment
-# groups <- unique(indicator_df$group)
 
 
 # Create series data for RATES with colors
@@ -140,23 +125,23 @@ series_data_rates <- indicator_df %>%
   group_split() %>%
   map(function(df) {
     data_points <- map(1:nrow(df), function(i) {
-      x_index <- which(rate_order == df$subgroup[i]) - 1
+      x_index <- which(rate_order == df$label[i]) - 1
       list(
         x = unname(x_index),
         y = df$rate[i],
-        name = df$subgroup[i]
+        name = df$label[i]
       )
     })
     
     # Assign color based on group
     series_color <- if(df$group[1] == "asian subgroups") {
       base_colors[["asian subgroups"]]
-    } else if(df$group[1] == "asian total") {
+    } else if(df$group[1] == "asian") {
       base_colors[["asian total"]]
-    } else if(df$group[1] == "nhpi subgroups") {
-      base_colors[["nhpi subgroups"]]
-    } else if(df$group[1] == "nhpi total") {
-      base_colors[["nhpi total"]]
+    } else if(df$group[1] == "pacisl subgroups") {
+      base_colors[["pacisl subgroups"]]
+    } else if(df$group[1] == "pacisl") {
+      base_colors[["pacisl total"]]
     } else {
       base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
     }
@@ -175,23 +160,23 @@ series_data_counts <- indicator_df %>%
   group_split() %>%
   map(function(df) {
     data_points <- map(1:nrow(df), function(i) {
-      x_index <- which(count_order == df$subgroup[i]) - 1
+      x_index <- which(count_order == df$label[i]) - 1
       list(
         x = unname(x_index),
         y = df$raw[i],
-        name = df$subgroup[i]
+        name = df$label[i]
       )
     })
     
     # Assign same color based on group
     series_color <- if(df$group[1] == "asian subgroups") {
       base_colors[["asian subgroups"]]
-    } else if(df$group[1] == "asian total") {
+    } else if(df$group[1] == "asian") {
       base_colors[["asian total"]]
-    } else if(df$group[1] == "nhpi subgroups") {
-      base_colors[["nhpi subgroups"]]
-    } else if(df$group[1] == "nhpi total") {
-      base_colors[["nhpi total"]]
+    } else if(df$group[1] == "pacisl subgroups") {
+      base_colors[["pacisl subgroups"]]
+    } else if(df$group[1] == "pacisl") {
+      base_colors[["pacisl total"]]
     } else {
       base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
     }
