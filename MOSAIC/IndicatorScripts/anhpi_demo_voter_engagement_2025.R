@@ -57,10 +57,10 @@ df <- rbind(total_df, asian_df)
 source("./MOSAIC/Functions/CHIS_Functions.R")
 
 df <- fix_colnames(df) # this wasn't necessary in other CHIS scripts but is necessary here for some reason
-df_subset <- prep_chis(df)
+df_subset <- prep_chis(df, "no")
 View(df_subset)
 
-d <- df_subset
+d <- df_subset 
 
 
 #set source for RC Functions script
@@ -98,14 +98,14 @@ county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
 # DROP TOTAL AND TOTAL RATE-DERIVED COLS
-county_table <- county_table %>% select(-c(starts_with("performance"), "quadrant"))
-state_table <- state_table
+county_table <- county_table %>% select(-c(starts_with("performance"), "quadrant", starts_with("total_")))
+state_table <- state_table %>% select(-c(starts_with("total_")))
 
 
 ###info for postgres tables - automatically updates###
 county_table_name <- paste0("asian_demo_voter_engagement_county_",yr)
 state_table_name <- paste0("asian_demo_voter_engagement_state_",yr)
-indicator <- "Voter engagement in national, state, and local elections - US Citizens (%) Asian Ethnic Groups ONLY"
+indicator <- "Voter engagement in national, state, and local elections - US Citizens (%) Asian Ethnic Groups ONLY. Respondents who were sometimes or never engaged"
 source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates. ", dwnld_url, " QA doc: ", qa_filepath)
 
 #send tables to postgres
