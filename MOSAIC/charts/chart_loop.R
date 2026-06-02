@@ -1,4 +1,6 @@
+# Load packages
 library(rmarkdown)
+library(here)
 
 ## Uncomment out Asian OR PacIsl charts, then run loop.
 
