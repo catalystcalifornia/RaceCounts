@@ -15,8 +15,8 @@ return(x)
 
 
 # Finish cleaning, formatting CHIS data
-prep_chis <- function(x) { 
-
+prep_chis <- function(x, yesno) { 
+#x is df / yesno is either yes or no depending on which CHIS answer you want
   df1 <- x
   #format column headers
   #create new object colnames
@@ -43,74 +43,85 @@ prep_chis <- function(x) {
 
   #format values
   df1[df1=="-"]<-NA
+
   
   #format PERCENTS
   df_pct <- df1[, which(df1[1,]=='%' | df1[1,]=='measure')]
   df_pct <- df_pct[-1,]
   
+  #filter for yes or no values
+  df_pct <- df_pct %>%
+    filter(grepl(paste0("measure|_",yesno), variable))
+  
   #pivot
   df_pct <- pivot_longer(df_pct, 
                          cols = Butte:California, # columns that should pivot from wide to long (unquoted)
                          names_to = "geoname", # name of the new category column as a quoted string
-                         values_to = "yes" # name of the new value column as a quoted string
+                         values_to = yesno # name of the new value column as a quoted string
   )
   
   df_pct <- pivot_wider(df_pct, 
                         id_cols = geoname, # optional vector of columns you do not want affected
                         names_from = variable, # category column(s) to pivot from long to wide
-                        values_from = yes # value columns(s) that hold data for each category column
+                        values_from = yesno # value columns(s) that hold data for each category column
                         #names_sep # optional string separator for category-value columns
   )
 
   #rename
-  names(df_pct) <- gsub("yes", "rate", names(df_pct))
-  names(df_pct) <- gsub("_no", "_no_rate", names(df_pct))
-  
+  names(df_pct) <- gsub(paste0("_",yesno), "_rate", names(df_pct))
+
   #format CIs
   df_ci <- df1[, which(df1[1,]=='95% CI' | df1[1,]=='measure')]
   df_ci <- df_ci[-1,]
+  
+  #filter for yes or no values
+  df_ci <- df_ci %>%
+    filter(grepl(paste0("_", yesno), variable))
+  
   
   #pivot
   df_ci <- pivot_longer(df_ci,
                         cols = Butte:California, # columns that should pivot from wide to long (unquoted)
                         names_to = "geoname", # name of the new category column as a quoted string
-                        values_to = "yes" # name of the new value column as a quoted string
+                        values_to = yesno # name of the new value column as a quoted string
   )
   
   df_ci <- pivot_wider(df_ci,
                        id_cols = geoname, # optional vector of columns you do not want affected
                        names_from = variable, # category column(s) to pivot from long to wide
-                       values_from = yes # value columns(s) that hold data for each category column
+                       values_from = yesno # value columns(s) that hold data for each category column
                        #names_sep # optional string separator for category-value columns
   )
   
   #rename
-  names(df_ci) <- gsub("yes", "ci", names(df_ci))
-  names(df_ci) <- gsub("_no", "_no_ci", names(df_ci))
-  
+  names(df_ci) <- gsub(paste0("_",yesno), "_ci", names(df_ci))
+
   
   #format Populations
   df_pop <- df1[, which(df1[1,]=='Population' | df1[1,]=='measure')]
   df_pop <- df_pop[-1,]
   
+  #filter for yes or no values
+  df_pop <- df_pop %>%
+    filter(grepl(paste0("_", yesno), variable))
+  
   #pivot
   df_pop <- pivot_longer(df_pop,
                          cols = Butte:California, # columns that should pivot from wide to long (unquoted)
                          names_to = "geoname", # name of the new category column as a quoted string
-                         values_to = "yes" # name of the new value column as a quoted string
+                         values_to = yesno # name of the new value column as a quoted string
   )
   
   df_pop <- pivot_wider(df_pop,
                         id_cols = geoname, # optional vector of columns you do not want affected
                         names_from = variable, # category column(s) to pivot from long to wide
-                        values_from = yes # value columns(s) that hold data for each category column
+                        values_from = yesno # value columns(s) that hold data for each category column
                         #names_sep # optional string separator for category-value columns
   )
   
   #rename
-  names(df_pop) <- gsub("yes", "raw", names(df_pop))
-  names(df_pop) <- gsub("_no", "_no_raw", names(df_pop))
-  
+  names(df_pop) <- gsub(paste0("_",yesno), "_raw", names(df_pop))
+
   
   #bring back together
   df_wide <- merge(x=df_pct, y=df_pop, by="geoname")
@@ -125,67 +136,29 @@ prep_chis <- function(x) {
                     filipino_rate_flag = ifelse(grepl("\\*", filipino_rate), 1,0),
                     south_asian_rate_flag = ifelse(grepl("\\*", south_asian_rate), 1,0),
                     vietnamese_rate_flag = ifelse(grepl("\\*", vietnamese_rate), 1,0),
-                    other_asian_rate_flag = ifelse(grepl("\\*", other_asian_rate), 1,0),
-                    
-                    total_no_rate_flag = ifelse(grepl("\\*", total_no_rate), 1,0),
-                    chinese_no_rate_flag = ifelse(grepl("\\*", chinese_no_rate), 1,0),
-                    japanese_no_rate_flag = ifelse(grepl("\\*", japanese_no_rate), 1,0),
-                    korean_no_rate_flag = ifelse(grepl("\\*", korean_no_rate), 1,0),
-                    filipino_no_rate_flag = ifelse(grepl("\\*", filipino_no_rate), 1,0),
-                    south_asian_no_rate_flag = ifelse(grepl("\\*", south_asian_no_rate), 1,0),
-                    vietnamese_no_rate_flag = ifelse(grepl("\\*", vietnamese_no_rate), 1,0),
-                    other_asian_no_rate_flag = ifelse(grepl("\\*", other_asian_no_rate), 1,0)
+                    other_asian_rate_flag = ifelse(grepl("\\*", other_asian_rate), 1,0)
                     
   )
   
   #screen raw and rates by BOTH flag fields
   df_wide <- mutate(df_wide,
-                    total_rate = ifelse (total_rate_flag == 1 | total_no_rate_flag == 1, "NA", total_rate),
-                    total_no_rate = ifelse (total_rate_flag == 1 | total_no_rate_flag == 1, "NA", total_no_rate),
-                    chinese_rate = ifelse (chinese_rate_flag == 1 | chinese_no_rate_flag == 1, "NA", chinese_rate),
-                    chinese_no_rate = ifelse (chinese_rate_flag == 1 | chinese_no_rate_flag == 1, "NA", chinese_no_rate),
-                    japanese_rate = ifelse (japanese_rate_flag == 1 | japanese_no_rate_flag == 1, "NA", japanese_rate),
-                    japanese_no_rate = ifelse (japanese_rate_flag == 1 | japanese_no_rate_flag == 1, "NA", japanese_no_rate),                   
-                    korean_rate = ifelse (korean_rate_flag == 1 | korean_no_rate_flag == 1, "NA", korean_rate),
-                    korean_no_rate = ifelse (korean_rate_flag == 1 | korean_no_rate_flag == 1, "NA", korean_no_rate),                    
-                    filipino_rate = ifelse (filipino_rate_flag == 1 | filipino_no_rate_flag == 1, "NA", filipino_rate),
-                    filipino_no_rate = ifelse (filipino_rate_flag == 1 | filipino_no_rate_flag == 1, "NA", filipino_no_rate),                  
-                    south_asian_rate = ifelse (south_asian_rate_flag == 1 | south_asian_no_rate_flag == 1, "NA", south_asian_rate),
-                    south_asian_no_rate = ifelse (south_asian_rate_flag == 1 | south_asian_no_rate_flag == 1, "NA", south_asian_no_rate),                   
-                    vietnamese_rate = ifelse (vietnamese_rate_flag == 1 | vietnamese_no_rate_flag == 1, "NA", vietnamese_rate),
-                    vietnamese_no_rate = ifelse (vietnamese_rate_flag == 1 | vietnamese_no_rate_flag == 1, "NA", vietnamese_no_rate),
-                    other_asian_rate = ifelse (other_asian_rate_flag == 1 | other_asian_no_rate_flag == 1, "NA", other_asian_rate),
-                    other_asian_no_rate = ifelse (other_asian_rate_flag == 1 | other_asian_no_rate_flag == 1, "NA", other_asian_no_rate),
- 
-                    total_raw = ifelse (total_rate_flag == 1 | total_no_rate_flag == 1, "NA", total_raw),
-                    total_no_raw = ifelse (total_rate_flag == 1 | total_no_rate_flag == 1, "NA", total_no_raw),
-                    chinese_raw = ifelse (chinese_rate_flag == 1 | chinese_no_rate_flag == 1, "NA", chinese_raw),
-                    chinese_no_raw = ifelse (chinese_rate_flag == 1 | chinese_no_rate_flag == 1, "NA", chinese_no_raw),                    
-                    japanese_raw = ifelse (japanese_rate_flag == 1 | japanese_no_rate_flag == 1, "NA", japanese_raw),
-                    japanese_no_raw = ifelse (japanese_rate_flag == 1 | japanese_no_rate_flag == 1, "NA", japanese_no_raw),
-                    korean_raw = ifelse (korean_rate_flag == 1 | korean_no_rate_flag == 1, "NA", korean_raw),
-                    korean_no_raw = ifelse (korean_rate_flag == 1 | korean_no_rate_flag == 1, "NA", korean_no_raw),
-                    filipino_raw = ifelse (filipino_rate_flag == 1 | filipino_no_rate_flag == 1, "NA", filipino_raw),
-                    filipino_no_raw = ifelse (filipino_rate_flag == 1 | filipino_no_rate_flag == 1, "NA", filipino_no_raw),
-                    south_asian_raw = ifelse (south_asian_rate_flag == 1 | south_asian_no_rate_flag == 1, "NA", south_asian_raw),
-                    south_asian_no_raw = ifelse (south_asian_rate_flag == 1 | south_asian_no_rate_flag == 1, "NA", south_asian_no_raw),
-                    vietnamese_raw = ifelse (vietnamese_rate_flag == 1 | vietnamese_no_rate_flag == 1, "NA", vietnamese_raw),
-                    vietnamese_no_raw = ifelse (vietnamese_rate_flag == 1 | vietnamese_no_rate_flag == 1, "NA", vietnamese_no_raw),
-                    other_asian_raw = ifelse (other_asian_rate_flag == 1 | other_asian_no_rate_flag == 1, "NA", other_asian_raw),
-                    other_asian_no_raw = ifelse (other_asian_rate_flag == 1 | other_asian_no_rate_flag == 1, "NA", other_asian_no_raw)
-                     
-  )
+                    total_rate = ifelse (total_rate_flag == 1, "NA", total_rate),
+                    chinese_rate = ifelse (chinese_rate_flag == 1, "NA", chinese_rate),
+                    japanese_rate = ifelse (japanese_rate_flag == 1, "NA", japanese_rate),
+                    korean_rate = ifelse (korean_rate_flag == 1, "NA", korean_rate),
+                    filipino_rate = ifelse (filipino_rate_flag == 1, "NA", filipino_rate),
+                    south_asian_rate = ifelse (south_asian_rate_flag == 1, "NA", south_asian_rate),
+                    vietnamese_rate = ifelse (vietnamese_rate_flag == 1, "NA", vietnamese_rate),
+                    other_asian_rate = ifelse (other_asian_rate_flag == 1, "NA", other_asian_rate)
+
+ )
   
   #remove asterisks
   df_wide <- as.data.frame(sapply(df_wide,sub,pattern='\\*',replacement=NA))
   
   #format numeric
-  cols.num <- c("total_no_rate",
-                "chinese_no_rate", "japanese_no_rate", "korean_no_rate", "filipino_no_rate", "south_asian_no_rate", "vietnamese_no_rate", "other_asian_no_rate",
-                "total_rate",
+  cols.num <- c("total_rate",
                 "chinese_rate", "japanese_rate", "korean_rate", "filipino_rate", "south_asian_rate", "vietnamese_rate", "other_asian_rate",
-                "total_no_raw",
-                "chinese_no_raw", "japanese_no_raw", "korean_no_raw", "filipino_no_raw", "south_asian_no_raw", "vietnamese_no_raw", "other_asian_no_raw",
                 "total_raw",
                 "chinese_raw", "japanese_raw", "korean_raw", "filipino_raw", "south_asian_raw", "vietnamese_raw", "other_asian_raw")
   df_wide[cols.num] <- sapply(df_wide[cols.num],as.numeric)
@@ -211,7 +184,7 @@ prep_chis <- function(x) {
   df_wide <- within(df_wide, geoid[geoname == 'California'] <- '06')
   #remove CHIS region rows
   df_subset <- df_wide %>% drop_na(geoid)
-  df_subset <- df_subset %>% select(-c(ends_with("_no_rate"), ends_with("_no_raw"), ends_with("_no_ci")))
+
 
 return(df_subset)
 }
