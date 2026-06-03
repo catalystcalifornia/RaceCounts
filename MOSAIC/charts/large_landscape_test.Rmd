@@ -420,7 +420,7 @@ cd_final %>%
 # Add caption
 caption_html <- HTML("
 <span style='float: left; font-size: 12px;'>
-   Catalyst California’s calculations of CalFresh and Medi-Cal data from the  <a href=\"https://calbudgetcenter.org/resources/how-republican-led-budget-cuts-could-impact-californians-in-every-congressional-district\">California Budget and Policy Center 2023-24</a>. Title I and III funds are from the Standardized Account Code Structure Data Viewer, Budget - July 1 Estimates, 2023-2024, 2024-2025. These federal funds fund schools serving high percentages of low-income families. Title I and III budget data are from 2023-2024 except where data are missing in which case they are supplemented by data from 2024-2025.
+   Source: Catalyst California’s calculations of CalFresh and Medi-Cal data from the  <a href=\"https://calbudgetcenter.org/resources/how-republican-led-budget-cuts-could-impact-californians-in-every-congressional-district\">California Budget and Policy Center 2023-24</a>. Title I and III funds are from the Standardized Account Code Structure Data Viewer, Budget - July 1 Estimates, 2023-2024, 2024-2025. These federal funds fund schools serving high percentages of low-income families. Title I and III budget data are from 2023-2024 except where data are missing in which case they are supplemented by data from 2024-2025.
 </span>
 ")
 

@@ -327,7 +327,7 @@ hc <- highchart() %>%
     # text = "Toggle groups on/off by clicking the legend labels below",
     align = "center") %>%
   hc_caption(
-    text = paste("<b>About the data:", data_source, "</b>", data_description, methodology_link),
+    text = paste("<b>Source:", data_source, "</b>", data_description, methodology_link),
     useHTML = TRUE,
     align = "left"
   ) %>%
@@ -340,7 +340,7 @@ hc <- highchart() %>%
         chartOptions = list(
           caption = 
             list(
-              text = paste("<b>About the data:</b>", data_source,
+              text = paste("<b>Source:</b>", data_source,
                          "<a href='...' target='_blank'>Full Methodology</a>")
             )
         )

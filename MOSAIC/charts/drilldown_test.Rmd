@@ -317,7 +317,7 @@ hc <- hchart(
            labels=list(enabled=FALSE)) %>%# remove labels from rate axis) 
   hc_legend(enabled=FALSE) %>%
   hc_caption(
-    text = paste("<b>About the data:", data_source, "</b>", data_description, methodology_link),
+    text = paste("<b>Source:", data_source, "</b>", data_description, methodology_link),
     useHTML = TRUE,
     align = "left"
   ) %>%
@@ -330,7 +330,7 @@ hc <- hchart(
         chartOptions = list(
           caption = 
             list(
-              text = paste("<b>About the data:</b>", data_source,
+              text = paste("<b>Source:</b>", data_source,
                          "<a href='...' target='_blank'>Full Methodology</a>")
             )
         )

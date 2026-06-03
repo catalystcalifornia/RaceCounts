@@ -80,7 +80,7 @@ hc <- hchart(chart_df,
   hc_subtitle(text=subtitle,
               align="left") %>%
   hc_caption(
-    text = paste("<b>About the data:", data_source, "</b><br>", data_description, methodology_link),
+    text = paste("<b>Source:", data_source, "</b><br>", data_description, methodology_link),
     useHTML = TRUE,
     align = "left"
   ) %>%
@@ -164,7 +164,7 @@ hc <- hchart(chart_df,
         chartOptions = list(
           caption = 
             list(
-              text = paste("<b>About the data:</b>", data_source,
+              text = paste("<b>Source:</b>", data_source,
                          "<a href='...' target='_blank'>Full Methodology</a>")
             )
         )
