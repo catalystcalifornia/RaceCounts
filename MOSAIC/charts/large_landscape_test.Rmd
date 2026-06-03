@@ -247,24 +247,24 @@ custom_cd_popup <- paste0("<div class='leaflet-popup-scrolled cd-sidebar'>",
 "<div class='summary popup-body'>At least <span class='calfresh-beneficiaries'></span> people depend on federal funding for Calfresh, and <span class='medical-beneficiaries'></span> people rely on Medi-Cal for their health insurance.</div>",
 
                               "</div>", 
-                              "<br>",
+                              # "<br>",
                               "<div class ='geo-layers'>",
-                              
-                              "<br>",
+                              # 
+                              # "<br>",
                               "<div class ='funding-type-header'>CalFresh</div>",
                               "<div class ='calfresh-funds'><span class ='layer-header'>Federal Revenue: </span><span class='calfresh-revenue popup-body'></span></div>",
                               "<br>",
                               "<div class ='funding-type-header'>Medi-Cal</div>",
                               "<div class ='medical-funds'><span class ='layer-header'>Federal Revenue: </span><span class='medical-revenue popup-body'></span></div>",
-                              "<br>",
-                              "<div class ='funding-type-header'>Title 1</div>",
-                              "<div class ='title1-funds'><span class ='layer-header'>Federal Revenue: </span><span class='title1-revenue popup-body'></span></div>",
-                              "<br>",
-                              "<div class ='funding-type-header'>Title 3</div>",
-                              "<div class ='title3-funds'><span class ='layer-header'>Federal Revenue: </span><span class='title3-revenue popup-body'></span></div>",
-                              "<br>",
-                              "<div class ='funding-type-header'>Title 3 Immigrant</div>",
-                              "<div class ='title3imm-funds'><span class ='layer-header'>Federal Revenue: </span><span class='title3imm-revenue popup-body'></span></div>",
+                              # "<br>",
+                              # "<div class ='funding-type-header'>Title 1</div>",
+                              # "<div class ='title1-funds'><span class ='layer-header'>Federal Revenue: </span><span class='title1-revenue popup-body'></span></div>",
+                              # "<br>",
+                              # "<div class ='funding-type-header'>Title 3</div>",
+                              # "<div class ='title3-funds'><span class ='layer-header'>Federal Revenue: </span><span class='title3-revenue popup-body'></span></div>",
+                              # "<br>",
+                              # "<div class ='funding-type-header'>Title 3 Immigrant</div>",
+                              # "<div class ='title3imm-funds'><span class ='layer-header'>Federal Revenue: </span><span class='title3imm-revenue popup-body'></span></div>",
                               
                               "</div>", 
                               "<br>",
@@ -274,7 +274,7 @@ custom_cd_popup <- paste0("<div class='leaflet-popup-scrolled cd-sidebar'>",
                               "</div>")
 
 ```
-
+# MAP TITLE
 ```{r map}
 #### STEP 3: produce map with pop up and radial selection ####
 cd_final %>%
@@ -319,55 +319,59 @@ cd_final %>%
                                              sendToBack = TRUE)
   ) %>%
   
-  # Title 1 Funds Layer
-  addPolygons(
-    fillColor = ~color_palettes$title_1(title_1),
-    color = "black", 
-    weight = 1, 
-    opacity = 1.0,
-    fillOpacity = 0.8,
-    popup = cd_data_popup,
-    group = "Title 1 Funds",
-    highlight = highlightOptions(color = "white",
-                                             weight = 5, 
-                                             bringToFront = TRUE, 
-                                             sendToBack = TRUE)
-  ) %>%
-  
-   # Title 3 Funds Layer
-  addPolygons(
-    fillColor = ~color_palettes$title_3(title_3),
-    color = "black", 
-    weight = 1, 
-    opacity = 1.0,
-    fillOpacity = 0.8,
-    popup = cd_data_popup,
-    group = "Title 3 Funds",
-    highlight = highlightOptions(color = "white",
-                                             weight = 5, 
-                                             bringToFront = TRUE, 
-                                             sendToBack = TRUE)
-  ) %>%
-  
-  # Title 3 Immigrant Funds Layer
-  addPolygons(
-    fillColor = ~color_palettes$title_3imm(title_3_immigrant),
-    color = "black", 
-    weight = 1, 
-    opacity = 1.0,
-    fillOpacity = 0.8,
-    popup = cd_data_popup,
-    group = "Title 3 Immigrant Funds",
-    highlight = highlightOptions(color = "white",
-                                             weight = 5, 
-                                             bringToFront = TRUE, 
-                                             sendToBack = TRUE)
-  ) %>%
+  # # Title 1 Funds Layer
+  # addPolygons(
+  #   fillColor = ~color_palettes$title_1(title_1),
+  #   color = "black", 
+  #   weight = 1, 
+  #   opacity = 1.0,
+  #   fillOpacity = 0.8,
+  #   popup = cd_data_popup,
+  #   group = "Title 1 Funds",
+  #   highlight = highlightOptions(color = "white",
+  #                                            weight = 5, 
+  #                                            bringToFront = TRUE, 
+  #                                            sendToBack = TRUE)
+  # ) %>%
+  # 
+  #  # Title 3 Funds Layer
+  # addPolygons(
+  #   fillColor = ~color_palettes$title_3(title_3),
+  #   color = "black", 
+  #   weight = 1, 
+  #   opacity = 1.0,
+  #   fillOpacity = 0.8,
+  #   popup = cd_data_popup,
+  #   group = "Title 3 Funds",
+  #   highlight = highlightOptions(color = "white",
+  #                                            weight = 5, 
+  #                                            bringToFront = TRUE, 
+  #                                            sendToBack = TRUE)
+  # ) %>%
+  # 
+  # # Title 3 Immigrant Funds Layer
+  # addPolygons(
+  #   fillColor = ~color_palettes$title_3imm(title_3_immigrant),
+  #   color = "black", 
+  #   weight = 1, 
+  #   opacity = 1.0,
+  #   fillOpacity = 0.8,
+  #   popup = cd_data_popup,
+  #   group = "Title 3 Immigrant Funds",
+  #   highlight = highlightOptions(color = "white",
+  #                                            weight = 5, 
+  #                                            bringToFront = TRUE, 
+  #                                            sendToBack = TRUE)
+  # ) %>%
   
   # Add Layer Control
   addLayersControl(
-    baseGroups = c("CalFresh Funds", "Medi-Cal Funds",
-                   "Title 1 Funds","Title 3 Funds", "Title 3 Immigrant Funds"),
+    baseGroups = c("CalFresh Funds", "Medi-Cal Funds"
+                   # ,
+                   # "Title 1 Funds",
+                   # "Title 3 Funds", 
+                   # "Title 3 Immigrant Funds"
+                   ),
     options = layersControlOptions(collapsed = FALSE, autoZIndex = TRUE)
   ) %>%
   htmlwidgets::onRender("
@@ -384,7 +388,7 @@ cd_final %>%
       wrapper.appendChild(el);
 
       var controlsDiv = document.createElement('div');
-      controlsDiv.style.cssText = 'display:flex; flex-direction:column; gap:8px; padding:8px; background:#fff;';
+      controlsDiv.style.cssText = 'display:flex; flex-direction:column; gap:8px; padding:0px; background:#fff;';
       wrapper.insertBefore(controlsDiv, el);
 
       var layersControl = el.querySelector('.leaflet-control-layers');
@@ -417,13 +421,45 @@ cd_final %>%
     }
   }")
 
-# Add caption
+# Add caption that will toggle to an abridged version on mobile screens
 caption_html <- HTML("
-<span style='float: left; font-size: 12px;'>
-   Source: Catalyst California’s calculations of CalFresh and Medi-Cal data from the  <a href=\"https://calbudgetcenter.org/resources/how-republican-led-budget-cuts-could-impact-californians-in-every-congressional-district\">California Budget and Policy Center 2023-24</a>. Title I and III funds are from the Standardized Account Code Structure Data Viewer, Budget - July 1 Estimates, 2023-2024, 2024-2025. These federal funds fund schools serving high percentages of low-income families. Title I and III budget data are from 2023-2024 except where data are missing in which case they are supplemented by data from 2024-2025.
-</span>
-")
+<div style='font-size: 12px; max-width: 100%; margin-top: 4px;'>
+  <span id='caption-short' style='float: left;'>
+    Source: Catalyst California's calculations of CalFresh and Medi-Cal data from the
+    <a href='https://calbudgetcenter.org/resources/how-republican-led-budget-cuts-could-impact-californians-in-every-congressional-district'>California Budget and Policy Center 2023-24</a>.
+    <a href='#' id='caption-toggle' style='color: #555;' onclick='
+      document.getElementById(\"caption-short\").style.display = \"none\";
+      document.getElementById(\"caption-full\").style.display = \"block\";
+      return false;
+    '>[Show more]</a>
+  </span>
+  <span id='caption-full' style='display: none; float: left;'>
+    Source: Catalyst California's calculations of CalFresh and Medi-Cal data from the
+    <a href='https://calbudgetcenter.org/resources/how-republican-led-budget-cuts-could-impact-californians-in-every-congressional-district'>California Budget and Policy Center 2023-24</a>.
+    Title I and III funds are from the Standardized Account Code Structure Data Viewer,
+    Budget - July 1 Estimates, 2023-2024, 2024-2025. These federal funds fund schools serving
+    high percentages of low-income families. Title I and III budget data are from 2023-2024
+    except where data are missing in which case they are supplemented by data from 2024-2025.
+    <a href='#' style='color: #555;' onclick='
+      document.getElementById(\"caption-full\").style.display = \"none\";
+      document.getElementById(\"caption-short\").style.display = \"block\";
+      return false;
+    '>[Show less]</a>
+  </span>
+</div>
 
+<script>
+  // On load, collapse caption if mobile
+  if (window.innerWidth < 768) {
+    document.getElementById('caption-short').style.display = 'block';
+    document.getElementById('caption-full').style.display = 'none';
+  } else {
+    // Desktop: show full caption, no toggle needed
+    document.getElementById('caption-short').style.display = 'none';
+    document.getElementById('caption-full').style.display = 'block';
+  }
+</script>
+")
 caption_html
 ```
 
@@ -438,6 +474,23 @@ caption_html
     background: rgba(255,255,255,0.8);
     border-radius: 5px;
     color: #000000;
+}
+
+/* Remove box-shadow shading and use square corners for all Leaflet controls */
+.leaflet-bar,
+.leaflet-control-layers,
+.leaflet-control-layers-expanded,
+.leaflet-left .leaflet-control,
+.leaflet-right .leaflet-control {
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+/* Add thin border to leaflet controls */
+.leaflet-control-layers-expanded,
+.leaflet-left .leaflet-control,
+.leaflet-right .leaflet-control {
+  border: 1px solid #d0d0d0;
 }
 
 .leaflet-touch .leaflet-control-layers {
@@ -637,7 +690,8 @@ L.Map.addInitHook(function () {
         '</div>'
       };
       map.on('baselayerchange', (e) => {
-        domains = ['.calfresh-funds', '.medical-funds', '.title1-funds', '.title3-funds', '.title3imm-funds']
+        <!-- domains = ['.calfresh-funds', '.medical-funds', '.title1-funds', '.title3-funds', '.title3imm-funds'] -->
+        domains = ['.calfresh-funds', '.medical-funds']
         domains.forEach(domain => {
           document.querySelector(domain).classList.remove('baselayer-selected')
         })
@@ -669,9 +723,9 @@ L.Map.addInitHook(function () {
           document.querySelector('.cd3').innerHTML = "R"
           document.querySelector('.calfresh-revenue').innerHTML = "$473.7 million"
           document.querySelector('.medical-revenue').innerHTML = "$5.8 billion"
-          document.querySelector('.title1-revenue').innerHTML = "$100.4 million"
-          document.querySelector('.title3-revenue').innerHTML = "$7.7 million"
-          document.querySelector('.title3imm-revenue').innerHTML = "$310.9 thousand"
+          <!-- document.querySelector('.title1-revenue').innerHTML = "$100.4 million" -->
+          <!-- document.querySelector('.title3-revenue').innerHTML = "$7.7 million" -->
+          <!-- document.querySelector('.title3imm-revenue').innerHTML = "$310.9 thousand" -->
           document.querySelector('.calfresh-beneficiaries').innerHTML = "205,800"
           document.querySelector('.medical-beneficiaries').innerHTML = "527,192"
 
@@ -701,9 +755,9 @@ L.Map.addInitHook(function () {
         document.querySelector('.medical-beneficiaries').innerHTML = popupCd.getAttribute('data-medical-beneficiaries')
         document.querySelector('.calfresh-revenue').innerHTML = popupCd.getAttribute('data-calfresh-revenue')
         document.querySelector('.medical-revenue').innerHTML = popupCd.getAttribute('data-medical-revenue')
-        document.querySelector('.title1-revenue').innerHTML = popupCd.getAttribute('data-title1-revenue')
-        document.querySelector('.title3-revenue').innerHTML = popupCd.getAttribute('data-title3-revenue')
-        document.querySelector('.title3imm-revenue').innerHTML = popupCd.getAttribute('data-title3imm-revenue')
+        <!-- document.querySelector('.title1-revenue').innerHTML = popupCd.getAttribute('data-title1-revenue') -->
+        <!-- document.querySelector('.title3-revenue').innerHTML = popupCd.getAttribute('data-title3-revenue') -->
+        <!-- document.querySelector('.title3imm-revenue').innerHTML = popupCd.getAttribute('data-title3imm-revenue') -->
 
         
         // Update legend based on current active layer
