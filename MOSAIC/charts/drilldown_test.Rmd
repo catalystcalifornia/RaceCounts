@@ -55,7 +55,8 @@ drilldown_bw_js <- paste0("function(e) {
     width: 2,
     dashStyle: 'ShortDash',
     zIndex: 5,
-    label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 5 }
+    // align right and negative x should match the hc() code
+    label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: ", total_rate_bw, "', align: 'right', rotation: 0, y: 5, x: -5 }
   });
   
   // Reset state - always start with rates
@@ -79,7 +80,7 @@ drilldown_bw_js <- paste0("function(e) {
     }
   }, false);
 
-  chart.yAxis[0].setTitle({ text: 'RATE' }, false); 
+  chart.yAxis[0].setTitle({ text: 'RATE (STATE AVERAGE: ", total_rate_bw, ")' }, false); 
 
   
   // Add toggle button if it doesn't exist
@@ -123,7 +124,7 @@ drilldown_bw_js <- paste0("function(e) {
         } else {
           // Switch to rates
           chart.currentView = 'rates';
-          chart.yAxis[0].setTitle({ text: 'RATE' }, false); 
+          chart.yAxis[0].setTitle({ text: 'RATE (STATE AVERAGE: ", total_rate_bw, ")' }, false); 
 
           chart.customToggleButton.attr({text: 'Show Counts'});
           
@@ -135,7 +136,8 @@ drilldown_bw_js <- paste0("function(e) {
             width: 2,
             dashStyle: 'ShortDash',
             zIndex: 5,
-            label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: ", total_rate_bw, "', align: 'left', rotation: 0, y: 5, x: 5 }
+            // align right and negative x should match the hc() code
+            label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: ", total_rate_bw, "', align: 'right', rotation: 0, y: 5, x: -5 }
           });
           
           // Update all drilled-down series to show rates
@@ -235,7 +237,7 @@ drillup_bw_js <- paste0("function() {
   
   // Reset to rates view
   // Use this instead of .update()
-  chart.yAxis[0].setTitle({ text: 'RATE' }, false); 
+  chart.yAxis[0].setTitle({ text: 'RATE' }, false);
 
   
   // Reset data label formatter
@@ -313,8 +315,9 @@ hc <- hchart(
     title=list(text=NULL),
     labels = list(
       enabled = TRUE)) %>%
-  hc_yAxis(title = list(text = "RATE"),
-           labels=list(enabled=FALSE)) %>%# remove labels from rate axis) 
+  hc_yAxis(
+    title = list(text = "RATE"),
+    labels=list(enabled=FALSE)) %>%# remove labels from rate axis) 
   hc_legend(enabled=FALSE) %>%
   hc_caption(
     text = paste("<b>Source:", data_source, "</b>", data_description, methodology_link),
