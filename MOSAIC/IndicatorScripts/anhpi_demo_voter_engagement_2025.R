@@ -57,7 +57,7 @@ df <- rbind(total_df, asian_df)
 source("./MOSAIC/Functions/CHIS_Functions.R")
 
 df <- fix_colnames(df) # this wasn't necessary in other CHIS scripts but is necessary here for some reason
-df_subset <- prep_chis(df, "no")
+df_subset <- prep_chis(df, "yes")
 View(df_subset)
 
 d <- df_subset 
@@ -105,7 +105,7 @@ state_table <- state_table %>% select(-c(starts_with("total_")))
 ###info for postgres tables - automatically updates###
 county_table_name <- paste0("asian_demo_voter_engagement_county_",yr)
 state_table_name <- paste0("asian_demo_voter_engagement_state_",yr)
-indicator <- "Voter engagement in national, state, and local elections - US Citizens (%) Asian Ethnic Groups ONLY. Respondents who were sometimes or never engaged"
+indicator <- "Voter engagement in national, state, and local elections - US Citizens (%) Asian Ethnic Groups ONLY. Respondents who were always or frequently engaged"
 source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates. ", dwnld_url, " QA doc: ", qa_filepath)
 
 #send tables to postgres
@@ -132,8 +132,8 @@ total_df[1:3,1] <- total_df_rownames[1:3]
 races_df = read.xlsx(paste0(new_chis_dir, "/Voter_race.xlsx"), sheet=1, startRow=8, rows=c(8,10:12,14,16:19,21,23))
 
 #format row headers
-races_rownames <- c("latino_no", "nh_white_no", "nh_black_no", "nh_asian_no", "nh_twoormor_no", 
-                    "latino_yes", "nh_white_yes", "nh_black_yes", "nh_asian_yes", "nh_twoormor_yes")
+races_rownames <- c("latino_yes", "nh_white_yes", "nh_black_yes", "nh_asian_yes", "nh_twoormor_yes",
+                    "latino_no", "nh_white_no", "nh_black_no", "nh_asian_no", "nh_twoormor_no")
 races_df[1:10,1] <- races_rownames[1:10]
 
 
@@ -141,7 +141,7 @@ races_df[1:10,1] <- races_rownames[1:10]
 aian_df = read.xlsx(paste0(new_chis_dir, "/Voter_aian.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
 
 #format row headers
-aian_rownames <- c("aian_no", "aian_yes")
+aian_rownames <- c("aian_yes", "aian_no")
 aian_df[1:2,1] <- aian_rownames[1:2]
 
 
@@ -149,7 +149,7 @@ aian_df[1:2,1] <- aian_rownames[1:2]
 pacisl_df = read.xlsx(paste0(new_chis_dir, "/Voter_nhpi.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
 
 #format row headers
-pacisl_rownames <- c("pacisl_no", "pacisl_yes")
+pacisl_rownames <- c("pacisl_yes", "pacisl_no")
 pacisl_df[1:2,1] <- pacisl_rownames[1:2]
 
 
@@ -157,7 +157,7 @@ pacisl_df[1:2,1] <- pacisl_rownames[1:2]
 swana_df = read.xlsx(paste0(new_chis_dir, "/Voter_mena.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
 
 #format row headers
-swana_rownames <- c("swana_no", "swana_yes")
+swana_rownames <- c("swana_yes", "swana_no")
 swana_df[1:2,1] <- swana_rownames[1:2]
 
 
@@ -185,22 +185,22 @@ r_to_pg_type <- function(x) {
 # Add each new column and update its value from df_state
 state_table_name <- "asian_demo_voter_engagement_state_2025"
 
-# for (col in names(df_state)) {
-#   pg_type <- r_to_pg_type(df_state[[col]])
-#   val     <- df_state[[col]][1]
-#   
-#   # 1. Add the column
-#   dbExecute(con, sprintf(
-#     'ALTER TABLE %.% ADD COLUMN IF NOT EXISTS "%s" %s',
-#     rc_schema, state_table_name, col, pg_type
-#   ))
-#   
-#   # 2. Update the single row with the value from df_state
-#   dbExecute(con,
-#             sprintf('UPDATE %.% SET "%s" = $1', col),
-#             rc_schema, state_table_name, list(val)
-#   )
-# }
+for (col in names(df_state)) {
+  pg_type <- r_to_pg_type(df_state[[col]])
+  val     <- df_state[[col]][1]
+  
+  # 1. Add the column
+  dbExecute(con, sprintf(
+    'ALTER TABLE %s.%s ADD COLUMN IF NOT EXISTS "%s" %s',
+    rc_schema, state_table_name, col, pg_type
+  ))
+  
+  # 2. Update the single row
+  dbExecute(con,
+            sprintf('UPDATE %s.%s SET "%s" = $1', rc_schema, state_table_name, col),
+            list(val)
+  )
+}
 
 
 # Append county dataframe to the existing county table
@@ -209,16 +209,15 @@ county_table_name <- "asian_demo_voter_engagement_county_2025"
 existing_cols <- dbListFields(con, Id(schema = rc_schema, table = county_table_name))
 new_cols <- setdiff(names(df_county), c(existing_cols))  # county_id already in existing_cols, so it's excluded automatically
 
-# Add each new column then update row-by-row, matched on county_id
-# for (col in new_cols) {
-#   pg_type <- r_to_pg_type(df_county[[col]])
-#   
-#   # 1. Add the column
-#   dbExecute(con, sprintf(
-#     'ALTER TABLE %s.% ADD COLUMN IF NOT EXISTS "%s" %s',
-#     rc_schema, county_table_name, col, pg_type
-#   ))
-# }
+for (col in new_cols) {
+  pg_type <- r_to_pg_type(df_county[[col]])
+  
+  # 1. Add the column
+  dbExecute(con, sprintf(
+    'ALTER TABLE %s.%s ADD COLUMN IF NOT EXISTS "%s" %s',
+    rc_schema, county_table_name, col, pg_type
+  ))
+}
 
 # Write df_county to a temp table, then join once per column -- or better, join all at once:
 
