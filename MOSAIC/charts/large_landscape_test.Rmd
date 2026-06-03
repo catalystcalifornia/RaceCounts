@@ -380,6 +380,8 @@ cd_final %>%
 
     // handles format of map on mobile devices
     if (window.innerWidth < 768) {
+      // Remove scroll to zoom
+      map.scrollWheelZoom.disable();
 
       // Restructure DOM
       var wrapper = document.createElement('div');
