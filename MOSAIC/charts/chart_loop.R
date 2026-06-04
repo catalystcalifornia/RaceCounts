@@ -7,7 +7,7 @@ library(here)
 ###### ASIAN CHARTS ######
 # grp <- "asian"
 # bar_indicators <- c("overcrowded", "officials")
-# drilld_indicators <- c("voter_engagement", "health_insurance") 
+# drilld_indicators <- c("voter_engagement", "health_insurance")
 
 
 ###### NHPI CHARTS ######
