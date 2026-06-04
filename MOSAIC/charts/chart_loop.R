@@ -1,6 +1,7 @@
 # Load packages
 library(rmarkdown)
 library(here)
+library(stringr)
 
 ## Uncomment out Asian OR PacIsl 'grp' and either 'bar' or 'drilld' indicators, then run loop.
 
@@ -8,13 +9,13 @@ library(here)
 # grp <- "asian"
 # bar_indicators <- c("overcrowded", "officials")
 # drilld_indicators <- c("voter_engagement", "health_insurance")
-
+# table_name <- 'aa_pop_b02018'
 
 ###### NHPI CHARTS ######
 # grp <- "nhpi"
 # bar_indicators <- c("health_insurance", "living_wage")
 # drilld_indicators <- c("connected_youth", "overcrowded")
-
+# table_name <- 'nhpi_pop_b02019'
 
 ###### TALL BAR CHART LOOP ######
 for (r in drilld_indicators) {
