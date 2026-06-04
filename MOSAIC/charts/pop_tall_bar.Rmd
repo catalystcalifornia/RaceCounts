@@ -12,16 +12,18 @@ output:
 body { margin: 0; }
 </style>
 
-```{r, include=FALSE}
+```{r, include=FALSE, error=TRUE}
 # load libraries and test data
+setwd(here::here("MOSAIC", "charts"))
+
 source("W:\\RDA Team\\R\\credentials_source.R")
 source(here("MOSAIC", "charts", "chart_style_vars.R"))
 con <- connect_to_db("mosaic")
 
-options(scipen = 999)
 knitr::opts_chunk$set(echo = FALSE)
 
 ```
+
 
 ```{r}
 ##### DOCUMENTATION (can skip to next section for indicator inputs) #####
@@ -56,6 +58,8 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ```{r}
 ##### Prep: Get data (must change for each indicator) #####
+options(scipen = 999)
+
 # Get indicator df
 indicator_wide <- dbGetQuery(con, paste0("SELECT * FROM v7.", table_name, " WHERE geoid = '06'"))
 
@@ -124,6 +128,7 @@ indicator_df <- indicator_df %>%
 
 # Don't change - pulled in from chart_style_vars
 methodology_link <- sprintf("<a href='%s' target='_blank'>Full Methodology</a>", mosaic_methodology_link)
+
 ```
 
 ```{r}
@@ -139,12 +144,12 @@ if(indicator_asbest=="min") {
   # Create ordered categories for RATES (descending by rate)
   rate_order <- indicator_df %>%
     arrange(desc(rate)) %>%
-    pull(subgroup)
+    pull(label)
 
   # Create ordered categories for COUNTS (descending by count)
   count_order <- indicator_df %>%
     arrange(desc(raw)) %>%
-    pull(subgroup)
+    pull(label)
   
 } else{
   indicator_df <- indicator_df %>%
@@ -155,84 +160,49 @@ if(indicator_asbest=="min") {
   # Create ordered categories for RATES (descending by rate)
   rate_order <- indicator_df %>%
     arrange(rate) %>%
-    pull(subgroup)
+    pull(label)
 
   # Create ordered categories for COUNTS (descending by count)
   count_order <- indicator_df %>%
     arrange(raw) %>%
-    pull(subgroup)
+    pull(label)
 }
 
-# Create series data for RATES with colors
-series_data_rates <- indicator_df %>%
-  group_by(group) %>%
-  group_split() %>%
-  map(function(df) {
-    data_points <- map(1:nrow(df), function(i) {
-      x_index <- which(rate_order == df$subgroup[i]) - 1
-      list(
-        x = unname(x_index),
-        y = df$rate[i],
-        name = df$subgroup[i]
-      )
-    })
-    
-    # Assign color based on group
-    series_color <- if(df$group[1] == "asian subgroups") {
-      base_colors[["asian subgroups"]]
-    } else if(df$group[1] == "asian") {
-      base_colors[["asian total"]]
-    } else if(df$group[1] == "pacisl subgroups") {
-      base_colors[["pacisl subgroups"]]
-    } else if(df$group[1] == "pacisl") {
-      base_colors[["pacisl total"]]
-    } else {
-      base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
-    }
-    
-    list(
-      name = df$group[1],
-      data = data_points,
-      id = paste0("rates-", df$group[1]),
-      color = series_color
-    )
-  })
+# Create series data for RATES with color
+data_points_rates <- map(1:nrow(indicator_df), function(i) {
+  x_index <- which(rate_order == indicator_df$subgroup[i]) - 1
+  list(
+    x = unname(x_index),
+    y = indicator_df$rate[i],
+    name = indicator_df$label[i]
+  )
+})
 
-# Create series data for COUNTS with same colors
-series_data_counts <- indicator_df %>%
-  group_by(group) %>%
-  group_split() %>%
-  map(function(df) {
-    data_points <- map(1:nrow(df), function(i) {
-      x_index <- which(count_order == df$subgroup[i]) - 1
-      list(
-        x = unname(x_index),
-        y = df$raw[i],
-        name = df$subgroup[i]
-      )
-    })
-    
-    # Assign same color based on group
-    series_color <- if(df$group[1] == "asian subgroups") {
-      base_colors[["asian subgroups"]]
-    } else if(df$group[1] == "asian") {
-      base_colors[["asian total"]]
-    } else if(df$group[1] == "pacisl subgroups") {
-      base_colors[["pacisl subgroups"]]
-    } else if(df$group[1] == "pacisl") {
-      base_colors[["pacisl total"]]
-    } else {
-      base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
-    }
-    
-    list(
-      name = df$group[1],
-      data = data_points,
-      id = paste0("counts-", df$group[1]),
-      visible = FALSE,
-      color = series_color
-    )
-  })
+series_data_rates <- list(list(
+  label = "rates",
+  data  = data_points,
+  id    = "rates",
+  color = rc_orange
+))
+
+
+# Create series data for COUNTS with color
+data_points_counts <- map(1:nrow(indicator_df), function(i) {
+  x_index <- which(count_order == indicator_df$subgroup[i]) - 1
+  list(
+    x = unname(x_index),
+    y = indicator_df$raw[i],
+    name = indicator_df$label[i]
+  )
+})
+
+series_data_counts <- list(list(
+  label   = "counts",
+  data    = data_points_counts,
+  id      = "counts",
+  visible = FALSE,
+  color   = rc_orange
+))
 
 ```
 
@@ -259,7 +229,7 @@ hc <- highchart() %>%
               
               // Check if rates are currently visible
               chart.series.forEach(function(s) {
-                if (s.userOptions.id && s.userOptions.id.startsWith('rates-')) {
+                if (s.userOptions.id && s.userOptions.id === 'rates') {
                   showingRates = s.visible;
                 }
               });
@@ -268,20 +238,18 @@ hc <- highchart() %>%
               chart.series.forEach(function(s) {
                 if (s.userOptions.id) {
                   if (showingRates) {
-                    // Switch to counts
-                    if (s.userOptions.id.startsWith('rates-')) {
+                    if (s.userOptions.id === 'rates') {
                       s.update({showInLegend: false}, false);
                       s.hide();
-                    } else if (s.userOptions.id.startsWith('counts-')) {
+                    } else if (s.userOptions.id === 'counts') {
                       s.update({showInLegend: true}, false);
                       s.show();
                     }
                   } else {
-                    // Switch to rates
-                    if (s.userOptions.id.startsWith('counts-')) {
+                    if (s.userOptions.id === 'counts') {
                       s.update({showInLegend: false}, false);
                       s.hide();
-                    } else if (s.userOptions.id.startsWith('rates-')) {
+                    } else if (s.userOptions.id === 'rates') {
                       s.update({showInLegend: true}, false);
                       s.show();
                     }
@@ -289,13 +257,10 @@ hc <- highchart() %>%
                 }
               });
               
-              // Update button text, y-axis, x-axis categories, and data label formatter
               if (showingRates) {
                 chart.customToggleButton.attr({text: 'Show Rates'});
                 chart.yAxis[0].setTitle({ text: 'COUNT' }, false); 
                 chart.xAxis[0].update({categories: countOrder}, false);
-                chart.yAxis[0].removePlotLine('state-average-line');
-                
                 chart.update({
                   plotOptions: {
                     bar: {
@@ -312,16 +277,6 @@ hc <- highchart() %>%
                 chart.customToggleButton.attr({text: 'Show Counts'});
                 chart.yAxis[0].setTitle({ text: 'RATE' }, false); 
                 chart.xAxis[0].update({categories: rateOrder}, false);
-                chart.yAxis[0].addPlotLine({
-                  id: 'state-average-line',
-                  value: %s,
-                  color: '%s',
-                  width: 2,
-                  dashStyle: 'ShortDash',
-                  label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: %s', align: 'left', rotation: 0, y: -8, x: 5},
-                  zIndex: 5
-                });
-                
                 chart.update({
                   plotOptions: {
                     bar: {
@@ -334,33 +289,30 @@ hc <- highchart() %>%
                   }
                 }, true);
               } 
-              
-              // Remove the chart.redraw() call since we're now using redraw: true in update
             },
             {
-              fill: '", rc_blue, "' ,
-              stroke: '", rc_blue, "' ,
-              style: { color: '", rc_white, "' },  // Add this so font color persists
+              fill: '", rc_blue, "',
+              stroke: '", rc_blue, "',
+              style: { color: '", rc_white, "' },
               'stroke-width': 1,
               r: 3,
               padding: 8
             },
             {
-              fill: '", rc_blue, "' ,
-              style: { color: '", rc_white, "' }  // Add this so font color persists in hover state
+              fill: '", rc_blue, "',
+              style: { color: '", rc_white, "' }
             },
             {
-              fill: '", rc_blue, "' ,
-              style: { color: '", rc_white, "' }  // Add this so font color persists in active/pressed state
+              fill: '", rc_blue, "',
+              style: { color: '", rc_white, "' }
             }
           )
           .css({
             color: '", rc_white, "'
           })
-          .attr({ zIndex: 7 })  // Add this line to put on top of gridlines
+          .attr({ zIndex: 7 })
           .add();
           
-          // Add event listener to reposition on redraw/resize
           Highcharts.addEvent(chart, 'redraw', function() {
             if (chart.customToggleButton) {
               var buttonWidth = chart.customToggleButton.getBBox().width;
@@ -371,19 +323,15 @@ hc <- highchart() %>%
             }
           });
           
-          // Initial positioning
           var buttonWidth = chart.customToggleButton.getBBox().width;
           var rightEdge = chart.chartWidth - chart.spacing[1];
           chart.customToggleButton.attr({
             x: rightEdge - buttonWidth
           });
-              }
-      "), 
-      jsonlite::toJSON(rate_order), # rate order
-      jsonlite::toJSON(count_order), # count order
-      total_rate, # value
-      rc_black, # color
-      total_rate) # state average
+        }
+      "),
+      jsonlite::toJSON(rate_order),
+      jsonlite::toJSON(count_order))
       ))) %>%
   hc_plotOptions(
     bar = list(
@@ -396,36 +344,18 @@ hc <- highchart() %>%
       grouping = FALSE,
       pointPadding = 0,
       groupPadding = 0.1),
-    series = 
-      list(enableMouseTracking=FALSE), # removes all highlighting from hovering over bars and legend groups
-      clip = FALSE) %>%
+    series = list(enableMouseTracking = FALSE),
+    clip = FALSE) %>%
   hc_xAxis(
     categories = rate_order,
-    labels = list(
-      enabled = TRUE
-    ),
+    labels = list(enabled = TRUE),
     gridLineWidth = 1,
     gridLineColor = '#e6e6e6') %>%
   hc_yAxis(
     title = list(text = "RATE"),
-    labels=list(enabled=FALSE), # remove labels from rate axis
-    gridLineWidth=0,
-    offset = 0,
-    plotLines = list(
-      list(
-        id = 'state-average-line',
-        value = total_rate,
-        color = rc_black,
-        width = 2,
-        dashStyle = 'ShortDash',
-        label = list(
-          style=list(fontWeight='bold', fontSize='0.8em'),
-          text = paste('STATE AVERAGE:', total_rate), 
-          align = 'left', 
-          rotation=0, y=-8, x=5),
-        zIndex = 5
-      )
-    )
+    labels = list(enabled = FALSE),
+    gridLineWidth = 0,
+    offset = 0
   ) %>%
   hc_legend(
     enabled = TRUE,
@@ -437,14 +367,18 @@ hc <- highchart() %>%
     text = chart_title,
     align = "center") %>% 
   hc_subtitle(
-    text = "Toggle groups on/off by clicking the legend labels below",
+    text = "Toggle between rates and counts using the button below",
     align = "center") %>%
   hc_caption(
     text = paste("<b>About the data:", data_source, "</b>", data_description, methodology_link),
     useHTML = TRUE,
     align = "left"
   ) %>%
+  hc_add_series_list(series_data_rates) %>%
+  hc_add_series_list(series_data_counts) %>%
   hc_add_theme(custom_theme)
+
+hc 
 
 # Add RATES series (visible by default)
 for (series in series_data_rates) {
