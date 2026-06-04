@@ -102,8 +102,8 @@ if(indicator_asbest=="min") {
 
 # define df initial chart of drilldown (group and total bars only)
 base_df <- indicator_df %>%
-  filter(subgroup=="total") %>%
-  select(-subgroup) %>%
+  filter(type=="total" | type=="group") %>%
+  select(-type) %>%
   mutate(
     color = case_when(
       group == "asian" ~ base_colors[["asian"]],
@@ -112,7 +112,7 @@ base_df <- indicator_df %>%
       TRUE ~ base_colors[["default"]]))
 
 drilldown_df <- indicator_df %>%
-  filter(subgroup!="total") %>%
+  filter(type!="total" & type != "group") %>%
   group_nest(group) %>%
   mutate(
     id = case_when(
