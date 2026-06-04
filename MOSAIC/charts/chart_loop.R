@@ -16,7 +16,7 @@ library(here)
 # drilld_indicators <- c("connected_youth", "overcrowded")
 
 
-###### TALL BAR CHART LOOP ######
+###### DRILLDOWN CHART LOOP ######
 for (r in drilld_indicators) {
   render(
     input = "./MOSAIC/charts/templates/drilldown.Rmd",
