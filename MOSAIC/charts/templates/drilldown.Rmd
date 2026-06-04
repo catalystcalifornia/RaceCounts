@@ -56,7 +56,7 @@ knitr::opts_chunk$set(echo = FALSE)
 ```{r}
 ##### Prep: Get data (must change for each indicator) #####
 # Get indicator df
-indicator_df <- dbGetQuery(con, "")
+indicator_df <- dbGetQuery(con, paste0("SELECT * FROM v7.", grp, "_summary_for_charts WHERE topic = '", r, "'"))
 
 # note: may need to filter out NA rates/raw
 
@@ -67,9 +67,16 @@ indicator_asbest <- indicator_metadata %>% filter(api_name == indicator_name) %>
 data_source <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(data_source) %>% pull()
 data_description <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(methodology) %>% pull()
 chart_title <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(bar_chart_header) %>% pull()
+rate_rounding <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(rate_rounding) %>% pull() %>% as.integer()
+raw_rounding <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(raw_rounding) %>% pull() %>% as.integer()
 
 # Set total_rate
 total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% select(rate) %>% pull() %>% round(., rate_rounding)
+
+# # need to filter out NA rates/raw and total rate
+# indicator_df <- indicator_df %>% 
+#   drop_na(rate) %>%
+#   filter(subgroup != "total")
 
 # Don't change - pulled in from chart_style_vars
 methodology_link <- sprintf("<a href='%s' target='_blank'>Full Methodology</a>", mosaic_methodology_link)
@@ -93,7 +100,7 @@ if(indicator_asbest=="min") {
            raw = round(raw, raw_rounding))
 }
 
-# define df initial chart of drilldown (asian and total bars only)
+# define df initial chart of drilldown (group and total bars only)
 base_df <- indicator_df %>%
   filter(subgroup=="total") %>%
   select(-subgroup) %>%
@@ -414,7 +421,10 @@ hc <- hchart(
     text = chart_title,
     align = "center" ) %>% 
   hc_subtitle(
-    text = "Click the Asian or Total bar below to disaggregate data",
+    text = case_when(
+      grp == 'asian' ~ "Click the Asian or Total bar below to disaggregate data",
+      grp == 'nhpi' ~ "Click the Pacific Islander or Total bar below to disaggregate data",
+      .default = 'XXXXXXXXX'),
     align = "center") %>%
   hc_plotOptions(
     bar = list(
