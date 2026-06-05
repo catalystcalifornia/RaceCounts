@@ -74,8 +74,9 @@ raw_rounding <- indicator_metadata %>% filter(api_name == indicator_name) %>% se
 total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% select(rate) %>% pull() %>% round(., rate_rounding)
 
 # # need to filter out NA rates/raw and total rate
-# indicator_df <- indicator_df %>% 
-#   drop_na(rate) %>%
+indicator_df <- indicator_df %>%
+  drop_na(rate) 
+# %>%
 #   filter(subgroup != "total")
 
 # Don't change - pulled in from chart_style_vars
@@ -93,7 +94,7 @@ if(indicator_asbest=="min") {
     mutate(rate = round(rate, rate_rounding),
            raw = round(raw, raw_rounding))
   
-} else{
+} else if (indicator_asbest=="max"){
   indicator_df <- indicator_df %>%
     arrange(rate) %>%
     mutate(rate = round(rate, rate_rounding),
@@ -112,7 +113,14 @@ base_df <- indicator_df %>%
       TRUE ~ base_colors[["default"]]))
 
 drilldown_df <- indicator_df %>%
-  filter(type!="total" & type != "group") %>%
+  filter(type!="total") %>%
+  mutate(
+    group = case_when(
+      group == "pacisl" ~ "other major race groups",
+      group == "asian" ~ "other major race groups",
+      .default = group
+    )
+  ) %>%
   group_nest(group) %>%
   mutate(
     id = case_when(
@@ -130,14 +138,14 @@ drilldown_df <- indicator_df %>%
     # Store both rate-sorted and count-sorted versions
     data = map(data, function(df) {
       df %>%
-        arrange(desc(rate)) %>%
+        # arrange(desc(rate)) %>%
         mutate(name = subgroup, y = rate, y2 = raw) %>%
         select(name, y, y2) %>%
         list_parse()}),
     data_count_sorted = map2(data, group, function(df, grp) {
       indicator_df %>%
         filter(group == grp, subgroup != "total") %>%
-        arrange(desc(raw)) %>%
+        # arrange(desc(raw)) %>%
         mutate(name = subgroup, y = raw, y2 = rate) %>%
         select(name, y, y2) %>%
         list_parse()})) %>%
