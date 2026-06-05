@@ -14,6 +14,9 @@ body { margin: 0; }
 
 ```{r, include=FALSE}
 # load libraries and test data
+library(here)
+library(stringr)
+
 source("W:\\RDA Team\\R\\credentials_source.R")
 source(here("MOSAIC", "charts", "chart_style_vars.R"))
 con <- connect_to_db("mosaic")
@@ -76,8 +79,6 @@ total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% 
 # # need to filter out NA rates/raw and total rate
 indicator_df <- indicator_df %>%
   drop_na(rate) 
-# %>%
-#   filter(subgroup != "total")
 
 # Don't change - pulled in from chart_style_vars
 methodology_link <- sprintf("<a href='%s' target='_blank'>Full Methodology</a>", mosaic_methodology_link)
@@ -145,7 +146,7 @@ drilldown_df <- indicator_df %>%
     data_count_sorted = map2(data, group, function(df, grp) {
       indicator_df %>%
         filter(group == grp, subgroup != "total") %>%
-        # arrange(desc(raw)) %>%
+        arrange(desc(raw)) %>%
         mutate(name = subgroup, y = raw, y2 = rate) %>%
         select(name, y, y2) %>%
         list_parse()})) %>%
@@ -487,4 +488,3 @@ htmltools::tagList(
 )
 
 ```
-
