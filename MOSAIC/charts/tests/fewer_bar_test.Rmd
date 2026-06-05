@@ -16,7 +16,7 @@ body { margin: 0; }
 # # load libraries and test data
 library(here)
 
-source(here("MOSAIC", "charts", "data_prep.R"))
+source(here("MOSAIC", "charts", "tests", "data_prep.R"))
 knitr::opts_chunk$set(echo = FALSE)
 
 ```
