@@ -13,6 +13,8 @@ body { margin: 0; }
 </style>
 
 ```{r, include=FALSE}
+library(here)
+
 # load libraries and test data
 source("W:\\RDA Team\\R\\credentials_source.R")
 source(here("MOSAIC", "charts", "chart_style_vars.R"))
@@ -24,6 +26,8 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ```{r}
 ##### DOCUMENTATION (can skip to next section for indicator inputs) #####
+############ USED FOR LA COUNTY CHART ONLY ############ 
+
 ### Requirements for chart behavior: Toggling between rate and counts
 # rate_order - created automatically by script; helps put bars in the preferred order for rate view
 # count_order - created automatically by script; helps put bars in the preferred order for count view
@@ -40,7 +44,7 @@ knitr::opts_chunk$set(echo = FALSE)
 
 # indicator_asbest - e.g., "min" or "max"
 
-# total_rate - single variable to establish vertical plotline; total/state rate  of the indicator  
+# total_rate - single variable to establish vertical plotline; total/county rate  of the indicator  
 
 ### Requirements: Chart data / Dataframe structure
 # The ideal shape of the indicator table is long - with columns for group, subgroup, rate, count. It should have both the mosaic group (asian and/or nhpi and total which should include state (subgroup = total) and the RC race subgroups). It should also have Asian/NHPI as a subgroup under total group
@@ -56,17 +60,19 @@ knitr::opts_chunk$set(echo = FALSE)
 ```{r}
 ##### Prep: Get data (must change for each indicator) #####
 # Get indicator df
-indicator_df <- dbGetQuery(con, paste0("SELECT * FROM v7.", grp, "_summary_for_charts WHERE topic = '", r, "'"))
+indicator_df <- dbGetQuery(con, paste0("SELECT * FROM v7.", grp, "_summary_for_charts_lac"))
 
+# Filter indicator metadata
+indicator_metadata <- indicator_metadata %>% filter(api_name == min(indicator_df$topic))  # use min bc multiple rows but all with same value
 
 # Set metadata - see documentation above for examples
-indicator_name <- indicator_df$topic[1]
-indicator_asbest <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(arei_best) %>% pull()
-data_source <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(data_source) %>% pull()
-data_description <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(methodology) %>% pull()
-chart_title <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(bar_chart_header) %>% pull()
-rate_rounding <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(rate_rounding) %>% pull() %>% as.integer()
-raw_rounding <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(raw_rounding) %>% pull() %>% as.integer()
+indicator_name <- indicator_df$topic
+indicator_asbest <- indicator_metadata %>% select(arei_best) %>% pull()
+data_source <- indicator_metadata %>% select(data_source) %>% pull()
+data_description <- indicator_metadata %>% select(methodology) %>% pull()
+chart_title <- indicator_metadata %>% select(bar_chart_header) %>% pull()
+rate_rounding <- indicator_metadata %>% select(rate_rounding) %>% pull() %>% as.integer()
+raw_rounding <- indicator_metadata %>% select(raw_rounding) %>% pull() %>% as.integer()
 
 # Set total_rate
 total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% select(rate) %>% pull() %>% round(., rate_rounding)
@@ -272,7 +278,7 @@ hc <- highchart() %>%
                   color: '%s',
                   width: 2,
                   dashStyle: 'ShortDash',
-                  label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: %s', align: 'left', rotation: 0, y: -8, x: 5},
+                  label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'COUNTY AVERAGE: %s', align: 'left', rotation: 0, y: -8, x: 5},
                   zIndex: 5
                 });
                 
@@ -337,7 +343,7 @@ hc <- highchart() %>%
       jsonlite::toJSON(count_order), # count order
       total_rate, # value
       rc_black, # color
-      total_rate) # state average
+      total_rate) # cpunty average
       ))) %>%
   hc_plotOptions(
     bar = list(
@@ -374,7 +380,7 @@ hc <- highchart() %>%
         dashStyle = 'ShortDash',
         label = list(
           style=list(fontWeight='bold', fontSize='0.8em'),
-          text = paste('STATE AVERAGE:', total_rate), 
+          text = paste('COUNTY AVERAGE:', total_rate), 
           align = 'left', 
           rotation=0, y=-8, x=5),
         zIndex = 5

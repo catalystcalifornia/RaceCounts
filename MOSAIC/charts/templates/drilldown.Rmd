@@ -14,6 +14,9 @@ body { margin: 0; }
 
 ```{r, include=FALSE}
 # load libraries and test data
+library(here)
+library(stringr)
+
 source("W:\\RDA Team\\R\\credentials_source.R")
 source(here("MOSAIC", "charts", "chart_style_vars.R"))
 con <- connect_to_db("mosaic")
@@ -35,6 +38,7 @@ knitr::opts_chunk$set(echo = FALSE)
 
 # data_description - e.g., "The number of infants born weighing less than 2,500 grams or about 5 lbs 8 oz per 100 live births by race/ethnicity of birthing parent. Estimates for racial groups with fewer than ten births or areas with fewer than 100,000 people were excluded to protect privacy. SWANA data includes only foreign-born birthing parents."
 
+# exception: methodology_link is controlled by setting a global variable in chart_style_vars
 # methodology_link - e.g., "<a href='https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html' target='_blank'>Full Methodology</a>"
 
 # chart_title - e.g., "Low Birthweight by Race/Ethnicity"
@@ -55,13 +59,10 @@ knitr::opts_chunk$set(echo = FALSE)
 ```{r}
 ##### Prep: Get data (must change for each indicator) #####
 # Get indicator df
-indicator_df <- dbGetQuery(con, "")
+indicator_df <- dbGetQuery(con, paste0("SELECT * FROM v7.", grp, "_summary_for_charts WHERE topic = '", r, "'"))
 
 # note: may need to filter out NA rates/raw
 
-
-# Set total_rate
-total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% select(rate) %>% pull()
 
 # Set metadata - see documentation above for examples
 indicator_name <- indicator_df$topic[1]
@@ -69,6 +70,15 @@ indicator_asbest <- indicator_metadata %>% filter(api_name == indicator_name) %>
 data_source <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(data_source) %>% pull()
 data_description <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(methodology) %>% pull()
 chart_title <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(bar_chart_header) %>% pull()
+rate_rounding <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(rate_rounding) %>% pull() %>% as.integer()
+raw_rounding <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(raw_rounding) %>% pull() %>% as.integer()
+
+# Set total_rate
+total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% select(rate) %>% pull() %>% round(., rate_rounding)
+
+# # need to filter out NA rates/raw and total rate
+indicator_df <- indicator_df %>%
+  drop_na(rate) 
 
 # Don't change - pulled in from chart_style_vars
 methodology_link <- sprintf("<a href='%s' target='_blank'>Full Methodology</a>", mosaic_methodology_link)
@@ -85,21 +95,17 @@ if(indicator_asbest=="min") {
     mutate(rate = round(rate, rate_rounding),
            raw = round(raw, raw_rounding))
   
-} else{
+} else if (indicator_asbest=="max"){
   indicator_df <- indicator_df %>%
     arrange(rate) %>%
     mutate(rate = round(rate, rate_rounding),
            raw = round(raw, raw_rounding))
 }
 
-# make groups all caps per RC style
-indicator_df$group <- toupper(indicator_df$group)
-indicator_df$subgroup <- toupper(indicator_df$subgroup)
-
-# define df initial chart of drilldown (asian and total bars only)
+# define df initial chart of drilldown (group and total bars only)
 base_df <- indicator_df %>%
-  filter(subgroup=="total") %>%
-  select(-subgroup) %>%
+  filter(type=="total" | type=="group") %>%
+  select(-type) %>%
   mutate(
     color = case_when(
       group == "asian" ~ base_colors[["asian"]],
@@ -108,7 +114,14 @@ base_df <- indicator_df %>%
       TRUE ~ base_colors[["default"]]))
 
 drilldown_df <- indicator_df %>%
-  filter(subgroup!="total") %>%
+  filter(type!="total") %>%
+  mutate(
+    group = case_when(
+      group == "pacisl" ~ "other major race groups",
+      group == "asian" ~ "other major race groups",
+      .default = group
+    )
+  ) %>%
   group_nest(group) %>%
   mutate(
     id = case_when(
@@ -126,7 +139,7 @@ drilldown_df <- indicator_df %>%
     # Store both rate-sorted and count-sorted versions
     data = map(data, function(df) {
       df %>%
-        arrange(desc(rate)) %>%
+        # arrange(desc(rate)) %>%
         mutate(name = subgroup, y = rate, y2 = raw) %>%
         select(name, y, y2) %>%
         list_parse()}),
@@ -417,7 +430,10 @@ hc <- hchart(
     text = chart_title,
     align = "center" ) %>% 
   hc_subtitle(
-    text = "Click the Asian or Total bar below to disaggregate data",
+    text = case_when(
+      grp == 'asian' ~ "Click the Asian or Total bar below to disaggregate data",
+      grp == 'nhpi' ~ "Click the Pacific Islander or Total bar below to disaggregate data",
+      .default = 'XXXXXXXXX'),
     align = "center") %>%
   hc_plotOptions(
     bar = list(
@@ -472,4 +488,3 @@ htmltools::tagList(
 )
 
 ```
-

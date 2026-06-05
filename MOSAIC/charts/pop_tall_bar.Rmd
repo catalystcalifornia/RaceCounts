@@ -18,6 +18,7 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 source(here("MOSAIC", "charts", "chart_style_vars.R"))
 con <- connect_to_db("mosaic")
 
+options(scipen = 999)
 knitr::opts_chunk$set(echo = FALSE)
 
 ```
@@ -56,11 +57,34 @@ knitr::opts_chunk$set(echo = FALSE)
 ```{r}
 ##### Prep: Get data (must change for each indicator) #####
 # Get indicator df
-indicator_df <- dbGetQuery(con, paste0("SELECT * FROM v7.", grp, "_summary_for_charts WHERE topic = '", r, "'"))
+indicator_wide <- dbGetQuery(con, paste0("SELECT * FROM v7.", table_name, " WHERE geoid = '06'"))
 
+# 1. Pivot raw columns (ignores the 'name' column)
+df_raw <- indicator_wide %>%
+  select(geoid, name, geolevel, matches("b02018_\\d+e$")) %>%
+  pivot_longer(
+    cols = matches("b02018_\\d+e$"),
+    names_to = "subgroup",
+    values_to = "raw"
+  )
+
+# 2. Pivot rate columns (ignores the 'name' column)
+df_rate <- indicator_wide %>%
+  select(geoid, name, geolevel, matches("b02018_\\d+_pct$")) %>%
+  pivot_longer(
+    cols = matches("b02018_\\d+_pct$"),
+    names_to = "pct_name",
+    values_to = "rate"
+  ) %>%
+  # Convert 'b02018_001_pct' to 'b02018_001e' to match df_raw keys
+  mutate(subgroup = paste0(sub("_pct$", "", pct_name), "e")) %>%
+  select(-pct_name)
+
+# 3. Combine them perfectly side-by-side
+long_df <- left_join(df_raw, df_rate, by = c("geoid", "name", "geolevel", "subgroup"))
 
 # Set metadata - see documentation above for examples
-indicator_name <- indicator_df$topic[1]
+indicator_name <- str_sub(table_name, -6)
 indicator_asbest <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(arei_best) %>% pull()
 data_source <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(data_source) %>% pull()
 data_description <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(methodology) %>% pull()
@@ -68,13 +92,35 @@ chart_title <- indicator_metadata %>% filter(api_name == indicator_name) %>% sel
 rate_rounding <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(rate_rounding) %>% pull() %>% as.integer()
 raw_rounding <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(raw_rounding) %>% pull() %>% as.integer()
 
-# Set total_rate
-total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% select(rate) %>% pull() %>% round(., rate_rounding)
+##### Get Labels #####
+# 1. Fetch the 2024 5-year ACS metadata dictionary
+acs_metadata <- load_variables(2024, "acs5", cache = TRUE)
 
-# need to filter out NA rates/raw and total rate
-indicator_df <- indicator_df %>% 
-  drop_na(rate) %>%
-  filter(subgroup != "total")
+# 2. Filter down to Table B02018 and format the names to end in 'e'
+subgroup_labels <- acs_metadata %>%
+  filter(str_starts(name, paste0(toupper(indicator_name),"_"))) %>%
+  mutate(
+    # Format the names to match your data (e.g., 'B02018_007' -> 'b02018_007e')
+    subgroup = paste0(tolower(name), "e"),
+    
+    # Extract only the characters after the absolute last '!!' marker
+    clean_label = str_extract(label, "[^!]+$"),
+    
+    # Optional cleanup: Trim any accidental whitespace
+    clean_label = str_trim(clean_label)
+  ) %>%
+  select(subgroup, label = clean_label)
+
+# 3. Merge the clean metadata labels into your long dataframe
+indicator_df <- long_df %>%
+  left_join(subgroup_labels, by = "subgroup") %>%
+  # Position the new 'label' column directly after the 'subgroup' column
+  relocate(label, .after = subgroup)
+
+
+# need to filter out total raw/rate
+indicator_df <- indicator_df %>%
+  filter(subgroup != "b02018_001e")
 
 # Don't change - pulled in from chart_style_vars
 methodology_link <- sprintf("<a href='%s' target='_blank'>Full Methodology</a>", mosaic_methodology_link)
