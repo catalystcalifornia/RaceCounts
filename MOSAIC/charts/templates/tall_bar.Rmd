@@ -264,7 +264,7 @@ hc <- highchart() %>%
                 
               } else {
                 chart.customToggleButton.attr({text: 'Show Counts'});
-                chart.yAxis[0].setTitle({ text: 'RATE' }, false); 
+                chart.yAxis[0].setTitle({ text: 'RATE (STATE AVERAGE: %s)' }, false);  
                 chart.xAxis[0].update({categories: rateOrder}, false);
                 chart.yAxis[0].addPlotLine({
                   id: 'state-average-line',
@@ -272,7 +272,8 @@ hc <- highchart() %>%
                   color: '%s',
                   width: 2,
                   dashStyle: 'ShortDash',
-                  label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: %s', align: 'left', rotation: 0, y: -8, x: 5},
+                  // align right and negative x should match the hc() code
+                  label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: %s', align: 'right', rotation: 0, y: -8, x: -5},
                   zIndex: 5
                 });
                 
@@ -335,6 +336,7 @@ hc <- highchart() %>%
       "), 
       jsonlite::toJSON(rate_order), # rate order
       jsonlite::toJSON(count_order), # count order
+      total_rate, # axis title
       total_rate, # value
       rc_black, # color
       total_rate) # state average
@@ -351,8 +353,14 @@ hc <- highchart() %>%
       pointPadding = 0,
       groupPadding = 0.1),
     series = 
-      list(enableMouseTracking=FALSE), # removes all highlighting from hovering over bars and legend groups
-      clip = FALSE) %>%
+      list(
+        enableMouseTracking=FALSE, # removes all highlighting from hovering over bars and legend groups
+        clip = FALSE,
+        # add event to ensure no legend toggling
+        events = list(
+          legendItemClick = htmlwidgets::JS("function() { return false; }")
+          ))
+    ) %>%
   hc_xAxis(
     categories = rate_order,
     labels = list(
@@ -361,7 +369,7 @@ hc <- highchart() %>%
     gridLineWidth = 1,
     gridLineColor = '#e6e6e6') %>%
   hc_yAxis(
-    title = list(text = "RATE"),
+    title = list(text = sprintf("RATE (STATE AVERAGE: %s)", total_rate)),
     labels=list(enabled=FALSE), # remove labels from rate axis
     gridLineWidth=0,
     offset = 0,
@@ -375,8 +383,8 @@ hc <- highchart() %>%
         label = list(
           style=list(fontWeight='bold', fontSize='0.8em'),
           text = paste('STATE AVERAGE:', total_rate), 
-          align = 'left', 
-          rotation=0, y=-8, x=5),
+          align = 'right', # keep so label doesn't truncate on mobile
+          rotation=0, y=-8, x=-5), # keep x=-5 so label doesn't truncate on mobile
         zIndex = 5
       )
     )
@@ -384,21 +392,38 @@ hc <- highchart() %>%
   hc_legend(
     enabled = TRUE,
     verticalAlign = "top",
-    margin = 20
+    margin = 20,
+    itemStyle = list(cursor = "default")  # makes cursor not show pointer - to clarify no series toggling
   ) %>%
   hc_tooltip(enabled = FALSE) %>%
   hc_title(
-    text = chart_title,
+    text = "Low Birthweight by Race/Ethnicity",
     align = "center") %>% 
   hc_subtitle(
-    text = "Toggle groups on/off by clicking the legend labels below",
+    # Remove toggle for now
+    # text = "Toggle groups on/off by clicking the legend labels below",
     align = "center") %>%
   hc_caption(
-    text = paste("<b>About the data:", data_source, "</b>", data_description, methodology_link),
+    text = paste("<b>Source:", data_source, "</b>", data_description, methodology_link),
     useHTML = TRUE,
     align = "left"
   ) %>%
-  hc_add_theme(custom_theme)
+  hc_add_theme(custom_theme) %>% 
+  hc_responsive(
+    rules = list(
+      list(
+        # Omit data_description on small screens
+        condition = list(maxWidth = 768),
+        chartOptions = list(
+          caption = 
+            list(
+              text = paste("<b>Source:</b>", data_source,
+                         "<a href='...' target='_blank'>Full Methodology</a>")
+            )
+        )
+      )
+    )
+  )
 
 # Add RATES series (visible by default)
 for (series in series_data_rates) {

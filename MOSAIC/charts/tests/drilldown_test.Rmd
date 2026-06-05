@@ -4,6 +4,7 @@ output:
   html_document:
     self_contained: true
 ---
+
 <style>
 .html-widget {
     width: 910px !important;
@@ -19,6 +20,7 @@ body {
     display: none !important;
 }
 </style>
+
 
 ```{r, include=FALSE}
 # # load libraries and test data
