@@ -1,3 +1,16 @@
+library(readxl)
+library(here)
+library(dplyr)
+library(purrr)
+library(htmltools)
+library(highcharter)
+
+# define global chart metadata
+mosaic_methodology_link <- "https://catalystcalifornia.github.io/RaceCounts/MOSAIC/Methodology/MOSAIC_Indicator_Methodology.html"
+indicator_metadata <- read_excel("W:\\Project\\RACE COUNTS\\2025_v7\\MOSAIC\\indicator_list.xlsx")
+
+
+
 # define global styling elements
 # define rc colors we want to use
 rc_blue <-  "#070024" # primary
@@ -14,7 +27,10 @@ rc_yellow <- "#fec009"
 base_colors <- c(
   "asian" = rc_orange,
   "asian subgroups" = rc_orange,
+  "pacisl" = rc_orange,
+  "pacisl subgroups" = rc_orange,
   "asian total"= rc_blue,
+  "pacisl total"= rc_blue,
   "total" = rc_magenta,
   "other" = rc_magenta,
   "default" = rc_grey)

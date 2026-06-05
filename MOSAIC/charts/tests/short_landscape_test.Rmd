@@ -1,0 +1,208 @@
+---
+title: ""
+output: 
+  html_document:
+    self_contained: true
+---
+<style>
+.html-widget {
+    width: 910px !important;
+    height: 340px !important;
+}
+body { margin: 0; }
+</style>
+
+```{r, include=FALSE}
+# # load libraries and test data
+library(here)
+library(purrr)
+library(grDevices)
+
+
+source(here("MOSAIC", "charts", "data_prep.R"))
+knitr::opts_chunk$set(echo = FALSE)
+
+```
+
+```{r}
+# Data prep
+groups_to_highlight <- c("nh_asian", "pacisl", "swana")
+
+chart_df <- low_bw_rc_reshape %>%
+  mutate(
+    rate_label = round(rate, 1),
+    count_label = format(count, big.mark = ",", scientific = FALSE),
+    hex_color = if_else(subgroup %in% groups_to_highlight, rc_magenta, rc_grey),
+    fixed_y = 1
+    )
+
+# Direction of best?
+best <- "min"
+reverse_x_arg <- ifelse(best=="min", TRUE, FALSE)
+
+# Total average
+total_avg <- chart_df %>%
+  filter(subgroup=="total") %>%
+  select(rate) %>%
+  pull()
+
+```
+
+```{r}
+# Chart Text
+
+title <- "Low Birthweight Births (%)"
+# Perhaps no subtitle to maximize chart space
+# subtitle <- "Stress from discrimination and living in neighborhoods with limited employment opportunities, abandoned housing, crime, and limited resources are associated with adverse birth outcomes, like low birthweight."
+
+subtitle <- ""
+
+# caption text
+data_source <- "US Department of Health and Human Services, Centers for Disease Control and Prevention (CDC), National Center for Health Statistics, Division of Vital Statistics, CDC WONDER Online Database (2016-2023)"
+data_description <- "The number of infants born weighing less than 2,500 grams or about 5 lbs 8 oz per 100 live births by race/ethnicity of birthing parent. Estimates for racial groups with fewer than ten births or areas with fewer than 100,000 people were excluded to protect privacy. SWANA data includes only foreign-born birthing parents."
+methodology_link <- "<a href='https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html' target='_blank'>Full Methodology</a>"
+groups_to_highlight <- c("nh_asian", "pacisl", "swana")
+
+
+```
+
+
+```{r}
+# Build chart
+
+hc <- hchart(chart_df,
+             type = "bubble",
+             hcaes(x=rate, y=fixed_y, color=hex_color)) %>%
+  hc_title(
+    text = "Low Birthweight Births (%)", 
+    align = "left", 
+    style = list(fontWeight = "bold", color = "#000000")) %>%
+  hc_subtitle(text=subtitle,
+              align="left") %>%
+  hc_caption(
+    text = paste("<b>Source:", data_source, "</b><br>", data_description, methodology_link),
+    useHTML = TRUE,
+    align = "left"
+  ) %>%
+  # Remove Y-axis elements and add the thick black background track line
+  hc_yAxis(
+    min = 0.5,
+    max = 1.5,
+    gridLineWidth = 0,
+    lineWidth = 0,
+    labels = list(enabled = FALSE),
+    title = list(text = ""),
+    plotLines = list(
+      list(
+        value = 1, # Must match 'fixed_y' data value
+        color = "#000000",
+        width = 10, # Adjust thickness of the black track line
+        zIndex = 1  # Keeps line behind the bubbles
+      )
+    )
+  ) %>% 
+  hc_xAxis(
+    title = list(text = ""),
+    reversed = reverse_x_arg,
+    gridLineWidth = 0,
+    tickLength = 0,
+    lineWidth = 0,
+    labels = list(format = "{value}%", style = list(fontSize = "12px", color = "#000000")),
+    # Add the vertical target dashed line
+    plotLines = list(
+      list(
+        value = total_avg, 
+        color = rc_yellow,
+        width = 2,
+        dashStyle = "Dash",
+        zIndex = 4
+      )
+    )
+  ) %>% 
+  hc_legend(enabled=FALSE) %>%
+  # Style the bubble markers globally and map labels
+  hc_plotOptions(
+    bubble = list(
+      zIndex = 3,
+      minSize = 15,
+      maxSize = 45,
+      colorByPoint=TRUE,
+      fillOpacity = 1,
+      marker = list(
+        lineColor = "#333333",
+        lineWidth = 1,
+        fillOpacity = 1
+      ),
+      dataLabels = list(
+        enabled = TRUE,
+        format = "{point.label_text}",
+        style = list(color = "#ffffff", textOutline = "none", fontSize = "11px")
+      ),
+      tooltip = list(
+        enabled = TRUE,
+        useHTML = TRUE,
+        backgroundColor = rc_grey,
+        headerFormat = "",  # Remove default header
+        pointFormat = paste(
+          "<div style='padding: 20px; line-height: normal; max-width: 220px;'>",
+          "<div style='font-size: 18px; margin-bottom: 20px; text-align: left;'>{point.subgroup}</div><br><br>",
+          "<div style='padding: 15px; margin: 8px 0; border-radius: 4px; text-align: center;'>",
+          "<div style='font-size: 16px; font-weight: bold; margin-bottom: 15px;'>{point.rate_label}</div>",
+          "<div style='font-size: 13px;'>%</div><br><br>",
+          "<div style='font-size: 16px; font-weight: bold; margin-bottom: 5px;'>{point.count_label}</div>",
+          "<div style='font-size: 13px;'>low birthweight births</div>",
+          "</div>",
+          "</div>")
+    )
+  )) %>%
+  hc_add_theme(custom_theme) %>% 
+  hc_responsive(
+    rules = list(
+      list(
+        # Omit data_description on small screens
+        condition = list(maxWidth = 768),
+        chartOptions = list(
+          caption = 
+            list(
+              text = paste("<b>Source:</b>", data_source,
+                         "<a href='...' target='_blank'>Full Methodology</a>")
+            )
+        )
+      )
+    )
+  )
+
+
+# Wrap with constrained width
+htmltools::tagList(
+  htmltools::tags$div(
+    class = "chart-wrapper",
+    style = "max-width: 1200px; width: 100%; margin: 0 auto;",
+    htmltools::tags$div(
+      class = "chart-container",
+      style = "height: auto; overflow: hidden; border: 1px solid #ccc;",
+      hc
+    )
+  ),
+  htmltools::tags$script(HTML("
+    function resizeChart() {
+      if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
+        Highcharts.charts.forEach(function(chart) {
+          if (chart) {
+            var wrapper = document.querySelector('.chart-wrapper');
+            if (wrapper) {
+              var targetWidth = wrapper.offsetWidth - 40;
+              chart.setSize(targetWidth, null, false);
+            }
+          }
+        });
+      }
+    }
+    
+    setTimeout(resizeChart, 100);
+    window.addEventListener('resize', resizeChart);
+  "))
+)
+  
+
+```

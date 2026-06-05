@@ -1,0 +1,376 @@
+---
+title: ""
+output: 
+  html_document:
+    self_contained: true
+---
+<style>
+.html-widget {
+    width: 910px !important;
+    height: 975px !important;
+}
+
+body { 
+  margin: 0; 
+}
+
+/* Hide default Highcharts drillup button */
+.highcharts-drillup-button {
+    display: none !important;
+}
+</style>
+
+```{r, include=FALSE}
+# # load libraries and test data
+library(here)
+
+source(here("MOSAIC", "charts", "data_prep.R"))
+knitr::opts_chunk$set(echo = FALSE)
+
+```
+
+```{r}
+
+# define JS to control behavior or drilldown
+drilldown_bw_js <- paste0("function(e) {
+  var chart = this;
+  
+  if (!e.seriesOptions) {
+    return;
+  }
+  
+  var seriesId = e.seriesOptions.id;
+  
+  if (!chart.originalDrilldownData) {
+    chart.originalDrilldownData = {};
+  }
+  
+  if (e.seriesOptions.data && e.seriesOptions.data_count_sorted) {
+    chart.originalDrilldownData[seriesId] = {
+      rateSorted: JSON.parse(JSON.stringify(e.seriesOptions.data)),
+      countSorted: JSON.parse(JSON.stringify(e.seriesOptions.data_count_sorted))
+    };
+  }
+  
+  chart.yAxis[0].addPlotLine({
+    id: 'total-line',
+    value: ", total_rate_bw, ",
+    color: '", rc_black, "',
+    width: 2,
+    dashStyle: 'ShortDash',
+    zIndex: 5,
+    label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: ", total_rate_bw, "', align: 'right', rotation: 0, y: 5, x: -5}
+  });
+  
+  chart.currentView = 'rates';
+  
+  chart.update({
+    plotOptions: {
+      bar: {
+        states: { hover: { enabled: false } },
+        dataLabels: {
+          formatter: function() { return this.y; }
+        }
+      }
+    }
+  }, false);
+
+  chart.yAxis[0].setTitle({ text: 'RATE (STATE AVERAGE: ", total_rate_bw, ")' }, false);
+
+  var backBtn = document.getElementById('hc-back-btn');
+  if (backBtn) backBtn.style.display = 'block';
+  
+  var toggleBtn = document.getElementById('hc-toggle-btn');
+  if (toggleBtn) {
+    toggleBtn.style.display = 'block';
+    toggleBtn.innerText = 'Show Counts';
+  }
+  
+  chart.redraw();
+}")
+
+
+drillup_bw_js <- paste0("function() { 
+  var chart = this;
+  chart.yAxis[0].removePlotLine('total-line');
+  
+  if (chart.originalDrilldownData && chart.options.drilldown && chart.options.drilldown.series) {
+    chart.options.drilldown.series.forEach(function(drilldownSeries) {
+      var seriesId = drilldownSeries.id;
+      if (chart.originalDrilldownData[seriesId]) {
+        drilldownSeries.data = chart.originalDrilldownData[seriesId].rateSorted;
+      }
+    });
+  }
+  
+  var toggleBtn = document.getElementById('hc-toggle-btn');
+  if (toggleBtn) toggleBtn.style.display = 'none';
+  
+  // ---- ADDED: hide custom back button ----
+  var backBtn = document.getElementById('hc-back-btn');
+  if (backBtn) backBtn.style.display = 'none';
+  // ------------------------------------------
+  
+  chart.currentView = null;
+  chart.yAxis[0].setTitle({ text: 'RATE' }, false);
+  
+  chart.update({
+    plotOptions: {
+      bar: {
+        dataLabels: {
+          formatter: function() { return this.y; }
+        }
+      }
+    }
+  }, false);
+  
+  chart.redraw();
+}")
+
+
+# caption text
+data_source <- "US Department of Health and Human Services, Centers for Disease Control and Prevention (CDC), National Center for Health Statistics, Division of Vital Statistics, CDC WONDER Online Database (2016-2023)"
+data_description <- "The number of infants born weighing less than 2,500 grams or about 5 lbs 8 oz per 100 live births by race/ethnicity of birthing parent. Estimates for racial groups with fewer than ten births or areas with fewer than 100,000 people were excluded to protect privacy. SWANA data includes only foreign-born birthing parents."
+methodology_link <- "<a href='https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html' target='_blank'>Full Methodology</a>"
+
+```
+
+```{r}
+# Create Chart 1 (drilldown)
+hc <- hchart(
+  base_bw_df,
+  "bar",
+  hcaes(x = group, y = rate, drilldown = group, y2 = count, color=color),
+  name = "Overview",
+  colorByPoint = FALSE) %>%
+  hc_chart(
+    height = 400, 
+    scrollablePlotArea = list(minHeight = 500, opacity = 0.9),
+    events = list(
+      drilldown = JS(drilldown_bw_js),
+      drillup = JS(drillup_bw_js))) %>%
+  hc_tooltip(enabled = FALSE) %>%
+  hc_drilldown(
+    allowPointDrilldown = TRUE,
+    series = list_parse(drilldown_bw_df),
+    activeDataLabelStyle = list(
+      color = rc_black,
+      textDecoration = "none",
+      fontWeight = "normal"
+      ),
+    activeAxisLabelStyle = list(
+      color = rc_black,
+      textDecoration = "none",
+      cursor = "pointer"
+      ),
+    breadcrumbs = list(
+    showFullPath = FALSE,
+    buttonTheme = list(
+      states = list(
+        hover = list(fill = "none"),
+        select = list(fill = "none")
+      ),
+      fill = "none",
+      stroke = "none",
+      `stroke-width` = 0,
+      style = list(
+        color = "transparent",
+        fontSize = "0px"        # collapse text to nothing
+      ),
+      width = 0,
+      height = 0,
+      padding = 0
+    ))
+ ) %>%
+  hc_title(
+    text = "Low Birthweight by Race/Ethnicity",
+    align = "center" ) %>% 
+  hc_subtitle(
+    text = "Click the Asian or Total bar below to disaggregate data",
+    align = "center") %>%
+  hc_plotOptions(
+    bar = list(
+      dataLabels = list(
+        enabled = TRUE,
+        align = "right",
+        inside = FALSE))) %>% 
+  hc_xAxis(
+    title=list(text=NULL),
+    labels = list(
+      enabled = TRUE)) %>%
+  hc_yAxis(
+    title = list(text = "RATE"),
+    labels=list(enabled=FALSE)) %>%# remove labels from rate axis) 
+  hc_legend(enabled=FALSE) %>%
+  hc_caption(
+    text = paste("<b>Source:", data_source, "</b>", data_description, methodology_link),
+    useHTML = TRUE,
+    align = "left"
+  ) %>%
+  hc_add_theme(custom_theme) %>% 
+  hc_responsive(
+    rules = list(
+      list(
+        # Omit data_description on small screens
+        condition = list(maxWidth = 768),
+        chartOptions = list(
+          caption = 
+            list(
+              text = paste("<b>Source:</b>", data_source,
+                         "<a href='...' target='_blank'>Full Methodology</a>")
+            )
+        )
+      )
+    )
+  )
+
+htmltools::tagList(
+  htmltools::tags$div(
+    class = "chart-wrapper",
+    style = "max-width: 1200px; width: 100%; margin: 0 auto; position: relative;",
+  
+  htmltools::tags$button(
+    id = "hc-back-btn",
+    htmltools::HTML("\u25C1 Back to Overview"),
+    style = paste(
+      "display: none;",
+      "position: absolute;",
+      "right: 10px;",
+      "top: calc(50% - 60px);",   # above toggle button
+      "width: 106px;",
+      "white-space: normal;",
+      "text-align: center;",
+      paste0("background-color: ", rc_grey, ";"),
+      "color: #333333;",
+      "border: 1px solid #cccccc;",
+      "border-radius: 3px;",
+      "padding: 6px 8px;",
+      "cursor: pointer;",
+      "z-index: 10;",
+      "line-height: 1.3;",
+      sep = " "
+    )
+  ),
+  
+  htmltools::tags$button(
+    id = "hc-toggle-btn",
+    "Show Counts",
+    style = paste(
+      "display: none;",
+      "position: absolute;",
+      "right: 10px;",
+      "top: calc(50% - 0px);",   # below back button
+      "width: 106px;",
+      "text-align: center;",
+      paste0("background-color: ", rc_blue, ";"),
+      paste0("color: ", rc_white, ";"),
+      paste0("border: 1px solid ", rc_blue, ";"),
+      "border-radius: 3px;",
+      "padding: 6px 8px;",
+      "cursor: pointer;",
+      "z-index: 10;",
+      "line-height: 1.3;",
+      sep = " "
+    )
+  ),
+  
+  htmltools::tags$div(
+    class = "chart-container",
+    style = "height: auto; overflow: hidden; border: 1px solid #ccc;",
+    hc
+  )
+),
+
+htmltools::tags$script(HTML("
+  document.getElementById('hc-back-btn').addEventListener('click', function() {
+    if (typeof Highcharts !== 'undefined') {
+      Highcharts.charts.forEach(function(chart) {
+        if (chart) chart.drillUp();
+      });
+    }
+  });
+
+  document.getElementById('hc-toggle-btn').addEventListener('click', function() {
+    var chart = Highcharts.charts.find(function(c) { return c; });
+    if (!chart) return;
+    
+    var btn = document.getElementById('hc-toggle-btn');
+    
+    if (chart.currentView === 'rates') {
+      chart.currentView = 'counts';
+      btn.innerText = 'Show Rates';
+      chart.yAxis[0].setTitle({ text: 'COUNT' }, false);
+      chart.yAxis[0].removePlotLine('total-line');
+      
+      chart.series.forEach(function(s) {
+        if (s.options.id && chart.originalDrilldownData[s.options.id]) {
+          s.setData(chart.originalDrilldownData[s.options.id].countSorted, false);
+        }
+      });
+      
+      chart.update({
+        plotOptions: {
+          bar: {
+            dataLabels: {
+              formatter: function() { return this.y.toLocaleString('en-US'); }
+            }
+          }
+        }
+      }, false);
+      
+    } else {
+      chart.currentView = 'rates';
+      btn.innerText = 'Show Counts';
+      chart.yAxis[0].setTitle({ text: 'RATE (STATE AVERAGE: ", total_rate_bw, ")' }, false);
+      
+      chart.yAxis[0].addPlotLine({
+        id: 'total-line',
+        value: ", total_rate_bw, ",
+        color: '", rc_black, "',
+        width: 2,
+        dashStyle: 'ShortDash',
+        zIndex: 5,
+        label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: ", total_rate_bw, "', align: 'right', rotation: 0, y: 5, x: -5}
+      });
+      
+      chart.series.forEach(function(s) {
+        if (s.options.id && chart.originalDrilldownData[s.options.id]) {
+          s.setData(chart.originalDrilldownData[s.options.id].rateSorted, false);
+        }
+      });
+      
+      chart.update({
+        plotOptions: {
+          bar: {
+            dataLabels: {
+              formatter: function() { return this.y; }
+            }
+          }
+        }
+      }, false);
+    }
+    
+    chart.redraw();
+  });
+  
+  function resizeChart() {
+      if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
+        Highcharts.charts.forEach(function(chart) {
+          if (chart) {
+            var wrapper = document.querySelector('.chart-wrapper');
+            if (wrapper) {
+              var targetWidth = wrapper.offsetWidth - 40;
+              chart.setSize(targetWidth, null, false);
+            }
+          }
+        });
+      }
+    }
+    
+    setTimeout(resizeChart, 100);
+    window.addEventListener('resize', resizeChart);
+  "))
+)
+
+```
+
