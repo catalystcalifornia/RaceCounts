@@ -1,0 +1,129 @@
+---
+title: ""
+  html_document:
+    css: "W:\\RDA Team\\R\\cc_brandguide.css"
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE
+)
+
+
+#### Setting Up ####
+
+library(usethis)
+library(dplyr)
+library(tidyverse)
+library(htmltools) 
+library(htmlwidgets)
+library(gtExtras)
+library(gt)
+library(sf)
+library(scales)
+library(ggplot2)
+
+# lang <- getOption("highcharter.lang")
+# lang$thousandsSep <- ","
+# options(highcharter.lang = lang)
+
+#Add database connection and source script with functions for pushing to postgres
+source("W:\\RDA Team\\R\\credentials_source.R")
+options(scipen = 999)
+
+#### Step 1: Pull in data ####
+source("./calcs_hateincident.R")
+df <- final_df 
+
+# need to update code below to just rename within the chart fx rather than in the df
+df <- df %>%
+  # clean up labels for visuals
+  mutate(race_label=case_when(
+    race=="latino" ~ "Latinx",
+    race=="aian" ~ "AIAN",
+    race=="nh_black" ~ "Black",
+    race=="nhpi" ~ "PI",
+    race=="swana" ~ "SWANA",
+    race=="nh_white" ~ "White",
+    race=="nh_asian" ~ 'Asian',
+    race=="total" ~ 'Total',
+      TRUE~NA))
+
+
+## COLORS ## source: W:\RDA Team\Communications\Catalyst California Brand Guide_September 2022.pdf
+orange <- "#F25922"     # 01 row on data vis colors page & brand colors page
+peridot <- "#CEEA01"    # 01 row on data vis colors page & brand colors page
+lavender <- "#CEC4E2"   # brand colors page
+meteorite <- "#3A207D"  # brand colors page
+ccblue <- "#0860BC"     # 00 row on data vis colors page 
+ccyellow <-"#FFCC00"    # 01 row on data vis colors page
+ccmagenta <- "#733256"  # 01 row on data vis colors page
+ccpenny <- "#FF9873"    # 03 row on data vis colors page
+
+black <- "#000000"      # brand colors page
+alabaster<-"#FBFBFB"    # brand colors page
+gainsboro <- "#DEDEDE"  # brand colors page
+rc_white <- "#F7F7F7"   
+
+my_colors <- c(meteorite, ccblue, peridot, orange, ccpenny, lavender, ccyellow, black)
+
+## FONTS ## 
+
+
+
+
+
+```
+
+## People who have Experienced Hate Incidents
+
+
+```{r, fig.width=7, fig.height=4.5}
+############# STATIC VERSION ############# 
+
+# calculate width based on longest label
+max_label_width <- max(nchar(paste0(round(df$rate, 1), "% (", scales::comma(df$raw), ")")))
+chart_width <- max(7, max_label_width * 0.15)
+
+p <- ggplot(df, aes(x = rate, y = reorder(race_label, rate), fill = race)) +
+  geom_col() +
+  geom_text(
+    aes(label = paste0(round(rate, 1), "% (", scales::comma(raw), ")")),
+    hjust = -0.1,
+    size = 3.5
+  ) +
+  scale_fill_manual(values = my_colors) +
+  scale_x_continuous(
+    expand = expansion(mult = c(0, 0.2))
+  ) +
+  labs(
+    title = "Between 2023-2024, nearly 3M Californians experienced one or more hate incidents",
+    subtitle = "People Who Have Experienced a Hate Incident in the Last 12 Months (%)",
+    x = "Experienced Hate Incident (%)",
+    y = NULL,
+    caption = 'Data Source: California Health Interview Survey 2023-24 Pooled Estimates. Teens and adults were asked "During the\npast 12 months, do you think you directly experienced a hate incident?"\n\nData Notes: AIAN = American Indian / Alaska Native, PI = Pacific Islander, SWANA = Southwest Asian / North African.\nThose three races include people who identify as that race alone or in combination with another race or ethnicity including\nLatinx. Asian, Black and White races include people who identify as that race alone.'
+    ) +
+  theme_minimal() +
+  theme(
+    #text = element_text(family="Inter"),
+    plot.title.position = "plot",   # set alignment based on whole image, not chart
+    plot.title = element_text(hjust=.5),
+    plot.caption.position = "plot", # set alignment based on whole image, not chart
+    plot.caption = element_text(hjust=0),  # left align
+    axis.title.x = element_text(margin = margin(t = 0, r = 0, b = 15, l = 0)), # add space btwn x-axis title and caption
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+
+p
+
+ggplot2::ggsave("hate_incident_race.png",
+       plot = p,
+       width = 7,
+       height = 4.5,
+       units = "in",
+       dpi = 300,
+       bg = rc_white)
+
+```
+

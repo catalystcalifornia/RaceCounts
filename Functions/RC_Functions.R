@@ -34,6 +34,7 @@ return(x)
 #####calculate number of non-NA raced "_rate" values#####
 count_values <- function(x) {
   rates <- x %>%
+    ungroup() %>%
     dplyr::select(geoid, geolevel, ends_with("_rate"), -ends_with("_no_rate"), -total_rate) %>%
     dplyr::mutate(values_count = rowSums(!is.na(select(., ends_with("_rate"))))) %>%
     dplyr::select(geoid, geolevel, values_count)
@@ -83,6 +84,7 @@ calc_best <- function(x) {
 calc_diff <- function(x) {
   # Prep
   rates <- x %>%
+    ungroup() %>%
     dplyr::select(geoid, geolevel, best, ends_with("_rate"), 
                   -starts_with("total_"), -ends_with("_no_rate")) %>%
     # remove duplicates from overcrowding
@@ -108,6 +110,7 @@ calc_diff <- function(x) {
 #####calculate (row wise) mean difference from best#####
 calc_avg_diff <- function(x) {
   diffs <- x %>%
+    ungroup() %>%
     # Prep: only run calc when 2 or more (non-NA) raced diff values are present
     filter(values_count > 1) %>%
     dplyr::select(geoid, geolevel, ends_with("_diff")) %>%
@@ -146,6 +149,7 @@ calc_s_var <- function(x) {
 #####calculate (row wise) POPULATION variance of differences from best - use for non-sample data like Decennial Census, CDPH Births, or CADOJ Incarceration#####
 calc_p_var <- function(x) {
   diffs <- x %>% 
+    ungroup() %>%
     # Prep
     filter(values_count > 1) %>%
     dplyr::select(geoid, geolevel, values_count, ends_with("_diff")) %>%
@@ -169,6 +173,7 @@ return(x)
 #####calculate index of disparity#####
 calc_id <- function(x) {
   diffs <- x %>%
+    ungroup() %>%
     filter(values_count>0) %>%
     dplyr::select(geoid, geolevel, best, asbest, values_count, ends_with("_diff")) %>%
     
@@ -197,7 +202,9 @@ calc_id <- function(x) {
 #####calculate state z-scores#####
 calc_state_z <- function(x) {
         ## Raced disparity z-scores ##
-                diff <- dplyr::select(x, geoid, avg, index_of_disparity, variance, ends_with("_diff"))          #get geoid, avg, variance, and raced diff columns
+                diff <- x %>% 
+                  ungroup() %>%
+                  select(geoid, avg, index_of_disparity, variance, ends_with("_diff"))          #get geoid, avg, variance, and raced diff columns
                 diff <- diff[!is.na(diff$index_of_disparity),]                                           #exclude rows with 2+ raced values, min is best, and lowest rate is 0
                 diff_long <- pivot_longer(diff, 5:ncol(diff), names_to="measure_rate", values_to="rate") %>%   #pivot wide table to long on geoid & variance cols
                   dplyr::mutate(diff=(rate - avg) / sqrt(variance)) %>%                                               #calc disparity z-scores
@@ -213,26 +220,35 @@ return(x)
 #####calculate county disparity z-scores ----
 calc_z <- function(x) {
         ## Total/Overall disparity_z score ##
-                id_table <- dplyr::select(x, geoid, index_of_disparity)
+                id_table <- x %>% 
+                  ungroup() %>%
+                  select(geoid, index_of_disparity)
                 avg_id = mean(id_table$index_of_disparity, na.rm = TRUE) #calc avg id and std dev of id
                 sd_id = sd((id_table$index_of_disparity), na.rm = TRUE)
                 #dplyr::mutate(sd_id = sd(unlist(id_table$index_of_disparity)))                    #calc avg id and std dev of id with unlist()
                 id_table$disparity_z <- (id_table$index_of_disparity - avg_id) / sd_id      #note the disp_z results are slightly different than pgadmin, must be due to slight methodology differences
-                x$disparity_z = id_table$disparity_z                                   #add disparity_z to original table
-
+                #x$disparity_z = id_table$disparity_z                                   #add disparity_z to original table
+                x <- x %>% left_join(id_table)
+                
         ## Raced disparity_z scores ##
-                diff <- dplyr::select(x, geoid, avg, index_of_disparity, variance, ends_with("_diff"))          #get geoid, avg, variance, and raced diff columns
+                diff <- x %>% 
+                  ungroup() %>%
+                  select(geoid, avg, index_of_disparity, variance, ends_with("_diff"))          #get geoid, avg, variance, and raced diff columns
                 diff <- diff[!is.na(diff$index_of_disparity),]                                           #exclude rows with 2+ raced values, min is best, and lowest rate is 0
                 diff_long <- pivot_longer(diff, 5:ncol(diff), names_to="measure_diff", values_to="diff") %>%   #pivot wide table to long on geoid & variance cols
                 dplyr::mutate(dispz=(diff - avg) / sqrt(variance), na.rm = TRUE) %>%                                   #calc disparity z-scores
                 dplyr::mutate(measure_diff=sub("_diff", "_disparity_z", measure_diff))                                #create new column names for disparity z-scores
-                diff_wide <- diff_long %>% dplyr::select(geoid, measure_diff, dispz) %>%      #pivot long table back to wide keeping only geoid and new columns
-                             pivot_wider(names_from=measure_diff, values_from=dispz)
+                diff_wide <- diff_long %>% 
+                  ungroup() %>%
+                  dplyr::select(geoid, measure_diff, dispz) %>%      #pivot long table back to wide keeping only geoid and new columns
+                  pivot_wider(names_from=measure_diff, values_from=dispz)
                 x <- x %>% left_join(diff_wide, by="geoid")                           #join new columns back to original table
 
 #####calculate county performance z-scores
         ## Total/Overall performance z_scores ## Note the perf_z results are slightly different than pgadmin, must be due to slight methodology differences
-                tot_table <- dplyr::select(x, geoid, asbest, total_rate)
+                tot_table <- x %>%
+                  ungroup() %>%
+                  select(geoid, asbest, total_rate)
                 avg_tot = mean(tot_table$total_rate, na.rm = TRUE)      #calc avg total_rate and std dev of total_rate
                 sd_tot = sd(tot_table$total_rate, na.rm = TRUE)
                 if (min(tot_table$asbest) == 'max') {
@@ -244,7 +260,9 @@ calc_z <- function(x) {
                 x$performance_z = tot_table$performance_z    #add performance_z to original table
 
         ## Raced performance z_scores ##
-                rates <- dplyr::select(x, geoid, asbest, ends_with("_rate"), -ends_with("_no_rate"), -ends_with("_moe_rate"), -total_rate)  #get geoid, avg, variance, and raced diff columns
+                rates <- x %>%
+                  ungroup() %>%
+                  select(geoid, asbest, ends_with("_rate"), -ends_with("_no_rate"), -ends_with("_moe_rate"), -total_rate)  #get geoid, avg, variance, and raced diff columns
                 avg_rates <- colMeans(rates[,3:ncol(rates)], na.rm = TRUE)                                        #calc average rates for each raced rate
                 a <- as.data.frame(avg_rates)                                                                     #convert to data frame
                 a$measure_rate  <- c(names(avg_rates))                                                            #create join field
