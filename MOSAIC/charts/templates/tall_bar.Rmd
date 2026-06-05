@@ -56,7 +56,7 @@ knitr::opts_chunk$set(echo = FALSE)
 ```{r}
 ##### Prep: Get data (must change for each indicator) #####
 # Get indicator df
-indicator_df <- dbGetQuery(con, paste0("SELECT * FROM v7.", grp, "_summary_for_charts WHERE topic = '", r, "'"))
+indicator_df <- dbGetQuery(con, paste0("SELECT * FROM v7.", race_grp, "_summary_for_charts WHERE topic = '", ind, "'"))
 
 
 # Set metadata - see documentation above for examples
@@ -94,11 +94,6 @@ if(indicator_asbest=="min") {
   rate_order <- indicator_df %>%
     arrange(desc(rate)) %>%
     pull(subgroup)
-
-  # Create ordered categories for COUNTS (descending by count)
-  count_order <- indicator_df %>%
-    arrange(desc(raw)) %>%
-    pull(subgroup)
   
 } else{
   indicator_df <- indicator_df %>%
@@ -111,11 +106,13 @@ if(indicator_asbest=="min") {
     arrange(rate) %>%
     pull(subgroup)
 
-  # Create ordered categories for COUNTS (descending by count)
-  count_order <- indicator_df %>%
-    arrange(raw) %>%
-    pull(subgroup)
 }
+
+# count order will always be most to least
+# Create ordered categories for COUNTS (descending by count)
+count_order <- indicator_df %>%
+  arrange(desc(raw)) %>%
+  pull(subgroup)
 
 # Create series data for RATES with colors
 series_data_rates <- indicator_df %>%
@@ -397,8 +394,8 @@ hc <- highchart() %>%
   ) %>%
   hc_tooltip(enabled = FALSE) %>%
   hc_title(
-    text = "Low Birthweight by Race/Ethnicity",
-    align = "center") %>% 
+    text = chart_title,
+    align = "center" ) %>% 
   hc_subtitle(
     # Remove toggle for now
     # text = "Toggle groups on/off by clicking the legend labels below",

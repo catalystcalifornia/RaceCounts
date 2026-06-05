@@ -68,9 +68,7 @@ knitr::opts_chunk$set(echo = FALSE)
 ```{r}
 ##### Prep: Get data (must change for each indicator) #####
 # Get indicator df
-indicator_df <- dbGetQuery(con, paste0("SELECT * FROM v7.", grp, "_summary_for_charts WHERE topic = '", r, "'"))
-
-# note: may need to filter out NA rates/raw
+indicator_df <- dbGetQuery(con, paste0("SELECT * FROM v7.", race_grp, "_summary_for_charts WHERE topic = '", ind, "'"))
 
 
 # Set metadata - see documentation above for examples
@@ -122,23 +120,25 @@ base_df <- indicator_df %>%
       group == "total" ~ base_colors[["total"]],
       TRUE ~ base_colors[["default"]]))
 
-drilldown_df <- indicator_df %>%
-  filter(type!="total") %>%
+# reorg indicator df to get asian and pacisl to appear under total drilldown
+indicator_df <- indicator_df %>%
   mutate(
     group = case_when(
       group == "pacisl" ~ "other major race groups",
       group == "asian" ~ "other major race groups",
       .default = group
     )
-  ) %>%
+  )
+
+drilldown_df <- indicator_df %>%
+  filter(type!="total") %>%
   group_nest(group) %>%
   mutate(
     id = case_when(
       group == "asian subgroups" ~ "asian",
       group == "pacisl subgroups" ~ "pacisl",
       group == "other major race groups" ~ "total",
-      .default = group
-    ),
+      .default = group),
     type = "bar",
     color = case_when(
       id == "asian" ~ base_colors[["asian"]],
@@ -154,7 +154,7 @@ drilldown_df <- indicator_df %>%
         list_parse()}),
     data_count_sorted = map2(data, group, function(df, grp) {
       indicator_df %>%
-        filter(group == grp, subgroup != "total") %>%
+        filter(group == grp, subgroup != "total") %>% 
         arrange(desc(raw)) %>%
         mutate(name = subgroup, y = raw, y2 = rate) %>%
         select(name, y, y2) %>%
@@ -318,8 +318,8 @@ hc <- hchart(
     align = "center" ) %>% 
   hc_subtitle(
     text = case_when(
-      grp == 'asian' ~ "Click the Asian or Total bar below to disaggregate data",
-      grp == 'nhpi' ~ "Click the Pacific Islander or Total bar below to disaggregate data",
+      race_grp == 'asian' ~ "Click the Asian or Total bar below to disaggregate data",
+      race_grp == 'nhpi' ~ "Click the Pacific Islander or Total bar below to disaggregate data",
       .default = 'XXXXXXXXX'),
     align = "center") %>%
   hc_plotOptions(
