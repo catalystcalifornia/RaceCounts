@@ -96,7 +96,8 @@ p <- ggplot(df, aes(x = rate, y = reorder(race_label, rate), fill = race)) +
     expand = expansion(mult = c(0, 0.2))
   ) +
   labs(
-    title = "People Who Have Experienced a Hate Incident\nin the Last 12 Months (%)",
+    title = "Between 2023-2024, nearly 3M Californians experienced one or more hate incidents",
+    subtitle = "People Who Have Experienced a Hate Incident in the Last 12 Months (%)",
     x = "Experienced Hate Incident (%)",
     y = NULL,
     caption = 'Data Source: California Health Interview Survey 2023-24 Pooled Estimates. Teens and adults were asked "During the\npast 12 months, do you think you directly experienced a hate incident?"\n\nData Notes: AIAN = American Indian / Alaska Native, PI = Pacific Islander, SWANA = Southwest Asian / North African.\nThose three races include people who identify as that race alone or in combination with another race or ethnicity including\nLatinx. Asian, Black and White races include people who identify as that race alone.'
