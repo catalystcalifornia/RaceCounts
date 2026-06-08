@@ -57,10 +57,10 @@ df <- rbind(total_df, asian_df)
 source("./MOSAIC/Functions/CHIS_Functions.R")
 
 df <- fix_colnames(df) # this wasn't necessary in other CHIS scripts but is necessary here for some reason
-df_subset <- prep_chis(df)
+df_subset <- prep_chis(df, "yes")
 View(df_subset)
 
-d <- df_subset
+d <- df_subset 
 
 
 #set source for RC Functions script
@@ -84,7 +84,7 @@ state_table <- d[d$geoname == 'California', ]
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
 
-state_table <- rename(state_table, state_id = geoid, state_name = geoname)
+state_table <- dplyr::rename(state_table, state_id = geoid, state_name = geoname)
 View(state_table)
 
 #remove state from county table
@@ -94,22 +94,23 @@ county_table <- d[d$geoname != 'California', ]
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
 
-county_table <- rename(county_table, county_id = geoid, county_name = geoname)
+county_table <- dplyr::rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
 # DROP TOTAL AND TOTAL RATE-DERIVED COLS
-county_table <- county_table %>% select(-c(starts_with("performance"), "quadrant"))
-state_table <- state_table
+county_table <- county_table %>% select(-c(starts_with("performance"), "quadrant", starts_with("total_")))
+state_table <- state_table %>% select(-c(starts_with("total_")))
 
 
 ###info for postgres tables - automatically updates###
 county_table_name <- paste0("asian_demo_voter_engagement_county_",yr)
 state_table_name <- paste0("asian_demo_voter_engagement_state_",yr)
-indicator <- "Voter engagement in national, state, and local elections - US Citizens (%) Asian Ethnic Groups ONLY"
+indicator <- "Voter engagement in national, state, and local elections - US Citizens (%) Asian Ethnic Groups ONLY. Respondents who were always or frequently engaged"
 source <- paste0("AskCHIS ", curr_yr, " Pooled Estimates. ", dwnld_url, " QA doc: ", qa_filepath)
 
 #send tables to postgres
 to_postgres(county_table,state_table,"mosaic")
+
 
 
 # Prep Total and Raced Data ------------------------------------------------
@@ -131,8 +132,8 @@ total_df[1:3,1] <- total_df_rownames[1:3]
 races_df = read.xlsx(paste0(new_chis_dir, "/Voter_race.xlsx"), sheet=1, startRow=8, rows=c(8,10:12,14,16:19,21,23))
 
 #format row headers
-races_rownames <- c("latino_no", "nh_white_no", "nh_black_no", "nh_asian_no", "nh_twoormor_no", 
-                    "latino_yes", "nh_white_yes", "nh_black_yes", "nh_asian_yes", "nh_twoormor_yes")
+races_rownames <- c("latino_yes", "nh_white_yes", "nh_black_yes", "nh_asian_yes", "nh_twoormor_yes",
+                    "latino_no", "nh_white_no", "nh_black_no", "nh_asian_no", "nh_twoormor_no")
 races_df[1:10,1] <- races_rownames[1:10]
 
 
@@ -140,7 +141,7 @@ races_df[1:10,1] <- races_rownames[1:10]
 aian_df = read.xlsx(paste0(new_chis_dir, "/Voter_aian.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
 
 #format row headers
-aian_rownames <- c("aian_no", "aian_yes")
+aian_rownames <- c("aian_yes", "aian_no")
 aian_df[1:2,1] <- aian_rownames[1:2]
 
 
@@ -148,7 +149,7 @@ aian_df[1:2,1] <- aian_rownames[1:2]
 pacisl_df = read.xlsx(paste0(new_chis_dir, "/Voter_nhpi.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
 
 #format row headers
-pacisl_rownames <- c("pacisl_no", "pacisl_yes")
+pacisl_rownames <- c("pacisl_yes", "pacisl_no")
 pacisl_df[1:2,1] <- pacisl_rownames[1:2]
 
 
@@ -156,7 +157,7 @@ pacisl_df[1:2,1] <- pacisl_rownames[1:2]
 swana_df = read.xlsx(paste0(new_chis_dir, "/Voter_mena.xlsx"), sheet=1, startRow=8, rows=c(8,10,12))
 
 #format row headers
-swana_rownames <- c("swana_no", "swana_yes")
+swana_rownames <- c("swana_yes", "swana_no")
 swana_df[1:2,1] <- swana_rownames[1:2]
 
 
@@ -164,7 +165,7 @@ swana_df[1:2,1] <- swana_rownames[1:2]
 df <- rbind(total_df, races_df, aian_df, pacisl_df, swana_df)
 df_subset <- prep_chis(df)
 
-df_county <- df_subset %>% filter(geoid !='06') %>% rename(county_id = geoid) %>% select(-geoname)
+df_county <- df_subset %>% filter(geoid !='06') %>% dplyr::rename(county_id = geoid) %>% select(-geoname)
 df_state <- df_subset %>% filter(geoid =='06') %>% select(-geoid, -geoname)
 
 # Append Total and Raced Data to Existing Postgres Tables ------------------------------------------------
@@ -190,14 +191,14 @@ for (col in names(df_state)) {
   
   # 1. Add the column
   dbExecute(con, sprintf(
-    'ALTER TABLE %.% ADD COLUMN IF NOT EXISTS "%s" %s',
+    'ALTER TABLE %s.%s ADD COLUMN IF NOT EXISTS "%s" %s',
     rc_schema, state_table_name, col, pg_type
   ))
   
-  # 2. Update the single row with the value from df_state
+  # 2. Update the single row
   dbExecute(con,
-            sprintf('UPDATE %.% SET "%s" = $1', col),
-            rc_schema, state_table_name, list(val)
+            sprintf('UPDATE %s.%s SET "%s" = $1', rc_schema, state_table_name, col),
+            list(val)
   )
 }
 
@@ -208,13 +209,12 @@ county_table_name <- "asian_demo_voter_engagement_county_2025"
 existing_cols <- dbListFields(con, Id(schema = rc_schema, table = county_table_name))
 new_cols <- setdiff(names(df_county), c(existing_cols))  # county_id already in existing_cols, so it's excluded automatically
 
-# Add each new column then update row-by-row, matched on county_id
 for (col in new_cols) {
   pg_type <- r_to_pg_type(df_county[[col]])
   
   # 1. Add the column
   dbExecute(con, sprintf(
-    'ALTER TABLE %s.% ADD COLUMN IF NOT EXISTS "%s" %s',
+    'ALTER TABLE %s.%s ADD COLUMN IF NOT EXISTS "%s" %s',
     rc_schema, county_table_name, col, pg_type
   ))
 }
@@ -232,7 +232,7 @@ set_clause <- paste(
 
 # Single UPDATE joining on county_id
 update_sql <- sprintf(
-  'UPDATE %.% AS tgt
+  'UPDATE %s.%s AS tgt
    SET %s
    FROM pg_temp.df_county_tmp AS tmp
    WHERE tgt.county_id = tmp.county_id',

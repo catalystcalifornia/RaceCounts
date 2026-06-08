@@ -55,7 +55,7 @@ df <- rbind(total_df, asian_df)
 
 #run the rest of CHIS prep including formatting column names, screen using flags, adding geonames, etc.
 source("./MOSAIC/Functions/CHIS_Functions.R")
-df_subset <- prep_chis(df)
+df_subset <- prep_chis(df, "yes")
 View(df_subset)
 
 d <- df_subset

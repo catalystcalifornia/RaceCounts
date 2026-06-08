@@ -17,8 +17,9 @@ library(stringr)
 #   output_dir = paste0(getwd(),"/MOSAIC/charts"),
 #   output_file = paste0(grp, "_pop_bar.html"))
 
+
 ###### NHPI CHARTS ######
-# grp <- "nhpi"
+# race_grp <- "nhpi"
 # bar_indicators <- c("health_insurance", "living_wage")
 # drilld_indicators <- c("connected_youth", "overcrowded")
 # pop_table <- 'nhpi_pop_b02019'
@@ -32,23 +33,23 @@ library(stringr)
 
 
 
-###### TALL BAR CHART LOOP ######
-for (r in drilld_indicators) {
+###### DRILLDOWN CHART LOOP ######
+for (ind in drilld_indicators) {
   render(
     input = "./MOSAIC/charts/templates/drilldown.Rmd",
     output_dir = paste0(getwd(),"/MOSAIC/charts"),
-    output_file = paste0(grp, "_", r, "_drilldown.html"),
-    params = list(drilld_indicators = r)
+    output_file = paste0(race_grp, "_", ind, "_drilldown.html"),
+    params = list(drilld_indicators = ind)
   )
 }
 
 
 ###### TALL BAR CHART LOOP ######
-for (r in bar_indicators) {
+for (ind in bar_indicators) {
   render(
     input = "./MOSAIC/charts/templates/tall_bar.Rmd",
     output_dir = paste0(getwd(),"/MOSAIC/charts"),
-    output_file = paste0(grp, "_", r, "_bar.html"),
-    params = list(bar_indicators = r)
+    output_file = paste0(race_grp, "_", ind, "_bar.html"),
+    params = list(bar_indicators = ind)
   )
 }
