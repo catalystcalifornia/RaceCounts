@@ -6,7 +6,7 @@ library(stringr)
 ## Uncomment out Asian OR PacIsl 'grp' and either 'bar' or 'drilld' indicators, then run loop.
 
 ###### ASIAN CHARTS ######
-# grp <- "asian"
+# race_grp <- "asian"
 # bar_indicators <- c("overcrowded", "officials")
 # drilld_indicators <- c("voter_engagement", "health_insurance")
 # pop_table <- 'aa_pop_b02018'
@@ -33,22 +33,22 @@ library(stringr)
 
 
 ###### DRILLDOWN CHART LOOP ######
-for (ind in drilld_indicators) {
-  render(
-    input = "./MOSAIC/charts/templates/drilldown.Rmd",
-    output_dir = paste0(getwd(),"/MOSAIC/charts"),
-    output_file = paste0(race_grp, "_", ind, "_drilldown.html"),
-    params = list(drilld_indicators = ind)
-  )
-}
+# for (ind in drilld_indicators) {
+#   render(
+#     input = "./MOSAIC/charts/templates/drilldown.Rmd",
+#     output_dir = paste0(getwd(),"/MOSAIC/charts"),
+#     output_file = paste0(race_grp, "_", ind, "_drilldown.html"),
+#     params = list(drilld_indicators = ind)
+#   )
+# }
 
 
 ###### TALL BAR CHART LOOP ######
-for (ind in bar_indicators) {
-  render(
-    input = "./MOSAIC/charts/templates/tall_bar.Rmd",
-    output_dir = paste0(getwd(),"/MOSAIC/charts"),
-    output_file = paste0(race_grp, "_", ind, "_bar.html"),
-    params = list(bar_indicators = ind)
-  )
-}
+# for (ind in bar_indicators) {
+#   render(
+#     input = "./MOSAIC/charts/templates/tall_bar.Rmd",
+#     output_dir = paste0(getwd(),"/MOSAIC/charts"),
+#     output_file = paste0(race_grp, "_", ind, "_bar.html"),
+#     params = list(bar_indicators = ind)
+#   )
+# }
