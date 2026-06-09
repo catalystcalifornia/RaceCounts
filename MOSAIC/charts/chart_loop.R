@@ -20,10 +20,9 @@ library(stringr)
 
 ###### NHPI CHARTS ######
 # race_grp <- "nhpi"
-# bar_indicators <- c("health_insurance", "living_wage")
-# drilld_indicators <- c("connected_youth", "overcrowded")
+# bar_indicators <- c("connected_youth", "overcrowded")
+# drilld_indicators <- c("health_insurance", "living_wage")
 # pop_table <- 'nhpi_pop_b02019'
-
 
 # PacIsl POP BAR CHART ######
 # render(
