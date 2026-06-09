@@ -4,6 +4,7 @@ output:
   html_document:
     self_contained: true
 ---
+
 <style>
 .html-widget {
     width: 910px !important;
@@ -20,11 +21,12 @@ body {
 }
 </style>
 
+
 ```{r, include=FALSE}
 # # load libraries and test data
 library(here)
 
-source(here("MOSAIC", "charts", "data_prep.R"))
+source(here("MOSAIC", "charts", "tests", "data_prep.R"))
 knitr::opts_chunk$set(echo = FALSE)
 
 ```
@@ -373,4 +375,3 @@ htmltools::tags$script(HTML("
 )
 
 ```
-
