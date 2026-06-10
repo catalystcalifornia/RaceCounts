@@ -149,14 +149,14 @@ drilldown_df <- indicator_df %>%
     data = map(data, function(df) {
       df %>%
         # arrange(desc(rate)) %>%
-        mutate(name = subgroup, y = rate, y2 = raw) %>%
+        mutate(name = label, y = rate, y2 = raw) %>%
         select(name, y, y2) %>%
         list_parse()}),
     data_count_sorted = map2(data, group, function(df, grp) {
       indicator_df %>%
         filter(group == grp, subgroup != "total") %>% 
         arrange(desc(raw)) %>%
-        mutate(name = subgroup, y = raw, y2 = rate) %>%
+        mutate(name = label, y = raw, y2 = rate) %>%
         select(name, y, y2) %>%
         list_parse()})) %>%
   select(id, type, color, data, data_count_sorted)
@@ -195,7 +195,8 @@ drilldown_js <- paste0("function(e) {
     width: 2,
     dashStyle: 'ShortDash',
     zIndex: 5,
-    label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: ", total_rate, "', align: 'right', rotation: 0, y: 5, x: -5}
+    label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: ", total_rate, "',
+        align: 'right', rotation: 0, y: 5, x: -5, overflow: 'allow', crop: false}
   });
   
   chart.currentView = 'rates';
@@ -350,8 +351,7 @@ hc <- hchart(
         chartOptions = list(
           caption = 
             list(
-              text = paste("<b>Source:</b>", data_source,
-                         "<a href='...' target='_blank'>Full Methodology</a>")
+              text = paste("<b>Source:</b>", data_source, methodology_link)
             )
         )
       )
@@ -464,7 +464,8 @@ htmltools::tags$script(HTML("
         width: 2,
         dashStyle: 'ShortDash',
         zIndex: 5,
-        label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: ", total_rate, "', align: 'right', rotation: 0, y: 5, x: -5}
+        label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: ", total_rate, "',
+        align: 'right', rotation: 0, y: 5, x: -5, overflow: 'allow', crop: false}
       });
       
       chart.series.forEach(function(s) {
@@ -488,18 +489,24 @@ htmltools::tags$script(HTML("
   });
   
   function resizeChart() {
-      if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
-        Highcharts.charts.forEach(function(chart) {
-          if (chart) {
+    if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
+      Highcharts.charts.forEach(function(chart) {
+        if (chart) {
+          var inIframe = window.self !== window.top;
+          
+          var targetWidth;
+          if (inIframe) {
+            targetWidth = window.innerWidth;
+          } else {
             var wrapper = document.querySelector('.chart-wrapper');
-            if (wrapper) {
-              var targetWidth = wrapper.offsetWidth - 40;
-              chart.setSize(targetWidth, null, false);
-            }
+            targetWidth = wrapper ? wrapper.offsetWidth - 40 : window.innerWidth;
           }
-        });
-      }
+          
+          chart.setSize(targetWidth, null, false);
+        }
+      });
     }
+  }
     
     setTimeout(resizeChart, 100);
     window.addEventListener('resize', resizeChart);
