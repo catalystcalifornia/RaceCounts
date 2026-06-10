@@ -332,7 +332,14 @@ hc <- hchart(
   hc_xAxis(
     title=list(text=NULL),
     labels = list(
-      enabled = TRUE)) %>%
+      enabled = TRUE,
+      useHTML = TRUE,            # Required for complex CSS formatting (like word-break)
+      formatter = JS("
+        function() {
+          // Explicitly wrap the text inside a fixed-width, wrapping div
+          return '<div style=\"width: 100px; white-space: normal; word-wrap: break-word; text-align: right;\">' + this.value + '</div>';
+        }
+      "))) %>%
   hc_yAxis(
     title = list(text = "RATE"),
     labels=list(enabled=FALSE)) %>%# remove labels from rate axis) 
