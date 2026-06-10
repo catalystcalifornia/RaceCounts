@@ -15,7 +15,7 @@ pop_table <- 'aa_pop_b02018'
 render(
   input = "./MOSAIC/charts/pop_tall_bar.Rmd",
   output_dir = paste0(getwd(),"/MOSAIC/charts"),
-  output_file = paste0(grp, "_pop_bar.html"))
+  output_file = paste0(race_grp, "_pop_bar.html"))
 
 
 ###### NHPI CHARTS ######
@@ -28,7 +28,7 @@ pop_table <- 'nhpi_pop_b02019'
 render(
   input = "./MOSAIC/charts/pop_tall_bar.Rmd",
   output_dir = paste0(getwd(),"/MOSAIC/charts"),
-  output_file = paste0(grp, "_pop_bar.html"))
+  output_file = paste0(race_grp, "_pop_bar.html"))
 
 
 
