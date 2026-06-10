@@ -270,7 +270,7 @@ hc <- highchart() %>%
                   width: 2,
                   dashStyle: 'ShortDash',
                   // align right and negative x should match the hc() code
-                  label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: %s', align: 'right', rotation: 0, y: -8, x: -5},
+                  label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: %s', align: 'right', rotation: 0, y: -8, x: -5, overflow: 'allow', crop: false},
                   zIndex: 5
                 });
                 
@@ -378,10 +378,10 @@ hc <- highchart() %>%
         width = 2,
         dashStyle = 'ShortDash',
         label = list(
-          style=list(fontWeight='bold', fontSize='0.8em'),
-          text = paste('STATE AVERAGE:', total_rate), 
-          align = 'right', # keep so label doesn't truncate on mobile
-          rotation=0, y=-8, x=-5), # keep x=-5 so label doesn't truncate on mobile
+          style = list(fontWeight='bold', fontSize='0.8em'),
+          text = paste('STATE AVERAGE:', total_rate),
+          align = 'right', rotation = 0, y = -8, x = -5,
+          overflow = 'allow', crop = FALSE), 
         zIndex = 5
       )
     )
