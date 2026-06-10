@@ -509,7 +509,17 @@ htmltools::tags$script(HTML("
             targetWidth = wrapper ? wrapper.offsetWidth - 40 : window.innerWidth;
           }
           
-          chart.setSize(targetWidth, null, false);  // this line is missing!
+          // Diagnostics
+          console.log('inIframe:', inIframe);
+          console.log('window.innerWidth:', window.innerWidth);
+          console.log('chart.chartWidth before:', chart.chartWidth);
+          console.log('targetWidth:', targetWidth);
+          var wrapper = document.querySelector('.chart-wrapper');
+          console.log('wrapper.offsetWidth:', wrapper ? wrapper.offsetWidth : 'no wrapper');
+          
+          chart.setSize(targetWidth, null, false);
+          
+          console.log('chart.chartWidth after:', chart.chartWidth);
         }
       });
     }
