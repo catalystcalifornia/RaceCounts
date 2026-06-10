@@ -8,6 +8,7 @@ output:
 .html-widget {
     width: 910px !important;
     height: 975px !important;
+    max-width: 100% !important;
 }
 
 body { 
@@ -517,6 +518,10 @@ htmltools::tags$script(HTML("
           var wrapper = document.querySelector('.chart-wrapper');
           console.log('wrapper.offsetWidth:', wrapper ? wrapper.offsetWidth : 'no wrapper');
           
+          // Also resize the widget container so it doesn't clip the chart
+          var widget = document.querySelector('.html-widget');
+          if (widget) widget.style.width = targetWidth + 'px';
+          
           chart.setSize(targetWidth, null, false);
           
           console.log('chart.chartWidth after:', chart.chartWidth);
@@ -525,7 +530,7 @@ htmltools::tags$script(HTML("
     }
   }
     
-    setTimeout(resizeChart, 500);
+    setTimeout(resizeChart, 100);
     window.addEventListener('resize', resizeChart);
   "))
 )
