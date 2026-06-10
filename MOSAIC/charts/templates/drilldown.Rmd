@@ -508,12 +508,14 @@ htmltools::tags$script(HTML("
             var wrapper = document.querySelector('.chart-wrapper');
             targetWidth = wrapper ? wrapper.offsetWidth - 40 : window.innerWidth;
           }
+          
+          chart.setSize(targetWidth, null, false);  // this line is missing!
         }
       });
     }
   }
     
-    setTimeout(resizeChart, 100);
+    setTimeout(resizeChart, 500);
     window.addEventListener('resize', resizeChart);
   "))
 )

@@ -466,32 +466,27 @@ htmltools::tagList(
     )
   ),
   htmltools::tags$script(HTML("
-    function resizeChart() {
+  function resizeChart() {
     if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
       Highcharts.charts.forEach(function(chart) {
         if (chart) {
-          // Check if we're inside an iframe
           var inIframe = window.self !== window.top;
-          
           var targetWidth;
           if (inIframe) {
-            // In iframe: use full window width
             targetWidth = window.innerWidth;
           } else {
-            // Standalone: use chart wrapper width
             var wrapper = document.querySelector('.chart-wrapper');
             targetWidth = wrapper ? wrapper.offsetWidth - 40 : window.innerWidth;
           }
-          
           chart.setSize(targetWidth, null, false);
         }
       });
     }
   }
-    
-    setTimeout(resizeChart, 100);
-    window.addEventListener('resize', resizeChart);
-  "))
+
+  setTimeout(resizeChart, 500);
+  window.addEventListener('resize', resizeChart);
+"))
 )
 
 ```
