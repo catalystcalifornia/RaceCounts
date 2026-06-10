@@ -187,6 +187,7 @@ series_data_rates <- list(list(
   label = "rates",
   data  = data_points_rates,
   id    = "rates",
+  visible = FALSE,
   color = rc_orange
 ))
 
@@ -205,7 +206,7 @@ series_data_counts <- list(list(
   label   = "counts",
   data    = data_points_counts,
   id      = "counts",
-  visible = FALSE,
+  visible = TRUE,
   color   = rc_orange
 ))
 
@@ -226,7 +227,7 @@ hc <- highchart() %>%
           
           // Create toggle button
           chart.customToggleButton = chart.renderer.button(
-            'Show Counts',
+            'Show Rates',
             chart.chartWidth - 106,           
             chart.chartHeight / 2 - 50,       
             function() {
@@ -344,6 +345,7 @@ hc <- highchart() %>%
         enabled = TRUE,
         align = "right",
         inside = FALSE,
+        formatter = JS("function() { return Highcharts.numberFormat(this.y, 0, '.', ','); }"), 
         style = list(color = "black")),
       pointWidth = 20,
       grouping = FALSE,
@@ -352,12 +354,12 @@ hc <- highchart() %>%
     series = list(enableMouseTracking = FALSE),
     clip = FALSE) %>%
   hc_xAxis(
-    categories = rate_order,
+    categories = count_order,
     labels = list(enabled = TRUE),
     gridLineWidth = 1,
     gridLineColor = '#e6e6e6') %>%
   hc_yAxis(
-    title = list(text = "RATE"),
+    title = list(text = "COUNT"),
     labels = list(enabled = FALSE),
     gridLineWidth = 0,
     offset = 0
@@ -382,36 +384,22 @@ hc <- highchart() %>%
   hc_add_series_list(series_data_rates) %>%
   hc_add_series_list(series_data_counts) %>%
   hc_legend(enabled = FALSE) %>%
-  hc_add_theme(custom_theme)
-
-
-# Add RATES series (visible by default)
-for (series in series_data_rates) {
-  hc <- hc %>% hc_add_series(
-    name = series$name,
-    data = series$data,
-    id = series$id,
-    color = series$color,  # Use pre-assigned color
-    dataLabels = list(
-      formatter = JS("function() { return this.y; }")
+  hc_add_theme(custom_theme) %>%
+  hc_responsive(
+  rules = list(
+    list(
+      condition = list(maxWidth = 768),
+      chartOptions = list(
+        caption = list(
+          text = paste("<b>Source:</b>", data_source, methodology_link)
+        )
+      )
     )
   )
-}
+)
 
-# Add COUNTS series (hidden by default)
-for (series in series_data_counts) {
-  hc <- hc %>% hc_add_series(
-    name = series$name,
-    data = series$data,
-    id = series$id,
-    visible = FALSE,
-    showInLegend = FALSE,
-    color = series$color,  # Use pre-assigned color
-    dataLabels = list(
-      formatter = JS("function() { return this.y.toLocaleString('en-US'); }")
-    )
-  )
-}
+
+
 
 # Wrap with constrained width
 htmltools::tagList(
@@ -426,18 +414,27 @@ htmltools::tagList(
   ),
   htmltools::tags$script(HTML("
     function resizeChart() {
-      if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
-        Highcharts.charts.forEach(function(chart) {
-          if (chart) {
+    if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
+      Highcharts.charts.forEach(function(chart) {
+        if (chart) {
+          // Check if we're inside an iframe
+          var inIframe = window.self !== window.top;
+          
+          var targetWidth;
+          if (inIframe) {
+            // In iframe: use full window width
+            targetWidth = window.innerWidth;
+          } else {
+            // Standalone: use chart wrapper width
             var wrapper = document.querySelector('.chart-wrapper');
-            if (wrapper) {
-              var targetWidth = wrapper.offsetWidth - 40;
-              chart.setSize(targetWidth, null, false);
-            }
+            targetWidth = wrapper ? wrapper.offsetWidth - 40 : window.innerWidth;
           }
-        });
-      }
+          
+          chart.setSize(targetWidth, null, false);
+        }
+      });
     }
+  }
     
     setTimeout(resizeChart, 100);
     window.addEventListener('resize', resizeChart);
