@@ -370,7 +370,14 @@ hc <- highchart() %>%
   hc_xAxis(
     categories = rate_order,
     labels = list(
-      enabled = TRUE
+      enabled = TRUE,
+      useHTML = TRUE,            # Required for complex CSS formatting (like word-break)
+      formatter = JS("
+        function() {
+          // Explicitly wrap the text inside a fixed-width, wrapping div
+          return '<div style=\"width: 100px; white-space: normal; word-wrap: break-word; text-align: right;\">' + this.value + '</div>';
+        }
+      ")
     ),
     gridLineWidth = 1,
     gridLineColor = '#e6e6e6') %>%

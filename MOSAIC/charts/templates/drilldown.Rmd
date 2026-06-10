@@ -332,7 +332,14 @@ hc <- hchart(
   hc_xAxis(
     title=list(text=NULL),
     labels = list(
-      enabled = TRUE)) %>%
+      enabled = TRUE,
+      useHTML = TRUE,            # Required for complex CSS formatting (like word-break)
+      formatter = JS("
+        function() {
+          // Explicitly wrap the text inside a fixed-width, wrapping div
+          return '<div style=\"width: 100px; white-space: normal; word-wrap: break-word; text-align: right;\">' + this.value + '</div>';
+        }
+      "))) %>%
   hc_yAxis(
     title = list(text = "RATE"),
     labels=list(enabled=FALSE)) %>%# remove labels from rate axis) 
@@ -502,13 +509,19 @@ htmltools::tags$script(HTML("
             targetWidth = wrapper ? wrapper.offsetWidth - 40 : window.innerWidth;
           }
           
+          console.log('window.innerWidth:', window.innerWidth);
+          console.log('in iframe:', inIframe);
+          console.log('chart.chartWidth before resize:', chart.chartWidth);
+          
           chart.setSize(targetWidth, null, false);
+          
+          console.log('chart.chartWidth after resize:', chart.chartWidth);
         }
       });
     }
   }
     
-    setTimeout(resizeChart, 100);
+    setTimeout(resizeChart, 500);
     window.addEventListener('resize', resizeChart);
   "))
 )
