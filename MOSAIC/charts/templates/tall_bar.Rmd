@@ -479,6 +479,16 @@ htmltools::tagList(
     )
   ),
   htmltools::tags$script(HTML("
+  // Remove Bootstrap padding immediately
+  document.addEventListener('DOMContentLoaded', function() {
+    var containers = document.querySelectorAll('.container-fluid, .main-container');
+    containers.forEach(function(el) {
+      el.style.setProperty('padding', '0', 'important');
+      el.style.setProperty('max-width', '100%', 'important');
+      el.style.setProperty('margin', '0', 'important');
+    });
+  });
+  
   function resizeChart() {
     if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
       Highcharts.charts.forEach(function(chart) {
