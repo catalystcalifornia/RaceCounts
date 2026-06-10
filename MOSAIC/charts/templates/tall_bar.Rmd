@@ -93,7 +93,7 @@ if(indicator_asbest=="min") {
   # Create ordered categories for RATES (descending by rate)
   rate_order <- indicator_df %>%
     arrange(desc(rate)) %>%
-    pull(subgroup)
+    pull(label)
   
 } else{
   indicator_df <- indicator_df %>%
@@ -104,7 +104,7 @@ if(indicator_asbest=="min") {
   # Create ordered categories for RATES (descending by rate)
   rate_order <- indicator_df %>%
     arrange(rate) %>%
-    pull(subgroup)
+    pull(label)
 
 }
 
@@ -112,7 +112,7 @@ if(indicator_asbest=="min") {
 # Create ordered categories for COUNTS (descending by count)
 count_order <- indicator_df %>%
   arrange(desc(raw)) %>%
-  pull(subgroup)
+  pull(label)
 
 # Create series data for RATES with colors
 series_data_rates <- indicator_df %>%
@@ -120,11 +120,11 @@ series_data_rates <- indicator_df %>%
   group_split() %>%
   map(function(df) {
     data_points <- map(1:nrow(df), function(i) {
-      x_index <- which(rate_order == df$subgroup[i]) - 1
+      x_index <- which(rate_order == df$label[i]) - 1
       list(
         x = unname(x_index),
         y = df$rate[i],
-        name = df$subgroup[i]
+        name = df$label[i]
       )
     })
     
@@ -155,11 +155,11 @@ series_data_counts <- indicator_df %>%
   group_split() %>%
   map(function(df) {
     data_points <- map(1:nrow(df), function(i) {
-      x_index <- which(count_order == df$subgroup[i]) - 1
+      x_index <- which(count_order == df$label[i]) - 1
       list(
         x = unname(x_index),
         y = df$raw[i],
-        name = df$subgroup[i]
+        name = df$label[i]
       )
     })
     

@@ -149,14 +149,14 @@ drilldown_df <- indicator_df %>%
     data = map(data, function(df) {
       df %>%
         # arrange(desc(rate)) %>%
-        mutate(name = subgroup, y = rate, y2 = raw) %>%
+        mutate(name = label, y = rate, y2 = raw) %>%
         select(name, y, y2) %>%
         list_parse()}),
     data_count_sorted = map2(data, group, function(df, grp) {
       indicator_df %>%
         filter(group == grp, subgroup != "total") %>% 
         arrange(desc(raw)) %>%
-        mutate(name = subgroup, y = raw, y2 = rate) %>%
+        mutate(name = label, y = raw, y2 = rate) %>%
         select(name, y, y2) %>%
         list_parse()})) %>%
   select(id, type, color, data, data_count_sorted)
