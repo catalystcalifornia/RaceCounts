@@ -25,7 +25,7 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("mosaic")
 
 ##### 2. get downloaded data ##### 
-filepath <- "W:\\Data\\Crime and Justice\\HateCrimes\\CHIS\\"
+filepath <- "W:\\Data\\Crime and Justice\\HateIncidents\\CHIS\\"
 omb_data <- read.xlsx(paste0(filepath, "2023_24\\2023_24_omb.xlsx"), sheet=1, startRow=5, rows=c(5,7), cols=c(1:10,14:16,23:25))
 aian_data <- read.xlsx(paste0(filepath, "2023_24\\2023_24_aian.xlsx"), sheet=1, startRow=5, rows=c(5,7), cols=c(1:4))
 nhpi_data <- read.xlsx(paste0(filepath, "2023_24\\2023_24_nhpi.xlsx"), sheet=1, startRow=5, rows=c(5,7), cols=c(1:4)) 
