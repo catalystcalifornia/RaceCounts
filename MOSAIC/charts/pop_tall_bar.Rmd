@@ -3,8 +3,6 @@ title: ""
 output: 
   html_document:
     self_contained: true
-    theme: null
-    template: null
 ---
 <style>
 .html-widget {
@@ -15,16 +13,6 @@ output:
 
 body { margin: 0; }
 
-/* Remove Bootstrap default padding */
-.container-fluid {
-    padding-right: 0 !important;
-    padding-left: 0 !important;
-}
-
-.main-container {
-    max-width: 100% !important;
-    padding: 0 !important;
-}
 </style>
 
 ```{r, include=FALSE, error=TRUE}
@@ -436,16 +424,6 @@ htmltools::tagList(
     )
   ),
   htmltools::tags$script(HTML("
-  
-  // Remove Bootstrap padding immediately
-  document.addEventListener('DOMContentLoaded', function() {
-    var containers = document.querySelectorAll('.container-fluid, .main-container');
-    containers.forEach(function(el) {
-      el.style.setProperty('padding', '0', 'important');
-      el.style.setProperty('max-width', '100%', 'important');
-      el.style.setProperty('margin', '0', 'important');
-    });
-  });
   
   function resizeChart() {
     if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
