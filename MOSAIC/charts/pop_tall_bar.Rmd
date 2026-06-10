@@ -396,7 +396,7 @@ hc <- highchart() %>%
   hc_responsive(
   rules = list(
     list(
-      condition = list(maxWidth = 768),
+      condition = list(maxWidth = breakpoint_maxwidth),
       chartOptions = list(
         caption = list(
           text = paste("<b>Source:</b>", data_source, methodology_link)

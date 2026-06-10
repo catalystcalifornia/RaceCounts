@@ -354,7 +354,7 @@ hc <- hchart(
     rules = list(
       list(
         # Omit data_description on small screens
-        condition = list(maxWidth = 768),
+        condition = list(maxWidth = breakpoint_maxwidth),
         chartOptions = list(
           caption = 
             list(
@@ -508,20 +508,12 @@ htmltools::tags$script(HTML("
             var wrapper = document.querySelector('.chart-wrapper');
             targetWidth = wrapper ? wrapper.offsetWidth - 40 : window.innerWidth;
           }
-          
-          console.log('window.innerWidth:', window.innerWidth);
-          console.log('in iframe:', inIframe);
-          console.log('chart.chartWidth before resize:', chart.chartWidth);
-          
-          chart.setSize(targetWidth, null, false);
-          
-          console.log('chart.chartWidth after resize:', chart.chartWidth);
         }
       });
     }
   }
     
-    setTimeout(resizeChart, 500);
+    setTimeout(resizeChart, 100);
     window.addEventListener('resize', resizeChart);
   "))
 )
