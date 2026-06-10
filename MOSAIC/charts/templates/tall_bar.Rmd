@@ -407,20 +407,17 @@ hc <- highchart() %>%
   ) %>%
   hc_add_theme(custom_theme) %>% 
   hc_responsive(
-    rules = list(
-      list(
-        # Omit data_description on small screens
-        condition = list(maxWidth = 768),
-        chartOptions = list(
-          caption = 
-            list(
-              text = paste("<b>Source:</b>", data_source,
-                         "<a href='...' target='_blank'>Full Methodology</a>")
-            )
+  rules = list(
+    list(
+      condition = list(maxWidth = 768),
+      chartOptions = list(
+        caption = list(
+          text = paste("<b>Source:</b>", data_source, methodology_link)
         )
       )
     )
   )
+)
 
 # Add RATES series (visible by default)
 for (series in series_data_rates) {
@@ -463,18 +460,27 @@ htmltools::tagList(
   ),
   htmltools::tags$script(HTML("
     function resizeChart() {
-      if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
-        Highcharts.charts.forEach(function(chart) {
-          if (chart) {
+    if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
+      Highcharts.charts.forEach(function(chart) {
+        if (chart) {
+          // Check if we're inside an iframe
+          var inIframe = window.self !== window.top;
+          
+          var targetWidth;
+          if (inIframe) {
+            // In iframe: use full window width
+            targetWidth = window.innerWidth;
+          } else {
+            // Standalone: use chart wrapper width
             var wrapper = document.querySelector('.chart-wrapper');
-            if (wrapper) {
-              var targetWidth = wrapper.offsetWidth - 40;
-              chart.setSize(targetWidth, null, false);
-            }
+            targetWidth = wrapper ? wrapper.offsetWidth - 40 : window.innerWidth;
           }
-        });
-      }
+          
+          chart.setSize(targetWidth, null, false);
+        }
+      });
     }
+  }
     
     setTimeout(resizeChart, 100);
     window.addEventListener('resize', resizeChart);
