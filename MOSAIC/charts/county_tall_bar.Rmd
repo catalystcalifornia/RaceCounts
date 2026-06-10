@@ -3,6 +3,8 @@ title: ""
 output: 
   html_document:
     self_contained: true
+    theme: null
+    template: null
 ---
 <style>
 .html-widget {
