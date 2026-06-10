@@ -6,13 +6,31 @@ output:
 ---
 <style>
 .html-widget {
-    width: 910px !important;
+    width: 100% !important;
     height: 975px !important;
     max-width: 100% !important;
 }
 
 body { margin: 0; }
 
+</style>
+
+<!-- Add this SECOND style block after the first -->
+<style>
+html, body {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow-x: hidden !important;
+}
+.container-fluid,
+.main-container,
+.row {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    max-width: 100% !important;
+}
 </style>
 
 ```{r, include=FALSE}
@@ -482,35 +500,21 @@ htmltools::tagList(
     if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
       Highcharts.charts.forEach(function(chart) {
         if (chart) {
-          var inIframe = window.self !== window.top;
-          var targetWidth;
-          if (inIframe) {
-            targetWidth = window.innerWidth;
-          } else {
-            var wrapper = document.querySelector('.chart-wrapper');
-            targetWidth = wrapper ? wrapper.offsetWidth - 40 : window.innerWidth;
-          }
-          // Diagnostics
-          console.log('inIframe:', inIframe);
-          console.log('window.innerWidth:', window.innerWidth);
-          console.log('chart.chartWidth before:', chart.chartWidth);
-          console.log('targetWidth:', targetWidth);
           var wrapper = document.querySelector('.chart-wrapper');
-          console.log('wrapper.offsetWidth:', wrapper ? wrapper.offsetWidth : 'no wrapper');
-          
-          // Also resize the widget container so it doesn't clip the chart
-          var widget = document.querySelector('.html-widget');
-          if (widget) widget.style.width = targetWidth + 'px';
-          
-          chart.setSize(targetWidth, null, false);
-          
-          console.log('chart.chartWidth after:', chart.chartWidth);
+          if (wrapper) {
+            var targetWidth = wrapper.offsetWidth;
+            chart.setSize(targetWidth, null, false);
+          }
         }
       });
     }
   }
 
-  setTimeout(resizeChart, 100);
+  setTimeout(function() {
+      requestAnimationFrame(function() {
+        requestAnimationFrame(resizeChart);
+      });
+    }, 100);
   window.addEventListener('resize', resizeChart);
 "))
 )
