@@ -10,7 +10,19 @@ output:
     height: 975px !important;
     max-width: 100% !important;
 }
+
 body { margin: 0; }
+
+/* Remove Bootstrap default padding */
+.container-fluid {
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+}
+
+.main-container {
+    max-width: 100% !important;
+    padding: 0 !important;
+}
 </style>
 
 ```{r, include=FALSE, error=TRUE}
