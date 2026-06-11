@@ -81,7 +81,7 @@ knitr::opts_chunk$set(echo = FALSE)
 ```{r}
 ##### Prep: Get data (must change for each indicator) #####
 # Get indicator df
-indicator_df <- dbGetQuery(con, paste0("SELECT * FROM v7.", grp, "_summary_for_charts_lac"))
+indicator_df <- dbGetQuery(con, paste0("SELECT * FROM v7.", race_grp, "_summary_for_charts_lac"))
 
 # Filter indicator metadata
 indicator_metadata <- indicator_metadata %>% filter(api_name == min(indicator_df$topic))  # use min bc multiple rows but all with same value
