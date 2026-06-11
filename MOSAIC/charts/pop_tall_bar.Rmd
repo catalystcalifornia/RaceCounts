@@ -6,10 +6,31 @@ output:
 ---
 <style>
 .html-widget {
-    width: 910px !important;
+    width: 100% !important;
     height: 975px !important;
+    max-width: 100% !important;
 }
+
 body { margin: 0; }
+
+</style>
+
+<!-- Add this SECOND style block after the first -->
+<style>
+html, body {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow-x: hidden !important;
+}
+.container-fluid,
+.main-container,
+.row {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    max-width: 100% !important;
+}
 </style>
 
 ```{r, include=FALSE, error=TRUE}
@@ -187,6 +208,7 @@ series_data_rates <- list(list(
   label = "rates",
   data  = data_points_rates,
   id    = "rates",
+  visible = FALSE,
   color = rc_orange
 ))
 
@@ -205,7 +227,7 @@ series_data_counts <- list(list(
   label   = "counts",
   data    = data_points_counts,
   id      = "counts",
-  visible = FALSE,
+  visible = TRUE,
   color   = rc_orange
 ))
 
@@ -226,7 +248,7 @@ hc <- highchart() %>%
           
           // Create toggle button
           chart.customToggleButton = chart.renderer.button(
-            'Show Counts',
+            'Show Rates',
             chart.chartWidth - 106,           
             chart.chartHeight / 2 - 50,       
             function() {
@@ -344,6 +366,7 @@ hc <- highchart() %>%
         enabled = TRUE,
         align = "right",
         inside = FALSE,
+        formatter = JS("function() { return Highcharts.numberFormat(this.y, 0, '.', ','); }"), 
         style = list(color = "black")),
       pointWidth = 20,
       grouping = FALSE,
@@ -352,12 +375,20 @@ hc <- highchart() %>%
     series = list(enableMouseTracking = FALSE),
     clip = FALSE) %>%
   hc_xAxis(
-    categories = rate_order,
-    labels = list(enabled = TRUE),
+    categories = count_order,
+    labels = list(
+      enabled = TRUE,
+      useHTML = TRUE,            # Required for complex CSS formatting (like word-break)
+      formatter = JS("
+        function() {
+          // Explicitly wrap the text inside a fixed-width, wrapping div
+          return '<div style=\"width: 100px; white-space: normal; word-wrap: break-word; text-align: right;\">' + this.value + '</div>';
+        }
+      ")),
     gridLineWidth = 1,
     gridLineColor = '#e6e6e6') %>%
   hc_yAxis(
-    title = list(text = "RATE"),
+    title = list(text = "COUNT"),
     labels = list(enabled = FALSE),
     gridLineWidth = 0,
     offset = 0
@@ -375,43 +406,29 @@ hc <- highchart() %>%
     text = "Toggle between rates and counts using the button below",
     align = "center") %>%
   hc_caption(
-    text = paste("<b>About the data:", data_source, "</b>", data_description, methodology_link),
+    text = paste("<b>Source:", data_source, "</b>", data_description, methodology_link),
     useHTML = TRUE,
     align = "left"
   ) %>%
   hc_add_series_list(series_data_rates) %>%
   hc_add_series_list(series_data_counts) %>%
   hc_legend(enabled = FALSE) %>%
-  hc_add_theme(custom_theme)
-
-
-# Add RATES series (visible by default)
-for (series in series_data_rates) {
-  hc <- hc %>% hc_add_series(
-    name = series$name,
-    data = series$data,
-    id = series$id,
-    color = series$color,  # Use pre-assigned color
-    dataLabels = list(
-      formatter = JS("function() { return this.y; }")
+  hc_add_theme(custom_theme) %>%
+  hc_responsive(
+  rules = list(
+    list(
+      condition = list(maxWidth = breakpoint_maxwidth),
+      chartOptions = list(
+        caption = list(
+          text = paste("<b>Source:</b>", data_source, methodology_link)
+        )
+      )
     )
   )
-}
+)
 
-# Add COUNTS series (hidden by default)
-for (series in series_data_counts) {
-  hc <- hc %>% hc_add_series(
-    name = series$name,
-    data = series$data,
-    id = series$id,
-    visible = FALSE,
-    showInLegend = FALSE,
-    color = series$color,  # Use pre-assigned color
-    dataLabels = list(
-      formatter = JS("function() { return this.y.toLocaleString('en-US'); }")
-    )
-  )
-}
+
+
 
 # Wrap with constrained width
 htmltools::tagList(
@@ -425,23 +442,28 @@ htmltools::tagList(
     )
   ),
   htmltools::tags$script(HTML("
-    function resizeChart() {
-      if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
-        Highcharts.charts.forEach(function(chart) {
-          if (chart) {
-            var wrapper = document.querySelector('.chart-wrapper');
-            if (wrapper) {
-              var targetWidth = wrapper.offsetWidth - 40;
-              chart.setSize(targetWidth, null, false);
-            }
+  
+  function resizeChart() {
+    if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
+      Highcharts.charts.forEach(function(chart) {
+        if (chart) {
+          var wrapper = document.querySelector('.chart-wrapper');
+          if (wrapper) {
+            var targetWidth = wrapper.offsetWidth;
+            chart.setSize(targetWidth, null, false);
           }
-        });
-      }
+        }
+      });
     }
-    
-    setTimeout(resizeChart, 100);
-    window.addEventListener('resize', resizeChart);
-  "))
+  }
+
+  setTimeout(function() {
+      requestAnimationFrame(function() {
+        requestAnimationFrame(resizeChart);
+      });
+    }, 100);
+  window.addEventListener('resize', resizeChart);
+"))
 )
 
 ```

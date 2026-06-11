@@ -6,8 +6,9 @@ output:
 ---
 <style>
 .html-widget {
-    width: 910px !important;
+    width: 100% !important;
     height: 975px !important;
+    max-width: 100% !important;
 }
 
 body { 
@@ -18,8 +19,26 @@ body {
 .highcharts-drillup-button {
     display: none !important;
 }
+
 </style>
 
+<!-- Add this SECOND style block after the first -->
+<style>
+html, body {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow-x: hidden !important;
+}
+.container-fluid,
+.main-container,
+.row {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    max-width: 100% !important;
+}
+</style>
 
 ```{r, include=FALSE}
 # load libraries and test data
@@ -149,14 +168,14 @@ drilldown_df <- indicator_df %>%
     data = map(data, function(df) {
       df %>%
         # arrange(desc(rate)) %>%
-        mutate(name = subgroup, y = rate, y2 = raw) %>%
+        mutate(name = label, y = rate, y2 = raw) %>%
         select(name, y, y2) %>%
         list_parse()}),
     data_count_sorted = map2(data, group, function(df, grp) {
       indicator_df %>%
         filter(group == grp, subgroup != "total") %>% 
         arrange(desc(raw)) %>%
-        mutate(name = subgroup, y = raw, y2 = rate) %>%
+        mutate(name = label, y = raw, y2 = rate) %>%
         select(name, y, y2) %>%
         list_parse()})) %>%
   select(id, type, color, data, data_count_sorted)
@@ -195,7 +214,8 @@ drilldown_js <- paste0("function(e) {
     width: 2,
     dashStyle: 'ShortDash',
     zIndex: 5,
-    label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: ", total_rate, "', align: 'right', rotation: 0, y: 5, x: -5}
+    label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: ", total_rate, "',
+        align: 'right', rotation: 0, y: 5, x: -5, overflow: 'allow', crop: false}
   });
   
   chart.currentView = 'rates';
@@ -223,6 +243,14 @@ drilldown_js <- paste0("function(e) {
   }
   
   chart.redraw();
+  
+  setTimeout(function() {
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        resizeChart();
+      });
+    });
+  }, 100);
 }")
 
 
@@ -261,6 +289,14 @@ drillup_js <- paste0("function() {
   }, false);
   
   chart.redraw();
+  
+  setTimeout(function() {
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        resizeChart();
+      });
+    });
+  }, 100);
 }")
 
 ```
@@ -327,11 +363,18 @@ hc <- hchart(
       dataLabels = list(
         enabled = TRUE,
         align = "right",
-        inside = FALSE))) %>% 
+        inside = TRUE))) %>% 
   hc_xAxis(
     title=list(text=NULL),
     labels = list(
-      enabled = TRUE)) %>%
+      enabled = TRUE,
+      useHTML = TRUE,            # Required for complex CSS formatting (like word-break)
+      formatter = JS("
+        function() {
+          // Explicitly wrap the text inside a fixed-width, wrapping div
+          return '<div style=\"width: 100px; white-space: normal; word-wrap: break-word; text-align: right;\">' + this.value + '</div>';
+        }
+      "))) %>%
   hc_yAxis(
     title = list(text = "RATE"),
     labels=list(enabled=FALSE)) %>%# remove labels from rate axis) 
@@ -346,12 +389,11 @@ hc <- hchart(
     rules = list(
       list(
         # Omit data_description on small screens
-        condition = list(maxWidth = 768),
+        condition = list(maxWidth = breakpoint_maxwidth),
         chartOptions = list(
           caption = 
             list(
-              text = paste("<b>Source:</b>", data_source,
-                         "<a href='...' target='_blank'>Full Methodology</a>")
+              text = paste("<b>Source:</b>", data_source, methodology_link)
             )
         )
       )
@@ -464,7 +506,8 @@ htmltools::tags$script(HTML("
         width: 2,
         dashStyle: 'ShortDash',
         zIndex: 5,
-        label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: ", total_rate, "', align: 'right', rotation: 0, y: 5, x: -5}
+        label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: ", total_rate, "',
+        align: 'right', rotation: 0, y: 5, x: -5, overflow: 'allow', crop: false}
       });
       
       chart.series.forEach(function(s) {
@@ -486,22 +529,27 @@ htmltools::tags$script(HTML("
     
     chart.redraw();
   });
+
   
   function resizeChart() {
-      if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
-        Highcharts.charts.forEach(function(chart) {
-          if (chart) {
-            var wrapper = document.querySelector('.chart-wrapper');
-            if (wrapper) {
-              var targetWidth = wrapper.offsetWidth - 40;
-              chart.setSize(targetWidth, null, false);
-            }
+    if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
+      Highcharts.charts.forEach(function(chart) {
+        if (chart) {
+          var wrapper = document.querySelector('.chart-wrapper');
+          if (wrapper) {
+            var targetWidth = wrapper.offsetWidth;
+            chart.setSize(targetWidth, null, false);
           }
-        });
-      }
+        }
+      });
     }
+  }
     
-    setTimeout(resizeChart, 100);
+    setTimeout(function() {
+      requestAnimationFrame(function() {
+        requestAnimationFrame(resizeChart);
+      });
+    }, 100);
     window.addEventListener('resize', resizeChart);
   "))
 )
