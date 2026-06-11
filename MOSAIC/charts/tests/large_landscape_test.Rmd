@@ -1,0 +1,786 @@
+---
+title: ""
+output: 
+  html_document:
+    self_contained: true
+---
+<style>
+
+.main-container {
+    width: 1174px !important;
+    max-width: 100% !important;
+}
+
+.html-widget {
+    width: 100% !important;
+    height: 762px !important;
+}
+
+body { 
+    margin: 0; 
+}
+
+</style>
+
+```{r setup, include=FALSE}
+####STEP 0: loading libraries, connecting to db ####
+knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE)
+
+library(sf)
+library(highcharter)
+library(leaflet)
+library(rmapshaper)
+library(stringr)
+library(htmltools)
+library(scales)
+
+options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
+options(scipen=999)
+
+source("W:\\RDA Team\\R\\credentials_source.R")
+con <- connect_to_db("we_are_ca")
+con_rda <- connect_to_db("rda_shared_data")
+
+```
+
+```{r load-data, include=FALSE}
+####STEP 1: prep data table to visualize ####
+
+# Read in California Congressional Districts
+cd <- st_read(con_rda, query="SELECT * FROM geographies_ca.congressional_districts_2022", geom="geom_3310") %>%
+  st_transform(4326) %>%
+  ms_simplify()
+representative <-dbGetQuery(con_rda, "SELECT * FROM geographies_ca.cd_representatives_2022") %>% select(cd_number, rep_name, rep_party) %>% mutate(cd_number = gsub("^CD\\s+", "", cd_number))
+
+
+dbDisconnect(con_rda)
+
+# Read in WAC data 
+df_dollars <- dbGetQuery(con, "SELECT * FROM hopes_and_harms.budget_frmp_spedenrn_cong_dist_23_24") %>% 
+  select(cd_number, title_1, title_3, title_3_immigrant)
+
+# Read in CalFresh and Medi-Cal data
+df_dollars2 <- dbGetQuery(con, "SELECT * FROM hopes_and_harms.budget_calfresh_medical_cong_dist_23_24")
+
+dbDisconnect(con)
+
+# Joining data
+cd_join <- cd %>%
+  left_join(df_dollars, by = c("geoid" = "cd_number")) %>% left_join(representative, by = c("geoid" = "cd_number")) %>% left_join(df_dollars2, by = c("geoid" = "district")) %>% 
+
+# format
+  rename(calfresh = calfresh_dollars, medical = medical_dollars)
+
+cd_final <- cd_join %>%
+
+#assign values appropriate punctuation 
+  mutate(
+   title_1_label = ifelse(title_1 >= 1e6, 
+                           paste0("$", round(title_1 / 1e6, 1), " million"), 
+                           paste0("$", format(title_1, big.mark = ","))),
+   title_3_label = ifelse(title_3 >= 1e6, 
+                           paste0("$", round(title_3 / 1e6, 1), " million"), 
+                           paste0("$", format(title_3, big.mark = ","))),
+   title_3_immigrant_label = ifelse(title_3_immigrant >= 1e3, 
+                           paste0("$", round(title_3_immigrant / 1e3, 1), " thousand"), 
+                           paste0("$", format(title_3_immigrant, big.mark = ","))),
+  calfresh_label = ifelse(calfresh >= 1e6, 
+                           paste0("$", round(calfresh / 1e6, 1), " million"), 
+                           paste0("$", format(calfresh, big.mark = ","))),
+   medical_label = ifelse(medical >= 1e6, 
+                           paste0("$", round(medical / 1e9, 1), " billion"), 
+                           paste0("$", format(medical, big.mark = ","))),
+     calfresh_beneficiaries_label = format(calfresh_beneficiaries, big.mark=","),
+   medical_beneficiaries_label = format(medical_beneficiaries, big.mark=","))
+
+# select final columns needed
+cd_final <- cd_final %>%
+  select(geoid, rep_name, rep_party,
+         title_1,
+         title_1_label,
+         title_3,
+         title_3_label,
+         title_3_immigrant,
+         title_3_immigrant_label,
+         calfresh,
+         calfresh_label,
+         medical,
+         medical_label,
+         calfresh_beneficiaries,
+         calfresh_beneficiaries_label,
+         medical_beneficiaries,
+         medical_beneficiaries_label)
+
+cd_final$rep_name <- as.character(cd_final$rep_name)
+cd_final$rep_party <- as.character(cd_final$rep_party)
+
+```
+
+```{r color scale}
+####STEP 2: custom elements for map ####
+
+# find min and max and determine 6 breakpoints to create 5 evenly spaced bins
+create_5_bins <- function(x) {
+  min_val <- min(x, na.rm = TRUE)
+  max_val <- max(x, na.rm = TRUE)
+  seq(min_val, max_val, length.out = 6) # 6 breakpoints to create 5 bins
+}
+
+# Create explicit breaks - did this using create_5_bins as a guide and manually 
+# defined below to get exactly 5 bins and keep ranges as "pretty" numbers 
+# (i.e., what colorBin does but with the ability to ensure 5 bins and QA)
+# example of how colorBin works (note more than 5 bins and ranges that exaggerate min and max): pretty(range(cd_final$title_1, na.rm = TRUE), n = 5)
+# after comparing to quantiles, changed to using rounded version of quantiles given data distribution
+
+# create_5_bins(cd_final$title_1) 
+# output: 6750442  26990985  47231528  67472071  87712615 107953158
+title1_output <- quantile(cd_final$title_1, probs = c(0,0.20,.40,.60,.80,1))
+# title1_output
+#        0%       20%       40%       60%       80%      100% 
+#   6750442  16112546  27498537  36183272  60260898 107953158 
+title1_breaks <- c(6000000, 16000000, 27000000, 36000000, 60000000, 110000000) 
+
+# create_5_bins(cd_final$title_3) 
+# output: 1041383 2364380 3687378 5010375 6333373 7656370
+title3_output <- quantile(cd_final$title_3, probs = c(0,0.20,.40,.60,.80,1))
+# title3_output
+#        0%       20%       40%       60%       80%      100% 
+#   1041383 2038497 2460654 2867901 4307647 7656370 
+title3_breaks <- c(1000000, 2000000, 2500000, 3000000, 4000000, 8000000) 
+
+# create_5_bins(cd_final$title_3_immigrant) 
+# output: 0.0 128762.0 257524.0 386286.0 515047.9 643809.9
+title3imm_output <- quantile(cd_final$title_3_immigrant, probs = c(0,0.20,.40,.60,.80,1))
+# title3imm_output
+#        0%       20%       40%       60%       80%      100% 
+#   0.0000    879.9694  30201.1436  66892.7120 154635.8619 643809.9333 
+title3imm_breaks <- c(0, 1000, 35000, 70000, 150000, 650000) 
+
+# create_5_bins(cd_final$calfresh) 
+# output: 91545000 171532800 251520600 331508400 411496200 491484000
+calfresh_output <- quantile(cd_final$calfresh, probs = c(0,0.20,.40,.60,.80,1))
+# calfresh_output
+#        0%       20%       40%       60%       80%      100% 
+#    91545000 134410200 197855000 266040800 310190200 491484000 
+calfresh_breaks <- c(90000000, 130000000, 190000000, 260000000, 310000000, 500000000) 
+
+# create_5_bins(cd_final$medical) 
+# output: 1760000000 2568000000 3376000000 4184000000 4992000000 5800000000
+medical_output <- quantile(cd_final$medical, probs = c(0,0.20,.40,.60,.80,1))
+# medical_output
+#        0%       20%       40%       60%       80%      100% 
+#   1760000000 2626000000 3052000000 3938000000 4372000000 5800000000
+medical_breaks <- c(1760000000, 2626000000, 3052000000, 3938000000, 4372000000, 5800000000) 
+
+
+
+# Step 2: Define your color palettes with the defined breaks
+color_palettes <- list(
+  title_1 = colorBin(
+    c("#E2D9FF", "#b1a7d1", "#8176a3", "#514575", "#211447"), 
+    domain = cd_final$title_1, 
+    bins = title1_breaks
+  ),
+    title_3 = colorBin(
+    c("#C9E3FF", "#9BCCFF", "#65819F", "#33506F", "#02203F"),
+    domain = cd_final$title_3, 
+    bins = title3_breaks
+  ),
+  title_3imm = colorBin(
+    c("#CCFFF5", "#8AEADE", "#5BD4C5", "#2CBEAC", "#00A894"),
+    domain = cd_final$title_3_immigrant, 
+    bins = title3imm_breaks
+  ),
+  
+    calfresh = colorBin(
+    c("#FFBDA6", "#EC997C", "#DA7553", "#C7512A", "#B52E01"),
+    domain = cd_final$calfresh, 
+    bins = calfresh_breaks
+  ),
+  
+  medical = colorBin(
+    c("#FAE5C7", "#F7CF95", "#F4BA63", "#F1A431", "#EE8F00"),
+    domain = cd_final$medical, 
+    bins = medical_breaks
+  )
+)
+
+```
+
+
+```{r pop up}
+## Create data popup
+# This stores only the data values we'll insert into the custom_popup
+# Note: naming structure in the html tags: [data-][variable-name]
+# Note: multiple layers/color scales will be on the same report page, so we must add a unique prefix for common data tags so the JS works correctly
+# in this case, we'll use these prefixes: cd, medical, calfresh, title_1
+# Note: only use hyphens (no underscores or other symbols for whitespace)
+# We'll use the html tag names again when formatting popup behavior in JS (end of script)
+cd_data_popup <- paste0("<div class='cd-popups'> <div class='leaflet-data-cd' data-cd='", cd_final$geoid,
+               "' data-cd2='", cd_final$rep_name,
+               "' data-cd3='", cd_final$rep_party,
+               "' data-title1-revenue='", cd_final$title_1_label,
+               "' data-title3-revenue='", cd_final$title_3_label,
+               "' data-title3imm-revenue='", cd_final$title_3_immigrant_label,
+               "' data-calfresh-revenue='", cd_final$calfresh_label,
+               "' data-medical-revenue='", cd_final$medical_label,
+               "' data-calfresh-beneficiaries='", cd_final$calfresh_beneficiaries_label, 
+               "' data-medical-beneficiaries='", cd_final$medical_beneficiaries_label, 
+               "'></div></div>")
+
+## Create custom popup
+# We are using <div> "class" names (e.g. popup-instruction, division-header)
+# to apply CSS styling (end of script, before JS)
+# We are using <span> "class" names (e.g. data-emphasis, division-name)
+# to style with CSS AND insert the data stored in data_popup
+# Note: the <span> "class" names are using the SAME naming conventions as in the data_popup (only difference is no "data-" prefix) - this makes things clear and convenient for JS coding (end of script)
+
+custom_cd_popup <- paste0("<div class='leaflet-popup-scrolled cd-sidebar'>",
+                              "<div class='popup-instruction'>Click on a congressional district to learn more.</div>",
+                              "<div class ='geo-header'>", 
+                              "<div class='cd-header'>
+  Congressional District: <span class='cd'></span><br>
+  <span class='popup-body' style='font-size: 14px;'>
+    Representative: <span class='cd2'></span> (<span class='cd3'></span>)
+  </span>
+</div>",
+"<div class='summary popup-body'>At least <span class='calfresh-beneficiaries'></span> people depend on federal funding for Calfresh, and <span class='medical-beneficiaries'></span> people rely on Medi-Cal for their health insurance.</div>",
+
+                              "</div>", 
+                              # "<br>",
+                              "<div class ='geo-layers'>",
+                              # 
+                              # "<br>",
+                              "<div class ='funding-type-header'>CalFresh</div>",
+                              "<div class ='calfresh-funds'><span class ='layer-header'>Federal Revenue: </span><span class='calfresh-revenue popup-body'></span></div>",
+                              "<br>",
+                              "<div class ='funding-type-header'>Medi-Cal</div>",
+                              "<div class ='medical-funds'><span class ='layer-header'>Federal Revenue: </span><span class='medical-revenue popup-body'></span></div>",
+                              # "<br>",
+                              # "<div class ='funding-type-header'>Title 1</div>",
+                              # "<div class ='title1-funds'><span class ='layer-header'>Federal Revenue: </span><span class='title1-revenue popup-body'></span></div>",
+                              # "<br>",
+                              # "<div class ='funding-type-header'>Title 3</div>",
+                              # "<div class ='title3-funds'><span class ='layer-header'>Federal Revenue: </span><span class='title3-revenue popup-body'></span></div>",
+                              # "<br>",
+                              # "<div class ='funding-type-header'>Title 3 Immigrant</div>",
+                              # "<div class ='title3imm-funds'><span class ='layer-header'>Federal Revenue: </span><span class='title3imm-revenue popup-body'></span></div>",
+                              
+                              "</div>", 
+                              "<br>",
+                              "<div class='legend-container'>", 
+                              "<div id='dynamic-legend'></div>",
+                              "</div>",
+                              "</div>")
+
+```
+# MAP TITLE
+```{r map}
+#### STEP 3: produce map with pop up and radial selection ####
+cd_final %>%
+  leaflet(width = "100%", 
+          height = "600px",
+          options = leafletOptions(zoomControl = FALSE,
+                                   attributionControl=FALSE)) %>%
+  setView(lng = -123, lat = 37.5, zoom = 6) %>%
+  # add base map
+  addProviderTiles("CartoDB.PositronNoLabels") %>%
+  addProviderTiles("CartoDB.PositronOnlyLabels", options = providerTileOptions(pane = "markerPane")) %>%
+  # add custom sidebar
+    addControl(html=custom_cd_popup, position = "topleft") %>%
+  
+  # CalFresh Funds Layer
+  addPolygons(
+    fillColor = ~color_palettes$calfresh(calfresh),
+    color = "black", 
+    weight = 1, 
+    opacity = 1.0,
+    fillOpacity = 0.8,
+    popup = cd_data_popup,
+    group = "CalFresh Funds",
+    highlight = highlightOptions(color = "white",
+                                             weight = 5, 
+                                             bringToFront = TRUE, 
+                                             sendToBack = TRUE)
+  ) %>%
+  
+   # Medi-Cal Funds Layer
+  addPolygons(
+    fillColor = ~color_palettes$medical(medical),
+    color = "black", 
+    weight = 1, 
+    opacity = 1.0,
+    fillOpacity = 0.8,
+    popup = cd_data_popup,
+    group = "Medi-Cal Funds",
+    highlight = highlightOptions(color = "white",
+                                             weight = 5, 
+                                             bringToFront = TRUE, 
+                                             sendToBack = TRUE)
+  ) %>%
+  
+  # # Title 1 Funds Layer
+  # addPolygons(
+  #   fillColor = ~color_palettes$title_1(title_1),
+  #   color = "black", 
+  #   weight = 1, 
+  #   opacity = 1.0,
+  #   fillOpacity = 0.8,
+  #   popup = cd_data_popup,
+  #   group = "Title 1 Funds",
+  #   highlight = highlightOptions(color = "white",
+  #                                            weight = 5, 
+  #                                            bringToFront = TRUE, 
+  #                                            sendToBack = TRUE)
+  # ) %>%
+  # 
+  #  # Title 3 Funds Layer
+  # addPolygons(
+  #   fillColor = ~color_palettes$title_3(title_3),
+  #   color = "black", 
+  #   weight = 1, 
+  #   opacity = 1.0,
+  #   fillOpacity = 0.8,
+  #   popup = cd_data_popup,
+  #   group = "Title 3 Funds",
+  #   highlight = highlightOptions(color = "white",
+  #                                            weight = 5, 
+  #                                            bringToFront = TRUE, 
+  #                                            sendToBack = TRUE)
+  # ) %>%
+  # 
+  # # Title 3 Immigrant Funds Layer
+  # addPolygons(
+  #   fillColor = ~color_palettes$title_3imm(title_3_immigrant),
+  #   color = "black", 
+  #   weight = 1, 
+  #   opacity = 1.0,
+  #   fillOpacity = 0.8,
+  #   popup = cd_data_popup,
+  #   group = "Title 3 Immigrant Funds",
+  #   highlight = highlightOptions(color = "white",
+  #                                            weight = 5, 
+  #                                            bringToFront = TRUE, 
+  #                                            sendToBack = TRUE)
+  # ) %>%
+  
+  # Add Layer Control
+  addLayersControl(
+    baseGroups = c("CalFresh Funds", "Medi-Cal Funds"
+                   # ,
+                   # "Title 1 Funds",
+                   # "Title 3 Funds", 
+                   # "Title 3 Immigrant Funds"
+                   ),
+    options = layersControlOptions(collapsed = FALSE, autoZIndex = TRUE)
+  ) %>%
+  htmlwidgets::onRender("
+  function(el, x) {
+    var map = this;
+
+    // handles format of map on mobile devices
+    if (window.innerWidth < 768) {
+      // Remove scroll to zoom
+      map.scrollWheelZoom.disable();
+
+      // Restructure DOM
+      var wrapper = document.createElement('div');
+      wrapper.style.cssText = 'display:flex; flex-direction:column; width:100%;';
+      el.parentNode.insertBefore(wrapper, el);
+      wrapper.appendChild(el);
+
+      var controlsDiv = document.createElement('div');
+      controlsDiv.style.cssText = 'display:flex; flex-direction:column; gap:8px; padding:0px; background:#fff;';
+      wrapper.insertBefore(controlsDiv, el);
+
+      var layersControl = el.querySelector('.leaflet-control-layers');
+      var sidebar = el.querySelector('.leaflet-top.leaflet-left');
+
+      if (layersControl) {
+        layersControl.style.cssText = 'position:static; margin:0;';
+        controlsDiv.appendChild(layersControl);
+      }
+
+      if (sidebar) {
+        sidebar.style.cssText = 'position:static; margin:0; width:100%;';
+        var sidebarControl = sidebar.querySelector('.leaflet-control');
+        if (sidebarControl) sidebarControl.style.cssText = 'width:100%; height:auto;';
+        controlsDiv.appendChild(sidebar);
+      }
+
+      // Set map height to remaining space after controls
+      var controlsHeight = controlsDiv.offsetHeight;
+      console.log('el height before:', el.offsetHeight);
+      el.style.setProperty('height', '400px', 'important');
+
+      // Add zoom control back
+      L.control.zoom({ position: 'topright' }).addTo(map);
+
+      // Reset view for mobile
+      map.setView([37.5, -119], 5);
+
+      map.invalidateSize();
+    }
+  }")
+
+# Add caption that will toggle to an abridged version on mobile screens
+caption_html <- HTML("
+<div style='font-size: 12px; max-width: 100%; margin-top: 4px;'>
+  <span id='caption-short' style='float: left;'>
+    Source: Catalyst California's calculations of CalFresh and Medi-Cal data from the
+    <a href='https://calbudgetcenter.org/resources/how-republican-led-budget-cuts-could-impact-californians-in-every-congressional-district'>California Budget and Policy Center 2023-24</a>.
+    <a href='#' id='caption-toggle' style='color: #555;' onclick='
+      document.getElementById(\"caption-short\").style.display = \"none\";
+      document.getElementById(\"caption-full\").style.display = \"block\";
+      return false;
+    '>[Show more]</a>
+  </span>
+  <span id='caption-full' style='display: none; float: left;'>
+    Source: Catalyst California's calculations of CalFresh and Medi-Cal data from the
+    <a href='https://calbudgetcenter.org/resources/how-republican-led-budget-cuts-could-impact-californians-in-every-congressional-district'>California Budget and Policy Center 2023-24</a>.
+    Title I and III funds are from the Standardized Account Code Structure Data Viewer,
+    Budget - July 1 Estimates, 2023-2024, 2024-2025. These federal funds fund schools serving
+    high percentages of low-income families. Title I and III budget data are from 2023-2024
+    except where data are missing in which case they are supplemented by data from 2024-2025.
+    <a href='#' style='color: #555;' onclick='
+      document.getElementById(\"caption-full\").style.display = \"none\";
+      document.getElementById(\"caption-short\").style.display = \"block\";
+      return false;
+    '>[Show less]</a>
+  </span>
+</div>
+
+<script>
+  // On load, collapse caption if mobile
+  if (window.innerWidth < 768) {
+    document.getElementById('caption-short').style.display = 'block';
+    document.getElementById('caption-full').style.display = 'none';
+  } else {
+    // Desktop: show full caption, no toggle needed
+    document.getElementById('caption-short').style.display = 'none';
+    document.getElementById('caption-full').style.display = 'block';
+  }
+</script>
+")
+caption_html
+```
+
+<style type="text/css">
+
+/* minimum required css for leaflet maps with custom sidebars */ 
+
+.info {
+    padding: 6px 8px;
+    font-size: 12px;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    border-radius: 5px;
+    color: #000000;
+}
+
+/* Remove box-shadow shading and use square corners for all Leaflet controls */
+.leaflet-bar,
+.leaflet-control-layers,
+.leaflet-control-layers-expanded,
+.leaflet-left .leaflet-control,
+.leaflet-right .leaflet-control {
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+/* Add thin border to leaflet controls */
+.leaflet-control-layers-expanded,
+.leaflet-left .leaflet-control,
+.leaflet-right .leaflet-control {
+  border: 1px solid #d0d0d0;
+}
+
+.leaflet-touch .leaflet-control-layers {
+  border-left:1px solid #737373;
+  border-right:1px solid #737373;
+  border-top:1px solid #737373;
+  border-bottom:1px solid #737373;
+}
+/* Target all leaflet controls on the left side, regardless of top/bottom position */
+.leaflet-left .leaflet-control {
+  background-color: white;
+  opacity: 1.0;
+  overflow: auto;
+  padding: 2%;
+  height: 100%;
+  margin: 2px;
+  width: 42%;
+}
+
+
+/* Ensure consistent styling for popup content */
+.leaflet-popup-scrolled {
+  overflow: visible !important;
+  max-height: none !important;
+  border-bottom: none !important;
+  border-top: none !important;
+}
+
+/* Ensure the outer container has scrolling enabled */
+.info.legend.leaflet-control {
+  overflow: auto !important;
+  max-height: 762px !important;
+}
+
+.leaflet-right .leaflet-control {
+  background-color: white;
+  opacity: 1.0;
+  padding: 2%;
+  margin: 2px;
+}
+
+.leaflet-control-layers .leaflet-control .leaflet-control-layers-expanded {
+  background-color: white;
+  opacity: 1.0;
+}
+
+.hidden {
+  display: none;
+}
+
+/* css styling for headers */
+.cd-header {
+  font-weight: 800; 
+  color: #000000;
+  font-size: 16px;
+}
+
+.funding-type-header {
+  font-weight: 800; 
+  color: #000000;
+  font-size: 14px;
+  text-decoration: underline;
+}
+
+.layer-header {
+  font-weight: 600; 
+  color: #000000;
+  font-size: 12px;
+}
+
+.popup-body {
+  color: #000000;
+  font-size: 12px;
+}
+
+/* css styling that can change depending on the map data and custom styling needs */
+
+.popup-instruction {
+  font-style: italic;
+  font-weight: 600; 
+  line-height: 16px;
+  color: #000000;
+  border-bottom: 1px solid #000000;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+}
+
+
+.baselayer-selected {
+  background-color: #D6D6D6;
+}
+
+/* Add these to your CSS */
+.legend-container {
+  border-top: 1px solid #ccc;
+  padding-top: 10px;
+}
+
+.legend-subtitle {
+  font-weight: 600;
+  color: #000000;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.legend-items {
+  /* No overflow property here to avoid nested scrollbars */
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.legend-color {
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  opacity: 0.8;
+}
+
+.legend-text {
+  font-size: 12px;
+  color: #000000;
+}
+
+</style>
+
+```{js}
+// This function is used to format WRCA Congressional District data in the chloropleth map "popup"/sidebar feature
+// Standard set up for using JS with a leaflet map
+var mapsPlaceholder = [];
+L.Map.addInitHook(function () {
+  mapsPlaceholder.push(this);
+  mapsPlaceholder.forEach(map => {
+      // Define legend content for each layer
+      var legends = {
+          'CalFresh Funds': 
+          '<div class="legend-content">' +
+            '<div class="legend-subtitle">CalFresh Funds Legend</div>' +
+            '<div class="legend-items">' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #FFBDA6;"></div><div class="legend-text">$91M - $130M</div></div>' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #EC997C;"></div><div class="legend-text">$130M - $190M</div></div>' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #DA7553;"></div><div class="legend-text">$190M - $260M</div></div>' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #C7512A;"></div><div class="legend-text">$260M - $310M</div></div>' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #B52E01;"></div><div class="legend-text">$310M - $500M</div></div>' +
+            '</div>' +
+          '</div>',
+          
+          'Medi-Cal Funds': 
+          '<div class="legend-content">' +
+            '<div class="legend-subtitle">Medi-Cal Funds Legend</div>' +
+            '<div class="legend-items">' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #FAE5C7;"></div><div class="legend-text">$1.7B - $2.6B</div></div>' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #F7CF95;"></div><div class="legend-text">$2.6B - 3.1B</div></div>' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #F4BA63;"></div><div class="legend-text">$3.1B - $3.9B</div></div>' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #F1A431;"></div><div class="legend-text">$3.9B - $4.4B</div></div>' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #EE8F00;"></div><div class="legend-text">$4.4B - $5.8B</div></div>' +
+            '</div>' +
+          '</div>',
+          
+          'Title 1 Funds': 
+          '<div class="legend-content">' +
+            '<div class="legend-subtitle">Title 1 Funds Legend</div>' +
+            '<div class="legend-items">' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #E2D9FF;"></div><div class="legend-text">$6M - $16M</div></div>' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #B1A7D1;"></div><div class="legend-text">$16M - $27M</div></div>' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #8176A3;"></div><div class="legend-text">$27M - $36M</div></div>' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #514575;"></div><div class="legend-text">$36M - $60M</div></div>' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #211447;"></div><div class="legend-text">$60M - $110M</div></div>' +
+            '</div>' +
+          '</div>',
+          
+        'Title 3 Funds': 
+          '<div class="legend-content">' +
+            '<div class="legend-subtitle">Title 3 Funds Legend</div>' +
+              '<div class="legend-items">' +
+                '<div class="legend-item"><div class="legend-color" style="background-color: #C9E3FF;"></div><div class="legend-text">$1M - $2M</div></div>' +
+                '<div class="legend-item"><div class="legend-color" style="background-color: #9BCCFF;"></div><div class="legend-text">$2M - $2.5M</div></div>' +
+                '<div class="legend-item"><div class="legend-color" style="background-color: #65819F;"></div><div class="legend-text">$2.5M - $3M</div></div>' +
+                '<div class="legend-item"><div class="legend-color" style="background-color: #33506F;"></div><div class="legend-text">$3M - $4M</div></div>' +
+                '<div class="legend-item"><div class="legend-color" style="background-color: #02203F;"></div><div class="legend-text">$4M - $8M</div></div>' +
+              '</div>' +
+            '</div>',
+
+        'Title 3 Immigrant Funds': 
+          '<div class="legend-content">' +
+            '<div class="legend-subtitle">Title 3 Immigrant Funds Legend</div>' +
+            '<div class="legend-items">' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #CCFFF5;"></div><div class="legend-text"$>0 - $1K</div></div>' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #8AEADE;"></div><div class="legend-text">$1K - $35K</div></div>' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #5BD4C5;"></div><div class="legend-text">$35K - $70K</div></div>' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #2CBEAC;"></div><div class="legend-text">$70K - $150K</div></div>' +
+              '<div class="legend-item"><div class="legend-color" style="background-color: #00A894;"></div><div class="legend-text">$150K - $650K</div></div>' +
+          '</div>' +
+        '</div>'
+      };
+      map.on('baselayerchange', (e) => {
+        <!-- domains = ['.calfresh-funds', '.medical-funds', '.title1-funds', '.title3-funds', '.title3imm-funds'] -->
+        domains = ['.calfresh-funds', '.medical-funds']
+        domains.forEach(domain => {
+          document.querySelector(domain).classList.remove('baselayer-selected')
+        })
+
+        let selectedBaselayer = e.name
+        if (selectedBaselayer == "Title 1 Funds") {
+          document.querySelector('.title1-funds').classList.add('baselayer-selected');
+        } else if (selectedBaselayer == "Title 3 Funds") {
+          document.querySelector('.title3-funds').classList.add('baselayer-selected');
+        } else if (selectedBaselayer == "Title 3 Immigrant Funds") {
+          document.querySelector('.title3imm-funds').classList.add('baselayer-selected');
+        } else if (selectedBaselayer == "CalFresh Funds") {
+          document.querySelector('.calfresh-funds').classList.add('baselayer-selected');
+        } else if (selectedBaselayer == "Medi-Cal Funds") {
+          document.querySelector('.medical-funds').classList.add('baselayer-selected');
+        }
+        
+        // Update the legend based on the selected layer
+        if (document.getElementById('dynamic-legend')) {
+          document.getElementById('dynamic-legend').innerHTML = legends[selectedBaselayer];
+        }
+      }); // end baselayerchange check
+
+      // to pre-populate map pop-up (when map loads/before user clicks anywhere)
+      map.on('load', (e) => {
+        setTimeout(() => {
+          document.querySelector('.cd').innerHTML = "22"
+          document.querySelector('.cd2').innerHTML = "David G. Valadao"
+          document.querySelector('.cd3').innerHTML = "R"
+          document.querySelector('.calfresh-revenue').innerHTML = "$473.7 million"
+          document.querySelector('.medical-revenue').innerHTML = "$5.8 billion"
+          <!-- document.querySelector('.title1-revenue').innerHTML = "$100.4 million" -->
+          <!-- document.querySelector('.title3-revenue').innerHTML = "$7.7 million" -->
+          <!-- document.querySelector('.title3imm-revenue').innerHTML = "$310.9 thousand" -->
+          document.querySelector('.calfresh-beneficiaries').innerHTML = "205,800"
+          document.querySelector('.medical-beneficiaries').innerHTML = "527,192"
+
+          document.querySelector('.calfresh-funds').classList.add('baselayer-selected');
+          
+          // Set initial legend
+          if (document.getElementById('dynamic-legend')) {
+            document.getElementById('dynamic-legend').innerHTML = legends['CalFresh Funds'];
+          }
+        }, 500) //assumes the map will load within 500ms
+      }) // end map load check
+
+      // hide default leaflet popup
+      map.on('popupopen', (e) => {
+        let popupsCd = document.querySelectorAll('.leaflet-data-cd');
+
+        document.querySelectorAll('.cd-popups').forEach(cdPopup => {
+          cdPopup.parentElement.parentElement.parentElement.classList.add('hidden')
+        })
+
+        // populate custom pop-up when user clicks map
+        let popupCd = popupsCd[popupsCd.length-1]
+        document.querySelector('.cd').innerHTML = popupCd.getAttribute('data-cd')
+        document.querySelector('.cd2').innerHTML = popupCd.getAttribute('data-cd2')
+        document.querySelector('.cd3').innerHTML = popupCd.getAttribute('data-cd3')
+        document.querySelector('.calfresh-beneficiaries').innerHTML = popupCd.getAttribute('data-calfresh-beneficiaries')
+        document.querySelector('.medical-beneficiaries').innerHTML = popupCd.getAttribute('data-medical-beneficiaries')
+        document.querySelector('.calfresh-revenue').innerHTML = popupCd.getAttribute('data-calfresh-revenue')
+        document.querySelector('.medical-revenue').innerHTML = popupCd.getAttribute('data-medical-revenue')
+        <!-- document.querySelector('.title1-revenue').innerHTML = popupCd.getAttribute('data-title1-revenue') -->
+        <!-- document.querySelector('.title3-revenue').innerHTML = popupCd.getAttribute('data-title3-revenue') -->
+        <!-- document.querySelector('.title3imm-revenue').innerHTML = popupCd.getAttribute('data-title3imm-revenue') -->
+
+        
+        // Update legend based on current active layer
+        if (document.getElementById('dynamic-legend')) {
+          var activeLayer = '';
+          if (document.querySelector('.title1-funds.baselayer-selected')) {
+            activeLayer = 'Title 1 Funds';
+          } else if (document.querySelector('.title3-funds.baselayer-selected')) {
+            activeLayer = 'Title 3 Funds';
+          } else if (document.querySelector('.title3imm-funds.baselayer-selected')) {
+            activeLayer = 'Title 3 Immigrant Funds';
+          } else if (document.querySelector('.medical-funds.baselayer-selected')) {
+            activeLayer = 'Medi-Cal Funds';
+          } else {
+            activeLayer = 'CalFresh Funds'; // Default
+          }
+          
+          document.getElementById('dynamic-legend').innerHTML = legends[activeLayer];
+        }
+      }) // end popupopen check
+  })
+});
+
+```

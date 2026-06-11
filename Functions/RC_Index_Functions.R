@@ -12,7 +12,7 @@
 clean_data_z <- function(x, y) {
 
   # Cap Indicator z-scores at |3.5| More info: https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=feyI80
-  x <- x %>% select(county_id, county_name, performance_z, disparity_z) %>%  
+  x <- x %>% select(ends_with("_id"), ends_with("_name"), performance_z, disparity_z, any_of("geolevel")) %>%  
     mutate(
     disparity_z = case_when(
       disparity_z > 3.5 ~ 3.5,
@@ -35,8 +35,9 @@ return(x)
 clean_index_data_z <- function(x, y) {
   
   # Cap Issue z-scores at |2| More info: https://catalystcalifornia.sharepoint.com/:w:/s/Portal/EX59kBOn8iRNrLuY1Sfk3JABT34dO3sj1j9fwkuUxLqUgQ?e=feyI80
-  clean <- x %>% select(county_id, county_name, ends_with("performance_z"), ends_with("disparity_z"))   
-  clean <- clean %>% mutate(performance_z = clean[, c(3)], disparity_z = clean[, c(4)]) %>%   
+  clean <- x %>% select(ends_with("_id"), ends_with("_name"), ends_with("performance_z"), ends_with("disparity_z"),any_of("geolevel"))   
+  colnames(clean) <- gsub(paste0(y, "_"), "", colnames(clean))  # standardize column names
+  clean <- clean %>%
     mutate(
       disparity_z = case_when(
         disparity_z > 2 ~ 2,
@@ -49,14 +50,17 @@ clean_index_data_z <- function(x, y) {
         performance_z < -2 ~ -2,
         TRUE ~ performance_z))
   
-  x <- clean %>% rename_with(~ paste0(y, "_", .x), ends_with("_z")) %>% select(-c(3,4))
+  x <- clean %>% rename_with(~ paste0(y, "_", .x), ends_with("_z"))
   
   return(x)
 }
 
 # Calculate and cap ISSUE INDEX ---------------
-calculate_z <- function(x) {
-# count performance z-scores
+calculate_z <- function(x, ind_threshold) {
+  id_col <- colnames(x) 
+  id_col <- id_col %>% str_subset(pattern = "_id$")  # select geoid column: county_id or leg_id
+  
+  # count performance z-scores
   rates_performance <- select(x, ends_with("perf_z"))
   rates_performance$perf_values_count <- rowSums(!is.na(rates_performance))
   
@@ -69,20 +73,20 @@ calculate_z <- function(x) {
   x$disp_values_count <- rates_disparity$values_count
   
   # calculate avg disparity z-scores
-  disp_avg <- select(x, county_id, grep("disp_z", colnames(x)))
+  disp_avg <- select(x, id_col, grep("disp_z", colnames(x)))
   disp_avg$disp_avg <- rowMeans(disp_avg[,-1], na.rm = TRUE)
-  disp_avg <- select(disp_avg, county_id, disp_avg) 
+  disp_avg <- select(disp_avg, id_col, disp_avg) 
   disp_avg$disp_avg[is.nan(disp_avg$disp_avg)] <- NA
   
-  x <- x %>% left_join(disp_avg, by="county_id")   
+  x <- x %>% left_join(disp_avg, by=id_col, relationship = "many-to-many")   
   
   # calculate average performance z scores
-  perf_avg <- select(x, county_id, grep("perf_z", colnames(x)))                         
+  perf_avg <- select(x, id_col, grep("perf_z", colnames(x)))                         
   perf_avg$perf_avg <- rowMeans(perf_avg[,-1], na.rm = TRUE)                           
-  perf_avg <- select(perf_avg, county_id, perf_avg)                    
+  perf_avg <- select(perf_avg, id_col, perf_avg)                    
   perf_avg$perf_avg[is.nan(perf_avg$perf_avg)] <- NA
   
-  x <- x %>% left_join(perf_avg, by="county_id") 
+  x <- x %>% left_join(perf_avg, by=id_col, relationship = "many-to-many") 
   
   
   # FOR COUNTIES WHERE # OF INDICATOR VALUES >= THRESHOLD, GET INDEX DISP_Z AND PERF_Z: threshold will change across issue areas. Users manually update threshold in index script.
@@ -144,8 +148,10 @@ calculate_z <- function(x) {
 }
 
 # Calculate and cap COMPOSITE INDEX  ---------------
-calculate_index_z <- function(x) {
-  # count performance z-scores
+calculate_index_z <- function(x, ind_threshold) {
+  id_col <- colnames(x) 
+  id_col <- id_col %>% str_subset(pattern = "_id$")  # select geoid column: county_id or leg_id
+
   rates_performance <- select(x, ends_with("perf_z"))
   rates_performance$perf_values_count <- rowSums(!is.na(rates_performance))
   
@@ -156,22 +162,22 @@ calculate_index_z <- function(x) {
   rates_disparity$values_count <- rowSums(!is.na(rates_disparity))
   
   x$disp_values_count <- rates_disparity$values_count
-  
+                       
   # calculate avg disparity z-scores
-  disp_avg <- select(x, county_id, grep("disp_z", colnames(x)))
+  disp_avg <- select(x, id_col, grep("disp_z", colnames(x)))
   disp_avg$disp_avg <- rowMeans(disp_avg[,-1], na.rm = TRUE)
-  disp_avg <- select(disp_avg, county_id, disp_avg) 
+  disp_avg <- select(disp_avg, id_col, disp_avg) 
   disp_avg$disp_avg[is.nan(disp_avg$disp_avg)] <- NA
   
-  x <- x %>% left_join(disp_avg, by="county_id")   
+  x <- x %>% left_join(disp_avg, by=id_col)   
   
   # calculate average performance z scores
-  perf_avg <- select(x, county_id, grep("perf_z", colnames(x)))                         
+  perf_avg <- select(x, id_col, grep("perf_z", colnames(x)))                         
   perf_avg$perf_avg <- rowMeans(perf_avg[,-1], na.rm = TRUE)                           
-  perf_avg <- select(perf_avg, county_id, perf_avg)                    
+  perf_avg <- select(perf_avg, id_col, perf_avg)                    
   perf_avg$perf_avg[is.nan(perf_avg$perf_avg)] <- NA
   
-  x <- x %>% left_join(perf_avg, by="county_id") 
+  x <- x %>% left_join(perf_avg, by=id_col) 
   
   
   # FOR COUNTIES WHERE # OF ISSUE INDEX VALUES >= THRESHOLD, GET INDEX DISP_Z AND PERF_Z. Users manually update threshold in index script.
@@ -240,27 +246,31 @@ index_to_postgres <- function(x, y) {
   con <- connect_to_db("racecounts")                    
   
   #INDEX TABLE
-  index_table <- as.data.frame(index_table)
-  
+  index_table <- as.data.frame(x)
+  rc_schema <- y
   # make character vector for field types in postgresql db
-  charvect = rep('numeric', dim(index_table)[2])
-  
+  # charvect = rep('numeric', dim(index_table)[2])
+  charvect <- rep("numeric", ncol(index_table))
   # change data type for first four columns
   charvect[1:4] <- "varchar" # first two are characters for the geoid and names
   
   # add names to the character vector
   names(charvect) <- colnames(index_table)
   
-  dbWriteTable(con, c(rc_schema, index_table_name), index_table,
-               overwrite = FALSE, row.names = FALSE)
+  dbWriteTable(con, Id(schema = rc_schema, table = index_table_name), index_table,
+               overwrite = FALSE)
   
-  comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", index_table_name, " IS '", index, " from ", source, ".';
-                 COMMENT ON COLUMN ",  rc_schema, ".", index_table_name, ".county_id IS 'County fips';")  
+  # Start a transaction
+  dbBegin(con)
   
-  
+  #comment on table and columns
+  comment <- paste0("COMMENT ON TABLE ", "\"", rc_schema, "\"", ".", "\"", index_table_name, "\"", " IS 'Created on ", Sys.Date(), ". ", index, " from ", source, ".';")
   print(comment)
-  
-  dbSendQuery(con, comment)
+  dbExecute(con, comment)
+
+  # Commit the transaction if everything succeeded
+  dbCommit(con)
+
   dbDisconnect(con)  
   
 }
@@ -281,7 +291,11 @@ dist_data_to_city <- function(x) {
                                       mutate(disparity_z_score = disparity_z_score_unweighted * percent_total_enroll,
                                              performance_z_score = performance_z_score_unweighted * percent_total_enroll)
     
-    df_education_city <- df_education_district_weighted %>% group_by(city_id, city_name, indicator) %>% summarize(disp_z = sum(disparity_z_score, na.rm = T), perf_z = sum(performance_z_score, na.rm = T), disp_count = sum(!is.na(disparity_z_score)), perf_count = sum(!is.na(performance_z_score)))    
+    df_education_city <- df_education_district_weighted %>% group_by(city_id, city_name, indicator) %>% 
+      summarize(disp_z = sum(disparity_z_score, na.rm = T), 
+                perf_z = sum(performance_z_score, na.rm = T), 
+                disp_count = sum(!is.na(disparity_z_score)), 
+                perf_count = sum(!is.na(performance_z_score)))    
     df_education_city$disp_z <- ifelse(df_education_city$disp_count == 0, NA, df_education_city$disp_z) # change disp_z back to NA when all disparity_z's are NA
     df_education_city$perf_z <- ifelse(df_education_city$perf_count == 0, NA, df_education_city$perf_z) # change perf_z back to NA when all performance_z's are NA
     
@@ -388,6 +402,7 @@ calculate_city_issue <- function(x, y, z) {
 
 # Calculate and cap COMPOSITE INDEX Z-scores ---------------------------------------------------
 calculate_city_index <- function(x, y, z) {
+  # x = the dataframe, y = issue_area_threshold, z = indicator_threshold
   
   # count issue area performance z-scores
   rates_performance <- select(x, ends_with("performance_z"))
@@ -478,25 +493,37 @@ return(x)
 
 # Export city index -------------------------------------------------------
 city_index_to_postgres <- function(x) {
+      # create connection for rda database
+      source("W:\\RDA Team\\R\\credentials_source.R")
+      con <- connect_to_db("racecounts")            
+  
       table_schema <- rc_schema
       # make character vector for field types in postgresql db
-      charvect = rep('numeric', dim(x)[2])
+      #charvect = rep('numeric', dim(x)[2])
+      charvect <- rep("numeric", ncol(x))
       
       # change data type for columns
-      charvect[c(1:2,9,26:28,30:31)] <- "varchar" # Define which cols are character for the geoid and names etc
+      charvect[c(1:3,10,27:28,30:31)] <- "varchar" # Define which cols are character for the geoid and names etc
       
       # add names to the character vector
       names(charvect) <- colnames(x)
       
       # write table to postgres
-      dbWriteTable(con, c(table_schema, table_name), x, overwrite = FALSE, row.names = FALSE, field.types = charvect)
+      dbWriteTable(con, Id(schema = table_schema, table = table_name), x,
+                   overwrite = FALSE)
+      
+      # Start a transaction
+      dbBegin(con)
       
       # write comment to table, and the first three fields that won't change.
-      table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ".", "';")
+      table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS 'Created on ", Sys.Date(), ". ", table_comment_source, ".", "';")
+      dbExecute(con, table_comment)
       
-      ## send table comment to database
-      dbSendQuery(conn = con, table_comment)     
-
+      # Commit the transaction if everything succeeded
+      dbCommit(con)     
+      
+      dbDisconnect(con)  
+      
 }
 
 

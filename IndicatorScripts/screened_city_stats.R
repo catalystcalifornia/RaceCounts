@@ -1,7 +1,8 @@
-#### Screened City Indicator Z-Scores, Ranks etc. for RC v6 ####
+#### Screened City Indicator Z-Scores, Ranks etc. for RC v7 ####
+## These tables are used for the website and city index
 
 #install packages if not already installed
-packages <- c("tidyverse","RPostgreSQL","sf","usethis","dplyr","DBI")  
+packages <- c("tidyverse","RPostgres","sf","usethis","dplyr","DBI")  
 
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
@@ -22,27 +23,16 @@ options(scipen=999) # disable scientific notation
 # Load PostgreSQL driver and databases --------------------------------------------------
 # create connection for rda database
 source("W:\\RDA Team\\R\\credentials_source.R")
+source("./Functions/rdashared_functions.R")
 con <- connect_to_db("racecounts")
 
 # update variables each year
-curr_yr <- '2024'
-rc_schema <- "v6"
-
+curr_yr <- '2025'
+rc_schema <- "v7"
+qa_filepath <- 'W:\\Project\\RACE COUNTS\\2025_v7\\Composite Index\\QA_api_screened_city.docx'
 
 # set city population threshold
 pop_threshold <- 10000
-
-# clean place names
-clean_geo_names <- function(x){
-  
-  x$geoname <- str_remove(x$geoname, ", California")
-  x$geoname <- str_remove(x$geoname, " city")
-  x$geoname <- str_remove(x$geoname, " CDP")
-  x$geoname <- str_remove(x$geoname, " town")
-  x$geoname <- gsub(" County)", ")", x$geoname)
-  
-  return(x)
-}
 
 
 # pull in city-district crosswalk and city population data
@@ -245,31 +235,40 @@ View(city_tables)
 
 
 ##### Export "api_" district indicator tables ##### --------------
+source <- paste0("Created on ", Sys.Date(), ". This is the screened city or district indicator table used by the API/website. It is based on the arei_ version of the table and contains data for the screened cities only including updated comparative calcs (everything after ID) based on the screened list of cities. Script: W:\\Project\\RACE COUNTS\\", curr_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\IndicatorScripts\\screened_city_stats.R. QA doc: ", qa_filepath, ".")
+
 # Make list of api district table names
 table_names_d <- as.data.frame(names(dist_list)) %>% rename('table_name' = 1) %>% mutate(table_name = gsub("arei_", "api_", table_name))
 table_names_d_ = table_names_d[['table_name']]  # convert to character vector
-source <- paste0("Created on ", Sys.Date(), ". This is the screened city or district indicator table used by the API/website. It is based on the arei_ version of the table and contains data for the screened cities only including updated comparative calcs (everything after ID) based on the screened list of cities. Script: W:\\Project\\RACE COUNTS\\", curr_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\IndicatorScripts\\screened_city_stats.R")
 
 # loop to export individual tables
 for (i in 1:length(dist_tables)) {
 
-  dbWriteTable(con, c(rc_schema, table_names_d_[i]), dist_tables[[i]], overwrite = FALSE, row.names = FALSE)
+  dbWriteTable(con,
+               Id(schema = rc_schema, table_name = table_names_d_[i]), 
+               dist_tables[[i]], overwrite = FALSE, row.names = FALSE)
   comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", table_names_d_[i],  " IS '", source, "';")
-  dbSendQuery(conn = con, comment)
-
+  dbBegin(con)
+  dbExecute(con, comment)
+  dbCommit(con)
+  
 }
 
 ##### Export "api_" city indicator tables ##### --------------
 # Make list of api city table names
 table_names_c <- as.data.frame(names(city_list)) %>% rename('table_name' = 1) %>% mutate(table_name = gsub("arei_", "api_", table_name))
 table_names_c_ = table_names_c[['table_name']]  # convert to character vector
-source <- paste0("Created on ", Sys.Date(), ". This is the screened city or district indicator table used by the API/website. It is based on the arei_ version of the table and contains data for the screened cities only including updated comparative calcs (everything after ID) based on the screened list of cities. Script: W:\\Project\\RACE COUNTS\\", curr_yr, "_", rc_schema, "\\RC_Github\\RaceCounts\\IndicatorScripts\\screened_city_stats.R")
+
 # loop to export individual tables
 for (i in 1:length(city_tables)) {
   
-  dbWriteTable(con, c(rc_schema, table_names_c_[i]), city_tables[[i]], overwrite = FALSE, row.names = FALSE)
+  dbWriteTable(con, 
+               Id(schema = rc_schema, table_schema = table_names_c_[i]),
+               city_tables[[i]], overwrite = FALSE, row.names = FALSE)
   comment <- paste0("COMMENT ON TABLE ", rc_schema, ".", table_names_c_[i],  " IS '", source, "';")
-  dbSendQuery(conn = con, comment)
+  dbBegin(con)
+  dbExecute(con, comment)
+  dbCommit(con)
   
 }
 

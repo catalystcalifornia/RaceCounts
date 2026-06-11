@@ -1,0 +1,469 @@
+---
+title: ""
+output: 
+  html_document:
+    self_contained: true
+---
+<style>
+.html-widget {
+    width: 100% !important;
+    height: 975px !important;
+    max-width: 100% !important;
+}
+
+body { margin: 0; }
+
+</style>
+
+<!-- Add this SECOND style block after the first -->
+<style>
+html, body {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow-x: hidden !important;
+}
+.container-fluid,
+.main-container,
+.row {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    max-width: 100% !important;
+}
+</style>
+
+```{r, include=FALSE, error=TRUE}
+
+# load libraries and test data
+library(here)
+library(stringr)
+
+source("W:\\RDA Team\\R\\credentials_source.R")
+source(here("MOSAIC", "charts", "chart_style_vars.R"))
+#source("W:/Project/RACE COUNTS/2025_v7/RC_Github/LF/RaceCounts/MOSAIC/charts/chart_style_vars.R")
+con <- connect_to_db("mosaic")
+
+
+knitr::opts_chunk$set(echo = FALSE)
+
+```
+
+
+```{r}
+##### DOCUMENTATION (can skip to next section for indicator inputs) #####
+### Requirements for chart behavior: Toggling between rate and counts
+# rate_order - created automatically by script; helps put bars in the preferred order for rate view
+# count_order - created automatically by script; helps put bars in the preferred order for count view
+
+### Requirements: Chart Metadata (must be provided per indicator)
+# data_source - e.g., "US Department of Health and Human Services, Centers for Disease Control and Prevention (CDC), National Center for Health Statistics, Division of Vital Statistics, CDC WONDER Online Database (2016-2023)"
+
+# data_description - e.g., "The number of infants born weighing less than 2,500 grams or about 5 lbs 8 oz per 100 live births by race/ethnicity of birthing parent. Estimates for racial groups with fewer than ten births or areas with fewer than 100,000 people were excluded to protect privacy. SWANA data includes only foreign-born birthing parents."
+
+# exception: methodology_link is controlled by setting a global variable in chart_style_vars
+# methodology_link - e.g., "<a href='https://catalystcalifornia.github.io/RaceCounts/Methodology/Indicator_Methodology_CountyState.html' target='_blank'>Full Methodology</a>"
+
+# chart_title - e.g., "Low Birthweight by Race/Ethnicity"
+
+# indicator_asbest - e.g., "min" or "max"
+
+# total_rate - single variable to establish vertical plotline; total/state rate  of the indicator  
+
+### Requirements: Chart data / Dataframe structure
+# The ideal shape of the indicator table is long - with columns for group, subgroup, rate, count. It should have both the mosaic group (asian and/or nhpi and total which should include state (subgroup = total) and the RC race subgroups). It should also have Asian/NHPI as a subgroup under total group
+# Ideally rates are already rounded in this table or the metadata table includes this (or we make all round to 1 decimal place)
+# Ideally it or an accompanying metadata table includes the asbest value for the indicator.
+# additional metadata fields include round rate unless we want all indicators to round to one place
+# group - name of column with aggregate group name (e.g., Asian, NHPI, Total) - should be all caps
+# subgroup - name of column with subgroup names (Chinese, Indian, etc.) - should be all caps
+# rate - name of column with indicator raced rates
+# raw - name of column with indicator raced counts
+```
+
+```{r}
+##### Prep: Get data (must change for each indicator) #####
+options(scipen = 999)
+
+# Get indicator df
+indicator_wide <- dbGetQuery(con, paste0("SELECT * FROM v7.", pop_table, " WHERE geoid = '06'"))
+table_name <- str_sub(pop_table, -6)
+
+# 1. Pivot raw columns (ignores the 'name' column)
+df_raw <- indicator_wide %>%
+  select(geoid, name, geolevel, matches(paste0(table_name,"_\\d+e$"))) %>%
+  pivot_longer(
+    cols = matches(paste0(table_name,"_\\d+e$")),
+    names_to = "variable",
+    values_to = "raw"
+  )
+
+# 2. Pivot rate columns (ignores the 'name' column)
+df_rate <- indicator_wide %>%
+  select(geoid, name, geolevel, matches(paste0(table_name,"_\\d+_pct$"))) %>%
+  pivot_longer(
+    cols = matches(paste0(table_name,"_\\d+_pct$")),
+    names_to = "pct_name",
+    values_to = "rate"
+  ) %>%
+  # Convert 'b02018_001_pct' to 'b02018_001e' to match df_raw keys
+  mutate(variable = paste0(sub("_pct$", "", pct_name), "e")) %>%
+  select(-pct_name)
+
+# 3. Combine them perfectly side-by-side
+long_df <- left_join(df_raw, df_rate, by = c("geoid", "name", "geolevel", "variable"))
+
+# Set metadata - see documentation above for examples
+indicator_name <- str_sub(table_name, -6)
+indicator_asbest <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(arei_best) %>% pull()
+data_source <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(data_source) %>% pull()
+data_description <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(methodology) %>% pull()
+chart_title <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(bar_chart_header) %>% pull()
+rate_rounding <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(rate_rounding) %>% pull() %>% as.integer()
+raw_rounding <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(raw_rounding) %>% pull() %>% as.integer()
+
+##### Get Labels #####
+# 1. Fetch the 2024 5-year ACS metadata dictionary
+acs_metadata <- load_variables(2024, "acs5", cache = TRUE)
+
+# 2. Filter down to Table B02018 and format the names to end in 'e'
+subgroup_labels <- acs_metadata %>%
+  filter(str_starts(name, paste0(toupper(indicator_name),"_"))) %>%
+  mutate(
+    # Format the names to match your data (e.g., 'B02018_007' -> 'b02018_007e')
+    variable = paste0(tolower(name), "e"),
+    
+    # Extract only the characters after the absolute last '!!' marker
+    clean_label = str_extract(label, "[^!]+$"),
+    
+    # Optional cleanup: Trim any accidental whitespace
+    clean_label = str_trim(clean_label)
+  ) %>%
+  select(variable, subgroup = clean_label)
+
+# 3. Merge the clean metadata labels into your long dataframe
+indicator_df <- long_df %>%
+  left_join(subgroup_labels, by = "variable") %>%
+  # Position the new 'label' column directly after the 'variable' column
+  relocate(subgroup, .after = variable)
+
+
+# need to filter out total raw/rate
+indicator_df <- indicator_df %>%
+  filter(!grepl("_001e", variable))
+
+# Don't change - pulled in from chart_style_vars
+methodology_link <- sprintf("<a href='%s' target='_blank'>Full Methodology</a>", mosaic_methodology_link)
+
+```
+
+```{r}
+##### Prep: Edit data for chart (don't change) #####
+
+# use indicator best direction to arrange "shared struggle" groups at top
+if(indicator_asbest=="min") {
+  indicator_df <- indicator_df %>%
+    arrange(desc(rate)) %>%
+    mutate(rate = round(rate, rate_rounding),
+           raw = round(raw, raw_rounding))
+    
+  # Create ordered categories for RATES (descending by rate)
+  rate_order <- indicator_df %>%
+    arrange(desc(rate)) %>%
+    pull(subgroup)
+
+  # Create ordered categories for COUNTS (descending by count)
+  count_order <- indicator_df %>%
+    arrange(desc(raw)) %>%
+    pull(subgroup)
+  
+} else{
+  indicator_df <- indicator_df %>%
+    arrange(rate) %>%
+    mutate(rate = round(rate, rate_rounding),
+           raw = round(raw, raw_rounding))
+  
+  # Create ordered categories for RATES (descending by rate)
+  rate_order <- indicator_df %>%
+    arrange(rate) %>%
+    pull(subgroup)
+
+  # Create ordered categories for COUNTS (descending by count)
+  count_order <- indicator_df %>%
+    arrange(raw) %>%
+    pull(subgroup)
+}
+
+# Create series data for RATES with color
+data_points_rates <- map(1:nrow(indicator_df), function(i) {
+  x_index <- which(rate_order == indicator_df$subgroup[i]) - 1
+  list(
+    x = unname(x_index),
+    y = indicator_df$rate[i],
+    name = indicator_df$subgroup[i]
+  )
+})
+
+series_data_rates <- list(list(
+  label = "rates",
+  data  = data_points_rates,
+  id    = "rates",
+  visible = FALSE,
+  color = rc_orange
+))
+
+
+# Create series data for COUNTS with color
+data_points_counts <- map(1:nrow(indicator_df), function(i) {
+  x_index <- which(count_order == indicator_df$subgroup[i]) - 1
+  list(
+    x = unname(x_index),
+    y = indicator_df$raw[i],
+    name = indicator_df$subgroup[i]
+  )
+})
+
+series_data_counts <- list(list(
+  label   = "counts",
+  data    = data_points_counts,
+  id      = "counts",
+  visible = TRUE,
+  color   = rc_orange
+))
+
+```
+
+```{r}
+##### Chart: Highcharts bar (don't change) ##### 
+hc <- highchart() %>%
+  hc_chart(
+    type = "bar",
+    reflow = TRUE,
+    events = list(
+      load = htmlwidgets::JS(sprintf(paste0("
+        function() {
+          var chart = this;
+          var rateOrder = %s;
+          var countOrder = %s;
+          
+          // Create toggle button
+          chart.customToggleButton = chart.renderer.button(
+            'Show Rates',
+            chart.chartWidth - 106,           
+            chart.chartHeight / 2 - 50,       
+            function() {
+              var showingRates = true;
+              
+              // Check if rates are currently visible
+              chart.series.forEach(function(s) {
+                if (s.userOptions.id && s.userOptions.id === 'rates') {
+                  showingRates = s.visible;
+                }
+              });
+              
+              // Toggle all series and update x-axis
+              chart.series.forEach(function(s) {
+                if (s.userOptions.id) {
+                  if (showingRates) {
+                    if (s.userOptions.id === 'rates') {
+                      s.update({showInLegend: false}, false);
+                      s.hide();
+                    } else if (s.userOptions.id === 'counts') {
+                      s.update({showInLegend: true}, false);
+                      s.show();
+                    }
+                  } else {
+                    if (s.userOptions.id === 'counts') {
+                      s.update({showInLegend: false}, false);
+                      s.hide();
+                    } else if (s.userOptions.id === 'rates') {
+                      s.update({showInLegend: true}, false);
+                      s.show();
+                    }
+                  }
+                }
+              });
+              
+              if (showingRates) {
+                chart.customToggleButton.attr({text: 'Show Rates'});
+                chart.yAxis[0].setTitle({ text: 'COUNT' }, false); 
+                chart.xAxis[0].update({categories: countOrder}, false);
+                chart.update({
+                  plotOptions: {
+                    bar: {
+                      dataLabels: {
+                        formatter: function() {
+                          return Highcharts.numberFormat(this.y, 0, '.', ',');
+                        }
+                      }
+                    }
+                  }
+                }, true);
+                
+              } else {
+                chart.customToggleButton.attr({text: 'Show Counts'});
+                chart.yAxis[0].setTitle({ text: 'RATE' }, false); 
+                chart.xAxis[0].update({categories: rateOrder}, false);
+                chart.update({
+                  plotOptions: {
+                    bar: {
+                      dataLabels: {
+                        formatter: function() {
+                          return this.y;
+                        }
+                      }
+                    }
+                  }
+                }, true);
+              } 
+            },
+            {
+              fill: '", rc_blue, "',
+              stroke: '", rc_blue, "',
+              style: { color: '", rc_white, "' },
+              'stroke-width': 1,
+              r: 3,
+              padding: 8
+            },
+            {
+              fill: '", rc_blue, "',
+              style: { color: '", rc_white, "' }
+            },
+            {
+              fill: '", rc_blue, "',
+              style: { color: '", rc_white, "' }
+            }
+          )
+          .css({
+            color: '", rc_white, "'
+          })
+          .attr({ zIndex: 7 })
+          .add();
+          
+          Highcharts.addEvent(chart, 'redraw', function() {
+            if (chart.customToggleButton) {
+              var buttonWidth = chart.customToggleButton.getBBox().width;
+              var rightEdge = chart.chartWidth - chart.spacing[1];
+              chart.customToggleButton.attr({
+                x: rightEdge - buttonWidth
+              });
+            }
+          });
+          
+          var buttonWidth = chart.customToggleButton.getBBox().width;
+          var rightEdge = chart.chartWidth - chart.spacing[1];
+          chart.customToggleButton.attr({
+            x: rightEdge - buttonWidth
+          });
+        }
+      "),
+      jsonlite::toJSON(rate_order),
+      jsonlite::toJSON(count_order))
+      ))) %>%
+  hc_plotOptions(
+    bar = list(
+      dataLabels = list(
+        enabled = TRUE,
+        align = "right",
+        inside = FALSE,
+        formatter = JS("function() { return Highcharts.numberFormat(this.y, 0, '.', ','); }"), 
+        style = list(color = "black")),
+      pointWidth = 20,
+      grouping = FALSE,
+      pointPadding = 0,
+      groupPadding = 0.1),
+    series = list(enableMouseTracking = FALSE),
+    clip = FALSE) %>%
+  hc_xAxis(
+    categories = count_order,
+    labels = list(
+      enabled = TRUE,
+      useHTML = TRUE,            # Required for complex CSS formatting (like word-break)
+      formatter = JS("
+        function() {
+          // Explicitly wrap the text inside a fixed-width, wrapping div
+          return '<div style=\"width: 100px; white-space: normal; word-wrap: break-word; text-align: right;\">' + this.value + '</div>';
+        }
+      ")),
+    gridLineWidth = 1,
+    gridLineColor = '#e6e6e6') %>%
+  hc_yAxis(
+    title = list(text = "COUNT"),
+    labels = list(enabled = FALSE),
+    gridLineWidth = 0,
+    offset = 0
+  ) %>%
+  hc_legend(
+    enabled = TRUE,
+    verticalAlign = "top",
+    margin = 20
+  ) %>%
+  hc_tooltip(enabled = FALSE) %>%
+  hc_title(
+    text = chart_title,
+    align = "center") %>% 
+  hc_subtitle(
+    text = "Toggle between rates and counts using the button below",
+    align = "center") %>%
+  hc_caption(
+    text = paste("<b>Source:", data_source, "</b>", data_description, methodology_link),
+    useHTML = TRUE,
+    align = "left"
+  ) %>%
+  hc_add_series_list(series_data_rates) %>%
+  hc_add_series_list(series_data_counts) %>%
+  hc_legend(enabled = FALSE) %>%
+  hc_add_theme(custom_theme) %>%
+  hc_responsive(
+  rules = list(
+    list(
+      condition = list(maxWidth = breakpoint_maxwidth),
+      chartOptions = list(
+        caption = list(
+          text = paste("<b>Source:</b>", data_source, methodology_link)
+        )
+      )
+    )
+  )
+)
+
+
+
+
+# Wrap with constrained width
+htmltools::tagList(
+  htmltools::tags$div(
+    class = "chart-wrapper",
+    style = "max-width: 1200px; width: 100%; margin: 0 auto;",
+    htmltools::tags$div(
+      class = "chart-container",
+      style = "height: auto; overflow: hidden; border: 1px solid #ccc;",
+      hc
+    )
+  ),
+  htmltools::tags$script(HTML("
+  
+  function resizeChart() {
+    if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
+      Highcharts.charts.forEach(function(chart) {
+        if (chart) {
+          var wrapper = document.querySelector('.chart-wrapper');
+          if (wrapper) {
+            var targetWidth = wrapper.offsetWidth;
+            chart.setSize(targetWidth, null, false);
+          }
+        }
+      });
+    }
+  }
+
+  setTimeout(function() {
+      requestAnimationFrame(function() {
+        requestAnimationFrame(resizeChart);
+      });
+    }, 100);
+  window.addEventListener('resize', resizeChart);
+"))
+)
+
+```
