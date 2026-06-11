@@ -6,10 +6,31 @@ output:
 ---
 <style>
 .html-widget {
-    width: 910px !important;
+    width: 100% !important;
     height: 975px !important;
+    max-width: 100% !important;
 }
+
 body { margin: 0; }
+
+</style>
+
+<!-- Add this SECOND style block after the first -->
+<style>
+html, body {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow-x: hidden !important;
+}
+.container-fluid,
+.main-container,
+.row {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    max-width: 100% !important;
+}
 </style>
 
 ```{r, include=FALSE}
@@ -93,7 +114,7 @@ if(indicator_asbest=="min") {
   # Create ordered categories for RATES (descending by rate)
   rate_order <- indicator_df %>%
     arrange(desc(rate)) %>%
-    pull(subgroup)
+    pull(label)
   
 } else{
   indicator_df <- indicator_df %>%
@@ -104,7 +125,7 @@ if(indicator_asbest=="min") {
   # Create ordered categories for RATES (descending by rate)
   rate_order <- indicator_df %>%
     arrange(rate) %>%
-    pull(subgroup)
+    pull(label)
 
 }
 
@@ -112,7 +133,7 @@ if(indicator_asbest=="min") {
 # Create ordered categories for COUNTS (descending by count)
 count_order <- indicator_df %>%
   arrange(desc(raw)) %>%
-  pull(subgroup)
+  pull(label)
 
 # Create series data for RATES with colors
 series_data_rates <- indicator_df %>%
@@ -120,11 +141,11 @@ series_data_rates <- indicator_df %>%
   group_split() %>%
   map(function(df) {
     data_points <- map(1:nrow(df), function(i) {
-      x_index <- which(rate_order == df$subgroup[i]) - 1
+      x_index <- which(rate_order == df$label[i]) - 1
       list(
         x = unname(x_index),
         y = df$rate[i],
-        name = df$subgroup[i]
+        name = df$label[i]
       )
     })
     
@@ -155,11 +176,11 @@ series_data_counts <- indicator_df %>%
   group_split() %>%
   map(function(df) {
     data_points <- map(1:nrow(df), function(i) {
-      x_index <- which(count_order == df$subgroup[i]) - 1
+      x_index <- which(count_order == df$label[i]) - 1
       list(
         x = unname(x_index),
         y = df$raw[i],
-        name = df$subgroup[i]
+        name = df$label[i]
       )
     })
     
@@ -270,7 +291,7 @@ hc <- highchart() %>%
                   width: 2,
                   dashStyle: 'ShortDash',
                   // align right and negative x should match the hc() code
-                  label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: %s', align: 'right', rotation: 0, y: -8, x: -5},
+                  label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: %s', align: 'right', rotation: 0, y: -8, x: -5, overflow: 'allow', crop: false},
                   zIndex: 5
                 });
                 
@@ -361,7 +382,14 @@ hc <- highchart() %>%
   hc_xAxis(
     categories = rate_order,
     labels = list(
-      enabled = TRUE
+      enabled = TRUE,
+      useHTML = TRUE,            # Required for complex CSS formatting (like word-break)
+      formatter = JS("
+        function() {
+          // Explicitly wrap the text inside a fixed-width, wrapping div
+          return '<div style=\"width: 100px; white-space: normal; word-wrap: break-word; text-align: right;\">' + this.value + '</div>';
+        }
+      ")
     ),
     gridLineWidth = 1,
     gridLineColor = '#e6e6e6') %>%
@@ -378,10 +406,10 @@ hc <- highchart() %>%
         width = 2,
         dashStyle = 'ShortDash',
         label = list(
-          style=list(fontWeight='bold', fontSize='0.8em'),
-          text = paste('STATE AVERAGE:', total_rate), 
-          align = 'right', # keep so label doesn't truncate on mobile
-          rotation=0, y=-8, x=-5), # keep x=-5 so label doesn't truncate on mobile
+          style = list(fontWeight='bold', fontSize='0.8em'),
+          text = paste('STATE AVERAGE:', total_rate),
+          align = 'right', rotation = 0, y = -8, x = -5,
+          overflow = 'allow', crop = FALSE), 
         zIndex = 5
       )
     )
@@ -407,20 +435,17 @@ hc <- highchart() %>%
   ) %>%
   hc_add_theme(custom_theme) %>% 
   hc_responsive(
-    rules = list(
-      list(
-        # Omit data_description on small screens
-        condition = list(maxWidth = 768),
-        chartOptions = list(
-          caption = 
-            list(
-              text = paste("<b>Source:</b>", data_source,
-                         "<a href='...' target='_blank'>Full Methodology</a>")
-            )
+  rules = list(
+    list(
+      condition = list(maxWidth = breakpoint_maxwidth),
+      chartOptions = list(
+        caption = list(
+          text = paste("<b>Source:</b>", data_source, methodology_link)
         )
       )
     )
   )
+)
 
 # Add RATES series (visible by default)
 for (series in series_data_rates) {
@@ -462,23 +487,28 @@ htmltools::tagList(
     )
   ),
   htmltools::tags$script(HTML("
-    function resizeChart() {
-      if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
-        Highcharts.charts.forEach(function(chart) {
-          if (chart) {
-            var wrapper = document.querySelector('.chart-wrapper');
-            if (wrapper) {
-              var targetWidth = wrapper.offsetWidth - 40;
-              chart.setSize(targetWidth, null, false);
-            }
+  
+  function resizeChart() {
+    if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
+      Highcharts.charts.forEach(function(chart) {
+        if (chart) {
+          var wrapper = document.querySelector('.chart-wrapper');
+          if (wrapper) {
+            var targetWidth = wrapper.offsetWidth;
+            chart.setSize(targetWidth, null, false);
           }
-        });
-      }
+        }
+      });
     }
-    
-    setTimeout(resizeChart, 100);
-    window.addEventListener('resize', resizeChart);
-  "))
+  }
+
+  setTimeout(function() {
+    requestAnimationFrame(function() {
+      requestAnimationFrame(resizeChart);
+    });
+  }, 100);
+  window.addEventListener('resize', resizeChart);
+"))
 )
 
 ```

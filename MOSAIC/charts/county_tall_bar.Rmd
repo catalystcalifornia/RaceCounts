@@ -6,10 +6,31 @@ output:
 ---
 <style>
 .html-widget {
-    width: 910px !important;
+    width: 100% !important;
     height: 975px !important;
+    max-width: 100% !important;
 }
+
 body { margin: 0; }
+
+</style>
+
+<!-- Add this SECOND style block after the first -->
+<style>
+html, body {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow-x: hidden !important;
+}
+.container-fluid,
+.main-container,
+.row {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    max-width: 100% !important;
+}
 </style>
 
 ```{r, include=FALSE}
@@ -60,7 +81,7 @@ knitr::opts_chunk$set(echo = FALSE)
 ```{r}
 ##### Prep: Get data (must change for each indicator) #####
 # Get indicator df
-indicator_df <- dbGetQuery(con, paste0("SELECT * FROM v7.", grp, "_summary_for_charts_lac"))
+indicator_df <- dbGetQuery(con, paste0("SELECT * FROM v7.", race_grp, "_summary_for_charts_lac"))
 
 # Filter indicator metadata
 indicator_metadata <- indicator_metadata %>% filter(api_name == min(indicator_df$topic))  # use min bc multiple rows but all with same value
@@ -99,12 +120,12 @@ if(indicator_asbest=="min") {
   # Create ordered categories for RATES (descending by rate)
   rate_order <- indicator_df %>%
     arrange(desc(rate)) %>%
-    pull(subgroup)
+    pull(label)
 
   # Create ordered categories for COUNTS (descending by count)
   count_order <- indicator_df %>%
     arrange(desc(raw)) %>%
-    pull(subgroup)
+    pull(label)
   
 } else{
   indicator_df <- indicator_df %>%
@@ -115,12 +136,12 @@ if(indicator_asbest=="min") {
   # Create ordered categories for RATES (descending by rate)
   rate_order <- indicator_df %>%
     arrange(rate) %>%
-    pull(subgroup)
+    pull(label)
 
   # Create ordered categories for COUNTS (descending by count)
   count_order <- indicator_df %>%
     arrange(raw) %>%
-    pull(subgroup)
+    pull(label)
 }
 
 # Create series data for RATES with colors
@@ -129,11 +150,11 @@ series_data_rates <- indicator_df %>%
   group_split() %>%
   map(function(df) {
     data_points <- map(1:nrow(df), function(i) {
-      x_index <- which(rate_order == df$subgroup[i]) - 1
+      x_index <- which(rate_order == df$label[i]) - 1
       list(
         x = unname(x_index),
         y = df$rate[i],
-        name = df$subgroup[i]
+        name = df$label[i]
       )
     })
     
@@ -164,11 +185,11 @@ series_data_counts <- indicator_df %>%
   group_split() %>%
   map(function(df) {
     data_points <- map(1:nrow(df), function(i) {
-      x_index <- which(count_order == df$subgroup[i]) - 1
+      x_index <- which(count_order == df$label[i]) - 1
       list(
         x = unname(x_index),
         y = df$raw[i],
-        name = df$subgroup[i]
+        name = df$label[i]
       )
     })
     
@@ -254,7 +275,7 @@ hc <- highchart() %>%
                 chart.customToggleButton.attr({text: 'Show Rates'});
                 chart.yAxis[0].setTitle({ text: 'COUNT' }, false); 
                 chart.xAxis[0].update({categories: countOrder}, false);
-                chart.yAxis[0].removePlotLine('state-average-line');
+                chart.yAxis[0].removePlotLine('county-average-line');
                 
                 chart.update({
                   plotOptions: {
@@ -270,15 +291,16 @@ hc <- highchart() %>%
                 
               } else {
                 chart.customToggleButton.attr({text: 'Show Counts'});
-                chart.yAxis[0].setTitle({ text: 'RATE' }, false); 
+                chart.yAxis[0].setTitle({ text: 'RATE (COUNTY AVERAGE: %s)' }, false);  
                 chart.xAxis[0].update({categories: rateOrder}, false);
                 chart.yAxis[0].addPlotLine({
-                  id: 'state-average-line',
+                  id: 'county-average-line',
                   value: %s,
                   color: '%s',
                   width: 2,
                   dashStyle: 'ShortDash',
-                  label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'COUNTY AVERAGE: %s', align: 'left', rotation: 0, y: -8, x: 5},
+                  // align right and negative x should match the hc() code
+                  label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'COUNTY AVERAGE: %s', align: 'right', rotation: 0, y: -8, x: -5, overflow: 'allow', crop: false},
                   zIndex: 5
                 });
                 
@@ -341,9 +363,10 @@ hc <- highchart() %>%
       "), 
       jsonlite::toJSON(rate_order), # rate order
       jsonlite::toJSON(count_order), # count order
+      total_rate, # axis title
       total_rate, # value
       rc_black, # color
-      total_rate) # cpunty average
+      total_rate) # county average
       ))) %>%
   hc_plotOptions(
     bar = list(
@@ -357,32 +380,45 @@ hc <- highchart() %>%
       pointPadding = 0,
       groupPadding = 0.1),
     series = 
-      list(enableMouseTracking=FALSE), # removes all highlighting from hovering over bars and legend groups
-      clip = FALSE) %>%
+      list(
+        enableMouseTracking=FALSE, # removes all highlighting from hovering over bars and legend groups
+        clip = FALSE,
+        # add event to ensure no legend toggling
+        events = list(
+          legendItemClick = htmlwidgets::JS("function() { return false; }")
+          ))
+    ) %>%
   hc_xAxis(
     categories = rate_order,
     labels = list(
-      enabled = TRUE
+      enabled = TRUE,
+      useHTML = TRUE,            # Required for complex CSS formatting (like word-break)
+      formatter = JS("
+        function() {
+          // Explicitly wrap the text inside a fixed-width, wrapping div
+          return '<div style=\"width: 100px; white-space: normal; word-wrap: break-word; text-align: right;\">' + this.value + '</div>';
+        }
+      ")
     ),
     gridLineWidth = 1,
     gridLineColor = '#e6e6e6') %>%
   hc_yAxis(
-    title = list(text = "RATE"),
+    title = list(text = sprintf("RATE (COUNTY AVERAGE: %s)", total_rate)),
     labels=list(enabled=FALSE), # remove labels from rate axis
     gridLineWidth=0,
     offset = 0,
     plotLines = list(
       list(
-        id = 'state-average-line',
+        id = 'county-average-line',
         value = total_rate,
         color = rc_black,
         width = 2,
         dashStyle = 'ShortDash',
         label = list(
-          style=list(fontWeight='bold', fontSize='0.8em'),
-          text = paste('COUNTY AVERAGE:', total_rate), 
-          align = 'left', 
-          rotation=0, y=-8, x=5),
+          style = list(fontWeight='bold', fontSize='0.8em'),
+          text = paste('COUNTY AVERAGE:', total_rate),
+          align = 'right', rotation = 0, y = -8, x = -5,
+          overflow = 'allow', crop = FALSE), 
         zIndex = 5
       )
     )
@@ -390,21 +426,35 @@ hc <- highchart() %>%
   hc_legend(
     enabled = TRUE,
     verticalAlign = "top",
-    margin = 20
+    margin = 20,
+    itemStyle = list(cursor = "default")  # makes cursor not show pointer - to clarify no series toggling
   ) %>%
   hc_tooltip(enabled = FALSE) %>%
   hc_title(
     text = chart_title,
-    align = "center") %>% 
+    align = "center" ) %>% 
   hc_subtitle(
-    text = "Toggle groups on/off by clicking the legend labels below",
+    # Remove toggle for now
+    # text = "Toggle groups on/off by clicking the legend labels below",
     align = "center") %>%
   hc_caption(
-    text = paste("<b>About the data:", data_source, "</b>", data_description, methodology_link),
+    text = paste("<b>Source:", data_source, "</b>", data_description, methodology_link),
     useHTML = TRUE,
     align = "left"
   ) %>%
-  hc_add_theme(custom_theme)
+  hc_add_theme(custom_theme) %>% 
+  hc_responsive(
+  rules = list(
+    list(
+      condition = list(maxWidth = breakpoint_maxwidth),
+      chartOptions = list(
+        caption = list(
+          text = paste("<b>Source:</b>", data_source, methodology_link)
+        )
+      )
+    )
+  )
+)
 
 # Add RATES series (visible by default)
 for (series in series_data_rates) {
@@ -446,23 +496,28 @@ htmltools::tagList(
     )
   ),
   htmltools::tags$script(HTML("
-    function resizeChart() {
-      if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
-        Highcharts.charts.forEach(function(chart) {
-          if (chart) {
-            var wrapper = document.querySelector('.chart-wrapper');
-            if (wrapper) {
-              var targetWidth = wrapper.offsetWidth - 40;
-              chart.setSize(targetWidth, null, false);
-            }
+  function resizeChart() {
+    if (typeof Highcharts !== 'undefined' && Highcharts.charts.length > 0) {
+      Highcharts.charts.forEach(function(chart) {
+        if (chart) {
+          var wrapper = document.querySelector('.chart-wrapper');
+          if (wrapper) {
+            var targetWidth = wrapper.offsetWidth;
+            chart.setSize(targetWidth, null, false);
           }
-        });
-      }
+        }
+      });
     }
-    
-    setTimeout(resizeChart, 100);
-    window.addEventListener('resize', resizeChart);
-  "))
+  }
+
+  setTimeout(function() {
+      requestAnimationFrame(function() {
+        requestAnimationFrame(resizeChart);
+      });
+    }, 100);
+  window.addEventListener('resize', resizeChart);
+"))
 )
+
 
 ```
