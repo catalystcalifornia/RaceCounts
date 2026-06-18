@@ -1,15 +1,19 @@
 ---
 title: ""
-  html_document:
-    css: "W:\\RDA Team\\R\\cc_brandguide.css"
+output:
+  html_document
+  
 ---
+
+
+
 
 ```{r, include=FALSE}
 knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE
 )
 
 
-#### Setting Up ####
+#### Set Environment ####
 
 library(usethis)
 library(dplyr)
@@ -21,20 +25,34 @@ library(gt)
 library(sf)
 library(scales)
 library(ggplot2)
+library(sysfonts)
+library(showtext)
 
-# lang <- getOption("highcharter.lang")
-# lang$thousandsSep <- ","
-# options(highcharter.lang = lang)
+font_add_google("Roboto", "roboto")
+font_add_google("Archivo", "archivo")
+
+showtext_auto()  # tells ggplot to use showtext for rendering
+showtext_opts(dpi = 300)
+
+### See current RACE COUNTS style guide: W:\Project\RACE COUNTS\Style Guide\RC-Style Guide.pdf and
+####### RC_Website_Fonts_Color_Ramp_2023.txt
 
 #Add database connection and source script with functions for pushing to postgres
 source("W:\\RDA Team\\R\\credentials_source.R")
 options(scipen = 999)
 
-#### Step 1: Pull in data ####
+```
+
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE
+)
+
+#### Pull in data ####
 source("./calcs_hateincident.R")
 df <- final_df 
 
-# need to update code below to just rename within the chart fx rather than in the df
+# need code below to rename within the chart fx rather than in the source data
 df <- df %>%
   # clean up labels for visuals
   mutate(race_label=case_when(
@@ -48,28 +66,24 @@ df <- df %>%
     race=="total" ~ 'Total',
       TRUE~NA))
 
+```
 
-## COLORS ## source: W:\RDA Team\Communications\Catalyst California Brand Guide_September 2022.pdf
-orange <- "#F25922"     # 01 row on data vis colors page & brand colors page
-peridot <- "#CEEA01"    # 01 row on data vis colors page & brand colors page
-lavender <- "#CEC4E2"   # brand colors page
-meteorite <- "#3A207D"  # brand colors page
-ccblue <- "#0860BC"     # 00 row on data vis colors page 
-ccyellow <-"#FFCC00"    # 01 row on data vis colors page
-ccmagenta <- "#733256"  # 01 row on data vis colors page
-ccpenny <- "#FF9873"    # 03 row on data vis colors page
+```{r, include=FALSE}
+knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = FALSE
+)
 
-black <- "#000000"      # brand colors page
-alabaster<-"#FBFBFB"    # brand colors page
-gainsboro <- "#DEDEDE"  # brand colors page
-rc_white <- "#F7F7F7"   
-
-my_colors <- c(meteorite, ccblue, peridot, orange, ccpenny, lavender, ccyellow, black)
-
-## FONTS ## 
-
-
-
+## COLORS ## source: RC_Website_Fonts_Color_Ramp_2023.txt
+  my_colors = c("#FF6B02",  # orange, core RC color
+                "#F91105",  # red, core RC color
+                "#AC0068",  # purple, core RC color
+                "#FEC009",  # yellow, core RC color
+                "#0077B6",  # sapphire blue
+                "#008B5E",  # emerald green
+                "#5C2D91",   # amethyst
+                "#00868A"   # deep teal
+             )
+  
+  rc_white = "#F7F7F7"     # rc white
 
 
 ```
@@ -97,21 +111,21 @@ p <- ggplot(df, aes(x = rate, y = reorder(race_label, rate), fill = race)) +
   ) +
   labs(
     title = "Between 2023-2024, nearly 3M Californians experienced one or more hate incidents",
-    subtitle = "People Who Have Experienced a Hate Incident in the Last 12 Months (%)",
-    x = "Experienced Hate Incident (%)",
+    x = "Percent of People Who Have Experienced a Hate Incident in the Last 12 Months (#)",
     y = NULL,
     caption = 'Data Source: California Health Interview Survey 2023-24 Pooled Estimates. Teens and adults were asked "During the\npast 12 months, do you think you directly experienced a hate incident?"\n\nData Notes: AIAN = American Indian / Alaska Native, PI = Pacific Islander, SWANA = Southwest Asian / North African.\nThose three races include people who identify as that race alone or in combination with another race or ethnicity including\nLatinx. Asian, Black and White races include people who identify as that race alone.'
     ) +
-  theme_minimal() +
+  theme_minimal(base_family = "roboto") +
   theme(
-    #text = element_text(family="Inter"),
+    axis.title.x = element_text(margin = margin(t = 7)),  # t = top margin, in points
+    axis.text.x = element_blank(),     # remove x-axis labels
     plot.title.position = "plot",   # set alignment based on whole image, not chart
-    plot.title = element_text(hjust=.5),
+    plot.title = element_text(hjust=.5, family = "archivo"),
     plot.caption.position = "plot", # set alignment based on whole image, not chart
-    plot.caption = element_text(hjust=0),  # left align
-    axis.title.x = element_text(margin = margin(t = 0, r = 0, b = 15, l = 0)), # add space btwn x-axis title and caption
+    plot.caption = element_text(hjust = 0, margin = margin(t = 15)),  # left align, add space from x-axis label
     panel.grid.major.y = element_blank(),
     panel.grid.minor = element_blank(),
+    plot.margin = margin(20, 20, 20, 20),  # top, right, bottom, left in points
     legend.position = "none"
   )
 
