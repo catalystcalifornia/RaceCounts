@@ -166,9 +166,9 @@ drilldown_df <- indicator_df %>%
       .default = group),
     type = "bar",
     color = case_when(
-      id == "asian" ~ base_colors[["asian"]],
+      id == "asian" ~ base_colors[["asian subgroups"]],
       id == "total" ~ base_colors[["total"]],
-      id == "pacisl" ~ base_colors[["pacisl"]],
+      id == "pacisl" ~ base_colors[["pacisl subgroups"]],
       .default = base_colors[["default"]]),
     # Store both rate-sorted and count-sorted versions
     data = map(data, function(df) {
