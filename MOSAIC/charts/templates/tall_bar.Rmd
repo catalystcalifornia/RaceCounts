@@ -77,7 +77,11 @@ knitr::opts_chunk$set(echo = FALSE)
 ```{r}
 ##### Prep: Get data (must change for each indicator) #####
 # Get indicator df
-indicator_df <- dbGetQuery(con, paste0("SELECT * FROM v7.", race_grp, "_summary_for_charts WHERE topic = '", ind, "'"))
+indicator_df <- dbGetQuery(con, 
+                           sprintf("SELECT * FROM v7.%s_summary_for_charts%s WHERE topic = '%s'",
+                                   race_grp,
+                                   geolevel_table_suffix,
+                                   ind))
 
 
 # Set metadata - see documentation above for examples
@@ -210,6 +214,8 @@ series_data_counts <- indicator_df %>%
 
 ```{r}
 ##### Chart: Highcharts bar (don't change) ##### 
+plotline_label <- paste(geolevel, "AVERAGE")
+
 hc <- highchart() %>%
   hc_chart(
     type = "bar",
@@ -266,7 +272,7 @@ hc <- highchart() %>%
                 chart.customToggleButton.attr({text: 'Show Rates'});
                 chart.yAxis[0].setTitle({ text: 'COUNT' }, false); 
                 chart.xAxis[0].update({categories: countOrder}, false);
-                chart.yAxis[0].removePlotLine('state-average-line');
+                chart.yAxis[0].removePlotLine('geolevel-average-line');
                 
                 chart.update({
                   plotOptions: {
@@ -282,16 +288,16 @@ hc <- highchart() %>%
                 
               } else {
                 chart.customToggleButton.attr({text: 'Show Counts'});
-                chart.yAxis[0].setTitle({ text: 'RATE (STATE AVERAGE: %s)' }, false);  
+                chart.yAxis[0].setTitle({ text: 'RATE (%s: %s)' }, false);  
                 chart.xAxis[0].update({categories: rateOrder}, false);
                 chart.yAxis[0].addPlotLine({
-                  id: 'state-average-line',
+                  id: 'geolevel-average-line',
                   value: %s,
                   color: '%s',
                   width: 2,
                   dashStyle: 'ShortDash',
                   // align right and negative x should match the hc() code
-                  label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: 'STATE AVERAGE: %s', align: 'right', rotation: 0, y: -8, x: -5, overflow: 'allow', crop: false},
+                  label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: '%s: %s', align: 'right', rotation: 0, y: -8, x: -5, overflow: 'allow', crop: false},
                   zIndex: 5
                 });
                 
@@ -354,10 +360,12 @@ hc <- highchart() %>%
       "), 
       jsonlite::toJSON(rate_order), # rate order
       jsonlite::toJSON(count_order), # count order
+      plotline_label, # county average or state average
       total_rate, # axis title
       total_rate, # value
       rc_black, # color
-      total_rate) # state average
+      plotline_label, # county average or state average
+      total_rate) # geo average
       ))) %>%
   hc_plotOptions(
     bar = list(
@@ -394,20 +402,20 @@ hc <- highchart() %>%
     gridLineWidth = 1,
     gridLineColor = '#e6e6e6') %>%
   hc_yAxis(
-    title = list(text = sprintf("RATE (STATE AVERAGE: %s)", total_rate)),
+    title = list(text = sprintf("RATE (%s: %s)", plotline_label, total_rate)),
     labels=list(enabled=FALSE), # remove labels from rate axis
     gridLineWidth=0,
     offset = 0,
     plotLines = list(
       list(
-        id = 'state-average-line',
+        id = 'geolevel-average-line',
         value = total_rate,
         color = rc_black,
         width = 2,
         dashStyle = 'ShortDash',
         label = list(
           style = list(fontWeight='bold', fontSize='0.8em'),
-          text = paste('STATE AVERAGE:', total_rate),
+          text = paste(geolevel,'AVERAGE:', total_rate),
           align = 'right', rotation = 0, y = -8, x = -5,
           overflow = 'allow', crop = FALSE), 
         zIndex = 5

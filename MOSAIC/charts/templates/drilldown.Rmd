@@ -87,9 +87,13 @@ knitr::opts_chunk$set(echo = FALSE)
 ```{r}
 ##### Prep: Get data (must change for each indicator) #####
 # Get indicator df
-indicator_df <- dbGetQuery(con, paste0("SELECT * FROM v7.", race_grp, "_summary_for_charts WHERE topic = '", ind, "'"))
+indicator_df <- dbGetQuery(con, 
+                           sprintf("SELECT * FROM v7.%s_summary_for_charts%s WHERE topic = '%s'",
+                                   race_grp,
+                                   geolevel_table_suffix,
+                                   ind))
 
-
+dbDisconnect(conn = con)
 # Set metadata - see documentation above for examples
 indicator_name <- indicator_df$topic[1]
 indicator_asbest <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(arei_best) %>% pull()
@@ -100,7 +104,9 @@ rate_rounding <- indicator_metadata %>% filter(api_name == indicator_name) %>% s
 raw_rounding <- indicator_metadata %>% filter(api_name == indicator_name) %>% select(raw_rounding) %>% pull() %>% as.integer()
 
 # Set total_rate
-total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% select(rate) %>% pull() %>% round(., rate_rounding)
+total_rate <- indicator_df %>% 
+  filter(group=="total" & subgroup == "total") %>% 
+  select(rate) %>% pull() %>% round(., rate_rounding)
 
 # # need to filter out NA rates/raw and total rate
 indicator_df <- indicator_df %>%
