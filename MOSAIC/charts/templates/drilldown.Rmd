@@ -313,7 +313,7 @@ drillup_js <- paste0("function() {
 hc <- hchart(
   base_df,
   "bar",
-  hcaes(x = group, y = rate, drilldown = group, y2 = raw, color=color),
+  hcaes(x = label, y = rate, drilldown = group, y2 = raw, color=color),
   name = "Overview",
   colorByPoint = FALSE) %>%
   hc_chart(

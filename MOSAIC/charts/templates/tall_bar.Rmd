@@ -96,10 +96,22 @@ raw_rounding <- indicator_metadata %>% filter(api_name == indicator_name) %>% se
 # Set total_rate
 total_rate <- indicator_df %>% filter(group=="total" & subgroup == "total") %>% select(rate) %>% pull() %>% round(., rate_rounding)
 
-# need to filter out NA rates/raw and total rate
+
 indicator_df <- indicator_df %>% 
+  # need to filter out NA rates/raw and total rate
   drop_na(rate) %>%
-  filter(subgroup != "total")
+  filter(subgroup != "total") %>%
+  # reformat group to have proper case
+  mutate(
+    group = case_when(
+      group == "other major race groups" ~ "Other major race groups",
+      group == "pacisl subgroups" ~ "Pacific Islander subgroups",
+      group == "pacisl" ~ "Pacific Islander",
+      group == "asian subgroups" ~ "Asian subgroups",
+      group == "asian" ~ "Asian",
+      .default="MISSED THIS GROUP"
+    )
+  )
 
 # Don't change - pulled in from chart_style_vars
 methodology_link <- sprintf("<a href='%s' target='_blank'>Full Methodology</a>", mosaic_methodology_link)
@@ -154,13 +166,13 @@ series_data_rates <- indicator_df %>%
     })
     
     # Assign color based on group
-    series_color <- if(df$group[1] == "asian subgroups") {
+    series_color <- if(df$group[1] == "Asian subgroups") {
       base_colors[["asian subgroups"]]
-    } else if(df$group[1] == "asian") {
+    } else if(df$group[1] == "Asian") {
       base_colors[["asian total"]]
-    } else if(df$group[1] == "pacisl subgroups") {
+    } else if(df$group[1] == "Pacific Islander subgroups") {
       base_colors[["pacisl subgroups"]]
-    } else if(df$group[1] == "pacisl") {
+    } else if(df$group[1] == "Pacific Islander") {
       base_colors[["pacisl total"]]
     } else {
       base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
@@ -189,13 +201,13 @@ series_data_counts <- indicator_df %>%
     })
     
     # Assign same color based on group
-    series_color <- if(df$group[1] == "asian subgroups") {
+    series_color <- if(df$group[1] == "Asian subgroups") {
       base_colors[["asian subgroups"]]
-    } else if(df$group[1] == "asian") {
+    } else if(df$group[1] == "Asian") {
       base_colors[["asian total"]]
-    } else if(df$group[1] == "pacisl subgroups") {
+    } else if(df$group[1] == "Pacific Islander subgroups") {
       base_colors[["pacisl subgroups"]]
-    } else if(df$group[1] == "pacisl") {
+    } else if(df$group[1] == "Pacific Islander") {
       base_colors[["pacisl total"]]
     } else {
       base_colors[["other"]]  # This catches aian, latino, black, white, nhpi, etc.
