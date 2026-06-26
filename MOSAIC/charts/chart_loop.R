@@ -3,7 +3,8 @@ library(rmarkdown)
 library(here)
 library(stringr)
 
-## Uncomment out Asian OR PacIsl 'grp' and either 'bar' or 'drilld' indicators, then run loop.
+## Run whole script to recreate all charts at once 
+## Alt: run asian or nhpi variables (race_grp, bar_indicators, drilld_indicators, pop_table) and run specific chart type code as needed
 
 ###### ASIAN CHARTS ######
 race_grp <- "asian"
@@ -11,7 +12,7 @@ bar_indicators <- c("overcrowded", "officials")
 drilld_indicators <- c("voter_engagement", "health_insurance")
 pop_table <- 'aa_pop_b02018'
 
-### Asian POP BAR CHART ###
+### ASIAN POP BAR CHART ###
 render(
   input = "./MOSAIC/charts/pop_tall_bar.Rmd",
   output_dir = paste0(getwd(),"/MOSAIC/charts"),

@@ -309,7 +309,7 @@ hc <- highchart() %>%
                   width: 2,
                   dashStyle: 'ShortDash',
                   // align right and negative x should match the hc() code
-                  label: {style: {fontWeight: 'bold', fontSize: '0.8em'}, text: '%s: %s', align: 'right', rotation: 0, y: -8, x: -5, overflow: 'allow', crop: false},
+                  label: {style: {fontWeight: 'bold', fontSize: '0.9em'}, text: '%s: %s', align: 'right', rotation: 0, y: -8, x: -5, overflow: 'allow', crop: false},
                   zIndex: 5
                 });
                 
@@ -426,7 +426,7 @@ hc <- highchart() %>%
         width = 2,
         dashStyle = 'ShortDash',
         label = list(
-          style = list(fontWeight='bold', fontSize='0.8em'),
+          style = list(fontWeight='bold', fontSize='0.9em'),
           text = paste(geolevel,'AVERAGE:', total_rate),
           align = 'right', rotation = 0, y = -8, x = -5,
           overflow = 'allow', crop = FALSE), 
