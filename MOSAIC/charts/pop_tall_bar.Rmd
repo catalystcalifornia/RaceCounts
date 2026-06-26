@@ -209,7 +209,7 @@ series_data_rates <- list(list(
   data  = data_points_rates,
   id    = "rates",
   visible = FALSE,
-  color = rc_orange
+  color = mosaic_light_orange
 ))
 
 
@@ -228,7 +228,7 @@ series_data_counts <- list(list(
   data    = data_points_counts,
   id      = "counts",
   visible = TRUE,
-  color   = rc_orange
+  color   = mosaic_light_orange
 ))
 
 ```
