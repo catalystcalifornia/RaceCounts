@@ -393,7 +393,7 @@ hc <- highchart() %>%
     series = 
       list(
         enableMouseTracking=FALSE, # removes all highlighting from hovering over bars and legend groups
-        clip = FALSE,
+        clip = TRUE,
         # add event to ensure no legend toggling
         events = list(
           legendItemClick = htmlwidgets::JS("function() { return false; }")
