@@ -15,6 +15,7 @@ breakpoint_maxwidth <- 500
 # define rc colors we want to use
 rc_blue <-  "#070024" # primary
 rc_orange <- "#FF6B02" # accent
+mosaic_light_orange <- "#FFA05C" # Asian and NHPI subgroups
 rc_magenta <- "#a63273" # using slightly desaturated version to help plotline rendering "#ac0068" # accent
 rc_grey <- "#cccccc" # neutral
 rc_white <- "#ffffff" # neutral
@@ -26,11 +27,11 @@ rc_yellow <- "#fec009"
 # Set colors for bars
 base_colors <- c(
   "asian" = rc_orange,
-  "asian subgroups" = rc_orange,
+  "asian subgroups" = mosaic_light_orange,
   "pacisl" = rc_orange,
-  "pacisl subgroups" = rc_orange,
-  "asian total"= rc_blue,
-  "pacisl total"= rc_blue,
+  "pacisl subgroups" = mosaic_light_orange,
+  "asian total"= rc_orange,
+  "pacisl total"= rc_orange,
   "total" = rc_magenta,
   "other" = rc_magenta,
   "default" = rc_grey)
@@ -54,14 +55,17 @@ custom_theme <- hc_theme(
       color = rc_black,
       fontSize ="11px",
       style = list(lineHeight = "1.25rem"))),
-  legend = list(itemStyle = list(color = rc_black)),
+  legend = list(
+    itemStyle = list(
+      color = rc_black,
+      fontSize = "0.9em")),
   xAxis = list(
     lineColor = rc_black,
     lineWidth = 2,
     labels = list(
       style = list(
         color = rc_black,
-        fontSize ="0.8em",
+        fontSize ="0.9em",
         fontWeight="bold"))),
   yAxis = list(
     lineColor = rc_black,
@@ -70,7 +74,7 @@ custom_theme <- hc_theme(
     title = list(
       style=list(
         color = rc_black,
-        fontSize="0.8em",
+        fontSize="0.9em",
         fontWeight="bold"))),
   plotOptions = list(
     bar = list(

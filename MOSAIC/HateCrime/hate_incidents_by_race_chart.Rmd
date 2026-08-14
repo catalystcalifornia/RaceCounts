@@ -28,11 +28,17 @@ library(ggplot2)
 library(sysfonts)
 library(showtext)
 
-font_add_google("Roboto", "roboto")
-font_add_google("Archivo", "archivo")
+font_add_google("Montserrat", "montserrat")
+font_add_google("Work Sans", "work")
+
+# RC Fonts
+# font_add_google("Roboto", "roboto")
+# font_add_google("Archivo", "archivo")
 
 showtext_auto()  # tells ggplot to use showtext for rendering
 showtext_opts(dpi = 300)
+
+### See current MOSAIC style guide: https://catalystcalifornia.sharepoint.com/:b:/s/Portal/IQACIeOwku0NQIAfN4wf5_fxAfy4B_L3VkQPnkaVlk-hw1w?e=yDNl9S
 
 ### See current RACE COUNTS style guide: W:\Project\RACE COUNTS\Style Guide\RC-Style Guide.pdf and
 ####### RC_Website_Fonts_Color_Ramp_2023.txt
@@ -73,25 +79,37 @@ knitr::opts_chunk$set(comment = FALSE, message = FALSE, warning = FALSE, echo = 
 )
 
 ## COLORS ## source: RC_Website_Fonts_Color_Ramp_2023.txt
-  my_colors = c("#FF6B02",  # orange, core RC color
-                "#F91105",  # red, core RC color
-                "#AC0068",  # purple, core RC color
-                "#FEC009",  # yellow, core RC color
-                "#0077B6",  # sapphire blue
-                "#008B5E",  # emerald green
-                "#5C2D91",   # amethyst
-                "#00868A"   # deep teal
-             )
+  # my_colors = c("#FF6B02",  # orange, core RC color
+  #               "#F91105",  # red, core RC color
+  #               "#AC0068",  # purple, core RC color
+  #               "#FEC009",  # yellow, core RC color
+  #               "#0077B6",  # sapphire blue
+  #               "#008B5E",  # emerald green
+  #               "#5C2D91",   # amethyst
+  #               "#00868A"   # deep teal
+  #            )
   
   rc_white = "#F7F7F7"     # rc white
 
+## COLORS ## source: https://catalystcalifornia.sharepoint.com/:b:/s/Portal/IQACIeOwku0NQIAfN4wf5_fxAfy4B_L3VkQPnkaVlk-hw1w?e=lNFACb
+    my_colors = c("#ec8e35",  # orange, core MOSAIC color
+                "#e24034",  # red, core MOSAIC color
+                "#AC0068",  # purple, core RC color
+                "#FEC009",  # yellow, core RC color
+                "#0d3f37",   # deep teal, core MOSAIC color,
+                "#1f8170",  # teal, core MOSAIC color
+                "#5C2D91",  # amethyst
+                "#759bbc"   # blue, core MOSAIC color
+             )
+  
+  
 
 ```
 
 ## People who have Experienced Hate Incidents
 
 
-```{r, fig.width=7, fig.height=4.5}
+```{r, fig.width=7, fig.height=4.5, fig.showtext=TRUE}
 ############# STATIC VERSION ############# 
 
 # calculate width based on longest label
@@ -103,7 +121,7 @@ p <- ggplot(df, aes(x = rate, y = reorder(race_label, rate), fill = race)) +
   geom_text(
     aes(label = paste0(round(rate, 1), "% (", scales::comma(raw), ")")),
     hjust = -0.1,
-    size = 3.5
+    size = 5
   ) +
   scale_fill_manual(values = my_colors) +
   scale_x_continuous(
@@ -113,18 +131,19 @@ p <- ggplot(df, aes(x = rate, y = reorder(race_label, rate), fill = race)) +
     title = "Between 2023-2024, nearly 3M Californians experienced one or more hate incidents",
     x = "Percent of People Who Have Experienced a Hate Incident in the Last 12 Months (#)",
     y = NULL,
-    caption = 'Data Source: California Health Interview Survey 2023-24 Pooled Estimates. Teens and adults were asked "During the\npast 12 months, do you think you directly experienced a hate incident?"\n\nData Notes: AIAN = American Indian / Alaska Native, PI = Pacific Islander, SWANA = Southwest Asian / North African.\nThose three races include people who identify as that race alone or in combination with another race or ethnicity including\nLatinx. Asian, Black and White races include people who identify as that race alone.'
+    caption = 'Data Source: California Health Interview Survey 2023-24 Pooled Estimates. Teens and adults were asked\n"During the past 12 months, do you think you directly experienced a hate incident?"\n\nData Notes: AIAN = American Indian / Alaska Native, PI = Pacific Islander, SWANA = Southwest Asian /\nNorth African. Those three races include people who identify as that race alone or in combination with\nanother race or ethnicity including Latinx. Asian, Black and White races include people who identify as\nthat race alone.',
+    family = 'work'
     ) +
-  theme_minimal(base_family = "roboto") +
+  theme_minimal(base_family = "work") +
   theme(
-    axis.title.x = element_text(margin = margin(t = 7)),  # t = top margin, in points
+    axis.title.x = element_text(margin = margin(t = 7), size = 16),  # t = top margin, in points
     axis.text.x = element_blank(),     # remove x-axis labels
+    axis.text.y = element_text(size = 14),   # race_label font size
     plot.title.position = "plot",   # set alignment based on whole image, not chart
-    plot.title = element_text(hjust=.5, family = "archivo"),
+    plot.title = element_text(hjust=.5, family = "montserrat", face = "bold", size = 18),
     plot.caption.position = "plot", # set alignment based on whole image, not chart
-    plot.caption = element_text(hjust = 0, margin = margin(t = 15)),  # left align, add space from x-axis label
-    panel.grid.major.y = element_blank(),
-    panel.grid.minor = element_blank(),
+    plot.caption = element_text(hjust = 0, margin = margin(t = 15), size = 14, lineheight = .6),  # left align, add space from x-axis label
+    panel.grid = element_blank(),
     plot.margin = margin(20, 20, 20, 20),  # top, right, bottom, left in points
     legend.position = "none"
   )
