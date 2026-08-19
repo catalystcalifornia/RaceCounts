@@ -663,3 +663,23 @@ voting_age_state <- function(data) {
         summarize(num_nh_twoormor_va_pop = sum(pwsswgtnum)))
   
 }
+
+# address issue where there are NAs in the pre-averaged raw columns and convert total to NA for those calcs
+sync_voted_vap_na <- function(df, race_groups) {
+  for (r in race_groups) { # for each group in the race_groups list loop through this process
+    # safety check that the columns exist
+    voted_col <- paste0("num_", r, "_voted")
+    vap_col   <- paste0("num_", r, "_va_pop")
+    count_col <- paste0("count_", r, "_voted")   # keep count_ in sync too, since it's derived from the same universe as num_voted
+    
+    if (voted_col %in% names(df) && vap_col %in% names(df)) {
+      na_mask <- is.na(df[[voted_col]]) | # find the row that needs to be fixed
+        is.na(df[[vap_col]])  # and creates a TRUE/FALSE flag for every row. Its TRUE if either voted or va_pop is NA
+      # force both columns to match each other so if na_mask is TRUE then it makes both num_race_voted and num_race_va_pop NA
+      df[[voted_col]][na_mask] <- NA 
+      df[[vap_col]][na_mask]   <- NA
+      if (count_col %in% names(df)) df[[count_col]][na_mask] <- NA # do the same for the count column so it stays consistent w/ voted becoming NA
+    }
+  }
+  df # return the fixed df
+}
