@@ -141,6 +141,7 @@ num_data_yrs <- num_data_yrs %>% count(gtco) %>% rename(num_yrs = n)
 ## join data and data yrs
 final_df <- final_data_df %>% full_join(num_data_yrs, by = c('geoid' = 'gtco')) %>% mutate(num_yrs = ifelse(geoid == '06', length(unique(cps_yrs)), num_yrs)) 
 
+
 # Screening and calculate raw/rate ---------------------------------------------------------------
 
 final_df_screened <- final_df %>%
@@ -258,13 +259,13 @@ county_table <- rename(county_table, county_id = geoid, county_name = geoname) %
 #View(county_table)
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_demo_voting_presidential_county_", rc_yr, "_qa")
-state_table_name <- paste0("arei_demo_voting_presidential_state_", rc_yr,"_qa")
+county_table_name <- paste0("arei_demo_voting_presidential_county_", rc_yr)
+state_table_name <- paste0("arei_demo_voting_presidential_state_", rc_yr)
 
 indicator <- paste0("Annual average percent of voters voting in presidential elections among eligible voting age population. This data is")
 source <- paste0("CPS (", paste(cps_yrs, collapse=', '), ") average. ", dwnld_url)
 
 #send tables to postgres
-# to_postgres(county_table, state_table)
+#to_postgres(county_table, state_table)
 
 dbDisconnect(con)
