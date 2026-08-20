@@ -37,25 +37,25 @@ threshold = 10   # geo+race combos with < threshold voters who voted are suppres
 source("./Functions/democracy_functions.R")
 
 # Get 2024 Data --------------------------------------------------
-# comment out for qa 8/18/2026
-# # fx will download file and/or export postgres table and/or import postgres table as needed
-# metadata = "W:\\Data\\Democracy\\Current Population Survey Voting and Registration\\2024\\cpsnov24.pdf"
-# url <- "https://www2.census.gov/programs-surveys/cps/datasets/2024/supp/nov24pub.csv"
-# file <- "W:/Data/Democracy/Current Population Survey Voting and Registration/2024/nov24pub.csv"
-# varchar_cols <- c("hrhhid", "pes1", "hrintsta", "prpertyp")       # Use metadata to update as needed
-# 
-# df_2024 <- get_cps_supp(metadata, url, '2024', varchar_cols)
-df_2024 <- dbGetQuery(con2, "SELECT * FROM democracy.cps_voting_supplement_2024") # add for qa
+
+# fx will download file and/or export postgres table and/or import postgres table as needed
+metadata = "W:\\Data\\Democracy\\Current Population Survey Voting and Registration\\2024\\cpsnov24.pdf"
+url <- "https://www2.census.gov/programs-surveys/cps/datasets/2024/supp/nov24pub.csv"
+file <- "W:/Data/Democracy/Current Population Survey Voting and Registration/2024/nov24pub.csv"
+varchar_cols <- c("hrhhid", "pes1", "hrintsta", "prpertyp")       # Use metadata to update as needed
+
+df_2024 <- get_cps_supp(metadata, url, '2024', varchar_cols)
+
 # Get 2020 Data --------------------------------------------------
-# comment out for qa 8/18/2026
-# # fx will download file and/or export postgres table and/or import postgres table as needed
-# metadata = "W:\\Data\\Democracy\\Current Population Survey Voting and Registration\\2020\\cpsnov20.pdf"
-# url = "https://www2.census.gov/programs-surveys/cps/datasets/2020/supp/nov20pub.csv"
-# file <- "W:/Data/Democracy/Current Population Survey Voting and Registration/2020/nov20pub.csv"
-# varchar_cols <- c("hrhhid", "pes1", "hrintsta", "prpertyp")         # Use metadata to update as needed
-# 
-# df_2020 <- get_cps_supp(metadata, url, '2020', varchar_cols)
-df_2020 <- dbGetQuery(con2, "SELECT * FROM democracy.cps_voting_supplement_2020")# add for qa
+
+# fx will download file and/or export postgres table and/or import postgres table as needed
+metadata = "W:\\Data\\Democracy\\Current Population Survey Voting and Registration\\2020\\cpsnov20.pdf"
+url = "https://www2.census.gov/programs-surveys/cps/datasets/2020/supp/nov20pub.csv"
+file <- "W:/Data/Democracy/Current Population Survey Voting and Registration/2020/nov20pub.csv"
+varchar_cols <- c("hrhhid", "pes1", "hrintsta", "prpertyp")         # Use metadata to update as needed
+
+df_2020 <- get_cps_supp(metadata, url, '2020', varchar_cols)
+
 # Get 2012, 2016 Data --------------------------------------------------
 #2016 metadata: https://www2.census.gov/programs-surveys/cps/techdocs/cpsnov16.pdf
 #2012 metadata: https://www2.census.gov/programs-surveys/cps/techdocs/cpsnov12.pdf
@@ -103,39 +103,6 @@ county_data_list <- lapply(1:length(county_voter),
 
 county_data_list <- lapply(county_data_list, sync_voted_vap_na, race_groups = race_groups)
 
-# QA only - not joined into final_df
-aian_yrs_check <- lapply(county_data_list, function(df) df %>% filter(!is.na(num_aian_voted)) %>% select(gtco)) %>%
-  bind_rows() %>% count(gtco) %>% rename(aian_num_yrs = n)
-# output
-# > aian_yrs_check
-# gtco aian_num_yrs
-# 1  06000            4
-# 2  06001            4
-# 3  06007            2
-# 4  06017            2
-# 5  06019            3
-# 6  06025            1
-# 7  06029            2
-# 8  06031            2
-# 9  06037            4
-# 10 06053            2
-# 11 06059            4
-# 12 06065            1
-# 13 06067            3
-# 14 06071            1
-# 15 06073            4
-# 16 06075            1
-# 17 06077            2
-# 18 06079            4
-# 19 06081            4
-# 20 06083            4
-# 21 06089            2
-# 22 06095            2
-# 23 06097            3
-# 24 06099            3
-# 25 06107            2
-# 26 06111            3
-# there isn't a row for the num_yrs in the rc website structure but ones w/ 1 data year would be very unstable. these should get filtered by our threshold later but lets run a check at the end to verify
 county_data_df_ <- Reduce(full_join, county_data_list)             # combine county data into 1 df 
 
 county_data_num <- county_data_df_ %>% group_by(gtco) %>% select(c(starts_with("num_"))) %>% summarise_all(., mean, na.rm=TRUE)     # summarize (average) all number data years
@@ -301,143 +268,3 @@ source <- paste0("CPS (", paste(cps_yrs, collapse=', '), ") average. ", dwnld_ur
 # to_postgres(county_table, state_table)
 
 dbDisconnect(con)
-
-### qa check the final tables
-con <- connect_to_db("racecounts")
-old_county_df <- dbGetQuery(con, "SELECT * FROM v7.arei_demo_voting_presidential_county_2025")
-new_county_df <- dbGetQuery(con, "SELECT * FROM v7.arei_demo_voting_presidential_county_2025_qa")
-old_state_df <- dbGetQuery(con, "SELECT * FROM v7.arei_demo_voting_presidential_state_2025")
-new_state_df <- dbGetQuery(con, "SELECT * FROM v7.arei_demo_voting_presidential_state_2025_qa")
-dbDisconnect(con)
-
-#check the differences
-nrow(old_county_df); nrow(new_county_df) #58 and 58 so they're the same
-setdiff(old_county_df$county_id, new_county_df$county_id) #0
-setdiff(new_county_df$county_id, old_county_df$county_id) #0 so all the same geoids
-
-# difference for every rate
-rate_cols <- names(old_county_df)[grepl("_rate$", names(old_county_df))] # diff in every rate col
-
-rate_diffs <- map_dfr(rate_cols, function(col) {
-  old_county_df %>%
-    select(county_id, county_name, old_val = all_of(col)) %>%
-    left_join(new_county_df %>% select(county_id, new_val = all_of(col)), by = "county_id") %>%
-    mutate(race = col, diff = new_val - old_val) %>%
-    filter(!is.na(diff), diff != 0)
-})
-
-rate_diffs %>% arrange(desc(abs(diff)))
-# # output
-# county_id   county_name   old_val  new_val          race      diff
-# 1     06017     El Dorado  97.01917 78.37702   latino_rate -18.64215
-# 2     06019        Fresno  88.02447 69.61648     aian_rate -18.40799
-# 3     06083 Santa Barbara  77.67293 60.30127 nh_asian_rate -17.37167
-# 4     06067    Sacramento 100.61503 83.50376     aian_rate -17.11128 # did fix the issue w/ Sacr
-# 5     06077   San Joaquin  47.73685 36.36674 nh_asian_rate -11.37012
-
-# see if previous issue is fixed too
-races <- c("total", "latino", "nh_white", "nh_black", "aian", "nh_asian", "pacisl", "nh_twoormor")
-
-for (r in races) {
-  voted_col <- paste0(r, "_raw")
-  vap_col <- paste0("num_", r, "_va_pop")
-  
-  bad_old <- old_county_df %>% filter(.data[[voted_col]] > .data[[vap_col]])
-  bad_new <- new_county_df %>% filter(.data[[voted_col]] > .data[[vap_col]])
-  cat(r, "- old bad rows:", nrow(bad_old), " | new bad rows:", nrow(bad_new), "\n")
-}
-# # output shows no more cases where the race_raw would be bigger than the total raw
-# total - old bad rows: 0  | new bad rows: 0 
-# latino - old bad rows: 0  | new bad rows: 0 
-# nh_white - old bad rows: 0  | new bad rows: 0 
-# nh_black - old bad rows: 0  | new bad rows: 0 
-# aian - old bad rows: 1  | new bad rows: 0 # this was Sac County
-# nh_asian - old bad rows: 0  | new bad rows: 0 
-# pacisl - old bad rows: 0  | new bad rows: 0 
-# nh_twoormor - old bad rows: 0  | new bad rows: 0 
-
-# look at quadrants too to see if there were any notable diff there that would change the other visuals
-old_county_df %>% select(county_id, county_name, old_rank = performance_rank, old_quad = quadrant) %>%
-  left_join(new_county_df %>% select(county_id, new_rank = performance_rank, new_quad = quadrant), by = "county_id") %>%
-  filter(old_rank != new_rank | old_quad != new_quad)
-
-## output show that one county did change from purple to orange based on this new methodology
-# county_id     county_name old_rank old_quad new_rank new_quad
-# 1     06079 San Luis Obispo        1   purple        1   orange
-
-# lastly just spot check by changing the gtco to diff geoids
-lapply(county_voter, function(df) df[df$gtco == "06019", c("gtco", "num_aian_voted", "count_aian_voted")])
-# #output
-# $df_2012
-# # A tibble: 1 × 3
-# gtco  num_aian_voted count_aian_voted
-# <chr>          <dbl>            <int>
-#   1 06019          6221.                1
-# 
-# $df_2016
-# # A tibble: 1 × 3
-# gtco  num_aian_voted count_aian_voted
-# <chr>          <dbl>            <int>
-#   1 06019         12800.                2
-# 
-# $df_2020
-# # A tibble: 1 × 3
-# gtco  num_aian_voted count_aian_voted
-# <chr>          <dbl>            <int>
-#   1 06019         46943.                7
-# 
-# $df_2024
-# # A tibble: 1 × 3
-# gtco  num_aian_voted count_aian_voted
-# <chr>          <dbl>            <int>
-#   1 06019             NA               NA      # strange that there would be only 7 respondents in all of Fresno County; that's why it was made NA b/c its below the threshold of 10
-# cps interviews are not that great at capturing small sample groups so it could be a year where there were very few aian respondents; only 7 in fresno county for ex.
-
-lapply(county_vap, function(df) df[df$gtco == "06019", c("gtco", "num_aian_va_pop")])
-# # output
-# $df_2012
-# # A tibble: 1 × 2
-# gtco  num_aian_va_pop
-# <chr>           <dbl>
-#   1 06019          11569.
-# 
-# $df_2016
-# # A tibble: 1 × 2
-# gtco  num_aian_va_pop
-# <chr>           <dbl>
-#   1 06019          21121.
-# 
-# $df_2020
-# # A tibble: 1 × 2
-# gtco  num_aian_va_pop
-# <chr>           <dbl>
-#   1 06019          62063.            # seems like kind of a dramatic increase but there is a 4 year diff b/c no 2018 in this dataset
-# 
-# $df_2024
-# # A tibble: 1 × 2
-# gtco  num_aian_va_pop
-# <chr>           <dbl>
-#   1 06019           5164.           # more concerning there seems to be a dramatic decrease in the next 4 year span but this could just be due to CPS sampling methods which have a hard time capturing smaller sample groups
-
-# lets run another check just to be sure
-combo_list$df_2012 %>%
-  mutate(prtage = as.numeric(prtage)) %>%
-  filter(prtage >= 18, prcitshp != "5", ptdtrace %in% all_aian, gtco == "06019") %>%
-  nrow() # sample size of 3 in 2012
-
-combo_list$df_2016 %>%
-  mutate(prtage = as.numeric(prtage)) %>%
-  filter(prtage >= 18, prcitshp != "5", ptdtrace %in% all_aian, gtco == "06019") %>%
-  nrow() # sample size of 4 in 2016 # a history of very small sample sizes
-
-combo_list$df_2020 %>%
-  mutate(prtage = as.numeric(prtage)) %>%
-  filter(prtage >= 18, prcitshp != "5", ptdtrace %in% all_aian, gtco == "06019") %>%
-  nrow() # sample size of 9 in 2020
-
-combo_list$df_2024 %>%
-  mutate(prtage = as.numeric(prtage)) %>%
-  filter(prtage >= 18, prcitshp != "5", ptdtrace %in% all_aian, gtco == "06019") %>%
-  nrow() # only a sample size of 1 2024 so it makes sense that counts would be so diff in 2024. 
-  # Not a calc error just a data limitation of CPS 
-  # new methodology looks fine
