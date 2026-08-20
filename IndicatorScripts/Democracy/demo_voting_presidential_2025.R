@@ -91,12 +91,17 @@ state_voter <- lapply(combo_list, function(x) voted_by_state(x))   # calc voters
 county_vap <- lapply(combo_list, function(x) voting_age_county(x)) # calc voting age pop by race/total
 state_vap <- lapply(combo_list, function(x) voting_age_state(x))   # calc voting age pop by race/total
 
+# variable for the new sync_voted_vap_na function that will make total na if the raw count is na for that geo per data year
+race_groups <- c("total", "latino", "nh_white", "nh_black", "aian", "nh_asian", "pacisl", "nh_twoormor")
+
 ## combine county and summarize datasets together, combine and summarize state datasets together
 county_data_list <- lapply(1:length(county_voter), 
                            function(x) merge(county_voter[[x]], 
                                              county_vap[[x]], 
                                              by = "gtco",
                                              all = TRUE))
+
+county_data_list <- lapply(county_data_list, sync_voted_vap_na, race_groups = race_groups)
 
 county_data_df_ <- Reduce(full_join, county_data_list)             # combine county data into 1 df 
 
@@ -110,6 +115,8 @@ state_data_list <- lapply(1:length(state_voter),
                                             state_vap[[x]], 
                                             by = "gestfips",
                                             all = TRUE))
+
+state_data_list <- lapply(state_data_list, sync_voted_vap_na, race_groups = race_groups)
 
 state_data_df_ <- Reduce(full_join,state_data_list)  # combine state data into 1 df
 
@@ -183,6 +190,12 @@ final_df_screened <- final_df_screened %>% mutate(across(everything(), gsub, pat
   filter(geoid != '06000') %>%    # filter out row summarizing where county is not specified
   mutate(across(-1, as.numeric))  # convert all cols except geoid to numeric
 
+# check to see if threshold filtered out those counties with 1 yr of data which would be too unstable to use. should come back as zero
+final_df_screened %>%
+  select(geoid, count_aian_voted, aian_rate) %>%
+  mutate(should_be_suppressed = count_aian_voted < threshold,
+         is_suppressed = is.na(aian_rate)) %>%
+  filter(should_be_suppressed != is_suppressed)
 
 ## get census geoids ------------------------------------------------------
 census_api_key(census_key1, overwrite=TRUE)
