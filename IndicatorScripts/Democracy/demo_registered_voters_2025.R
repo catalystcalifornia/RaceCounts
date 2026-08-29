@@ -78,7 +78,7 @@ cps_list <- cps_list[order(cps_list$table_name), ]  # alphabetize list of cps_li
 cps_tables <- lapply(setNames(paste0("select gtco,gestfips,gtcbsa,gtcsa,hrintsta,pes1,pes2,prpertyp,prtage,prcitshp,ptdtrace,pehspnon,pwsswgt from data.", cps_list), cps_list), DBI::dbGetQuery, conn = con)
 cps_tables <- Map(cbind, cps_tables, year = names(cps_tables)) # add year column, populated by table names
 cps_tables <- lapply(cps_tables, transform, year=str_sub(year,5,8)) # update year column values to year only
-
+cps_tables <- lapply(cps_tables, function(x) { x$pwsswgt <- as.numeric(x$pwsswgt); x })
 ## 2020 data and newer
 table_list2 <- dbGetQuery(con2, "SELECT table_name FROM information_schema.tables WHERE table_schema='democracy'")
 cps_list2 <- filter(table_list2, grepl("cps_",table_name)) %>% filter(grepl("voting",table_name)) 
@@ -87,8 +87,8 @@ cps_list2 <- cps_list2[order(cps_list2$table_name), ]  # alphabetize list of cps
 cps_tables2 <- lapply(setNames(paste0("select gtco,gestfips,gtcbsa,gtcsa,hrintsta,pes1,pes2,prpertyp,prtage,prcitshp,ptdtrace,pehspnon,pwsswgt from democracy.", cps_list2), cps_list2), DBI::dbGetQuery, conn = con2)
 cps_tables2 <- Map(cbind, cps_tables2, year = names(cps_tables2)) # add year column, populated by table names
 cps_tables2 <- lapply(cps_tables2, transform, year=str_sub(year,-4,-1)) # update year column values to year only
-cps_tables2 <- lapply(cps_tables2, function(i) {i[] <- lapply(i, as.character); i}) # convert all cols to char
-
+cps_tables2 <- lapply(cps_tables2, function(i) {i[] <- lapply(i, as.character); i})# convert all cols to char
+cps_tables2 <- lapply(cps_tables2, function(i) {i$pwsswgt <- as.numeric(i$pwsswgt); i})
 combo_list <- list(c(cps_tables, cps_tables2)) # combine all data years into 1 list
 combo_list <- combo_list[[1]]  # unnest the list
 
@@ -112,13 +112,16 @@ county_vap <- lapply(combo_list, function(x) voting_age_county(x)) # calc voting
 state_vap <- lapply(combo_list, function(x) voting_age_state(x))   # calc voting age pop by race/total
 
 ## combine county and summarize datasets together, combine and summarize state datasets together
+race_groups <- c("total", "latino", "nh_white", "nh_black", "aian", "nh_asian", "pacisl", "nh_twoormor")
+
 county_data_list <- lapply(1:length(county_reg), 
                            function(x) merge(county_reg[[x]], 
                                              county_vap[[x]], 
                                              by = "gtco",
                                              all = TRUE))
+county_data_list <- lapply(county_data_list, sync_voted_vap_na, race_groups = race_groups)
 
-county_data_df_ <- Reduce(full_join,county_data_list)  # combine data years into 1 list 
+county_data_df_ <- Reduce(full_join,county_data_list) # combine data years into 1 list 
 
 county_data_num <- county_data_df_ %>% group_by(gtco) %>% select(c(starts_with("num_"))) %>% summarise_all(., mean, na.rm=TRUE)  # summarize (average) all number data years
 county_data_count <- county_data_df_ %>% group_by(gtco) %>% select(c(starts_with("count_"))) %>% summarise_all(., sum_)          # summarize (sum_) all count data years
@@ -130,7 +133,7 @@ state_data_list <- lapply(1:length(state_reg),
                                             state_vap[[x]], 
                                             by = "gestfips",
                                             all = TRUE))
-
+state_data_list <- lapply(state_data_list, sync_voted_vap_na, race_groups = race_groups)
 state_data_df_ <- Reduce(full_join,state_data_list)  # combine data years into 1 list 
 
 state_data_num <- state_data_df_ %>% group_by(gestfips) %>% select(c(starts_with("num_"))) %>% summarise_all(., mean, na.rm=TRUE)  # summarize (average) all number data years
@@ -270,15 +273,15 @@ county_table <- county_table %>% select(-ends_with("_reg"))
 state_table <- state_table %>% select(-ends_with("_reg")) 
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_demo_registered_voters_county_", rc_yr)
-state_table_name <- paste0("arei_demo_registered_voters_state_", rc_yr)
+county_table_name <- paste0("arei_demo_registered_voters_county_", rc_yr, "_v2")
+state_table_name <- paste0("arei_demo_registered_voters_state_", rc_yr, "_v2")
 
 indicator <- paste0("Annual average percent of registered voters among the citizen voting age population.")
 source <- paste0("CPS (", paste(cps_yr, collapse = ", "), ") average https://www.census.gov/topics/public-sector/voting/data.html")
 
 
 #send tables to postgres
-#to_postgres(county_table, state_table)
+to_postgres(county_table, state_table)
 
 dbDisconnect(con)
 dbDisconnect(con2)

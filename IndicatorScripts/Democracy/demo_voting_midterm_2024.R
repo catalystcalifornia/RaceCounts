@@ -14,7 +14,7 @@ library(janitor) # set row 1 to colnames
 library(hablar) # sum_() returns NA when all NA, ignores NA when at least 1 non-NA value
 
 # Set Sources --------------------------------------------------------------
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/democracy_functions.R")
+source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/staging/Functions/democracy_functions.R")
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
 con2 <- connect_to_db("rda_shared_data")
@@ -68,7 +68,7 @@ cps_tables_ <- lapply(setNames(paste0("select gtco,gestfips,gtcbsa,gtcsa,hrintst
 cps_tables_ <- Map(cbind, cps_tables_, year = names(cps_tables_)) # add year column, populated by table names
 cps_tables_ <- lapply(cps_tables_, transform, year=str_sub(year,5,8)) # update year column values to year only
 cps_tables_ <- lapply(cps_tables_, function(x) x %>% rename(prtage = peage)) # update col name to match rest of data yrs
-
+cps_tables_ <- lapply(cps_tables_, function(x) { x$pwsswgt <- as.numeric(x$pwsswgt); x }) # make sure its the correct type
 ## 2012-2018 data
 table_list <- dbGetQuery(con, "SELECT table_name FROM information_schema.tables WHERE table_schema='data'")
 cps_list <- table_list %>% filter(grepl("cps_",table_name)) %>% filter(grepl("voting_supplement",table_name)) %>% filter(grepl(paste(cps_yr, collapse="|"), table_name)) %>% filter(!grepl("2010", table_name))
@@ -77,21 +77,28 @@ cps_list <- cps_list[order(cps_list$table_name), ]  # alphabetize list of cps_li
 cps_tables <- lapply(setNames(paste0("select gtco,gestfips,gtcbsa,gtcsa,hrintsta,pes1,pes2,prpertyp,prtage,prcitshp,ptdtrace,pehspnon,pwsswgt from data.", cps_list), cps_list), DBI::dbGetQuery, conn = con)
 cps_tables <- Map(cbind, cps_tables, year = names(cps_tables)) # add year column, populated by table names
 cps_tables <- lapply(cps_tables, transform, year=str_sub(year,5,8)) # update year column values to year only
-
+cps_tables <- lapply(cps_tables, function(x) { x$pwsswgt <- as.numeric(x$pwsswgt); x }) #make sure its the right type
 ## 2022 data and newer
 table_list2 <- dbGetQuery(con2, "SELECT table_name FROM information_schema.tables WHERE table_schema='democracy'")
-cps_list2 <- filter(table_list2, grepl("cps_",table_name)) %>% filter(grepl("voting_supplement",table_name))
-cps_list2 <- cps_list2[order(cps_list2$table_name), ]  # alphabetize list of cps_list tables, needed to format list correctly for next step
+# This code was breaking for me 
+cps_list2 <- filter(table_list2, grepl("cps_",table_name)) %>% 
+  filter(grepl("voting_supplement",table_name)) %>%
+  filter(grepl(paste(cps_yr, collapse="|"), table_name)) # alphabetize list of cps_list tables, needed to format list correctly for next step
 # import all tables on cps_list2
 cps_tables2 <- lapply(setNames(paste0("select gtco,gestfips,gtcbsa,gtcsa,hrintsta,pes1,pes2,prpertyp,prtage,prcitshp,ptdtrace,pehspnon,pwsswgt from democracy.", cps_list2), cps_list2), DBI::dbGetQuery, conn = con2)
-cps_tables2 <- Map(cbind, cps_tables2, year = names(cps_tables2)) # add year column, populated by table names
-cps_tables2 <- lapply(cps_tables2, transform, year=str_sub(year,-4,-1)) # update year column values to year only
-cps_tables2 <- lapply(cps_tables2, function(i) {i[] <- lapply(i, as.character); i}) # convert all cols to char
+cps_tables2 <- Map(cbind, cps_tables2, year = names(cps_tables2))
+cps_tables2 <- lapply(cps_tables2, transform, year=str_sub(year,-4,-1))
+cps_tables2 <- lapply(cps_tables2, function(i) {i[] <- lapply(i, as.character); i}) #this line diagnosis the type issue w/ the weight
+cps_tables2 <- lapply(cps_tables2, function(i) {i$pwsswgt <- as.numeric(i$pwsswgt); i}) # this line applies a fix for the type issue for the weight
 
 combo_list <- list(c(cps_tables_, cps_tables, cps_tables2)) # combine all data years into 1 list
 combo_list <- combo_list[[1]]  # unnest the list
 
-
+#check the types because I keep getting a type error
+sapply(combo_list, function(x) class(x$pwsswgt))
+# df_2010     df_2014     df_2018     df_2022 
+# "character" "character" "character"   "numeric" 
+#earlier fix did fix one part of the list but not the whole thing so go back and fix the type 
 # create new list element names
 new_names <- list() # create empty list for loop below
 for (i in cps_yr) {
@@ -118,6 +125,9 @@ county_data_list <- lapply(1:length(county_voter),
                                              by = "gtco",
                                              all = TRUE))
 
+race_groups <- c("total", "latino", "nh_white", "nh_black", "aian", "nh_asian", "pacisl", "nh_twoormor")
+county_data_list <- lapply(county_data_list, sync_voted_vap_na, race_groups = race_groups)  # add this
+
 county_data_df_ <- Reduce(full_join,county_data_list)  # combine data years into 1 list 
 
 county_data_num <- county_data_df_ %>% group_by(gtco) %>% select(c(starts_with("num_"))) %>% summarise_all(., mean, na.rm=TRUE)  # summarize (average) all number data years
@@ -130,6 +140,8 @@ state_data_list <- lapply(1:length(state_voter),
                                             state_vap[[x]], 
                                             by = "gestfips",
                                             all = TRUE))
+
+state_data_list <- lapply(state_data_list, sync_voted_vap_na, race_groups = race_groups)  # add this
 
 state_data_df_ <- Reduce(full_join,state_data_list)  # combine data years into 1 list 
 
@@ -215,12 +227,13 @@ names(ca) <- c("geoid", "geoname")
 
 #add county geonames
 df <- merge(x=ca,y=final_df_screened,by="geoid", all=T)
-#add state geoname
 df$geoname[is.na(df$geoname)] <- "California"
 
-# make d 
-d <- df %>% mutate(across(-c(geoid, geoname), as.numeric))
+# add geolevel #since this was an older script; it didn't have this column but it should now that its being rerun w/ the newer versions of the RC functions
+df$geolevel <- ifelse(df$geoname == 'California', 'state', 'county')
 
+# make d 
+d <- df %>% mutate(across(-c(geoid, geoname, geolevel), as.numeric))
 
 ############## CALC RACE COUNTS STATS ##############
 ############ To use the following RC Functions, 'd' will need the following columns at minimum: 
@@ -230,6 +243,7 @@ d <- df %>% mutate(across(-c(geoid, geoname), as.numeric))
 source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
+
 
 d <- count_values(d) #calculate number of "_rate" values
 d <- calc_best(d) #calculate best rates -- be sure to update asbest accordingly before running this function.
@@ -245,7 +259,8 @@ state_table <- d[d$geoname == 'California', ]
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
 
-state_table <- rename(state_table, state_id = geoid, state_name = geoname)
+state_table <- rename(state_table, state_id = geoid, state_name = geoname) %>%
+  select(-c(geolevel))
 #View(state_table)
 
 #remove state from county table
@@ -255,7 +270,8 @@ county_table <- d[d$geoname != 'California', ]
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
 
-county_table <- rename(county_table, county_id = geoid, county_name = geoname)
+county_table <- rename(county_table, county_id = geoid, county_name = geoname) %>%
+  select(-c(geolevel))
 #View(county_table)
 
 ###update info for postgres tables###
@@ -265,8 +281,154 @@ state_table_name <- paste0("arei_demo_voting_midterm_state_", rc_yr)
 indicator <- paste0("Created on ", Sys.Date(), ". Annual average percent of voters voting in midterm elections among eligible voting age population. This data is")
 source <- paste0("CPS (", paste(cps_yr, collapse = ", "), ") average https://www.census.gov/topics/public-sector/voting/data.html")
 
-#to_postgres(county_table, state_table)
+to_postgres(county_table, state_table)
 
 
 dbDisconnect(con)
 
+### v2 check the final tables
+con <- connect_to_db("racecounts")
+old_county_df <- dbGetQuery(con, "SELECT * FROM v6.arei_demo_voting_midterm_county_2024")
+new_county_df <- dbGetQuery(con, "SELECT * FROM v6.arei_demo_voting_midterm_county_2024_v2")
+old_state_df <- dbGetQuery(con, "SELECT * FROM v6.arei_demo_voting_midterm_state_2024")
+new_state_df <- dbGetQuery(con, "SELECT * FROM v6.arei_demo_voting_midterm_state_2024_v2")
+dbDisconnect(con)
+
+#check the differences
+nrow(old_county_df); nrow(new_county_df) #58 and 58 so they're the same
+setdiff(old_county_df$county_id, new_county_df$county_id) #0
+setdiff(new_county_df$county_id, old_county_df$county_id) #0 so all the same geoids
+
+# difference for every rate
+rate_cols <- names(old_county_df)[grepl("_rate$", names(old_county_df))] # diff in every rate col
+
+rate_diffs <- map_dfr(rate_cols, function(col) {
+  old_county_df %>%
+    select(county_id, county_name, old_val = all_of(col)) %>%
+    left_join(new_county_df %>% select(county_id, new_val = all_of(col)), by = "county_id") %>%
+    mutate(race = col, diff = new_val - old_val) %>%
+    filter(!is.na(diff), diff != 0)
+})
+
+rate_diffs %>% arrange(desc(abs(diff)))
+# # output
+# county_id   county_name  old_val  new_val          race                      diff
+# 1      06077   San Joaquin 83.17468 65.85088 nh_black_rate -17.323800649718094746277
+# 2      06073     San Diego 71.28864 56.72137   pacisl_rate -14.567270004211202660827
+# 3      06083 Santa Barbara 73.29596 60.46377 nh_asian_rate -12.832187217502699638771
+# 4      06001       Alameda 72.94303 62.86210     aian_rate -10.080930877952994251245
+# 5      06001       Alameda 75.29834 65.36018   pacisl_rate  -9.938162507835897940822
+# 6      06053      Monterey 53.49198 45.34338   latino_rate  -8.148593736463496384204
+# 7      06095        Solano 33.10227 29.60050   latino_rate  -3.501778477860696625612
+# 8      06113          Yolo 75.36849 76.87041 nh_asian_rate   1.501923546857909741448
+# 9      06081     San Mateo 56.34450 54.94349   latino_rate  -1.401009173616401426443
+# 10     06095        Solano 32.21906 30.95365 nh_asian_rate  -1.265411444513400596179
+# 11     06029          Kern 58.77638 59.70650 nh_asian_rate   0.930122242399100684906
+# 12     06097        Sonoma 60.30933 60.30933   latino_rate  -0.000000000000007105427
+
+# see if previous issue is fixed too
+races <- c("total", "latino", "nh_white", "nh_black", "aian", "nh_asian", "pacisl", "nh_twoormor")
+
+for (r in races) {
+  voted_col <- paste0(r, "_raw")
+  vap_col <- paste0("num_", r, "_va_pop")
+  
+  bad_old <- old_county_df %>% filter(.data[[voted_col]] > .data[[vap_col]])
+  bad_new <- new_county_df %>% filter(.data[[voted_col]] > .data[[vap_col]])
+  cat(r, "- old bad rows:", nrow(bad_old), " | new bad rows:", nrow(bad_new), "\n")
+}
+# # output shows no more cases where the race_raw would be bigger than the total raw
+# total - old bad rows: 0  | new bad rows: 0 
+# latino - old bad rows: 0  | new bad rows: 0 
+# nh_white - old bad rows: 0  | new bad rows: 0 
+# nh_black - old bad rows: 0  | new bad rows: 0 
+# aian - old bad rows: 0  | new bad rows: 0 
+# nh_asian - old bad rows: 0  | new bad rows: 0 
+# pacisl - old bad rows: 0  | new bad rows: 0 
+# nh_twoormor - old bad rows: 0  | new bad rows: 0 
+# although that was not an issue with this script where the numerator was explicitly bigger than the denominator, I think its worth keeping the methodology change for all of the CPS scripts
+# look at quadrants too to see if there were any notable diff there that would change the other visuals
+old_county_df %>% select(county_id, county_name, old_rank = performance_rank, old_quad = quadrant) %>%
+  left_join(new_county_df %>% select(county_id, new_rank = performance_rank, new_quad = quadrant), by = "county_id") %>%
+  filter(old_rank != new_rank | old_quad != new_quad)
+# output # results in 3 counties changing quadrants
+# county_id    county_name old_rank old_quad new_rank new_quad
+# 1     06067     Sacramento       16   yellow       16      red
+# 2     06071 San Bernardino       27   yellow       27      red
+# 3     06073      San Diego       11   orange       11   purple
+## output show that one county did change from purple to orange based on this new methodology
+# county_id     county_name old_rank old_quad new_rank new_quad
+# 1     06079 San Luis Obispo        1   purple        1   orange
+
+# lastly just spot check by changing the gtco to diff geoids
+lapply(county_voter, function(df) df[df$gtco == "06019", c("gtco", "num_aian_voted", "count_aian_voted")])
+#$df_2010
+# A tibble: 1 × 3
+# gtco  num_aian_voted count_aian_voted
+# <chr>          <dbl>            <int>
+#   1 06019             NA               NA
+# 
+# $df_2014
+# # A tibble: 1 × 3
+# gtco  num_aian_voted count_aian_voted
+# <chr>          <dbl>            <int>
+#   1 06019          5757.                2
+# 
+# $df_2018
+# # A tibble: 1 × 3
+# gtco  num_aian_voted count_aian_voted
+# <chr>          <dbl>            <int>
+#   1 06019             NA               NA
+# 
+# $df_2022
+# # A tibble: 1 × 3
+# gtco  num_aian_voted count_aian_voted
+# <chr>          <dbl>            <int>
+#   1 06019         16586.                3
+lapply(county_vap, function(df) df[df$gtco == "06019", c("gtco", "num_aian_va_pop")])
+# #
+# $df_2010
+# # A tibble: 1 × 2
+# gtco  num_aian_va_pop
+# <chr>           <dbl>
+#   1 06019          36707.
+# 
+# $df_2014
+# # A tibble: 1 × 2
+# gtco  num_aian_va_pop
+# <chr>           <dbl>
+#   1 06019           5757.
+# 
+# $df_2018
+# # A tibble: 1 × 2
+# gtco  num_aian_va_pop
+# <chr>           <dbl>
+#   1 06019           4073.
+# 
+# $df_2022
+# # A tibble: 1 × 2
+# gtco  num_aian_va_pop
+# <chr>           <dbl>
+#   1 06019          74716.
+# lets run another check just to be sure
+combo_list$df_2010 %>%
+  mutate(prtage = as.numeric(prtage)) %>%
+  filter(prtage >= 18, prcitshp != "5", ptdtrace %in% all_aian, gtco == "06019") %>%
+  nrow() # sample size of 10 in 2010
+
+combo_list$df_2014 %>%
+  mutate(prtage = as.numeric(prtage)) %>%
+  filter(prtage >= 18, prcitshp != "5", ptdtrace %in% all_aian, gtco == "06019") %>%
+  nrow() # sample size of 2 in 2014 # a history of very small sample sizes
+
+combo_list$df_2018 %>%
+  mutate(prtage = as.numeric(prtage)) %>%
+  filter(prtage >= 18, prcitshp != "5", ptdtrace %in% all_aian, gtco == "06019") %>%
+  nrow() # sample size of 1 in 2018
+
+combo_list$df_2022 %>%
+  mutate(prtage = as.numeric(prtage)) %>%
+  filter(prtage >= 18, prcitshp != "5", ptdtrace %in% all_aian, gtco == "06019") %>%
+  nrow() # a sample size of 12 2022
+# Not a calc error just a data limitation of CPS 
+# new methodology looks fine
