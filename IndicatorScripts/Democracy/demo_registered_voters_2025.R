@@ -282,8 +282,8 @@ county_table <- county_table %>% select(-ends_with("_reg"))
 state_table <- state_table %>% select(-ends_with("_reg")) 
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_demo_registered_voters_county_", rc_yr, "_v2")
-state_table_name <- paste0("arei_demo_registered_voters_state_", rc_yr, "_v2")
+county_table_name <- paste0("arei_demo_registered_voters_county_", rc_yr)
+state_table_name <- paste0("arei_demo_registered_voters_state_", rc_yr)
 
 indicator <- paste0("Annual average percent of registered voters among the citizen voting age population.")
 source <- paste0("CPS (", paste(cps_yr, collapse = ", "), ") average https://www.census.gov/topics/public-sector/voting/data.html")
