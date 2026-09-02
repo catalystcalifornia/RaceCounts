@@ -1,28 +1,26 @@
+### Voting in Midterm Elections RC v6 ### 
+
 #install packages if not already installed
-list.of.packages <- c("RPostgreSQL","DBI","tidyverse","tidycensus","usethis","httr","janitor","hablar")
+list.of.packages <- c("RPostgres","DBI","tidyverse","tidycensus","usethis","httr","janitor","hablar")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
-### load packages
-library(RPostgreSQL)
-library(DBI)
-library(tidyverse)
-library(tidycensus)
-library(usethis)
-library(httr) # connect to CPS API
-library(janitor) # set row 1 to colnames
-library(hablar) # sum_() returns NA when all NA, ignores NA when at least 1 non-NA value
+for(pkg in new.packages){ 
+  library(pkg, character.only = TRUE) 
+}   
+
+# hablar:sum_() returns NA when all NA, ignores NA when at least 1 non-NA value
 
 # Set Sources --------------------------------------------------------------
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/staging/Functions/democracy_functions.R")
+source("./Functions/democracy_functions.R")
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
 con2 <- connect_to_db("rda_shared_data")
-census_api_key(census_key1)
 
 # Update variables used throughout each year --------------------------------------------------------------
 cps_yr <- c('2010', '2014', '2018', '2022')
 rc_yr <- 2024
+census_yr <- 2020  # used for getting geonames from census api
 rc_schema <- 'v6'
 threshold = 10   # geo+race combos with < threshold voters who voted are suppressed 
 
@@ -89,16 +87,11 @@ cps_tables2 <- lapply(setNames(paste0("select gtco,gestfips,gtcbsa,gtcsa,hrintst
 cps_tables2 <- Map(cbind, cps_tables2, year = names(cps_tables2))
 cps_tables2 <- lapply(cps_tables2, transform, year=str_sub(year,-4,-1))
 cps_tables2 <- lapply(cps_tables2, function(i) {i[] <- lapply(i, as.character); i}) #this line diagnosis the type issue w/ the weight
-cps_tables2 <- lapply(cps_tables2, function(i) {i$pwsswgt <- as.numeric(i$pwsswgt); i}) # this line applies a fix for the type issue for the weight
+cps_tables2 <- lapply(cps_tables2, function(i) {i$pwsswgt <- as.numeric(i$pwsswgt); i}) # apply a fix for the type issue for the weight
 
 combo_list <- list(c(cps_tables_, cps_tables, cps_tables2)) # combine all data years into 1 list
 combo_list <- combo_list[[1]]  # unnest the list
 
-#check the types because I keep getting a type error
-sapply(combo_list, function(x) class(x$pwsswgt))
-# df_2010     df_2014     df_2018     df_2022 
-# "character" "character" "character"   "numeric" 
-#earlier fix did fix one part of the list but not the whole thing so go back and fix the type 
 # create new list element names
 new_names <- list() # create empty list for loop below
 for (i in cps_yr) {
@@ -166,8 +159,7 @@ num_data_yrs <- list_c(temp_list)
 num_data_yrs <- num_data_yrs %>% count(gtco) %>% rename(num_yrs = n)
 
 ## join data and data yrs
-final_df <- final_data_df %>% full_join(num_data_yrs, by = c('geoid' = 'gtco')) %>% mutate(num_yrs = ifelse(geoid == '06', length(unique(cps_yr)), num_yrs)) 
-
+final_df <- final_data_df %>% full_join(num_data_yrs, by = c('geoid' = 'gtco')) %>% mutate(num_yrs = ifelse(geoid == '06', length(unique(cps_yr)), num_yrs))
 
 # Screening and calculate raw/rate ---------------------------------------------------------------
 final_df_screened <- final_df %>%
@@ -212,14 +204,23 @@ final_df_screened <- final_df %>%
 
 
 # Convert any NaN values to NA
-final_df_screened <- final_df_screened %>% mutate(across(everything(), gsub, pattern = NaN, replacement = NA))
+final_df_screened <- final_df_screened %>% mutate(across(everything(), gsub, pattern = NaN, replacement = NA)) %>%
+  filter(geoid != '06000') %>%    # filter out row summarizing where county is not specified
+  mutate(across(-1, as.numeric))  # convert all cols except geoid to numeric
+
+# check to see if threshold filtered out those counties with 1 yr of data which would be too unstable to use. should come back as zero
+final_df_screened %>%
+  select(geoid, count_aian_voted, aian_rate) %>%
+  mutate(should_be_suppressed = count_aian_voted < threshold,
+         is_suppressed = is.na(aian_rate)) %>%
+  filter(should_be_suppressed != is_suppressed)
 
 
 ##get census geoids ------------------------------------------------------
 ca <- get_acs(geography = "county", 
               variables = c("B01001_001"), 
               state = "CA", 
-              year = 2020)
+              year = census_yr)
 
 ca <- ca[,1:2]
 ca$NAME <- gsub(" County, California", "", ca$NAME)
@@ -240,7 +241,7 @@ d <- df %>% mutate(across(-c(geoid, geoname, geolevel), as.numeric))
 ############ geoid and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
 #set source for RC Functions script
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
+source("./Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
 
@@ -291,7 +292,7 @@ con <- connect_to_db("racecounts")
 old_county_df <- dbGetQuery(con, "SELECT * FROM v6.arei_demo_voting_midterm_county_2024")
 new_county_df <- dbGetQuery(con, "SELECT * FROM v6.arei_demo_voting_midterm_county_2024_v2")
 old_state_df <- dbGetQuery(con, "SELECT * FROM v6.arei_demo_voting_midterm_state_2024")
-new_state_df <- dbGetQuery(con, "SELECT * FROM v6.arei_demo_voting_midterm_state_2024_v2")
+new_state_df <- dbGetQuery(con, "SELECT * FROM v6.arei_demo_voting_midterm_state_2024_v3")
 dbDisconnect(con)
 
 #check the differences
