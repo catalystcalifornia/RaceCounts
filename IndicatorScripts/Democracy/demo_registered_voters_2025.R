@@ -206,7 +206,16 @@ final_df_screened <- final_df %>%
 
 # Convert any NaN values to NA
 final_df_screened <- final_df_screened %>% 
-  mutate(across(everything(), gsub, pattern = NaN, replacement = NA))
+  mutate(across(everything(), gsub, pattern = NaN, replacement = NA)) %>%
+  filter(geoid != '06000') %>%    # filter out row summarizing where county is not specified
+  mutate(across(-1, as.numeric))  # convert all cols except geoid to numeric
+
+# check to see if threshold filtered out those counties with 1 yr of data which would be too unstable to use. should come back as zero
+final_df_screened %>%
+  select(geoid, count_aian_reg, aian_rate) %>%
+  mutate(should_be_suppressed = count_aian_reg < threshold,
+         is_suppressed = is.na(aian_rate)) %>%
+  filter(should_be_suppressed != is_suppressed)
 
 names(final_df_screened) <- gsub("num_", "", names(final_df_screened))
 
