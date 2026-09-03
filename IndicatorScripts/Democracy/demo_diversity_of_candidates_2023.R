@@ -186,7 +186,7 @@ county_calc <- function(x, year) { # the following two functions calculate the t
                 summarize(total_candidates = n())) %>%
                   arrange(county_id) %>% filter(!is.na(county_id))
 
-      x <- x %>% mutate(
+      x <- x %>% mutate( # qa comment 9/1/2026 this section seems to be what is mitigating that na.rm problem, there would be no NAs in this dataset in the numerator just zeros. 2 counties are missing completely though but that's fine if there is only data for 56 of the 58 counties
                   latino_candidates =    ifelse(is.na(latino_candidates), 0,  latino_candidates),
                   nh_aian_candidates =   ifelse(is.na(nh_aian_candidates), 0, nh_aian_candidates),
                   nh_api_candidates =    ifelse(is.na(nh_api_candidates), 0,  nh_api_candidates),
@@ -280,7 +280,19 @@ final <- full_join(df_2014_final, df_2016_final, by = "geoid")
 final <- full_join(final, df_2018_final, by = "geoid")
 final <- full_join(final, df_2020_final, by = "geoid")
 
-
+# #### 9/1/26 QA check to see if its worth adding a fix for the na.rm here ###
+# year_cols <- c("total_candidates_14","total_candidates_16","total_candidates_18","total_candidates_20")
+# 
+# final %>%
+#   mutate(num_yrs_present = rowSums(!is.na(select(., all_of(year_cols))))) %>%
+#   count(num_yrs_present)
+# # output
+# # # A tibble: 1 × 2
+# # num_yrs_present     n
+# # <dbl> <int>
+# #   1               4    56
+# # doesn't seem necessary for this script after checking. Divide by 4 didn't make wrong numbers here b/c all 56 geoids in the data were present in all 4 data years
+# ##############################
 # Get average Candidates across all data years ------------------------------------------------------------
 data_yrs = 4  # update based on number of data yrs included
 
@@ -303,6 +315,27 @@ final_df <- final %>% mutate(
   geoid,  nh_white_candidates, nh_black_candidates , latino_candidates,  nh_api_candidates,  nh_aian_candidates,  nh_twoormor_candidates, total_candidates
   
 )
+
+# #########9/1/26 QA version w/ rowMeans instead of rowSums. Came out the same so no need to change there ################
+# final_df_qa <- final %>% mutate(
+#   nh_white_candidates = rowMeans(select(.,nh_white_candidates_14, nh_white_candidates_16, nh_white_candidates_18, nh_white_candidates_20), na.rm = TRUE)/data_yrs,
+#   
+#   nh_black_candidates = rowMeans(select(.,nh_black_candidates_14, nh_black_candidates_16, nh_black_candidates_18, nh_black_candidates_20), na.rm = TRUE)/data_yrs,
+#   
+#   latino_candidates = rowMeans(select(.,latino_candidates_14, latino_candidates_16, latino_candidates_18, latino_candidates_20), na.rm = TRUE)/data_yrs,
+#   
+#   nh_api_candidates = rowMeans(select(.,nh_api_candidates_14, nh_api_candidates_16, nh_api_candidates_18, nh_api_candidates_20), na.rm = TRUE)/data_yrs,
+#   
+#   nh_aian_candidates = rowMeans(select(.,nh_aian_candidates_14, nh_aian_candidates_16, nh_aian_candidates_18, nh_aian_candidates_20), na.rm = TRUE)/data_yrs,
+#   
+#   nh_twoormor_candidates = rowMeans(select(.,nh_twoormor_candidates_14, nh_twoormor_candidates_16,  nh_twoormor_candidates_18, nh_twoormor_candidates_20), na.rm = TRUE)/data_yrs,
+#   
+#   total_candidates = rowMeans(select(.,total_candidates_14, total_candidates_16, total_candidates_18, total_candidates_20), na.rm = TRUE)/data_yrs
+#   
+# ) %>% select(
+#   geoid,  nh_white_candidates, nh_black_candidates , latino_candidates,  nh_api_candidates,  nh_aian_candidates,  nh_twoormor_candidates, total_candidates
+#   
+# )
 
 # replace CA with 06
 final_df$geoid[final_df$geoid == "CA"] <- "06"

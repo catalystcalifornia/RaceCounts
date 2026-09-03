@@ -253,7 +253,7 @@ county_calc <- function(x, year) { # the following two functions calculates the 
                 summarize(total_electeds = n())) %>% 
                   arrange(county_id) %>% filter(!is.na(county_id)) 
   
-      x <- x %>% mutate(
+      x <- x %>% mutate( # qa comment 9/1/2026 this section seems to be what is mitigating that na.rm problem, there would be no NAs in this dataset in the numerator just zeros.
                   latino_electeds =    ifelse(is.na(latino_electeds), 0,  latino_electeds),
                   nh_aian_electeds =   ifelse(is.na(nh_aian_electeds), 0, nh_aian_electeds),
                   nh_api_electeds =    ifelse(is.na(nh_api_electeds), 0,  nh_api_electeds),
@@ -387,7 +387,13 @@ df_2020_final <- rbind(df_2020_calc, df_2020_state)
 final <- full_join(df_2017_final, df_2019_final, by = "geoid")
 final <- full_join(final, df_2020_final, by = "geoid")
 
-
+# #### 9/1/26 QA check to see if its worth adding a fix for the na.rm here ###
+# year_cols <- c("total_electeds_17","total_electeds_19","total_electeds_20")
+# 
+# final %>%
+#   mutate(num_yrs_present = rowSums(!is.na(select(., all_of(year_cols))))) %>%
+#   count(num_yrs_present)
+# # can't run this check b/c script can't be run w/ source data probably being in data storage. its set up the same as diversity of candidates though so it should be fine
 # Get average Electeds across all data years ------------------------------------------------------------
 data_yrs = 3  # update based on number of data yrs included
 
