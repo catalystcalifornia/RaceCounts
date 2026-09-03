@@ -29,7 +29,7 @@ cps_yrs <- c("2012", "2016", "2020", "2024")  # must keep same format
 dwnld_url <- "https://www.census.gov/topics/public-sector/voting/data.html"
 rc_schema <- "v7"
 rc_yr <- "2025"
-acs_yr <- "2020"
+acs_yr <- 2020
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Democracy\\QA_Voting_Presidential.docx"
 threshold = 10   # geo+race combos with < threshold voters who voted are suppressed  
 
