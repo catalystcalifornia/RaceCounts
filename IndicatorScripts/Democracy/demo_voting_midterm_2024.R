@@ -1,28 +1,26 @@
+### Voting in Midterm Elections RC v6 ### 
+
 #install packages if not already installed
-list.of.packages <- c("RPostgreSQL","DBI","tidyverse","tidycensus","usethis","httr","janitor","hablar")
+list.of.packages <- c("RPostgres","DBI","tidyverse","tidycensus","usethis","httr","janitor","hablar")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
-### load packages
-library(RPostgreSQL)
-library(DBI)
-library(tidyverse)
-library(tidycensus)
-library(usethis)
-library(httr) # connect to CPS API
-library(janitor) # set row 1 to colnames
-library(hablar) # sum_() returns NA when all NA, ignores NA when at least 1 non-NA value
+for(pkg in new.packages){ 
+  library(pkg, character.only = TRUE) 
+}   
+
+# hablar:sum_() returns NA when all NA, ignores NA when at least 1 non-NA value
 
 # Set Sources --------------------------------------------------------------
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/democracy_functions.R")
+source("./Functions/democracy_functions.R")
 source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("racecounts")
 con2 <- connect_to_db("rda_shared_data")
-census_api_key(census_key1)
 
 # Update variables used throughout each year --------------------------------------------------------------
 cps_yr <- c('2010', '2014', '2018', '2022')
 rc_yr <- 2024
+census_yr <- 2020  # used for getting geonames from census api
 rc_schema <- 'v6'
 threshold = 10   # geo+race combos with < threshold voters who voted are suppressed 
 
@@ -68,7 +66,7 @@ cps_tables_ <- lapply(setNames(paste0("select gtco,gestfips,gtcbsa,gtcsa,hrintst
 cps_tables_ <- Map(cbind, cps_tables_, year = names(cps_tables_)) # add year column, populated by table names
 cps_tables_ <- lapply(cps_tables_, transform, year=str_sub(year,5,8)) # update year column values to year only
 cps_tables_ <- lapply(cps_tables_, function(x) x %>% rename(prtage = peage)) # update col name to match rest of data yrs
-
+cps_tables_ <- lapply(cps_tables_, function(x) { x$pwsswgt <- as.numeric(x$pwsswgt); x }) # make sure its the correct type
 ## 2012-2018 data
 table_list <- dbGetQuery(con, "SELECT table_name FROM information_schema.tables WHERE table_schema='data'")
 cps_list <- table_list %>% filter(grepl("cps_",table_name)) %>% filter(grepl("voting_supplement",table_name)) %>% filter(grepl(paste(cps_yr, collapse="|"), table_name)) %>% filter(!grepl("2010", table_name))
@@ -77,20 +75,22 @@ cps_list <- cps_list[order(cps_list$table_name), ]  # alphabetize list of cps_li
 cps_tables <- lapply(setNames(paste0("select gtco,gestfips,gtcbsa,gtcsa,hrintsta,pes1,pes2,prpertyp,prtage,prcitshp,ptdtrace,pehspnon,pwsswgt from data.", cps_list), cps_list), DBI::dbGetQuery, conn = con)
 cps_tables <- Map(cbind, cps_tables, year = names(cps_tables)) # add year column, populated by table names
 cps_tables <- lapply(cps_tables, transform, year=str_sub(year,5,8)) # update year column values to year only
-
+cps_tables <- lapply(cps_tables, function(x) { x$pwsswgt <- as.numeric(x$pwsswgt); x }) #make sure its the right type
 ## 2022 data and newer
 table_list2 <- dbGetQuery(con2, "SELECT table_name FROM information_schema.tables WHERE table_schema='democracy'")
-cps_list2 <- filter(table_list2, grepl("cps_",table_name)) %>% filter(grepl("voting_supplement",table_name))
-cps_list2 <- cps_list2[order(cps_list2$table_name), ]  # alphabetize list of cps_list tables, needed to format list correctly for next step
+# This code was breaking for me 
+cps_list2 <- filter(table_list2, grepl("cps_",table_name)) %>% 
+  filter(grepl("voting_supplement",table_name)) %>%
+  filter(grepl(paste(cps_yr, collapse="|"), table_name)) # alphabetize list of cps_list tables, needed to format list correctly for next step
 # import all tables on cps_list2
 cps_tables2 <- lapply(setNames(paste0("select gtco,gestfips,gtcbsa,gtcsa,hrintsta,pes1,pes2,prpertyp,prtage,prcitshp,ptdtrace,pehspnon,pwsswgt from democracy.", cps_list2), cps_list2), DBI::dbGetQuery, conn = con2)
-cps_tables2 <- Map(cbind, cps_tables2, year = names(cps_tables2)) # add year column, populated by table names
-cps_tables2 <- lapply(cps_tables2, transform, year=str_sub(year,-4,-1)) # update year column values to year only
-cps_tables2 <- lapply(cps_tables2, function(i) {i[] <- lapply(i, as.character); i}) # convert all cols to char
+cps_tables2 <- Map(cbind, cps_tables2, year = names(cps_tables2))
+cps_tables2 <- lapply(cps_tables2, transform, year=str_sub(year,-4,-1))
+cps_tables2 <- lapply(cps_tables2, function(i) {i[] <- lapply(i, as.character); i}) #this line diagnosis the type issue w/ the weight
+cps_tables2 <- lapply(cps_tables2, function(i) {i$pwsswgt <- as.numeric(i$pwsswgt); i}) # apply a fix for the type issue for the weight
 
 combo_list <- list(c(cps_tables_, cps_tables, cps_tables2)) # combine all data years into 1 list
 combo_list <- combo_list[[1]]  # unnest the list
-
 
 # create new list element names
 new_names <- list() # create empty list for loop below
@@ -118,6 +118,9 @@ county_data_list <- lapply(1:length(county_voter),
                                              by = "gtco",
                                              all = TRUE))
 
+race_groups <- c("total", "latino", "nh_white", "nh_black", "aian", "nh_asian", "pacisl", "nh_twoormor")
+county_data_list <- lapply(county_data_list, sync_voted_vap_na, race_groups = race_groups)  # add this
+
 county_data_df_ <- Reduce(full_join,county_data_list)  # combine data years into 1 list 
 
 county_data_num <- county_data_df_ %>% group_by(gtco) %>% select(c(starts_with("num_"))) %>% summarise_all(., mean, na.rm=TRUE)  # summarize (average) all number data years
@@ -130,6 +133,8 @@ state_data_list <- lapply(1:length(state_voter),
                                             state_vap[[x]], 
                                             by = "gestfips",
                                             all = TRUE))
+
+state_data_list <- lapply(state_data_list, sync_voted_vap_na, race_groups = race_groups)  # add this
 
 state_data_df_ <- Reduce(full_join,state_data_list)  # combine data years into 1 list 
 
@@ -154,8 +159,7 @@ num_data_yrs <- list_c(temp_list)
 num_data_yrs <- num_data_yrs %>% count(gtco) %>% rename(num_yrs = n)
 
 ## join data and data yrs
-final_df <- final_data_df %>% full_join(num_data_yrs, by = c('geoid' = 'gtco')) %>% mutate(num_yrs = ifelse(geoid == '06', length(unique(cps_yr)), num_yrs)) 
-
+final_df <- final_data_df %>% full_join(num_data_yrs, by = c('geoid' = 'gtco')) %>% mutate(num_yrs = ifelse(geoid == '06', length(unique(cps_yr)), num_yrs))
 
 # Screening and calculate raw/rate ---------------------------------------------------------------
 final_df_screened <- final_df %>%
@@ -200,14 +204,23 @@ final_df_screened <- final_df %>%
 
 
 # Convert any NaN values to NA
-final_df_screened <- final_df_screened %>% mutate(across(everything(), gsub, pattern = NaN, replacement = NA))
+final_df_screened <- final_df_screened %>% mutate(across(everything(), gsub, pattern = NaN, replacement = NA)) %>%
+  filter(geoid != '06000') %>%    # filter out row summarizing where county is not specified
+  mutate(across(-1, as.numeric))  # convert all cols except geoid to numeric
+
+# check to see if threshold filtered out those counties with 1 yr of data which would be too unstable to use. should come back as zero
+final_df_screened %>%
+  select(geoid, count_aian_voted, aian_rate) %>%
+  mutate(should_be_suppressed = count_aian_voted < threshold,
+         is_suppressed = is.na(aian_rate)) %>%
+  filter(should_be_suppressed != is_suppressed)
 
 
 ##get census geoids ------------------------------------------------------
 ca <- get_acs(geography = "county", 
               variables = c("B01001_001"), 
               state = "CA", 
-              year = 2020)
+              year = census_yr)
 
 ca <- ca[,1:2]
 ca$NAME <- gsub(" County, California", "", ca$NAME)
@@ -215,21 +228,23 @@ names(ca) <- c("geoid", "geoname")
 
 #add county geonames
 df <- merge(x=ca,y=final_df_screened,by="geoid", all=T)
-#add state geoname
 df$geoname[is.na(df$geoname)] <- "California"
 
-# make d 
-d <- df %>% mutate(across(-c(geoid, geoname), as.numeric))
+# add geolevel #since this was an older script; it didn't have this column but it should now that its being rerun w/ the newer versions of the RC functions
+df$geolevel <- ifelse(df$geoname == 'California', 'state', 'county')
 
+# make d 
+d <- df %>% mutate(across(-c(geoid, geoname, geolevel), as.numeric))
 
 ############## CALC RACE COUNTS STATS ##############
 ############ To use the following RC Functions, 'd' will need the following columns at minimum: 
 ############ geoid and total and raced _rate (following RC naming conventions) columns. If you use a rate calc function, you will need _pop and _raw columns as well.
 
 #set source for RC Functions script
-source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
+source("./Functions/RC_Functions.R")
 
 d$asbest = 'max'    #YOU MUST UPDATE THIS FIELD AS NECESSARY: assign 'min' or 'max'
+
 
 d <- count_values(d) #calculate number of "_rate" values
 d <- calc_best(d) #calculate best rates -- be sure to update asbest accordingly before running this function.
@@ -245,7 +260,8 @@ state_table <- d[d$geoname == 'California', ]
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
 
-state_table <- rename(state_table, state_id = geoid, state_name = geoname)
+state_table <- rename(state_table, state_id = geoid, state_name = geoname) %>%
+  select(-c(geolevel))
 #View(state_table)
 
 #remove state from county table
@@ -255,7 +271,8 @@ county_table <- d[d$geoname != 'California', ]
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
 
-county_table <- rename(county_table, county_id = geoid, county_name = geoname)
+county_table <- rename(county_table, county_id = geoid, county_name = geoname) %>%
+  select(-c(geolevel))
 #View(county_table)
 
 ###update info for postgres tables###
@@ -265,8 +282,7 @@ state_table_name <- paste0("arei_demo_voting_midterm_state_", rc_yr)
 indicator <- paste0("Created on ", Sys.Date(), ". Annual average percent of voters voting in midterm elections among eligible voting age population. This data is")
 source <- paste0("CPS (", paste(cps_yr, collapse = ", "), ") average https://www.census.gov/topics/public-sector/voting/data.html")
 
-#to_postgres(county_table, state_table)
+to_postgres(county_table, state_table)
 
 
 dbDisconnect(con)
-
