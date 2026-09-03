@@ -57,7 +57,7 @@ df <- county_data %>% filter(year %in% c(2020, 2021, 2022, 2023, 2024), str_dete
          white_jail_pop) %>%
   
   # rename a couple
-  rename(geoid = fips, geoname = county_name)
+  dplyr::rename(geoid = fips, geoname = county_name)
 
 #COUNTY PREP
 #rename columns and clean data. be sure to assign correct race/eth labels (non-Latinx or not etc.)
@@ -70,9 +70,45 @@ names(df) <- gsub("white", "nh_white", names(df))
 names(df) <- gsub("latinx", "latino", names(df))
 df$geoname <- gsub(" County", "", df$geoname)
 
-df_summary <- df %>%
+# check for pop cols that are NA
+# df %>% dplyr::summarise(across(contains("pop"), ~ sum(is.na(.))))
+# df %>% dplyr::summarise(across(contains("raw"), ~ sum(is.na(.))))
+
+# Make raw values NA when pop is NA and vice versa, based on sync_voted_vap_na{} from ./Functions/democracy_functions.R
+sync_na <- function(df, race_groups) {
+  for (r in race_groups) { # for each group in the race_groups list loop through this process
+    # safety check that the columns exist
+    raw_col <- paste0(r, "_raw")
+    pop_col   <- paste0(r, "_pop")
+    
+    if (raw_col %in% names(df) && pop_col %in% names(df)) {
+      na_mask <- is.na(df[[raw_col]]) | # find the row that needs to be fixed
+        is.na(df[[pop_col]])  # and creates a TRUE/FALSE flag for every row. Its TRUE if either raw or pop is NA
+      # force both columns to match each other so if na_mask is TRUE then it makes both race_raw and race_pop NA
+      df[[raw_col]][na_mask] <- NA 
+      df[[pop_col]][na_mask]   <- NA
+    }
+  }
+  df # return the fixed df
+}
+
+# variables for the new sync_na function
+race_groups <- c("total", "latino", "nh_white", "nh_black", "nh_aian", "nh_api")
+df_ <- sync_na(df, race_groups = race_groups)
+
+# check fx worked
+# dfpop <- df %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(nh_aian_pop = sum(nh_aian_pop, na.rm=TRUE))
+# df_pop <-df_ %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(nh_aian_pop = sum(nh_aian_pop, na.rm=TRUE))
+# 
+# dfyrs <- df %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(count = sum(!is.na(nh_aian_pop)))
+# df_yrs <- df_ %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(count = sum(!is.na(nh_aian_raw)))
+# 
+# dfpop$nh_aian_pop / dfyrs$count    # wo function
+# df_pop$nh_aian_pop / df_yrs$count  # w function
+
+df_summary <- df_ %>%
   group_by(geoid, geoname) %>%
-  summarise(across(where(is.numeric), ~ mean(.x, na.rm = TRUE)))
+  dplyr::summarise(across(where(is.numeric), ~ mean(.x, na.rm = TRUE)))
 
 #STATE PREP
 df_summary <- df_summary %>% adorn_totals(name = "06", fill = "California")
@@ -88,7 +124,6 @@ d <- df_summary %>% mutate(geolevel = ifelse(geoid == '06', 'state', 'county')) 
          nh_aian_raw = as.numeric(str_replace(as.character(nh_aian_raw), "NaN", "")),
          nh_white_raw = as.numeric(str_replace(as.character(nh_white_raw), "NaN", ""))) %>%
   arrange(geoid)
-
 
 
 ############## CALC RACE COUNTS STATS ##############
@@ -113,7 +148,7 @@ state_table <- d[d$geoname == 'California', ]
 
 #calculate STATE z-scores
 state_table <- calc_state_z(state_table)
-state_table <- rename(state_table, state_id = geoid, state_name = geoname)
+state_table <- dplyr::rename(state_table, state_id = geoid, state_name = geoname)
 View(state_table)
 
 #remove state from county table
@@ -122,14 +157,14 @@ county_table <- d[d$geoname != 'California', ]
 #calculate COUNTY z-scores
 county_table <- calc_z(county_table)
 county_table <- calc_ranks(county_table)
-county_table <- rename(county_table, county_id = geoid, county_name = geoname)
+county_table <- dplyr::rename(county_table, county_id = geoid, county_name = geoname)
 View(county_table)
 
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_crim_incarceration_county_", rc_yr)
-state_table_name <- paste0("arei_crim_incarceration_state_", rc_yr)
-indicator <- paste0("Created on ", Sys.Date(), ". Jail population per 100,000 15 to 64 year olds")
+county_table_name <- paste0("arei_crim_incarceration_county_", rc_yr, "_v2")
+state_table_name <- paste0("arei_crim_incarceration_state_", rc_yr, "_v2")
+indicator <- "Jail population per 100,000 15 to 64 year olds"
 source <- paste0("Vera Institute (", curr_yr, ")", ". QA doc: ", qa_filepath)
 
 #send tables to postgres
@@ -137,3 +172,23 @@ source <- paste0("Vera Institute (", curr_yr, ")", ". QA doc: ", qa_filepath)
 
 dbDisconnect(con_rc)
 dbDisconnect(con_shared)
+
+
+# check results using new FX against old table
+# state_old <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_crim_incarceration_state_2025")
+# county_old <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_crim_incarceration_county_2025")
+# 
+# install.packages("arsenal")
+# library(arsenal)
+# comparison_s <- comparedf(state_table, state_old)
+# summary(comparison_s)
+# 
+# dipsrk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+#   filter(disparity_rank_new != disparity_rank_old) %>%
+#   select(county_id, county_name, disparity_rank_new, disparity_rank_old)
+# dipsrk_report  # El Dorado and Kings swapped disp ranks, and so did Merced and San Bernardino. Each moved +/-1 rank.
+# 
+# perfrk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+#   filter(performance_rank_new != performance_rank_old) %>%
+#   select(county_id, county_name, performance_rank_new, performance_rank_old)
+# perfrk_report  # no changes since total_ cols did NOT change
