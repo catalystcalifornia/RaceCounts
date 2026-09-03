@@ -45,7 +45,7 @@ clean_data <- function(x) {
       
     ))
   
-return(x)  
+  return(x)  
 }
 
 
@@ -123,165 +123,165 @@ df_2019_crosswalk <- rbind(df_2019_crosswalk, df_2019_board_equalization)
 
 # get 2020 geographies, then create crosswalks-------------------------------------------------------------------------
 # first, start with counties
-  counties <- st_read(con, query = "SELECT * FROM geographies_ca.cb_2020_06_county_500k")
-  counties <- st_transform(counties, 3310) # reproject to 3310
+counties <- st_read(con, query = "SELECT * FROM geographies_ca.cb_2020_06_county_500k")
+counties <- st_transform(counties, 3310) # reproject to 3310
 
 ## create df specifically for counties. We will keep the counties already in the "jurisdiction" column and just create a "geoid" column
-  df_2020_county <- df_2020 %>% filter(grepl('County', jurisdiction))
-  counties2 <- as.data.frame(counties) %>% select(namelsad, county_geoid)
+df_2020_county <- df_2020 %>% filter(grepl('County', jurisdiction))
+counties2 <- as.data.frame(counties) %>% select(namelsad, county_geoid)
 
 # remove extra county string for LA county observation
-  df_2020_county$jurisdiction <- str_replace_all(df_2020_county$jurisdiction, "Los Angeles County County", "Los Angeles County")
+df_2020_county$jurisdiction <- str_replace_all(df_2020_county$jurisdiction, "Los Angeles County County", "Los Angeles County")
 
 # final df for counties. we will combine these later
-  df_2020_county <- left_join(df_2020_county, counties2, by = c("jurisdiction" = "namelsad"))
+df_2020_county <- left_join(df_2020_county, counties2, by = c("jurisdiction" = "namelsad"))
 
 
 make_xwalk <- function(x,y,z) {
-              y$area <- st_area(y) # calculate area of congressional districts
-              xy_intersection <- st_intersection(y, x)    # run intersect
-              xy_intersection$intersect_area <- st_area(xy_intersection)   #  calculate area of intersection
-              # calculate percent of intersect out of total congressional district area
-              xy_intersection$prc_area <- as.numeric(xy_intersection$intersect_area/xy_intersection$area)
-              xy_intersection <- as.data.frame(xy_intersection) %>% select(namelsad, area, county_geoid, name, intersect_area, prc_area)  # convert to df
-              xy_intersection$Seat <- paste0("CA", " ", xy_intersection$namelsad) # create Seat column
-              xy_intersection <- xy_intersection %>% filter(prc_area >= z) # filter percent where the intersect between x / y is equal or greater than 5% of the area of y
- 
-return(xy_intersection)
+  y$area <- st_area(y) # calculate area of congressional districts
+  xy_intersection <- st_intersection(y, x)    # run intersect
+  xy_intersection$intersect_area <- st_area(xy_intersection)   #  calculate area of intersection
+  # calculate percent of intersect out of total congressional district area
+  xy_intersection$prc_area <- as.numeric(xy_intersection$intersect_area/xy_intersection$area)
+  xy_intersection <- as.data.frame(xy_intersection) %>% select(namelsad, area, county_geoid, name, intersect_area, prc_area)  # convert to df
+  xy_intersection$Seat <- paste0("CA", " ", xy_intersection$namelsad) # create Seat column
+  xy_intersection <- xy_intersection %>% filter(prc_area >= z) # filter percent where the intersect between x / y is equal or greater than 5% of the area of y
+  
+  return(xy_intersection)
 }
 
 # next, congressional district-county 2020 crosswalk --------------------------
-  congressional_district <- st_read(con, query = "SELECT * FROM geographies_ca.cb_2020_06_cd116_500k")
-  cong_xwalk <- make_xwalk(counties, congressional_district, .05) %>% select(Seat, county_geoid)
-  df_2020_congressd <- df_2020 %>% filter(body_name == "U.S. House of Representatives") # filter data for House of Rep only
-  # create final congressional district df to merge. We will merge this later
-  df_2020_congressd <- left_join(df_2020_congressd, cong_xwalk, by = c( "seat" = "Seat"))  
+congressional_district <- st_read(con, query = "SELECT * FROM geographies_ca.cb_2020_06_cd116_500k")
+cong_xwalk <- make_xwalk(counties, congressional_district, .05) %>% select(Seat, county_geoid)
+df_2020_congressd <- df_2020 %>% filter(body_name == "U.S. House of Representatives") # filter data for House of Rep only
+# create final congressional district df to merge. We will merge this later
+df_2020_congressd <- left_join(df_2020_congressd, cong_xwalk, by = c( "seat" = "Seat"))  
 
 
 # next, state assembly-county 2020 crosswalk ----------------------------------------
-  ca_assembly <- st_read(con, query = "SELECT * FROM geographies_ca.cb_2020_06_sldl_500k")
-  assm_xwalk <- make_xwalk(counties, ca_assembly, .05) %>% select(Seat, county_geoid)
-  df_2020_assembly <- df_2020 %>% filter(body_name == "CA State Assembly") # filter data for State Assm only
-  df_2020_assembly$electoral_district <- str_replace_all(df_2020_assembly$electoral_district, "CA State Assembly", "CA Assembly") # adjust electoral_district so matches assm_xwalk$Seat
-  # create state assembly df. we will merge later
-  df_2020_assembly <- left_join(df_2020_assembly, assm_xwalk, by = c("electoral_district" = "Seat"))
-  
+ca_assembly <- st_read(con, query = "SELECT * FROM geographies_ca.cb_2020_06_sldl_500k")
+assm_xwalk <- make_xwalk(counties, ca_assembly, .05) %>% select(Seat, county_geoid)
+df_2020_assembly <- df_2020 %>% filter(body_name == "CA State Assembly") # filter data for State Assm only
+df_2020_assembly$electoral_district <- str_replace_all(df_2020_assembly$electoral_district, "CA State Assembly", "CA Assembly") # adjust electoral_district so matches assm_xwalk$Seat
+# create state assembly df. we will merge later
+df_2020_assembly <- left_join(df_2020_assembly, assm_xwalk, by = c("electoral_district" = "Seat"))
+
 
 # next, state senate-county 2020 crosswalk ----------------------------------------
-  ca_senate <- st_read(con, query = "SELECT * FROM geographies_ca.cb_2020_06_sldu_500k")
-  sen_xwalk <- make_xwalk(counties, ca_senate, .05) %>% select(Seat, county_geoid)
-  df_2020_sen <- df_2020 %>% filter(body_name == "CA State Senate")
-  # create state senate df. We will merge later
-  df_2020_sen <- left_join(df_2020_sen, sen_xwalk, by = c("electoral_district" = "Seat"))
+ca_senate <- st_read(con, query = "SELECT * FROM geographies_ca.cb_2020_06_sldu_500k")
+sen_xwalk <- make_xwalk(counties, ca_senate, .05) %>% select(Seat, county_geoid)
+df_2020_sen <- df_2020 %>% filter(body_name == "CA State Senate")
+# create state senate df. We will merge later
+df_2020_sen <- left_join(df_2020_sen, sen_xwalk, by = c("electoral_district" = "Seat"))
 
 
 # next, city-county 2020 crosswalk ----------------------------------------
-  ca_cities <- st_read(con, query = "SELECT * FROM geographies_ca.cb_2020_06_place_500k")
-  city_xwalk <- make_xwalk(counties, ca_cities, .05) %>% select(namelsad, county_geoid)
-  df_2020_cities <- df_2020 %>% filter(grepl('city', jurisdiction))
-  # create city df
-  df_2020_cities <- left_join(df_2020_cities, city_xwalk, by = c("jurisdiction" = "namelsad"))
-  
+ca_cities <- st_read(con, query = "SELECT * FROM geographies_ca.cb_2020_06_place_500k")
+city_xwalk <- make_xwalk(counties, ca_cities, .05) %>% select(namelsad, county_geoid)
+df_2020_cities <- df_2020 %>% filter(grepl('city', jurisdiction))
+# create city df
+df_2020_cities <- left_join(df_2020_cities, city_xwalk, by = c("jurisdiction" = "namelsad"))
+
 # compare against arei_city_list table
-            #city_crosswalk <- df_2020_cities %>% select(jurisdiction, county_geoid)
-            
-            #city_crosswalk <- distinct(city_crosswalk)
-            
-            #city_crosswalk$jurisdiction <- gsub("city", "", city_crosswalk$jurisdiction)
-            #city_crosswalk$jurisdiction <- trimws(city_crosswalk$jurisdiction, "r")
-            
-            #arei_city_list <- st_read(con2, query = "SELECT * FROM v4.arei_city_list")
-            
-            #arei_city_list <- left_join(arei_city_list, city_crosswalk, by = c("city_name" = "jurisdiction"))
+#city_crosswalk <- df_2020_cities %>% select(jurisdiction, county_geoid)
+
+#city_crosswalk <- distinct(city_crosswalk)
+
+#city_crosswalk$jurisdiction <- gsub("city", "", city_crosswalk$jurisdiction)
+#city_crosswalk$jurisdiction <- trimws(city_crosswalk$jurisdiction, "r")
+
+#arei_city_list <- st_read(con2, query = "SELECT * FROM v4.arei_city_list")
+
+#arei_city_list <- left_join(arei_city_list, city_crosswalk, by = c("city_name" = "jurisdiction"))
 
 # next, Board Equalization Member Districts-County 2020 crosswalk ----------------------------------------
-  df_2020_board_equalization <- df_2020 %>% filter(office_name == "CA Board of Equalization Member") %>% 
-    select(-office_name) %>% mutate(
-   office_name = case_when(seat == "District 1" ~ "Board of Equalization Member District 1",
-                           seat == "District 2" ~ "Board of Equalization Member District 2",
+df_2020_board_equalization <- df_2020 %>% filter(office_name == "CA Board of Equalization Member") %>% 
+  select(-office_name) %>% mutate(
+    office_name = case_when(seat == "District 1" ~ "Board of Equalization Member District 1",
+                            seat == "District 2" ~ "Board of Equalization Member District 2",
                             seat == "District 3" ~ "Board of Equalization Member District 3",
                             seat == "District 4" ~ "Board of Equalization Member District 4")
   ) %>% select(state, office_uuid, office_name, seat, everything())
-  
-  # rename county_id to county_geoid to match with the rest of the df's
-  df_2020_board_equalization <- left_join(df_2020_board_equalization, board_equalization) %>% rename(county_geoid = county_id)
+
+# rename county_id to county_geoid to match with the rest of the df's
+df_2020_board_equalization <- left_join(df_2020_board_equalization, board_equalization) %>% rename(county_geoid = county_id)
 
 
 # missing crosswalks: state/federal positions ------------------------------------------------------
 
-  ## not every record will have a county_geoid. 
-  df_2020_state_fed <- df_2020 %>% filter(grepl('County', jurisdiction) | body_name == "CA State Assembly" | body_name == "U.S. House of Representatives" | body_name == "CA State Senate" | grepl('city', jurisdiction) | office_name == "CA Board of Equalization Member")
-  
-  df_2020_state_fed$has_geoid = 1
-  
-  df_2020_state_fed <- left_join(df_2020, df_2020_state_fed)
-  
-  df_2020_state_fed <- df_2020_state_fed %>% filter(is.na(df_2020_state_fed$has_geoid)) %>% select(-has_geoid)
-  # make county_geoid = NA
-  df_2020_state_fed$county_geoid = NA
-  
-  # we have 21 observations that will not have county_geoid. this is for state and federal positions: "CA Attorney General", "CA Governor", "CA Insurance Commissioner", 
-        # "CA Lieutenant Governor", "CA Secretary of State", "CA State Controller", "CA State Superintendent of Public Instruction", "CA State Treasurer", 
-        # "CA Supreme Court Justice" x2, "U.S. Senator" x2
-  # We will manually add them to each county's observations
-  
-  # combine 7 df's together: county, assembly, congress districts, senate, cities, board equalization, and state/fed positions(with no county geoid's)
-  
-  df_2020_crosswalk <- rbind(df_2020_county, df_2020_assembly)
-  df_2020_crosswalk <- rbind(df_2020_crosswalk, df_2020_congressd)
-  df_2020_crosswalk <- rbind(df_2020_crosswalk, df_2020_sen )
-  df_2020_crosswalk <- rbind(df_2020_crosswalk, df_2020_cities)
-  df_2020_crosswalk <- rbind(df_2020_crosswalk, df_2020_board_equalization)
-  df_2020_crosswalk <- rbind(df_2020_crosswalk, df_2020_state_fed)
-  
-  # rename
-  df_2020_crosswalk <- df_2020_crosswalk %>% arrange(id) %>% rename(county_id = county_geoid)
+## not every record will have a county_geoid. 
+df_2020_state_fed <- df_2020 %>% filter(grepl('County', jurisdiction) | body_name == "CA State Assembly" | body_name == "U.S. House of Representatives" | body_name == "CA State Senate" | grepl('city', jurisdiction) | office_name == "CA Board of Equalization Member")
+
+df_2020_state_fed$has_geoid = 1
+
+df_2020_state_fed <- left_join(df_2020, df_2020_state_fed)
+
+df_2020_state_fed <- df_2020_state_fed %>% filter(is.na(df_2020_state_fed$has_geoid)) %>% select(-has_geoid)
+# make county_geoid = NA
+df_2020_state_fed$county_geoid = NA
+
+# we have 21 observations that will not have county_geoid. this is for state and federal positions: "CA Attorney General", "CA Governor", "CA Insurance Commissioner", 
+# "CA Lieutenant Governor", "CA Secretary of State", "CA State Controller", "CA State Superintendent of Public Instruction", "CA State Treasurer", 
+# "CA Supreme Court Justice" x2, "U.S. Senator" x2
+# We will manually add them to each county's observations
+
+# combine 7 df's together: county, assembly, congress districts, senate, cities, board equalization, and state/fed positions(with no county geoid's)
+
+df_2020_crosswalk <- rbind(df_2020_county, df_2020_assembly)
+df_2020_crosswalk <- rbind(df_2020_crosswalk, df_2020_congressd)
+df_2020_crosswalk <- rbind(df_2020_crosswalk, df_2020_sen )
+df_2020_crosswalk <- rbind(df_2020_crosswalk, df_2020_cities)
+df_2020_crosswalk <- rbind(df_2020_crosswalk, df_2020_board_equalization)
+df_2020_crosswalk <- rbind(df_2020_crosswalk, df_2020_state_fed)
+
+# rename
+df_2020_crosswalk <- df_2020_crosswalk %>% arrange(id) %>% rename(county_id = county_geoid)
 
 
 # County and state calculations ---------------------------------
 county_calc <- function(x, year) { # the following two functions calculates the total elected officials by race_catg and total for counties
-     x <- x %>% group_by(
-        race_catg, county_id) %>% 
-        
-       summarize(count = n()) %>% pivot_wider(
-                  names_from = race_catg, values_from = count) %>%
-        select(county_id, latino_electeds, nh_aian_electeds, nh_api_electeds, nh_black_electeds, nh_twoormor_electeds, nh_white_electeds) %>%
-        
-          left_join(
-            x %>% group_by(
-              county_id) %>% 
-                summarize(total_electeds = n())) %>% 
-                  arrange(county_id) %>% filter(!is.na(county_id)) 
+  x <- x %>% group_by(
+    race_catg, county_id) %>% 
+    
+    summarize(count = n()) %>% pivot_wider(
+      names_from = race_catg, values_from = count) %>%
+    select(county_id, latino_electeds, nh_aian_electeds, nh_api_electeds, nh_black_electeds, nh_twoormor_electeds, nh_white_electeds) %>%
+    
+    left_join(
+      x %>% group_by(
+        county_id) %>% 
+        summarize(total_electeds = n())) %>% 
+    arrange(county_id) %>% filter(!is.na(county_id)) 
   
-      x <- x %>% mutate( # qa comment 9/1/2026 this section seems to be what is mitigating that na.rm problem, there would be no NAs in this dataset in the numerator just zeros.
-                  latino_electeds =    ifelse(is.na(latino_electeds), 0,  latino_electeds),
-                  nh_aian_electeds =   ifelse(is.na(nh_aian_electeds), 0, nh_aian_electeds),
-                  nh_api_electeds =    ifelse(is.na(nh_api_electeds), 0,  nh_api_electeds),
-                  nh_black_electeds =  ifelse(is.na(nh_black_electeds), 0,  nh_black_electeds),
-                  nh_twoormor_electeds = ifelse(is.na(nh_twoormor_electeds), 0, nh_twoormor_electeds),
-                  nh_white_electeds = ifelse(is.na(nh_white_electeds), 0, nh_white_electeds),
-                  total_electeds =    ifelse(is.na(total_electeds), 0,  total_electeds))
-
-return(x)        
+  x <- x %>% mutate(
+    latino_electeds =    ifelse(is.na(latino_electeds), 0,  latino_electeds),
+    nh_aian_electeds =   ifelse(is.na(nh_aian_electeds), 0, nh_aian_electeds),
+    nh_api_electeds =    ifelse(is.na(nh_api_electeds), 0,  nh_api_electeds),
+    nh_black_electeds =  ifelse(is.na(nh_black_electeds), 0,  nh_black_electeds),
+    nh_twoormor_electeds = ifelse(is.na(nh_twoormor_electeds), 0, nh_twoormor_electeds),
+    nh_white_electeds = ifelse(is.na(nh_white_electeds), 0, nh_white_electeds),
+    total_electeds =    ifelse(is.na(total_electeds), 0,  total_electeds))
+  
+  return(x)        
 }
 
 
 state_calc <- function(x){ # Use the original data to calculate state since the county may have duplicates due to multiple counties in each geographic area
-    x %>% group_by(
-      race_catg, state
-      
-      ) %>% summarize(count = n()) %>% pivot_wider(
-        names_from = race_catg, values_from = count
-      )  %>%
-      
-        left_join(
-          
-          x %>% group_by(
-            state
-          ) %>% summarize(total_electeds = n() )
-          
-        )  %>% select(state, latino_electeds, nh_aian_electeds, nh_api_electeds, nh_black_electeds, nh_twoormor_electeds, nh_white_electeds, total_electeds)
+  x %>% group_by(
+    race_catg, state
     
+  ) %>% summarize(count = n()) %>% pivot_wider(
+    names_from = race_catg, values_from = count
+  )  %>%
+    
+    left_join(
+      
+      x %>% group_by(
+        state
+      ) %>% summarize(total_electeds = n() )
+      
+    )  %>% select(state, latino_electeds, nh_aian_electeds, nh_api_electeds, nh_black_electeds, nh_twoormor_electeds, nh_white_electeds, total_electeds)
+  
 }
 
 
@@ -290,29 +290,29 @@ state_calc <- function(x){ # Use the original data to calculate state since the 
 df_2017_calc <- county_calc(df_2017_crosswalk)
 
 # add state/fed positions
-  # change na to 0
-  df_2017_calc <- df_2017_calc %>%  mutate(
-      ## add statewide/federal positions to each county
-      # df_2017_crosswalk %>% filter(is.na(county_id)) %>% group_by(race_catg) %>% summarize(count = n()) %>% bind_rows(summarise(., across(where(is.numeric), sum), across(where(is.character), ~'total')))
-      # 2 for latino
-      # 2 for nh nh api
-      # 1 for nh two or more
-      # 5 for nh white
-      # 10 for total 
-    
-      latino_electeds=   latino_electeds + 2,
-      nh_api_electeds =    nh_api_electeds + 2,
-      nh_twoormor_electeds =  nh_twoormor_electeds + 1,
-      nh_white_electeds =  nh_white_electeds + 5,
-      total_electeds=     total_electeds + 10
-      )
+# change na to 0
+df_2017_calc <- df_2017_calc %>%  mutate(
+  ## add statewide/federal positions to each county
+  # df_2017_crosswalk %>% filter(is.na(county_id)) %>% group_by(race_catg) %>% summarize(count = n()) %>% bind_rows(summarise(., across(where(is.numeric), sum), across(where(is.character), ~'total')))
+  # 2 for latino
+  # 2 for nh nh api
+  # 1 for nh two or more
+  # 5 for nh white
+  # 10 for total 
+  
+  latino_electeds=   latino_electeds + 2,
+  nh_api_electeds =    nh_api_electeds + 2,
+  nh_twoormor_electeds =  nh_twoormor_electeds + 1,
+  nh_white_electeds =  nh_white_electeds + 5,
+  total_electeds=     total_electeds + 10
+)
 
 names(df_2017_calc) <- ifelse(names(df_2017_calc) == "county_id", "geoid",  paste0(names(df_2017_calc),"_17")) 
 
 ## State: use original df for state calc NOT county data
 df_2017_state <- state_calc(df_2017)
 names(df_2017_state) <- ifelse(names(df_2017_state) == "state", "geoid",  paste0(names(df_2017_state),"_17"))
-  
+
 # combine county and state
 df_2017_final <- rbind(df_2017_calc, df_2017_state)
 
@@ -323,22 +323,22 @@ df_2019_calc <- county_calc(df_2019_crosswalk)
 
 # add state/fed totals to each county
 df_2019_calc <- df_2019_calc %>%  mutate(
-    ## add statewide/federal positions to each city
-    # df_2019_crosswalk %>% filter(is.na(county_id)) %>% group_by(race_catg) %>% summarize(count = n()) %>% bind_rows(summarise(., across(where(is.numeric), sum), across(where(is.character), ~'total')))
-    # 4 for latino
-    # 5 for nh nh api
-    # 2 for nh black
-    # 1 for nh two or more
-    # 5 for nh white
-    # 17 for total 
-    
-    latino_electeds=   latino_electeds + 4,
-    nh_api_electeds =    nh_api_electeds + 5,
-    nh_black_electeds =  nh_black_electeds + 2,
-    nh_twoormor_electeds =  nh_twoormor_electeds + 1,
-    nh_white_electeds =  nh_white_electeds + 5,
-    total_electeds=     total_electeds + 17
-  )
+  ## add statewide/federal positions to each city
+  # df_2019_crosswalk %>% filter(is.na(county_id)) %>% group_by(race_catg) %>% summarize(count = n()) %>% bind_rows(summarise(., across(where(is.numeric), sum), across(where(is.character), ~'total')))
+  # 4 for latino
+  # 5 for nh nh api
+  # 2 for nh black
+  # 1 for nh two or more
+  # 5 for nh white
+  # 17 for total 
+  
+  latino_electeds=   latino_electeds + 4,
+  nh_api_electeds =    nh_api_electeds + 5,
+  nh_black_electeds =  nh_black_electeds + 2,
+  nh_twoormor_electeds =  nh_twoormor_electeds + 1,
+  nh_white_electeds =  nh_white_electeds + 5,
+  total_electeds=     total_electeds + 17
+)
 
 names(df_2019_calc) <- ifelse(names(df_2019_calc) == "county_id", "geoid",  paste0(names(df_2019_calc),"_19")) 
 
@@ -355,24 +355,24 @@ df_2019_final <- rbind(df_2019_calc, df_2019_state)
 df_2020_calc <- county_calc(df_2020_crosswalk)
 
 # add state/fed positions
-  # change na to 0
+# change na to 0
 df_2020_calc <- df_2020_calc %>%  mutate(
-    ## add statewide/federal positions to each county
-    # df_2020_crosswalk %>% filter(is.na(county_id)) %>% group_by(race_catg) %>% summarize(count = n()) %>% bind_rows(summarise(., across(where(is.numeric), sum), across(where(is.character), ~'total')))
-    # 4 for latino
-    # 5 for nh nh api
-    # 2 for nh_black
-    # 1 for nh two or more
-    # 5 for nh white
-    # 17 for total 
-    
-    latino_electeds =   latino_electeds + 4,
-    nh_api_electeds =    nh_api_electeds + 5,
-    nh_black_electeds =  nh_black_electeds + 2,
-    nh_twoormor_electeds =  nh_twoormor_electeds + 1,
-    nh_white_electeds =  nh_white_electeds + 5,
-    total_electeds =     total_electeds + 17
-    )
+  ## add statewide/federal positions to each county
+  # df_2020_crosswalk %>% filter(is.na(county_id)) %>% group_by(race_catg) %>% summarize(count = n()) %>% bind_rows(summarise(., across(where(is.numeric), sum), across(where(is.character), ~'total')))
+  # 4 for latino
+  # 5 for nh nh api
+  # 2 for nh_black
+  # 1 for nh two or more
+  # 5 for nh white
+  # 17 for total 
+  
+  latino_electeds =   latino_electeds + 4,
+  nh_api_electeds =    nh_api_electeds + 5,
+  nh_black_electeds =  nh_black_electeds + 2,
+  nh_twoormor_electeds =  nh_twoormor_electeds + 1,
+  nh_white_electeds =  nh_white_electeds + 5,
+  total_electeds =     total_electeds + 17
+)
 
 names(df_2020_calc) <- ifelse(names(df_2020_calc) == "county_id", "geoid",  paste0(names(df_2020_calc),"_20")) 
 
@@ -387,13 +387,7 @@ df_2020_final <- rbind(df_2020_calc, df_2020_state)
 final <- full_join(df_2017_final, df_2019_final, by = "geoid")
 final <- full_join(final, df_2020_final, by = "geoid")
 
-# #### 9/1/26 QA check to see if its worth adding a fix for the na.rm here ###
-# year_cols <- c("total_electeds_17","total_electeds_19","total_electeds_20")
-# 
-# final %>%
-#   mutate(num_yrs_present = rowSums(!is.na(select(., all_of(year_cols))))) %>%
-#   count(num_yrs_present)
-# # can't run this check b/c script can't be run w/ source data probably being in data storage. its set up the same as diversity of candidates though so it should be fine
+
 # Get average Electeds across all data years ------------------------------------------------------------
 data_yrs = 3  # update based on number of data yrs included
 
@@ -458,7 +452,7 @@ final_df_rates <- final_df %>%
     nh_api_rate = ifelse(nh_api_pop == 0, NA, (nh_api_electeds / nh_api_pop) * 100000), ## screening out API pop with 0 
     nh_aian_rate = (nh_aian_electeds / aian_pop) * 100000,
     nh_twoormor_rate = (nh_twoormor_electeds / nh_twoormor_pop) * 100000
-    )
+  )
 
 
 ## get census geonames ------------------------------------------------------
@@ -516,15 +510,15 @@ df_2020_calc_city <- city_calc(df_2020_cities)
 
 
 ## add county id's to city data -----------------------------------------------
-  counties_places_final <- st_read(con, query = "select * from crosswalks.county_place_2020")
-  df_2019_calc_city <- left_join(df_2019_calc_city, select(counties_places_final, place_name, place_geoid, county_geoid, county_name), by = c("geoname" = "place_name")) %>%
-                            select(geoname, place_geoid, county_name, county_geoid, everything())
-  df_2020_calc_city <- left_join(df_2020_calc_city, select(counties_places_final, place_name, place_geoid, county_geoid, county_name), by = c("geoname" = "place_name")) %>%
-                            select(geoname, place_geoid, county_name, county_geoid, everything())    
-  
+counties_places_final <- st_read(con, query = "select * from crosswalks.county_place_2020")
+df_2019_calc_city <- left_join(df_2019_calc_city, select(counties_places_final, place_name, place_geoid, county_geoid, county_name), by = c("geoname" = "place_name")) %>%
+  select(geoname, place_geoid, county_name, county_geoid, everything())
+df_2020_calc_city <- left_join(df_2020_calc_city, select(counties_places_final, place_name, place_geoid, county_geoid, county_name), by = c("geoname" = "place_name")) %>%
+  select(geoname, place_geoid, county_name, county_geoid, everything())    
+
 # 2019: add statewide/fed totals to each city
-  df_2019_calc_city <- df_2019_calc_city %>%  mutate(
-#### ADD COUNTYWIDE/STATEWIDE/FEDERAL POSITIONS TO EACH CITY ####
+df_2019_calc_city <- df_2019_calc_city %>%  mutate(
+  #### ADD COUNTYWIDE/STATEWIDE/FEDERAL POSITIONS TO EACH CITY ####
   ## add statewide/federal positions to each city
   # df_2019_crosswalk %>% filter(is.na(county_id)) %>% group_by(race_catg) %>% summarize(count = n()) %>% bind_rows(summarise(., across(where(is.numeric), sum), across(where(is.character), ~'total')))
   # 4 for latino
@@ -542,46 +536,46 @@ df_2020_calc_city <- city_calc(df_2020_cities)
   total_electeds =     total_electeds + 17
 )
 
-  ## add 2019 COUNTYWIDE positions to each city. Excludes County Supervisors who represent districts NOT the whole county the city is within.
-  county_electeds19 <- df_2019_crosswalk %>% filter(office_level == "administrativeArea2" & office_role != "legislatorUpperBody") %>% 
-                            group_by(county_id, race_catg) %>% summarize(county_count = n()) %>% 
-                                  bind_rows(summarise(., across(where(is.numeric), sum), across(where(is.character), ~'total'))) %>%
-                                        rename(county_geoid = county_id)
-  df_2019_final_long <- df_2019_calc_city %>% pivot_longer(cols = ends_with("_electeds"), names_to = "race_catg", values_to = "electeds") # pivot city data longer
-  df_2019_final_long <- left_join(df_2019_final_long, county_electeds19, by = c("county_geoid", "race_catg"))
-  df_2019_final_long$all_electeds <- rowSums(df_2019_final_long[,c("electeds", "county_count")], na.rm=TRUE)
-  
-  #df_2019_final_long$race_catg <- paste0(df_2019_calc_city$race_catg, '_19') # add year suffix to 2019 data
+## add 2019 COUNTYWIDE positions to each city. Excludes County Supervisors who represent districts NOT the whole county the city is within.
+county_electeds19 <- df_2019_crosswalk %>% filter(office_level == "administrativeArea2" & office_role != "legislatorUpperBody") %>% 
+  group_by(county_id, race_catg) %>% summarize(county_count = n()) %>% 
+  bind_rows(summarise(., across(where(is.numeric), sum), across(where(is.character), ~'total'))) %>%
+  rename(county_geoid = county_id)
+df_2019_final_long <- df_2019_calc_city %>% pivot_longer(cols = ends_with("_electeds"), names_to = "race_catg", values_to = "electeds") # pivot city data longer
+df_2019_final_long <- left_join(df_2019_final_long, county_electeds19, by = c("county_geoid", "race_catg"))
+df_2019_final_long$all_electeds <- rowSums(df_2019_final_long[,c("electeds", "county_count")], na.rm=TRUE)
+
+#df_2019_final_long$race_catg <- paste0(df_2019_calc_city$race_catg, '_19') # add year suffix to 2019 data
 
 
 # 2020: add statewide/fed totals to each city
-  df_2020_calc_city <- df_2020_calc_city %>%  mutate(
-    #### ADD COUNTY/STATEWIDE/FEDERAL POSITIONS TO EACH CITY ####
-    ## add statewide/federal positions to each city
-    # df_2020_crosswalk %>% filter(is.na(county_id)) %>% group_by(race_catg) %>% summarize(count = n()) %>% bind_rows(summarise(., across(where(is.numeric), sum), across(where(is.character), ~'total')))
-    # 4 for latino
-    # 5 for nh nh api
-    # 2 for nh black
-    # 1 for nh two or more
-    # 5 for nh white
-    # 17 for total 
-    
-    latino_electeds =   latino_electeds + 4,
-    nh_api_electeds =    nh_api_electeds + 5,
-    nh_black_electeds =  nh_black_electeds + 2,
-    nh_twoormor_electeds =  nh_twoormor_electeds + 1,
-    nh_white_electeds =  nh_white_electeds + 5,
-    total_electeds =     total_electeds + 17
-  )
+df_2020_calc_city <- df_2020_calc_city %>%  mutate(
+  #### ADD COUNTY/STATEWIDE/FEDERAL POSITIONS TO EACH CITY ####
+  ## add statewide/federal positions to each city
+  # df_2020_crosswalk %>% filter(is.na(county_id)) %>% group_by(race_catg) %>% summarize(count = n()) %>% bind_rows(summarise(., across(where(is.numeric), sum), across(where(is.character), ~'total')))
+  # 4 for latino
+  # 5 for nh nh api
+  # 2 for nh black
+  # 1 for nh two or more
+  # 5 for nh white
+  # 17 for total 
   
-  ## add 2020 COUNTYWIDE positions to each city. Excludes County Supervisors who represent districts NOT the whole county the city is within.
-  county_electeds20 <- df_2020_crosswalk %>% filter(office_level == "administrativeArea2" & office_role != "legislatorUpperBody") %>% 
-                      group_by(county_id, race_catg) %>% summarize(county_count = n()) %>% 
-                            bind_rows(summarise(., across(where(is.numeric), sum), across(where(is.character), ~'total'))) %>%
-                                  rename(county_geoid = county_id)
-  df_2020_final_long <- df_2020_calc_city %>% pivot_longer(cols = ends_with("_electeds"), names_to = "race_catg", values_to = "electeds") # pivot city data longer
-  df_2020_final_long <- left_join(df_2020_final_long, county_electeds20, by = c("county_geoid", "race_catg"))
-  df_2020_final_long$all_electeds <- rowSums(df_2020_final_long[,c("electeds", "county_count")], na.rm=TRUE)  
+  latino_electeds =   latino_electeds + 4,
+  nh_api_electeds =    nh_api_electeds + 5,
+  nh_black_electeds =  nh_black_electeds + 2,
+  nh_twoormor_electeds =  nh_twoormor_electeds + 1,
+  nh_white_electeds =  nh_white_electeds + 5,
+  total_electeds =     total_electeds + 17
+)
+
+## add 2020 COUNTYWIDE positions to each city. Excludes County Supervisors who represent districts NOT the whole county the city is within.
+county_electeds20 <- df_2020_crosswalk %>% filter(office_level == "administrativeArea2" & office_role != "legislatorUpperBody") %>% 
+  group_by(county_id, race_catg) %>% summarize(county_count = n()) %>% 
+  bind_rows(summarise(., across(where(is.numeric), sum), across(where(is.character), ~'total'))) %>%
+  rename(county_geoid = county_id)
+df_2020_final_long <- df_2020_calc_city %>% pivot_longer(cols = ends_with("_electeds"), names_to = "race_catg", values_to = "electeds") # pivot city data longer
+df_2020_final_long <- left_join(df_2020_final_long, county_electeds20, by = c("county_geoid", "race_catg"))
+df_2020_final_long$all_electeds <- rowSums(df_2020_final_long[,c("electeds", "county_count")], na.rm=TRUE)  
 
 
 ### Calc city raw and rates -------------------------------------------------
@@ -599,23 +593,23 @@ final_city_wide <- final_city %>% pivot_wider(names_from = "race_catg", values_f
 
 # Get city average electeds (rate) across all data years 
 df_city <- final_city_wide %>%
-          mutate(
-            total_raw = total_electeds,
-            nh_white_raw = nh_white_electeds,
-            nh_black_raw = nh_black_electeds,
-            latino_raw = latino_electeds, 
-            nh_api_raw = ifelse(nh_api_pop == 0, NA, nh_api_electeds),  ## screening out API pop with 0 
-            nh_aian_raw = nh_aian_electeds,
-            nh_twoormor_raw = nh_twoormor_electeds,
-            
-            total_rate = (total_electeds / total_pop) * 100000,
-            nh_white_rate = (nh_white_electeds / nh_white_pop) * 100000,
-            nh_black_rate = (nh_black_electeds / nh_black_pop) * 100000,
-            latino_rate = (latino_electeds / latino_pop) * 100000,
-            nh_api_rate = (nh_api_electeds / nh_api_pop) * 100000,
-            nh_aian_rate = (nh_aian_electeds / aian_pop) * 100000,
-            nh_twoormor_rate = (nh_twoormor_electeds / nh_twoormor_pop) * 100000
-          )
+  mutate(
+    total_raw = total_electeds,
+    nh_white_raw = nh_white_electeds,
+    nh_black_raw = nh_black_electeds,
+    latino_raw = latino_electeds, 
+    nh_api_raw = ifelse(nh_api_pop == 0, NA, nh_api_electeds),  ## screening out API pop with 0 
+    nh_aian_raw = nh_aian_electeds,
+    nh_twoormor_raw = nh_twoormor_electeds,
+    
+    total_rate = (total_electeds / total_pop) * 100000,
+    nh_white_rate = (nh_white_electeds / nh_white_pop) * 100000,
+    nh_black_rate = (nh_black_electeds / nh_black_pop) * 100000,
+    latino_rate = (latino_electeds / latino_pop) * 100000,
+    nh_api_rate = (nh_api_electeds / nh_api_pop) * 100000,
+    nh_aian_rate = (nh_aian_electeds / aian_pop) * 100000,
+    nh_twoormor_rate = (nh_twoormor_electeds / nh_twoormor_pop) * 100000
+  )
 
 
 # Merge city, county/state data -------------------------------------------
@@ -683,4 +677,3 @@ source <- "Who Leads Us Campaign (county & state: 2017, 2019, and 2020; city: 20
 # close db connections
 dbDisconnect(con)
 dbDisconnect(con2)
-
