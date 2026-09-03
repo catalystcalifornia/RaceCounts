@@ -23,13 +23,13 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 # create connection
 con <- connect_to_db("racecounts")
 con2 <- connect_to_db("rda_shared_data")
-census_api_key(census_key1)
 
 # define variables used in several places that must be updated each year
 cps_yrs <- c("2012", "2016", "2020", "2024")  # must keep same format
 dwnld_url <- "https://www.census.gov/topics/public-sector/voting/data.html"
 rc_schema <- "v7"
 rc_yr <- "2025"
+acs_yr <- 2020
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Democracy\\QA_Voting_Presidential.docx"
 threshold = 10   # geo+race combos with < threshold voters who voted are suppressed  
 
@@ -91,7 +91,7 @@ state_voter <- lapply(combo_list, function(x) voted_by_state(x))   # calc voters
 county_vap <- lapply(combo_list, function(x) voting_age_county(x)) # calc voting age pop by race/total
 state_vap <- lapply(combo_list, function(x) voting_age_state(x))   # calc voting age pop by race/total
 
-# variable for the new sync_voted_vap_na function that will make total na if the raw count is na for that geo per data year
+# variable for the new sync_voted_vap_na function that will make values na if the voter OR vap count is na for that geo per data year
 race_groups <- c("total", "latino", "nh_white", "nh_black", "aian", "nh_asian", "pacisl", "nh_twoormor")
 
 ## combine county and summarize datasets together, combine and summarize state datasets together
@@ -101,9 +101,15 @@ county_data_list <- lapply(1:length(county_voter),
                                              by = "gtco",
                                              all = TRUE))
 
+# check AIAN cols in gtco = 06067 before running NEW function
+#Reduce(full_join, county_data_list) %>% filter(gtco == '06067') %>% select(contains("aian"))
+
 county_data_list <- lapply(county_data_list, sync_voted_vap_na, race_groups = race_groups)
 
 county_data_df_ <- Reduce(full_join, county_data_list)             # combine county data into 1 df 
+
+# check AIAN cols in gtco = 06067 after running NEW function, if either a _voted or _pop field is NA, then the other should be NA too
+#county_data_df_ %>% filter(gtco == '06067') %>% select(contains("aian"))
 
 county_data_num <- county_data_df_ %>% group_by(gtco) %>% select(c(starts_with("num_"))) %>% summarise_all(., mean, na.rm=TRUE)     # summarize (average) all number data years
 county_data_count <- county_data_df_ %>% group_by(gtco) %>% select(c(starts_with("count_"))) %>% summarise_all(., sum, na.rm=TRUE)  # summarize (sum_) all count data years
@@ -202,7 +208,7 @@ census_api_key(census_key1, overwrite=TRUE)
 ca <- get_acs(geography = "county", 
               variables = c("B01001_001"), 
               state = "CA", 
-              year = 2020)
+              year = acs_yr)
 
 ca <- ca[,1:2]
 ca$NAME <- gsub(" County, California", "", ca$NAME)

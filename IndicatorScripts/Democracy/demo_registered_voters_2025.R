@@ -206,7 +206,16 @@ final_df_screened <- final_df %>%
 
 # Convert any NaN values to NA
 final_df_screened <- final_df_screened %>% 
-  mutate(across(everything(), gsub, pattern = NaN, replacement = NA))
+  mutate(across(everything(), gsub, pattern = NaN, replacement = NA)) %>%
+  filter(geoid != '06000') %>%    # filter out row summarizing where county is not specified
+  mutate(across(-1, as.numeric))  # convert all cols except geoid to numeric
+
+# check to see if threshold filtered out those counties with 1 yr of data which would be too unstable to use. should come back as zero
+final_df_screened %>%
+  select(geoid, count_aian_reg, aian_rate) %>%
+  mutate(should_be_suppressed = count_aian_reg < threshold,
+         is_suppressed = is.na(aian_rate)) %>%
+  filter(should_be_suppressed != is_suppressed)
 
 names(final_df_screened) <- gsub("num_", "", names(final_df_screened))
 
@@ -273,8 +282,8 @@ county_table <- county_table %>% select(-ends_with("_reg"))
 state_table <- state_table %>% select(-ends_with("_reg")) 
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_demo_registered_voters_county_", rc_yr, "_v2")
-state_table_name <- paste0("arei_demo_registered_voters_state_", rc_yr, "_v2")
+county_table_name <- paste0("arei_demo_registered_voters_county_", rc_yr)
+state_table_name <- paste0("arei_demo_registered_voters_state_", rc_yr)
 
 indicator <- paste0("Annual average percent of registered voters among the citizen voting age population.")
 source <- paste0("CPS (", paste(cps_yr, collapse = ", "), ") average https://www.census.gov/topics/public-sector/voting/data.html")
