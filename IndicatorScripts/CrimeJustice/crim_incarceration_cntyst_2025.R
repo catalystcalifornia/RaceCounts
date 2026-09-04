@@ -36,28 +36,24 @@ qa_filepath <- "W://Project//RACE COUNTS//2025_v7//Crime and Justice//QA_Sheet_I
 ############### PREP DATA ########################
 
 county_data <- read_excel("W:/Data/Crime and Justice/vera_institute/2024/incarceration_trends_county.xlsx")
+county_data$year <- as.character(county_data$year)
+  county_data$quarter <- as.character(county_data$quarter)
+# check b/c seems like there are way too many rows
+# look at the raw source before any select() drops columns
+county_data %>% filter(str_detect(fips, "^06")) %>% names()
 
-# filter for latest complete year and CA counties
-df <- county_data %>% filter(year %in% c(2020, 2021, 2022, 2023, 2024), str_detect(fips, "^06")) %>% 
-  
-  # select columns we want
-  select(fips, county_name, 
-         total_pop_15to64, 
-         aapi_pop_15to64, 
-         black_pop_15to64, 
-         latinx_pop_15to64, 
-         native_pop_15to64, 
-         white_pop_15to64, 
-         
-         total_jail_pop, 
-         aapi_jail_pop, 
-         black_jail_pop, 
-         latinx_jail_pop, 
-         native_jail_pop, 
-         white_jail_pop) %>%
-  
-  # rename a couple
-  dplyr::rename(geoid = fips, geoname = county_name)
+county_data %>% filter(str_detect(fips, "^06"), year %in% c('2020', '2021', '2022', '2023', '2024')) %>%
+  count(fips, year) %>%
+  filter(n > 1)
+# yeah seems like there are quarters so we need to summarize by year first before running it through the function b/c the function assumes its already in years
+
+# filter by year and CA
+df <- county_data %>% 
+  filter(year %in% c('2020', '2021', '2022', '2023', '2024'), str_detect(fips, "^06")) %>% 
+  select(fips, county_name, year, quarter,
+         total_pop_15to64, aapi_pop_15to64, black_pop_15to64, latinx_pop_15to64, native_pop_15to64, white_pop_15to64, 
+         total_jail_pop, aapi_jail_pop, black_jail_pop, latinx_jail_pop, native_jail_pop, white_jail_pop) %>%
+  rename(geoid = fips, geoname = county_name)
 
 #COUNTY PREP
 #rename columns and clean data. be sure to assign correct race/eth labels (non-Latinx or not etc.)
@@ -73,6 +69,19 @@ df$geoname <- gsub(" County", "", df$geoname)
 # check for pop cols that are NA
 # df %>% dplyr::summarise(across(contains("pop"), ~ sum(is.na(.))))
 # df %>% dplyr::summarise(across(contains("raw"), ~ sum(is.na(.))))
+
+## aggregate at the year level first 
+df_annual <- df %>%
+  group_by(geoid, geoname, year) %>%
+  summarise(across(where(is.numeric), ~ mean(.x, na.rm = TRUE)), .groups = "drop")
+
+#check non-NA dupes before running it through the function then again after. right now reach has like 4 to 5 dupes
+df_annual %>%
+  group_by(geoid, geoname) %>%
+  summarise(across(where(is.numeric), ~ sum(!is.na(.x)))) %>%
+  filter(nh_aian_raw != nh_aian_pop | nh_black_raw != nh_black_pop |
+           nh_white_raw != nh_white_pop | nh_api_raw != nh_api_pop |
+           latino_raw != latino_pop)
 
 # Make raw values NA when pop is NA and vice versa, based on sync_voted_vap_na{} from ./Functions/democracy_functions.R
 sync_na <- function(df, race_groups) {
@@ -94,17 +103,25 @@ sync_na <- function(df, race_groups) {
 
 # variables for the new sync_na function
 race_groups <- c("total", "latino", "nh_white", "nh_black", "nh_aian", "nh_api")
-df_ <- sync_na(df, race_groups = race_groups)
+df_ <- sync_na(df_annual, race_groups = race_groups)
+
+# look for non-NA dupe rows. should be zero now
+df_ %>%
+  group_by(geoid, geoname) %>%
+  summarise(across(where(is.numeric), ~ sum(!is.na(.x))), .groups = "drop") %>%
+  filter(nh_aian_raw != nh_aian_pop | nh_black_raw != nh_black_pop |
+           nh_white_raw != nh_white_pop | nh_api_raw != nh_api_pop |
+           latino_raw != latino_pop)
 
 # check fx worked
-# dfpop <- df %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(nh_aian_pop = sum(nh_aian_pop, na.rm=TRUE))
-# df_pop <-df_ %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(nh_aian_pop = sum(nh_aian_pop, na.rm=TRUE))
-# 
-# dfyrs <- df %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(count = sum(!is.na(nh_aian_pop)))
-# df_yrs <- df_ %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(count = sum(!is.na(nh_aian_raw)))
-# 
-# dfpop$nh_aian_pop / dfyrs$count    # wo function
-# df_pop$nh_aian_pop / df_yrs$count  # w function
+dfpop <- df %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(nh_aian_pop = sum(nh_aian_pop, na.rm=TRUE))
+df_pop <-df_ %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(nh_aian_pop = sum(nh_aian_pop, na.rm=TRUE))
+
+dfyrs <- df %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(count = sum(!is.na(nh_aian_pop)))
+df_yrs <- df_ %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(count = sum(!is.na(nh_aian_raw)))
+
+dfpop$nh_aian_pop / dfyrs$count    # wo function
+df_pop$nh_aian_pop / df_yrs$count  # w function
 
 df_summary <- df_ %>%
   group_by(geoid, geoname) %>%
@@ -116,19 +133,12 @@ View(df_summary)
 
 # add geolevel, remove NaNs, and order by geoid
 d <- df_summary %>% mutate(geolevel = ifelse(geoid == '06', 'state', 'county')) %>%
-  relocate(geolevel, .after = geoname) %>%
-  mutate(total_raw = as.numeric(str_replace(as.character(total_raw), "NaN", "")),
-         nh_api_raw = as.numeric(str_replace(as.character(nh_api_raw), "NaN", "")),
-         nh_black_raw = as.numeric(str_replace(as.character(nh_black_raw), "NaN", "")),
-         latino_raw = as.numeric(str_replace(as.character(latino_raw), "NaN", "")),
-         nh_aian_raw = as.numeric(str_replace(as.character(nh_aian_raw), "NaN", "")),
-         nh_white_raw = as.numeric(str_replace(as.character(nh_white_raw), "NaN", ""))) %>%
+  relocate(geolevel, .after = geoname) %>%  mutate(across(where(is.numeric), ~ as.numeric(gsub("NaN", NA, .x)))) %>%
   arrange(geoid)
 
 
 ############## CALC RACE COUNTS STATS ##############
 #set source for RC Functions script
-#source("https://raw.githubusercontent.com/catalystcalifornia/RaceCounts/main/Functions/RC_Functions.R")
 source("./Functions/RC_Functions.R")
 
 #YOU MUST UPDATE THIS FIELD AS APPROPRIATE: assign 'min' or 'max' as 'best'
@@ -162,13 +172,13 @@ View(county_table)
 
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_crim_incarceration_county_", rc_yr, "_v2")
-state_table_name <- paste0("arei_crim_incarceration_state_", rc_yr, "_v2")
+county_table_name <- paste0("arei_crim_incarceration_county_", rc_yr, "_v3")
+state_table_name <- paste0("arei_crim_incarceration_state_", rc_yr, "_v3")
 indicator <- "Jail population per 100,000 15 to 64 year olds"
 source <- paste0("Vera Institute (", curr_yr, ")", ". QA doc: ", qa_filepath)
 
 #send tables to postgres
-#to_postgres(county_table, state_table)
+# to_postgres(county_table, state_table)
 
 dbDisconnect(con_rc)
 dbDisconnect(con_shared)
