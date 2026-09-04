@@ -37,28 +37,46 @@ qa_filepath <- "W://Project//RACE COUNTS//2025_v7//Crime and Justice//QA_Sheet_I
 
 county_data <- read_excel("W:/Data/Crime and Justice/vera_institute/2024/incarceration_trends_county.xlsx")
 
-# filter for latest complete year and CA counties
-df <- county_data %>% filter(year %in% c(2020, 2021, 2022, 2023, 2024), str_detect(fips, "^06")) %>% 
-  
-  # select columns we want
-  select(fips, county_name, 
-         total_pop_15to64, 
-         aapi_pop_15to64, 
-         black_pop_15to64, 
-         latinx_pop_15to64, 
-         native_pop_15to64, 
-         white_pop_15to64, 
-         
-         total_jail_pop, 
-         aapi_jail_pop, 
-         black_jail_pop, 
-         latinx_jail_pop, 
-         native_jail_pop, 
-         white_jail_pop) %>%
-  
-  # rename a couple
-  dplyr::rename(geoid = fips, geoname = county_name)
+######### qa 9/3 is it quarterly data b/c way too many rows
+# look at the raw source before any select() drops columns
+county_data %>% filter(str_detect(fips, "^06")) %>% names()
 
+county_data %>% filter(str_detect(fips, "^06"), year %in% c(2020:2024)) %>%
+  count(fips, year) %>%
+  filter(n > 1)
+# yea looks like it it quarters b/c there's a quarter column, function needs to account for that.
+###########
+
+# filter for latest complete year and CA counties
+# df <- county_data %>% filter(year %in% c(2020, 2021, 2022, 2023, 2024), str_detect(fips, "^06")) %>% 
+#   
+#   # select columns we want
+#   select(fips, county_name, 
+#          total_pop_15to64, 
+#          aapi_pop_15to64, 
+#          black_pop_15to64, 
+#          latinx_pop_15to64, 
+#          native_pop_15to64, 
+#          white_pop_15to64, 
+#          
+#          total_jail_pop, 
+#          aapi_jail_pop, 
+#          black_jail_pop, 
+#          latinx_jail_pop, 
+#          native_jail_pop, 
+#          white_jail_pop) %>%
+#   
+#   # rename a couple
+#   dplyr::rename(geoid = fips, geoname = county_name)
+#### qa version 9/3
+df <- county_data %>% 
+  filter(year %in% c(2020, 2021, 2022, 2023, 2024), str_detect(fips, "^06")) %>% 
+  select(fips, county_name, year, quarter,
+         total_pop_15to64, aapi_pop_15to64, black_pop_15to64, latinx_pop_15to64, native_pop_15to64, white_pop_15to64, 
+         total_jail_pop, aapi_jail_pop, black_jail_pop, latinx_jail_pop, native_jail_pop, white_jail_pop) %>%
+  rename(geoid = fips, geoname = county_name)
+#######
+#####
 #COUNTY PREP
 #rename columns and clean data. be sure to assign correct race/eth labels (non-Latinx or not etc.)
 names(df) <- gsub("_15to64", "", names(df))
@@ -73,6 +91,12 @@ df$geoname <- gsub(" County", "", df$geoname)
 # check for pop cols that are NA
 # df %>% dplyr::summarise(across(contains("pop"), ~ sum(is.na(.))))
 # df %>% dplyr::summarise(across(contains("raw"), ~ sum(is.na(.))))
+
+## qa fix
+df_annual <- df %>%
+  group_by(geoid, geoname, year) %>%
+  summarise(across(where(is.numeric), ~ mean(.x, na.rm = TRUE)), .groups = "drop")
+
 
 # Make raw values NA when pop is NA and vice versa, based on sync_voted_vap_na{} from ./Functions/democracy_functions.R
 sync_na <- function(df, race_groups) {
@@ -94,17 +118,17 @@ sync_na <- function(df, race_groups) {
 
 # variables for the new sync_na function
 race_groups <- c("total", "latino", "nh_white", "nh_black", "nh_aian", "nh_api")
-df_ <- sync_na(df, race_groups = race_groups)
+df_ <- sync_na(df_annual, race_groups = race_groups) #qa fix
 
 # check fx worked
-# dfpop <- df %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(nh_aian_pop = sum(nh_aian_pop, na.rm=TRUE))
-# df_pop <-df_ %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(nh_aian_pop = sum(nh_aian_pop, na.rm=TRUE))
-# 
-# dfyrs <- df %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(count = sum(!is.na(nh_aian_pop)))
-# df_yrs <- df_ %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(count = sum(!is.na(nh_aian_raw)))
-# 
-# dfpop$nh_aian_pop / dfyrs$count    # wo function
-# df_pop$nh_aian_pop / df_yrs$count  # w function
+dfpop <- df %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(nh_aian_pop = sum(nh_aian_pop, na.rm=TRUE))
+df_pop <-df_ %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(nh_aian_pop = sum(nh_aian_pop, na.rm=TRUE))
+
+dfyrs <- df %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(count = sum(!is.na(nh_aian_pop)))
+df_yrs <- df_ %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(count = sum(!is.na(nh_aian_raw)))
+
+dfpop$nh_aian_pop / dfyrs$count    # wo function
+df_pop$nh_aian_pop / df_yrs$count  # w function
 
 df_summary <- df_ %>%
   group_by(geoid, geoname) %>%
