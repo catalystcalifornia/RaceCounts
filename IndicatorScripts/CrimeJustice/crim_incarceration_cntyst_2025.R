@@ -30,6 +30,8 @@ curr_yr <- "2020-2024"  # must keep same format
 dwnld_url <- "https://github.com/vera-institute/incarceration-trends"
 rc_schema <- "v7"
 rc_yr <- "2025"
+data_yrs <- c('2020', '2021', '2022', '2023', '2024')
+min_q <- 3   # Keep data where county/yr combos has 3Q+ of data.
 
 qa_filepath <- "W://Project//RACE COUNTS//2025_v7//Crime and Justice//QA_Sheet_Incarceration_CountySt.docx"
 
@@ -37,22 +39,44 @@ qa_filepath <- "W://Project//RACE COUNTS//2025_v7//Crime and Justice//QA_Sheet_I
 
 county_data <- read_excel("W:/Data/Crime and Justice/vera_institute/2024/incarceration_trends_county.xlsx")
 county_data$year <- as.character(county_data$year)
-  county_data$quarter <- as.character(county_data$quarter)
+county_data$quarter <- as.character(county_data$quarter)
 # check b/c seems like there are way too many rows
-# look at the raw source before any select() drops columns
-county_data %>% filter(str_detect(fips, "^06")) %>% names()
-
-county_data %>% filter(str_detect(fips, "^06"), year %in% c('2020', '2021', '2022', '2023', '2024')) %>%
-  count(fips, year) %>%
-  filter(n > 1)
-# yeah seems like there are quarters so we need to summarize by year first before running it through the function b/c the function assumes its already in years
-
-# filter by year and CA
-df <- county_data %>% 
-  filter(year %in% c('2020', '2021', '2022', '2023', '2024'), str_detect(fips, "^06")) %>% 
-  select(fips, county_name, year, quarter,
+county_data <- county_data %>%
+  select(fips, county_name, state_abbr, year, quarter,
          total_pop_15to64, aapi_pop_15to64, black_pop_15to64, latinx_pop_15to64, native_pop_15to64, white_pop_15to64, 
          total_jail_pop, aapi_jail_pop, black_jail_pop, latinx_jail_pop, native_jail_pop, white_jail_pop) %>%
+  filter(state_abbr=='CA') %>%
+  filter(year %in% data_yrs)
+# look at the raw source before any select() drops columns
+county_data %>% names()
+
+county_data %>%
+  count(fips, year) %>%
+  filter(n > 1)  # n=224
+
+incomplete_data <- county_data %>% filter(year %in% c('2020', '2021', '2022', '2023', '2024')) %>%
+  group_by(fips, county_name, year) %>%
+  summarise(n = n()) %>%
+  filter(n < 4)  # n = 66 (county/yr combos wo 4Q of data, eg: 06003 has only Q2 data in 2020-23)
+View(incomplete_data)
+
+to_drop <- incomplete_data %>%
+  filter(n < min_q) %>%
+  left_join(county_data, by = c("fips", "county_name", "year"))  # these are the rows that will be dropped
+View(to_drop)
+# Drop 62 rows: 2024 for all counties, drop all data for Alpine and Sierra
+
+# screen out incomplete data years using min_q filter defined above
+county_complete <- county_data %>%
+  anti_join(incomplete_data %>% filter(n < min_q) %>% select(-n), by = c("fips", "year"))
+## dropped 62 rows
+
+# check cleaned data 
+View(county_complete %>% group_by(fips, county_name) %>% summarise(num_qtr = n(), num_year = n_distinct(year)))
+
+
+# rename columns
+df <- county_complete %>% 
   rename(geoid = fips, geoname = county_name)
 
 #COUNTY PREP
@@ -66,7 +90,7 @@ names(df) <- gsub("white", "nh_white", names(df))
 names(df) <- gsub("latinx", "latino", names(df))
 df$geoname <- gsub(" County", "", df$geoname)
 
-# check for pop cols that are NA
+# check for cols that are NA
 # df %>% dplyr::summarise(across(contains("pop"), ~ sum(is.na(.))))
 # df %>% dplyr::summarise(across(contains("raw"), ~ sum(is.na(.))))
 
@@ -76,12 +100,12 @@ df_annual <- df %>%
   summarise(across(where(is.numeric), ~ mean(.x, na.rm = TRUE)), .groups = "drop")
 
 #check non-NA dupes before running it through the function then again after. right now reach has like 4 to 5 dupes
-df_annual %>%
+View(df_annual %>%
   group_by(geoid, geoname) %>%
   summarise(across(where(is.numeric), ~ sum(!is.na(.x)))) %>%
   filter(nh_aian_raw != nh_aian_pop | nh_black_raw != nh_black_pop |
            nh_white_raw != nh_white_pop | nh_api_raw != nh_api_pop |
-           latino_raw != latino_pop)
+           latino_raw != latino_pop))
 
 # Make raw values NA when pop is NA and vice versa, based on sync_voted_vap_na{} from ./Functions/democracy_functions.R
 sync_na <- function(df, race_groups) {
@@ -95,7 +119,7 @@ sync_na <- function(df, race_groups) {
         is.na(df[[pop_col]])  # and creates a TRUE/FALSE flag for every row. Its TRUE if either raw or pop is NA
       # force both columns to match each other so if na_mask is TRUE then it makes both race_raw and race_pop NA
       df[[raw_col]][na_mask] <- NA 
-      df[[pop_col]][na_mask]   <- NA
+      df[[pop_col]][na_mask] <- NA
     }
   }
   df # return the fixed df
@@ -115,9 +139,9 @@ df_ %>%
 
 # check fx worked
 dfpop <- df %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(nh_aian_pop = sum(nh_aian_pop, na.rm=TRUE))
-df_pop <-df_ %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(nh_aian_pop = sum(nh_aian_pop, na.rm=TRUE))
+df_pop <- df_ %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(nh_aian_pop = sum(nh_aian_pop, na.rm=TRUE))
 
-dfyrs <- df %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(count = sum(!is.na(nh_aian_pop)))
+dfyrs <- df %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(count = sum(!is.na(nh_aian_raw)))
 df_yrs <- df_ %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(count = sum(!is.na(nh_aian_raw)))
 
 dfpop$nh_aian_pop / dfyrs$count    # wo function
@@ -127,9 +151,38 @@ df_summary <- df_ %>%
   group_by(geoid, geoname) %>%
   dplyr::summarise(across(where(is.numeric), ~ mean(.x, na.rm = TRUE)))
 
-#STATE PREP
+## QA Check ##
+qa_check <- df %>% filter(geoid == '06013') %>% select(geoid, geoname, year, quarter, starts_with("nh_aian")) %>%
+  mutate(pop_ = ifelse(is.na(nh_aian_raw), NA, nh_aian_pop))
+# these two should be the same
+qa_check %>% group_by(geoid, geoname) %>%
+  summarise(avg_pop_ = mean(pop_, na.rm=TRUE),
+            avg_raw = mean(nh_aian_raw, na.rm=TRUE))
+df_summary %>% filter(geoid == '06013') %>% select(geoid, geoname, starts_with("nh_aian"))
+
+
+#STATE PREP --- there is no latinx_jail_pop field for some reason??
+#state_data <- read_excel("W:/Data/Crime and Justice/vera_institute/2024/incarceration_trends_state.xlsx")
+state_data <- read_csv("W:/Data/Crime and Justice/vera_institute/2025/incarceration_trends_state_20260908.csv")
+
+state_data$year <- as.character(state_data$year)
+#state_data$quarter <- as.character(state_data$quarter)
+# check b/c seems like there are way too many rows
+state_data <- state_data %>%
+  select(state_fips, state_name, state_abbr, year, #quarter,
+         total_pop_15to64, aapi_pop_15to64, black_pop_15to64, latinx_pop_15to64, native_pop_15to64, white_pop_15to64,
+         total_jail_pop, aapi_jail_pop, black_jail_pop, latinx_jail_pop, native_jail_pop, white_jail_pop) %>%
+  filter(state_fips=='06') %>%
+  filter(year %in% data_yrs)
+# look at the raw source before any select() drops columns
+state_data %>% names()
+
+### PICK UP HERE W STATE CALCS ###
+
+
+
 df_summary <- df_summary %>% adorn_totals(name = "06", fill = "California")
-View(df_summary)
+# View(df_summary)
 
 # add geolevel, remove NaNs, and order by geoid
 d <- df_summary %>% mutate(geolevel = ifelse(geoid == '06', 'state', 'county')) %>%
