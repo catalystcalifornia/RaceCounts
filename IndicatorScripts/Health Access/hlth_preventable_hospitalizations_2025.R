@@ -34,7 +34,7 @@ qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Health Access\\QA_Sheet_Preve
 threshold <- 800   # data for geo+race combos with fewer than threshold # of pop are suppressed
 
 # Get downloaded data and subset
-df_multigeo <- read_excel("W:/Data/Health/OSHPD/2018-2022 HCAI Custom Run/_PQI 92 by Race-Ethnicity, 2018-2022_CS2712_Mulholland Graves.xlsx", 
+df_multigeo <- read_excel("W:/Data/Health/OSHPD/_PQI 92 by Race-Ethnicity, 2018-2022_CS2712_Mulholland Graves.xlsx", 
                           sheet = 2, col_types = c(rep("text", 4), rep("numeric", 4))) %>% 
   select(-c(YEARS, `_type_`, `OBSERVED RATE`)) %>% 
   rename("geoname" ="PATIENT COUNTY", 
@@ -43,7 +43,7 @@ df_multigeo <- read_excel("W:/Data/Health/OSHPD/2018-2022 HCAI Custom Run/_PQI 9
          "pop" = "POPULATION", 
          "rate" = "OBSERVED RATE PER 100,000") %>%
   filter(!is.na(geoname))
-  
+
 
 # rename race function
 rename_raceeth <- function(x) {
@@ -62,14 +62,32 @@ rename_raceeth <- function(x) {
 # rename races
 df_multigeo <- rename_raceeth(df_multigeo)
 
+### check the data for that na.rm issue
+df_multigeo %>% 
+  filter(geoname != 'Statewide') %>%
+  group_by(geoname) %>%
+  summarize(n_raw_non_na = sum(!is.na(raw)), n_pop_non_na = sum(!is.na(pop))) %>%
+  filter(n_raw_non_na == 0 | n_pop_non_na == 0)
+# output
+# A tibble: 0 × 3
+# ℹ 3 variables: geoname <chr>, n_raw_non_na <int>, n_pop_non_na <int>
+# not actually a problem for this data so don't need to update; it does have that structural problem though
 
 # calc county totals
-total_df <- df_multigeo %>% group_by(geoname) %>% 
+# total_df <- df_multigeo %>% group_by(geoname) %>% 
+#   filter(geoname!='Statewide') %>% 
+#   summarize(total_raw=sum(raw, na.rm=TRUE), 
+#             total_pop = sum(pop, na.rm=TRUE), 
+#             total_rate=(total_raw/total_pop)*100000)
+total_df <- df_multigeo %>% group_by(geoname) %>%
   filter(geoname!='Statewide') %>% 
-  summarize(total_raw=sum(raw, na.rm=TRUE), 
-            total_pop = sum(pop, na.rm=TRUE), 
-            total_rate=(total_raw/total_pop)*100000)
-
+  summarize(
+    n_non_na = sum(!is.na(raw)),
+    total_raw = ifelse(n_non_na == 0, NA, sum(raw, na.rm=TRUE)), 
+    total_pop = ifelse(n_non_na == 0, NA, sum(pop, na.rm=TRUE)), 
+    total_rate = ifelse(n_non_na == 0, NA, (total_raw/total_pop)*100000)
+  ) %>%
+  select(-n_non_na)
 
 #pivot_wider to make it readable to the race counts functions
 df_multigeo_wide <- pivot_wider(df_multigeo, names_from=race, names_glue = "{race}_{.value}", values_from=c(raw,pop,rate))
@@ -160,8 +178,8 @@ county_table <- rename(county_table, county_id = geoid, county_name = geoname)
 # ############## SEND COUNTY, STATE, CITY CALCULATIONS TO POSTGRES ##############
 
 ### info for postgres tables will auto update ###
-county_table_name <- paste0("arei_hlth_preventable_hospitalizations_county_",rc_yr)      
-state_table_name <- paste0("arei_hlth_preventable_hospitalizations_state_",rc_yr)      
+county_table_name <- paste0("arei_hlth_preventable_hospitalizations_county_",rc_yr,"_v2")      
+state_table_name <- paste0("arei_hlth_preventable_hospitalizations_state_",rc_yr,"_v2")      
 indicator <- paste0("Preventable Hospitalizations (Rate per 100k). QA doc: ", qa_filepath)                         # See most recent Indicator Methodology for indicator description
 source <- paste0("California Department of Health Care Access and Information (", curr_yr, ")", dwnld_url)
 
@@ -173,4 +191,3 @@ to_postgres(county_table,state_table)
 # disconnect
 dbDisconnect(con_shared)
 dbDisconnect(con_rc)
-
