@@ -213,9 +213,10 @@ cost_burden_calcs_rc <- cost_burden_calcs %>%
 cost_burden_calcs_rc %>%
   filter(total_rate == 0, total_pop >= pop_threshold) %>%
   select(geoid, geoname, tenure, total_rate, total_pop, total_rate_cv) %>%
-  left_join(df %>% select(geoid, tenure, screened_rate = total_rate), by = c("geoid", "tenure"))
+  left_join(df %>% dplyr::select(geoid, tenure, screened_rate = total_rate), by = c("geoid", "tenure"))
 # see if there is any row that is being made NA when it was a true zero
-
+class(cost_burden_calcs_rc)
+class(df)
 ## Screen data and clean geonames
 df <- cost_burden_calcs_rc
 

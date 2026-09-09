@@ -178,7 +178,7 @@ loans_2 <- loans_data[grepl((tract20_yrs), names(loans_data))]
 denied_2 <- denied_data[grepl((tract20_yrs), names(denied_data))]
 
 # Convert 2019-21 data from 2010 CT's to 2020 CT's
-cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
+cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\tract20_tract10\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
   select(GEOID_TRACT_10, NAMELSAD_TRACT_10, AREALAND_TRACT_10, GEOID_TRACT_20, NAMELSAD_TRACT_20, AREALAND_TRACT_20, AREALAND_PART) %>%
   mutate_at(vars(contains("AREALAND")), function(x) as.numeric(x)) %>%
   # calculate overlapping land area of 2010 and 2020 tracts (AREALAND_PART) as a percent of 2020 tract land area (AREALAND_TRACT_20)
@@ -234,43 +234,43 @@ denied_all <- c(denied_1, denied_2)
 get_raced_hmda <- function(z, geoid, geolevel, suffix) { # get raced and total loan or denied mtg counts at county level
   
   latino <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Hispanic or Latino") %>% dplyr::group_by({{geoid}}) %>%
-    dplyr::summarise(latino = sum(wt_val, na.rm=TRUE))})
-  
+    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), latino = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))})%>%
+    select(-n_non_na)
   latino <- latino %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(latino = sum(latino, na.rm=TRUE)) %>% as.data.frame()
   
   #aian alone, latinx inclusive
   aian <- lapply(z, function (x) {x <- x %>% filter(derived_race == "American Indian or Alaska Native") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(aian = sum(wt_val, na.rm=TRUE))})
+    dplyr::group_by({{geoid}}) %>% dplyr::summarise(n_non_na = sum(!is.na(wt_val)), aian = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))})
   
   aian <- aian %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(aian = sum(aian, na.rm=TRUE)) 
   
   #pacisl alone, latinx inclusive
   pacisl <- lapply(z, function (x) {x <- x %>% filter(derived_race == "Native Hawaiian or Other Pacific Islander") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(pacisl = sum(wt_val, na.rm=TRUE))})
+    dplyr::group_by({{geoid}}) %>% dplyr::summarise(n_non_na = sum(!is.na(wt_val)), pacisl = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))})
   
   pacisl <- pacisl %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(pacisl = sum(pacisl, na.rm=TRUE)) 
   
   nh_black <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", derived_race == "Black or African American") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_black = sum(wt_val, na.rm=TRUE))})
+    dplyr::group_by({{geoid}}) %>% dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_black = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))})
   
   nh_black <- nh_black %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_black = sum(nh_black, na.rm=TRUE)) 
   
   nh_asian <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", derived_race == "Asian") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_asian = sum(wt_val, na.rm=TRUE))})
+    dplyr::group_by({{geoid}}) %>% dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_asian = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))})
   
   nh_asian <- nh_asian %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_asian = sum(nh_asian, na.rm=TRUE)) 
   
   nh_white <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", derived_race == "White") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_white = sum(wt_val, na.rm=TRUE))})
+    dplyr::group_by({{geoid}}) %>% dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_white = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))})
   
   nh_white <- nh_white %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_white = sum(nh_white, na.rm=TRUE)) 
   
   nh_twoormor <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", (derived_race == "Joint" | derived_race == "2 or more minority races")) %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_twoormor = sum(wt_val, na.rm=TRUE))})
+    dplyr::group_by({{geoid}}) %>% dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_twoormor = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))})
   
   nh_twoormor <- nh_twoormor %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_twoormor = sum(nh_twoormor, na.rm=TRUE)) 
   
-  total <- lapply(z, function (x) {x <- x %>% dplyr::group_by({{geoid}}) %>% dplyr::summarise(total = sum(wt_val, na.rm=TRUE))})
+  total <- lapply(z, function (x) {x <- x %>% dplyr::group_by({{geoid}}) %>% dplyr::summarise(n_non_na = sum(!is.na(wt_val)), total = sum(wt_val, na.rm=TRUE))})
   
   total <- total %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(total = sum(total, na.rm=TRUE)) 
   

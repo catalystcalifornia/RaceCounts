@@ -152,8 +152,8 @@ df_subprime <- dbGetQuery(con2, "SELECT * FROM housing.hmda_tract_subprime_mortg
 df_subprime <- df_subprime %>% filter(lien_status == "1" & property_type == "1" & loan_purpose == "1" & owner_occupancy == "1" & action_taken %in% c("1"))
 
 
-### Convert data from 2010 CT's to 2020 CT's ####
-cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
+### Convert data from 2010 CT's to 2020 CT's #### 
+cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\tract20_tract10\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
   select(GEOID_TRACT_10, NAMELSAD_TRACT_10, AREALAND_TRACT_10, GEOID_TRACT_20, NAMELSAD_TRACT_20, AREALAND_TRACT_20, AREALAND_PART) %>%
   mutate_at(vars(contains("AREALAND")), function(x) as.numeric(x)) %>%
   # calculate overlapping land area of 2010 and 2020 tracts (AREALAND_PART) as a percent of 2020 tract land area (AREALAND_TRACT_20)
@@ -193,28 +193,59 @@ df_subprime20 <- df_subprime20 %>%
 # data dictionary: https://files.consumerfinance.gov/hmda-historic-data-dictionaries/lar_record_codes.pdf
 calculations <- function(df,geoid,column) {
   ## total 
-  total <- df %>% group_by({{geoid}}) %>% summarize(total_observations = sum(wt_val, na.rm=TRUE))
+  total <- df %>% group_by({{geoid}}) %>% 
+    summarize(n_non_na = sum(!is.na(wt_val)),
+    total_observations = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
+    select(-n_non_na)
   
   ## nh white
-  nh_white <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "5" & is.na(applicant_race_2)) %>% group_by({{geoid}}) %>% summarize(nh_white_observations = sum(wt_val, na.rm=TRUE))
+  nh_white <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "5" & is.na(applicant_race_2)) %>% 
+    group_by({{geoid}}) %>% 
+    summarize(n_non_na = sum(!is.na(wt_val)),
+    nh_white_observations = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%     
+    select(-n_non_na)
   
   ## nh asian
-  nh_asian <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "2" & is.na(applicant_race_2)) %>% group_by({{geoid}}) %>% summarize(nh_asian_observations = sum(wt_val, na.rm=TRUE))
+  nh_asian <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "2" & is.na(applicant_race_2)) %>% 
+    group_by({{geoid}}) %>% 
+    summarize(n_non_na = sum(!is.na(wt_val)), 
+    nh_asian_observations = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%     
+    select(-n_non_na)
   
   ## nh black
-  nh_black <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "3" & is.na(applicant_race_2)) %>% group_by({{geoid}}) %>% summarize(nh_black_observations = sum(wt_val, na.rm=TRUE))
+  nh_black <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "3" & is.na(applicant_race_2)) %>% 
+    group_by({{geoid}}) %>% 
+    summarize(n_non_na = sum(!is.na(wt_val)),
+    nh_black_observations = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%     
+    select(-n_non_na)
   
   ## all pacisl 
-  pacisl <- df %>% filter(applicant_race_1 == "4") %>% group_by({{geoid}}) %>% summarize(pacisl_observations = sum(wt_val, na.rm=TRUE))
+  pacisl <- df %>% filter(applicant_race_1 == "4") %>% 
+    group_by({{geoid}}) %>% 
+    summarize(n_non_na = sum(!is.na(wt_val)),
+    pacisl_observations = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%     
+    select(-n_non_na)
   
   ## all aian
-  aian <- df %>% filter(applicant_race_1 == "1") %>% group_by({{geoid}}) %>% summarize(aian_observations = sum(wt_val, na.rm=TRUE))
+  aian <- df %>% filter(applicant_race_1 == "1") %>% 
+    group_by({{geoid}}) %>% 
+    summarize(n_non_na = sum(!is.na(wt_val)),
+    aian_observations = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%     
+    select(-n_non_na)
   
   ## nh two or more
-  nh_twoormor <- df %>% filter(applicant_ethnicity == "2" & !is.na(applicant_race_1) & !is.na(applicant_race_2)) %>% group_by({{geoid}}) %>% summarize(nh_twoormor_observations = sum(wt_val, na.rm=TRUE))
+  nh_twoormor <- df %>% filter(applicant_ethnicity == "2" & !is.na(applicant_race_1) & !is.na(applicant_race_2)) %>% 
+    group_by({{geoid}}) %>% 
+    summarize(n_non_na = sum(!is.na(wt_val)),
+    nh_twoormor_observations = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%     
+    select(-n_non_na)
   
   ## latino
-  latino <- df %>% filter(applicant_ethnicity == "1") %>% group_by({{geoid}}) %>% summarize(latino_observations = sum(wt_val, na.rm=TRUE))
+  latino <- df %>% filter(applicant_ethnicity == "1") %>% 
+    group_by({{geoid}}) %>% 
+    summarize(n_non_na = sum(!is.na(wt_val)),
+    latino_observations = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%     
+    select(-n_non_na)
   
   z <- total %>% full_join(nh_white) %>% full_join(nh_asian) %>% full_join(nh_black) %>% full_join(pacisl) %>% full_join(aian) %>% full_join(nh_twoormor) %>% full_join(latino) %>% rename_all(
     funs(stringr::str_replace_all(., 'observations', column)
@@ -222,7 +253,6 @@ calculations <- function(df,geoid,column) {
   
   return(z)
 }
-
 ### City Calcs ####
 # merge applications and subprime with crosswalk
 ## This is a many-to-many join because a census tract can be assigned to multiple places.
@@ -334,6 +364,17 @@ applications_crosswalk <- df_applications20 %>%
 
 subprime_crosswalk <- df_subprime20 %>%
   right_join(xwalk_assm, by = c("GEOID_TRACT_20" = "geoid"), relationship = "many-to-many")   # join keeping only ct's that are in xwalk
+
+# add a check for that na.rm issue
+applications_crosswalk %>% 
+  group_by(place_geoid) %>% 
+  summarize(n_rows = n(), n_non_na_wt = sum(!is.na(wt_val))) %>% 
+  filter(n_non_na_wt == 0)
+
+subprime_crosswalk %>% 
+  group_by(place_geoid) %>% 
+  summarize(n_rows = n(), n_non_na_wt = sum(!is.na(wt_val))) %>% 
+  filter(n_non_na_wt == 0)
 
 applications_assm <- calculations(df = applications_crosswalk, geoid = assm_geoid, column = 'applications')
 

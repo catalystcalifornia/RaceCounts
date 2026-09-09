@@ -29,7 +29,7 @@ con <- connect_to_db("rda_shared_data")
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Sheet_Foreclosure.docx"
 
 #set source for RC Functions script
-source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
+source("W:\\RDA Team\\R\\Github\\RDA Functions\\LF\\RDA-Functions\\Cnty_St_Wt_Avg_Functions.R")
 census_api_key(census_key1, overwrite=TRUE)
 
 # update each year: variables used throughout script
@@ -87,31 +87,6 @@ print(b25003_curr)
 # dbWriteTable(con, c(table_schema, table_name), foreclosure, overwrite = FALSE, row.names = FALSE)
 
 # Load data and clean-----
-foreclosure <- dbGetQuery(con, "SELECT * FROM housing.dataquick_tract_2010_22_foreclosures") # comment out table creation above after it's done, and instead import data from pgadmin
-
-num_qtrs = 20   # update depending on how many data yrs you are working with
-foreclosure <- foreclosure %>% select(-matches('2010|2011|2012|2013|2014|2015|2016|2022')) %>%
-  mutate(
-    non_na_qtrs = rowSums(!is.na(across(3:22))), #try adding this fix 9/1/2026
-    sum_foreclosure = rowSums(.[3:22], na.rm = TRUE),  # total number of foreclosures over all data quarters
-    avg_foreclosure = ifelse(non_na_qtrs == 0, NA, sum_foreclosure / non_na_qtrs)) %>% # try this as a fix instead
-  select(-matches('Q'))   # remove quarterly foreclosure columns
-
-foreclosure$County = str_to_title(foreclosure$County)
- foreclosure$County <- str_remove(foreclosure$County,  "\\s*\\(.*\\)\\s*")     # remove spaces from col names
- foreclosure$County <- gsub("; California", "", foreclosure$County)
- foreclosure <- rename(foreclosure, "county"="County", "census_tract"="Census Tract")
-
-# There are 3 tracts in the data that appear in 2020 tract list, but not in 2010 tract list.
-## We pull those foreclosures out here, and assign them to the 2020 tracts after the 2010-2020 tract conversion process.
-foreclosures_20 <- foreclosure %>% filter(census_tract %in% c('000902', '001003') & county == 'Siskiyou') %>%
-  mutate(GEOID_TRACT_20 = paste0('06093', census_tract)) %>%   # Siskiyou
-  rename(foreclosure_20 = sum_foreclosure) %>%
-  select(c(GEOID_TRACT_20, foreclosure_20))
- 
-View(foreclosure)
-
-
 ##### 9/1/2026 B QA: seems like maybe this has the same vulnerability but lets check. if it comes back as 20 then fine fore now but could become a problem if we update this dataset. I think its not updateable so it should be fine if this checks out. #####
 foreclosure_raw <- dbGetQuery(con, "SELECT * FROM housing.dataquick_tract_2010_22_foreclosures") %>%
   select(-matches('2010|2011|2012|2013|2014|2015|2016|2022'))
@@ -142,6 +117,32 @@ foreclosure_raw %>%
 # 19          18    3
 # 20          19    1
 ##### end of qa chunk #####
+
+
+foreclosure <- dbGetQuery(con, "SELECT * FROM housing.dataquick_tract_2010_22_foreclosures") # comment out table creation above after it's done, and instead import data from pgadmin
+
+num_qtrs = 20   # update depending on how many data yrs you are working with
+foreclosure <- foreclosure %>% select(-matches('2010|2011|2012|2013|2014|2015|2016|2022')) %>%
+  mutate(
+    non_na_qtrs = rowSums(!is.na(across(3:22))), #try adding this fix 9/1/2026
+    sum_foreclosure = rowSums(.[3:22], na.rm = TRUE),  # total number of foreclosures over all data quarters
+    avg_foreclosure = ifelse(non_na_qtrs == 0, NA, sum_foreclosure / non_na_qtrs)) %>% 
+  select(-c(3:22))   # remove quarterly foreclosure columns
+
+foreclosure$County = str_to_title(foreclosure$County)
+ foreclosure$County <- str_remove(foreclosure$County,  "\\s*\\(.*\\)\\s*")     # remove spaces from col names
+ foreclosure$County <- gsub("; California", "", foreclosure$County)
+ foreclosure <- rename(foreclosure, "county"="County", "census_tract"="Census Tract")
+
+# There are 3 tracts in the data that appear in 2020 tract list, but not in 2010 tract list.
+## We pull those foreclosures out here, and assign them to the 2020 tracts after the 2010-2020 tract conversion process.
+foreclosures_20 <- foreclosure %>% filter(census_tract %in% c('000902', '001003') & county == 'Siskiyou') %>%
+  mutate(GEOID_TRACT_20 = paste0('06093', census_tract)) %>%   # Siskiyou
+  rename(foreclosure_20 = sum_foreclosure) %>%
+  select(c(GEOID_TRACT_20, foreclosure_20))
+ 
+View(foreclosure)
+
 
 targetgeolevel <- c('county') # should be a county_names() argument but have to make it a global variable for the fn to work
 targetgeo_names <- county_names(var_list = vars_list_b25003, yr = acs_yr, srvy = "acs5" )
@@ -195,6 +196,17 @@ ind_2020 <- ind_2010_2020 %>%
   # calc 5-yr avg foreclosure rate (2017-2021)
   mutate(avg_foreclosure = ifelse(non_na_qtrs == 0, NA, sum_foreclosure / non_na_qtrs)) #9/1/2026 do the same here as foreclosures df
 
+
+############# COUNTY CALCS ##################
+
+###### DEFINE VALUES FOR FUNCTIONS ###
+
+# set values for weighted average functions - You may need to update these
+subgeo <- 'tract'              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
+targetgeolevel <- 'county'     # define your target geolevel: county (state is handled separately)
+survey <- "acs5"               # define which Census survey you want
+pop_threshold = 30             # define population threshold for screening
+
 # pull in pop & join to indicator to calc avg_foreclosure per 10k (total_rate)
 tract_pop20 <- update_detailed_table(vars = vars_list_b25003, yr = acs_yr, srvy = survey)  # subgeolevel pop. NOTE: This indicator uses a custom variable list (vars_list_b25003)
 tract_pop20 <- lapply(tract_pop20, function(x) x %>% rename(e = estimate, m = moe))
@@ -207,16 +219,6 @@ ind_df <- ind_2020   # rename to ind_df for WA fx
 
 #### 9/1/26 QA check that names joined cleanly ####
 setdiff(unique(foreclosure$County), unique(targetgeo_names$target_name))
-############# COUNTY CALCS ##################
-
-###### DEFINE VALUES FOR FUNCTIONS ###
-
-# set values for weighted average functions - You may need to update these
-subgeo <- 'tract'              # define your sub geolevel: tract (unless the WA functions are adapted for a different subgeo)
-targetgeolevel <- 'county'     # define your target geolevel: county (state is handled separately)
-survey <- "acs5"               # define which Census survey you want
-pop_threshold = 30             # define population threshold for screening
-
 
 ##### CREATE COUNTY GEOID & NAMES TABLE ###  
 targetgeo_names <- county_names(var_list = vars_list_b25003, yr = acs_yr, srvy = survey)
@@ -489,10 +491,10 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
 colnames(leg_table)[1:2] <- c("leg_id", "leg_name")
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_hous_foreclosure_county_", rc_yr)
-state_table_name <- paste0("arei_hous_foreclosure_state_", rc_yr)
-city_table_name <- paste0("arei_hous_foreclosure_city_", rc_yr)
-leg_table_name <- paste0("arei_hous_foreclosure_leg_", rc_yr)
+county_table_name <- paste0("arei_hous_foreclosure_county_", rc_yr, "_v2")
+state_table_name <- paste0("arei_hous_foreclosure_state_", rc_yr, "_v2")
+city_table_name <- paste0("arei_hous_foreclosure_city_", rc_yr, "_v2")
+leg_table_name <- paste0("arei_hous_foreclosure_leg_", rc_yr, "_v2")
 
 indicator <- paste0("Foreclosures per 10k owner households by race (WA). The data is")
 source <- paste0("DataQuick (", curr_yr, "), purchased from DQNews and raced via weighted average using ACS ", curr_yr, " data. QA doc: ", qa_filepath)
