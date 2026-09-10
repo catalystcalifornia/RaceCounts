@@ -31,7 +31,8 @@ dwnld_url <- "https://github.com/vera-institute/incarceration-trends"
 rc_schema <- "v7"
 rc_yr <- "2025"
 data_yrs <- c('2020', '2021', '2022', '2023', '2024')
-min_q <- 3   # Keep data where county/yr combos has 3Q+ of data.
+# min_q <- 3   # Keep data where county/yr combo has 3Q+ of data.
+min_q <- 0   # Keep all data
 
 qa_filepath <- "W://Project//RACE COUNTS//2025_v7//Crime and Justice//QA_Sheet_Incarceration_CountySt.docx"
 
@@ -48,6 +49,10 @@ county_data <- county_data %>%
   filter(state_abbr=='CA') %>%
   filter(year %in% data_yrs)
 # look at the raw source before any select() drops columns
+View(county_data)
+
+county_data <- county_data %>%
+  filter(year != '2024')
 county_data %>% names()
 
 county_data %>%
@@ -57,7 +62,7 @@ county_data %>%
 incomplete_data <- county_data %>% filter(year %in% c('2020', '2021', '2022', '2023', '2024')) %>%
   group_by(fips, county_name, year) %>%
   summarise(n = n()) %>%
-  filter(n < 4)  # n = 66 (county/yr combos wo 4Q of data, eg: 06003 has only Q2 data in 2020-23)
+  filter(n < min_q)  # n = 66 (county/yr combos wo 4Q of data, eg: 06003 has only Q2 data in 2020-23)
 View(incomplete_data)
 
 to_drop <- incomplete_data %>%
@@ -79,7 +84,7 @@ View(county_complete %>% group_by(fips, county_name) %>% summarise(num_qtr = n()
 df <- county_complete %>% 
   rename(geoid = fips, geoname = county_name)
 
-#COUNTY PREP
+# COUNTY PREP #####
 #rename columns and clean data. be sure to assign correct race/eth labels (non-Latinx or not etc.)
 names(df) <- gsub("_15to64", "", names(df))
 names(df) <- gsub("jail_pop", "raw", names(df))
@@ -138,47 +143,58 @@ df_ %>%
            latino_raw != latino_pop)
 
 # check fx worked
-dfpop <- df %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(nh_aian_pop = sum(nh_aian_pop, na.rm=TRUE))
-df_pop <- df_ %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(nh_aian_pop = sum(nh_aian_pop, na.rm=TRUE))
-
-dfyrs <- df %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(count = sum(!is.na(nh_aian_raw)))
-df_yrs <- df_ %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(count = sum(!is.na(nh_aian_raw)))
-
-dfpop$nh_aian_pop / dfyrs$count    # wo function
-df_pop$nh_aian_pop / df_yrs$count  # w function
-
-df_summary <- df_ %>%
-  group_by(geoid, geoname) %>%
-  dplyr::summarise(across(where(is.numeric), ~ mean(.x, na.rm = TRUE)))
+# dfpop <- df_annual %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(latino_pop = sum(latino_pop, na.rm=TRUE))
+# df_pop <- df_ %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(latino_pop = sum(latino_pop, na.rm=TRUE))
+# 
+# dfyrs <- df_annual %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(count = sum(!is.na(latino_raw)))
+# df_yrs <- df_ %>% filter(geoid == '06013') %>% group_by(geoid) %>% dplyr::summarize(count = sum(!is.na(latino_raw)))
+# 
+# dfpop$latino_pop / dfyrs$count    # wo function, should be more
+# df_pop$latino_pop / df_yrs$count  # w function, should be less bc some pop value(s) were suppressed
+# 
+# df_summary <- df_ %>%
+#   group_by(geoid, geoname) %>%
+#   dplyr::summarise(across(where(is.numeric), ~ mean(.x, na.rm = TRUE)))
 
 ## QA Check ##
-qa_check <- df %>% filter(geoid == '06013') %>% select(geoid, geoname, year, quarter, starts_with("nh_aian")) %>%
-  mutate(pop_ = ifelse(is.na(nh_aian_raw), NA, nh_aian_pop))
-# these two should be the same
-qa_check %>% group_by(geoid, geoname) %>%
-  summarise(avg_pop_ = mean(pop_, na.rm=TRUE),
-            avg_raw = mean(nh_aian_raw, na.rm=TRUE))
-df_summary %>% filter(geoid == '06013') %>% select(geoid, geoname, starts_with("nh_aian"))
+# qa_check <- df_annual %>% filter(geoid == '06013') %>%
+#   select(geoid, geoname, year, starts_with("latino")) %>%
+#   mutate(pop_ = ifelse(is.na(latino_raw), NA, latino_pop),
+#          raw_ = ifelse(is.na(latino_pop), NA, latino_raw))
+# qa_check1 <- df_ %>% filter(geoid == '06013') %>%
+#       select(geoid, geoname, year, starts_with("latino")) %>%
+#       mutate(pop_ = ifelse(is.na(latino_raw), NA, latino_pop),
+#              raw_ = ifelse(is.na(latino_pop), NA, latino_raw))
+# 
+# # # these two should be the same
+# qa_check %>% group_by(geoid, geoname) %>%
+#   summarise(avg_pop_ = mean(pop_, na.rm=TRUE),
+#             avg_raw = mean(latino_raw, na.rm=TRUE))
+# df_summary %>% filter(geoid == '06013') %>% select(geoid, geoname, starts_with("latino"))
 
 
-#STATE PREP --- there is no latinx_jail_pop field for some reason??
-#state_data <- read_excel("W:/Data/Crime and Justice/vera_institute/2024/incarceration_trends_state.xlsx")
-state_data <- read_csv("W:/Data/Crime and Justice/vera_institute/2025/incarceration_trends_state_20260908.csv")
-
-state_data$year <- as.character(state_data$year)
-#state_data$quarter <- as.character(state_data$quarter)
-# check b/c seems like there are way too many rows
-state_data <- state_data %>%
-  select(state_fips, state_name, state_abbr, year, #quarter,
-         total_pop_15to64, aapi_pop_15to64, black_pop_15to64, latinx_pop_15to64, native_pop_15to64, white_pop_15to64,
-         total_jail_pop, aapi_jail_pop, black_jail_pop, latinx_jail_pop, native_jail_pop, white_jail_pop) %>%
-  filter(state_fips=='06') %>%
-  filter(year %in% data_yrs)
-# look at the raw source before any select() drops columns
-state_data %>% names()
-
-### PICK UP HERE W STATE CALCS ###
-
+# STATE PREP #### 
+# Keep old method (aggregate from county, instead of using updated state-level data so we're using consistent data across geos.)
+# state_data <- read_excel("W:/Data/Crime and Justice/vera_institute/2024/incarceration_trends_state.xlsx") #there is no latinx_jail_pop field for some reason
+# state_data <- read_csv("W:/Data/Crime and Justice/vera_institute/2025/incarceration_trends_state_20260908.csv")
+# state_data %>% names()
+# 
+# state_data$year <- as.character(state_data$year)
+# 
+# state_data <- state_data %>%
+#   select(state_fips, state_name, state_abbr, year, #quarter,
+#          total_pop_15to64, aapi_pop_15to64, black_pop_15to64, latinx_pop_15to64, native_pop_15to64, white_pop_15to64,
+#          total_jail_pop, aapi_jail_pop, black_jail_pop, latinx_jail_pop, native_jail_pop, white_jail_pop) %>%
+#   filter(state_fips=='06') %>%
+#   filter(year %in% data_yrs)
+# # look at the raw source before any select() drops columns
+# View(state_data)
+# 
+# Calc state-level avg stats
+# state_data_avg <- state_data %>%
+#   filter(year != '2024') %>% # drop 2024 bc missing raced data
+#   group_by(state_fips, state_name) %>%
+#   dplyr::summarise(across(where(is.numeric), ~ mean(.x, na.rm = TRUE)))
 
 
 df_summary <- df_summary %>% adorn_totals(name = "06", fill = "California")
@@ -225,8 +241,8 @@ View(county_table)
 
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_crim_incarceration_county_", rc_yr, "_v3")
-state_table_name <- paste0("arei_crim_incarceration_state_", rc_yr, "_v3")
+county_table_name <- paste0("arei_crim_incarceration_county_", rc_yr, "_v4")
+state_table_name <- paste0("arei_crim_incarceration_state_", rc_yr, "_v4")
 indicator <- "Jail population per 100,000 15 to 64 year olds"
 source <- paste0("Vera Institute (", curr_yr, ")", ". QA doc: ", qa_filepath)
 
@@ -246,12 +262,12 @@ dbDisconnect(con_shared)
 # comparison_s <- comparedf(state_table, state_old)
 # summary(comparison_s)
 # 
-# dipsrk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+# disprk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
 #   filter(disparity_rank_new != disparity_rank_old) %>%
 #   select(county_id, county_name, disparity_rank_new, disparity_rank_old)
-# dipsrk_report  # El Dorado and Kings swapped disp ranks, and so did Merced and San Bernardino. Each moved +/-1 rank.
+# disprk_report  # 12 counties moved ranks, all were +/- 1 or 2 except San Bernardino which moved up 4 (28 to 24).
 # 
 # perfrk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
 #   filter(performance_rank_new != performance_rank_old) %>%
 #   select(county_id, county_name, performance_rank_new, performance_rank_old)
-# perfrk_report  # no changes since total_ cols did NOT change
+# perfrk_report  # 21 counties moved ranks, all were +/- 1 or 2 except Mariposa which moved up 3 and Tehama which moved down 3 ranks.
