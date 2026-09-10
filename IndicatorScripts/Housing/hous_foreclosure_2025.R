@@ -29,7 +29,7 @@ con <- connect_to_db("rda_shared_data")
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Sheet_Foreclosure.docx"
 
 #set source for RC Functions script
-source("W:/RDA Team/R/Github/RDA Functions/LF/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")
+source("W:\\RDA Team\\R\\Github\\RDA Functions\\LF\\RDA-Functions\\Cnty_St_Wt_Avg_Functions.R")
 census_api_key(census_key1, overwrite=TRUE)
 
 # update each year: variables used throughout script
@@ -87,13 +87,47 @@ print(b25003_curr)
 # dbWriteTable(con, c(table_schema, table_name), foreclosure, overwrite = FALSE, row.names = FALSE)
 
 # Load data and clean-----
+##### 9/1/2026 B QA: seems like maybe this has the same vulnerability but lets check. if it comes back as 20 then fine fore now but could become a problem if we update this dataset. I think its not updateable so it should be fine if this checks out. #####
+foreclosure_raw <- dbGetQuery(con, "SELECT * FROM housing.dataquick_tract_2010_22_foreclosures") %>%
+  select(-matches('2010|2011|2012|2013|2014|2015|2016|2022'))
+
+foreclosure_raw %>%
+  mutate(non_na_qtrs = rowSums(!is.na(across(3:22)))) %>%
+  count(non_na_qtrs)
+# # output #only one quarter w/ the full dataset so its a big problem in this script
+# non_na_qtrs    n
+# 1            0 1223 #in one row every single row is NA. a separate problem but that's weird
+# 2            1 1324
+# 3            2 1156
+# 4            3  972
+# 5            4  737
+# 6            5  578
+# 7            6  441
+# 8            7  373
+# 9            8  255
+# 10           9  210
+# 11          10  150
+# 12          11  146
+# 13          12   93
+# 14          13   74
+# 15          14   48
+# 16          15   33
+# 17          16   13
+# 18          17    4
+# 19          18    3
+# 20          19    1
+##### end of qa chunk #####
+
+
 foreclosure <- dbGetQuery(con, "SELECT * FROM housing.dataquick_tract_2010_22_foreclosures") # comment out table creation above after it's done, and instead import data from pgadmin
 
 num_qtrs = 20   # update depending on how many data yrs you are working with
 foreclosure <- foreclosure %>% select(-matches('2010|2011|2012|2013|2014|2015|2016|2022')) %>%
-  mutate(sum_foreclosure = rowSums(.[3:22], na.rm = TRUE)) %>%  # total number of foreclosures over all data quarters
-  mutate(avg_foreclosure = sum_foreclosure / num_qtrs) %>%  # avg quarterly number of foreclosures
-  select(-matches('Q'))   # remove quarterly foreclosure columns
+  mutate(
+    non_na_qtrs = rowSums(!is.na(across(3:22))), #try adding this fix 9/1/2026
+    sum_foreclosure = rowSums(.[3:22], na.rm = TRUE),  # total number of foreclosures over all data quarters
+    avg_foreclosure = ifelse(non_na_qtrs == 0, NA, sum_foreclosure / non_na_qtrs)) %>% 
+  select(-c(3:22))   # remove quarterly foreclosure columns
 
 foreclosure$County = str_to_title(foreclosure$County)
  foreclosure$County <- str_remove(foreclosure$County,  "\\s*\\(.*\\)\\s*")     # remove spaces from col names
@@ -109,13 +143,14 @@ foreclosures_20 <- foreclosure %>% filter(census_tract %in% c('000902', '001003'
  
 View(foreclosure)
 
+
 targetgeolevel <- c('county') # should be a county_names() argument but have to make it a global variable for the fn to work
 targetgeo_names <- county_names(var_list = vars_list_b25003, yr = acs_yr, srvy = "acs5" )
 
 # merge dfs by geoname then paste the county id to the front of the tract IDs to make full CT FIPS codes
 ind_2010 <- left_join(targetgeo_names, foreclosure, by = c("target_name" = "county")) %>% 
   mutate(sub_id = paste0(target_id, census_tract)) %>% 
-  select(target_id, sub_id, target_name, sum_foreclosure, avg_foreclosure) %>% 
+  select(target_id, sub_id, target_name, non_na_qtrs, sum_foreclosure, avg_foreclosure) %>% 
   as.data.frame()
 # View(ind_2010)
 
@@ -131,7 +166,7 @@ cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\tract20_tract
 # Because Foreclosure uses 2010 vintage tracts - need to convert to 2020 vintage and allocate score accordingly
 ind_2010_2020 <- cb_tract_2010_2020 %>%
   right_join(ind_2010, by=c('GEOID_TRACT_10'='sub_id')) %>%
-  select(GEOID_TRACT_10, sum_foreclosure, AREALAND_TRACT_10, AREALAND_PART, GEOID_TRACT_20, AREALAND_TRACT_20, prc_overlap) %>%
+  select(GEOID_TRACT_10, sum_foreclosure, non_na_qtrs, AREALAND_TRACT_10, AREALAND_PART, GEOID_TRACT_20, AREALAND_TRACT_20, prc_overlap) %>%
   # Allocate CES scores from 2010 tracts to 2020 using prc_overlap
   mutate(foreclosure_20=sum_foreclosure*prc_overlap)
 
@@ -144,24 +179,23 @@ ind_2010_2020 <- cb_tract_2010_2020 %>%
 # add back foreclosure data for 2020-only tracts
 ind_2010_2020 <- ind_2010_2020 %>% plyr::rbind.fill(foreclosures_20)
 
+###### qa 9/1/2026 ######### 
+#somewhere here add a check for if a tract that split from 2010 to 2020 vintage. see what happens to one w/ a less than 1 prc_overlap
+ind_2010_2020 %>% filter(GEOID_TRACT_10 == "tract_specific_#") %>%
+  select(GEOID_TRACT_10, GEOID_TRACT_20, prc_overlap, non_na_qtrs)
+#then compare to what happens to it after ind_2020 step. need to wait until we have access to that xwalk again. not in rdashared in geographies_ca or crosswalks schemas
+####resume script  #####
 # create indicator df (2020 tracts) to be used in WA calcs
 ind_2020 <- ind_2010_2020 %>%
   # sum weighted foreclosures by 2020 tract
   group_by(GEOID_TRACT_20) %>%
-  summarize(sum_foreclosure = sum(foreclosure_20)) %>%
+  summarize(sum_foreclosure = sum(foreclosure_20, na.rm = TRUE), #9/1/2026 fix attempt
+            non_na_qtrs = weighted.mean(non_na_qtrs, w = prc_overlap, na.rm = TRUE)) %>%   # 9/1/2026 carry non_na_qtrs through the tract-vintage conversion rather than recomputing from scratch
   # clean up names
   rename(sub_id = GEOID_TRACT_20) %>% 
   # calc 5-yr avg foreclosure rate (2017-2021)
-  mutate(avg_foreclosure = sum_foreclosure / num_qtrs) 
+  mutate(avg_foreclosure = ifelse(non_na_qtrs == 0, NA, sum_foreclosure / non_na_qtrs)) #9/1/2026 do the same here as foreclosures df
 
-# pull in pop & join to indicator to calc avg_foreclosure per 10k (total_rate)
-tract_pop20 <- update_detailed_table(vars = vars_list_b25003, yr = acs_yr, srvy = survey)  # subgeolevel pop. NOTE: This indicator uses a custom variable list (vars_list_b25003)
-tract_pop20 <- lapply(tract_pop20, function(x) x %>% rename(e = estimate, m = moe))
-tract_pop20_wide <- to_wide(tract_pop20) %>% select(GEOID, total_e)
-ind_2020 <- ind_2020 %>% left_join(tract_pop20_wide, by = c("sub_id" = "GEOID")) %>%
-  mutate(indicator = (avg_foreclosure / total_e) * 10000)   # quarterly avg foreclosures per 10k owners
-
-ind_df <- ind_2020   # rename to ind_df for WA fx
 
 ############# COUNTY CALCS ##################
 
@@ -173,6 +207,18 @@ targetgeolevel <- 'county'     # define your target geolevel: county (state is h
 survey <- "acs5"               # define which Census survey you want
 pop_threshold = 30             # define population threshold for screening
 
+# pull in pop & join to indicator to calc avg_foreclosure per 10k (total_rate)
+tract_pop20 <- update_detailed_table(vars = vars_list_b25003, yr = acs_yr, srvy = survey)  # subgeolevel pop. NOTE: This indicator uses a custom variable list (vars_list_b25003)
+tract_pop20 <- lapply(tract_pop20, function(x) x %>% rename(e = estimate, m = moe))
+tract_pop20_wide <- to_wide(tract_pop20) %>% select(GEOID, total_e)
+ind_2020 <- ind_2020 %>% left_join(tract_pop20_wide, by = c("sub_id" = "GEOID")) %>%
+  mutate(indicator = (avg_foreclosure / total_e) * 10000)   # quarterly avg foreclosures per 10k owners
+
+ind_df <- ind_2020   # rename to ind_df for WA fx
+
+
+#### 9/1/26 QA check that names joined cleanly ####
+setdiff(unique(foreclosure$County), unique(targetgeo_names$target_name))
 
 ##### CREATE COUNTY GEOID & NAMES TABLE ###  
 targetgeo_names <- county_names(var_list = vars_list_b25003, yr = acs_yr, srvy = survey)
@@ -445,10 +491,10 @@ colnames(city_table)[1:2] <- c("city_id", "city_name")
 colnames(leg_table)[1:2] <- c("leg_id", "leg_name")
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_hous_foreclosure_county_", rc_yr)
-state_table_name <- paste0("arei_hous_foreclosure_state_", rc_yr)
-city_table_name <- paste0("arei_hous_foreclosure_city_", rc_yr)
-leg_table_name <- paste0("arei_hous_foreclosure_leg_", rc_yr)
+county_table_name <- paste0("arei_hous_foreclosure_county_", rc_yr, "_v2")
+state_table_name <- paste0("arei_hous_foreclosure_state_", rc_yr, "_v2")
+city_table_name <- paste0("arei_hous_foreclosure_city_", rc_yr, "_v2")
+leg_table_name <- paste0("arei_hous_foreclosure_leg_", rc_yr, "_v2")
 
 indicator <- paste0("Foreclosures per 10k owner households by race (WA). The data is")
 source <- paste0("DataQuick (", curr_yr, "), purchased from DQNews and raced via weighted average using ACS ", curr_yr, " data. QA doc: ", qa_filepath)

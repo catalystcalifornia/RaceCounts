@@ -187,6 +187,19 @@ ind_2020 <- ind_2010_2020 %>%
 
 ind_df <- ind_2020 #dplyr::rename to ind_df for WA fx
 
+##### 9/1/26 QA. seems like na.rm issue would apply here ######
+tract_non_na_yrs <- na.omit(df) %>%
+  dplyr::group_by(fips, county_id) %>%
+  dplyr::summarise(tract_non_na_yrs = n_distinct(year), .groups = "drop")
+
+check <- df_wide %>%
+  left_join(tract_non_na_yrs, by = "fips") %>%
+  mutate(mismatch = tract_non_na_yrs != num_yrs)
+
+check %>% count(mismatch)
+check %>% filter(mismatch) %>% select(fips, county_name, tract_non_na_yrs, num_yrs) %>% 
+  arrange(desc(num_yrs - tract_non_na_yrs))
+
 ############# COUNTY CALCS ##################
 
 ###### DEFINE VALUES FOR FUNCTIONS ###
