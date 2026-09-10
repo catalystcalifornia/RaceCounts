@@ -367,12 +367,12 @@ subprime_crosswalk <- df_subprime20 %>%
 
 # add a check for that na.rm issue
 applications_crosswalk %>% 
-  group_by(place_geoid) %>% 
+  group_by(assm_geoid) %>% 
   summarize(n_rows = n(), n_non_na_wt = sum(!is.na(wt_val))) %>% 
   filter(n_non_na_wt == 0)
 
 subprime_crosswalk %>% 
-  group_by(place_geoid) %>% 
+  group_by(assm_geoid) %>% 
   summarize(n_rows = n(), n_non_na_wt = sum(!is.na(wt_val))) %>% 
   filter(n_non_na_wt == 0)
 
@@ -544,10 +544,10 @@ colnames(leg_table)[1:2] <- c("leg_id", "leg_name")
 ############### COUNTY, STATE, CITY, LEG METADATA  ##############
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_hous_subprime_county_", rc_yr)
-state_table_name <- paste0("arei_hous_subprime_state_", rc_yr)
-city_table_name <- paste0("arei_hous_subprime_city_", rc_yr)
-leg_table_name <- paste0("arei_hous_subprime_leg_", rc_yr)          
+county_table_name <- paste0("arei_hous_subprime_county_", rc_yr, "_v2")
+state_table_name <- paste0("arei_hous_subprime_state_", rc_yr, "_v2")
+city_table_name <- paste0("arei_hous_subprime_city_", rc_yr, "_v2")
+leg_table_name <- paste0("arei_hous_subprime_leg_", rc_yr, "_v2")          
 
 indicator <- paste0(" Number of higher priced Loans Per 100 Loans Originated. Subgroups with fewer than ", threshold, " loans originated are excluded")                   
 source <- paste0("HMDA historic Data (", hmda_yr, "): https://www.consumerfinance.gov/data-research/hmda/historic-data/, however Subprime data is not available here.")   
