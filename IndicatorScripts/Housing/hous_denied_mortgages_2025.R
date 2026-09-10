@@ -234,43 +234,58 @@ denied_all <- c(denied_1, denied_2)
 get_raced_hmda <- function(z, geoid, geolevel, suffix) { # get raced and total loan or denied mtg counts at county level
   
   latino <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Hispanic or Latino") %>% dplyr::group_by({{geoid}}) %>%
-    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), latino = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))})%>%
-    select(-n_non_na)
+    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), latino = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
+    select(-n_non_na)})
+  
   latino <- latino %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(latino = sum(latino, na.rm=TRUE)) %>% as.data.frame()
   
   #aian alone, latinx inclusive
   aian <- lapply(z, function (x) {x <- x %>% filter(derived_race == "American Indian or Alaska Native") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(n_non_na = sum(!is.na(wt_val)), aian = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))})
+    dplyr::group_by({{geoid}}) %>% 
+    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), aian = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
+    select(-n_non_na)})
   
   aian <- aian %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(aian = sum(aian, na.rm=TRUE)) 
   
   #pacisl alone, latinx inclusive
   pacisl <- lapply(z, function (x) {x <- x %>% filter(derived_race == "Native Hawaiian or Other Pacific Islander") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(n_non_na = sum(!is.na(wt_val)), pacisl = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))})
+    dplyr::group_by({{geoid}}) %>% 
+    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), pacisl = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
+    select(-n_non_na)})
   
   pacisl <- pacisl %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(pacisl = sum(pacisl, na.rm=TRUE)) 
   
   nh_black <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", derived_race == "Black or African American") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_black = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))})
+    dplyr::group_by({{geoid}}) %>% 
+    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_black = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
+    select(-n_non_na)})
   
   nh_black <- nh_black %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_black = sum(nh_black, na.rm=TRUE)) 
   
   nh_asian <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", derived_race == "Asian") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_asian = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))})
+    dplyr::group_by({{geoid}}) %>% 
+    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_asian = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
+    select(-n_non_na)})
   
   nh_asian <- nh_asian %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_asian = sum(nh_asian, na.rm=TRUE)) 
   
   nh_white <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", derived_race == "White") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_white = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))})
+    dplyr::group_by({{geoid}}) %>% 
+    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_white = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
+    select(-n_non_na)})
   
   nh_white <- nh_white %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_white = sum(nh_white, na.rm=TRUE)) 
   
   nh_twoormor <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", (derived_race == "Joint" | derived_race == "2 or more minority races")) %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_twoormor = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))})
+    dplyr::group_by({{geoid}}) %>% 
+    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_twoormor = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
+    select(-n_non_na)})
   
   nh_twoormor <- nh_twoormor %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_twoormor = sum(nh_twoormor, na.rm=TRUE)) 
   
-  total <- lapply(z, function (x) {x <- x %>% dplyr::group_by({{geoid}}) %>% dplyr::summarise(n_non_na = sum(!is.na(wt_val)), total = sum(wt_val, na.rm=TRUE))})
+  total <- lapply(z, function (x) {x <- x %>% dplyr::group_by({{geoid}}) %>% 
+    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), total = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
+    select(-n_non_na)})
   
   total <- total %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(total = sum(total, na.rm=TRUE)) 
   
@@ -548,10 +563,10 @@ leg_table <- rename(leg_table, leg_id = geoid, leg_name = geoname)
 
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_hous_denied_mortgages_county_", rc_yr)
-state_table_name <- paste0("arei_hous_denied_mortgages_state_", rc_yr)
-city_table_name <- paste0("arei_hous_denied_mortgages_city_", rc_yr)
-leg_table_name <- paste0("arei_hous_denied_mortgages_leg_", rc_yr)
+county_table_name <- paste0("arei_hous_denied_mortgages_county_", rc_yr, "_v2")
+state_table_name <- paste0("arei_hous_denied_mortgages_state_", rc_yr, "_v2")
+city_table_name <- paste0("arei_hous_denied_mortgages_city_", rc_yr, "_v2")
+leg_table_name <- paste0("arei_hous_denied_mortgages_leg_", rc_yr, "_v2")
 
 indicator <- paste0("Created on ", Sys.Date(), ". Denied Mortgages out of all Loan Applications (%). Subgroups with fewer than ", threshold, " loans originated are excluded. This data is")
 source <- paste0("HMDA (", paste(data_yrs, collapse = ", "), ") https://ffiec.cfpb.gov/data-browser/")
