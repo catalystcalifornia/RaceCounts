@@ -14,15 +14,15 @@ options(scipen = 999) # disable scientific notation
 #####calculate rates#####
 calc_rates_100k <- function(x) {
                     pop <- dplyr::select(x, geoid, ends_with("_pop"))  #get geoid, raced rate and best columns
-                    pop_long <- pivot_longer(pop, 2:ncol(pop), names_to="measure_rate", values_to="pop") #%>%   #pivot wide table to long on geoid & best cols
+                    pop_long <- pivot_longer(pop, ends_with("_pop"), names_to="measure_rate", values_to="pop") 
                     pop_long$measure_rate <- sub("pop", "_", pop_long$measure_rate)
                     raw <- dplyr::select(x, geoid, ends_with("_raw"))  #get geoid, raced rate and best columns
-                    raw_long <- pivot_longer(raw, 2:ncol(raw), names_to="measure_rate", values_to="raw") #%>%   #pivot wide table to long on geoid & best cols
+                    raw_long <- pivot_longer(raw, ends_with("_raw"), names_to="measure_rate", values_to="raw") 
                     raw_long$measure_rate <- sub("raw", "_", raw_long$measure_rate)
                     calc_long <- pop_long %>% left_join(raw_long, by=c("geoid", "measure_rate"))
                     calc_long <- calc_long %>%
-                                 dplyr::mutate(rate=raw/pop * 100000) %>%                                             #calc rates
-                                 dplyr::mutate(measure_rate=sub("__", "_rate", measure_rate))                         #create new column names for diffs from best
+                                 dplyr::mutate(rate = raw/pop * 100000) %>%                                 #calc rates
+                                 dplyr::mutate(measure_rate=sub("__", "_rate", measure_rate))               #create new column names for diffs from best
                     calc_wide <- calc_long %>% dplyr::select(geoid, measure_rate, rate) %>%      #pivot long table back to wide
                                  pivot_wider(names_from=measure_rate, values_from=rate)
                     x <- x %>% left_join(calc_wide, by="geoid")                           #join new diff from best columns back to original table
