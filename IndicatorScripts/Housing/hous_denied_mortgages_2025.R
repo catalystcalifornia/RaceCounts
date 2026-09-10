@@ -40,7 +40,7 @@ sen_xwalk <- 'tract_2020_state_senate_2024'     # Name of tract-Sen xwalk table
 
 threshold = 15  # originated loan minimum threshold per city/leg/county/state by race
 
-    
+
 
 #### PULL DATA FROM HMDA API -------------------------------------------
 ### If the most current denied mortgage and loans originated tables are already in postgres, then skip to PREP DENIED MORTGAGES code chunk.
@@ -71,54 +71,54 @@ threshold = 15  # originated loan minimum threshold per city/leg/county/state by
 ## If not, then leading zeroes may be missing or there may be other errors to check out.
 
 
-    # for (i in 1:length(hmda_list)) {
-    #   print(paste0(names(hmda_list[i]), " has ", (nrow(filter(hmda_list[[i]], nchar(hmda_list[[i]]$census_tract) != 11))), " census_tract errors"))
-    #   print(paste0(names(hmda_list[i]), " has ", (nrow(filter(hmda_list[[i]], nchar(hmda_list[[i]]$county_code) != 5))), " county_code errors"))
-    #   print(paste0(names(hmda_list[i]), " has ", (nrow(filter(hmda_list[[i]], hmda_list[[i]]$state_code != "CA"))), " state_code errors"))
-    # }
-    # 
-    # for (i in 1:length(hmda_list2)) {
-    #   print(paste0(names(hmda_list2[i]), " has ", (nrow(filter(hmda_list2[[i]], nchar(hmda_list2[[i]]$census_tract) != 11))), " census_tract errors"))
-    #   print(paste0(names(hmda_list2[i]), " has ", (nrow(filter(hmda_list2[[i]], nchar(hmda_list2[[i]]$county_code) != 5))), " county_code errors"))
-    #   print(paste0(names(hmda_list2[i]), " has ", (nrow(filter(hmda_list2[[i]], hmda_list2[[i]]$state_code != "CA"))), " state_code errors"))
-    # }
+# for (i in 1:length(hmda_list)) {
+#   print(paste0(names(hmda_list[i]), " has ", (nrow(filter(hmda_list[[i]], nchar(hmda_list[[i]]$census_tract) != 11))), " census_tract errors"))
+#   print(paste0(names(hmda_list[i]), " has ", (nrow(filter(hmda_list[[i]], nchar(hmda_list[[i]]$county_code) != 5))), " county_code errors"))
+#   print(paste0(names(hmda_list[i]), " has ", (nrow(filter(hmda_list[[i]], hmda_list[[i]]$state_code != "CA"))), " state_code errors"))
+# }
+# 
+# for (i in 1:length(hmda_list2)) {
+#   print(paste0(names(hmda_list2[i]), " has ", (nrow(filter(hmda_list2[[i]], nchar(hmda_list2[[i]]$census_tract) != 11))), " census_tract errors"))
+#   print(paste0(names(hmda_list2[i]), " has ", (nrow(filter(hmda_list2[[i]], nchar(hmda_list2[[i]]$county_code) != 5))), " county_code errors"))
+#   print(paste0(names(hmda_list2[i]), " has ", (nrow(filter(hmda_list2[[i]], hmda_list2[[i]]$state_code != "CA"))), " state_code errors"))
+# }
 
-      
+
 # Denied Mortgages
-      # for(i in 1:length(hmda_list)){
-      #   hmda_names <- names(hmda_list)
-      #   table_name <- hmda_names[i]
-      #   table_comment_source <- "Denied Mortgages out of all Loan Applications"
-      #   table_source <- paste0("HMDA https://ffiec.cfpb.gov/data-browser/ downloaded on ", Sys.Date())
-      #   table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
-      # 
-      #   # send table and comment to postgres
-      #   dbWriteTable(con2, c(table_schema,hmda_names[i]), hmda_list[[i]], overwrite = FALSE, row.names = FALSE)
-      #   dbSendQuery(conn = con2, table_comment)
-      # 
-      #   # index the table
-      #   dbSendQuery(conn = con2, paste0("create index ", hmda_names[i], "_census_tract on ",
-      #                      table_schema, ".", hmda_names[i], " (census_tract);"))
-      # 
-      # }
+# for(i in 1:length(hmda_list)){
+#   hmda_names <- names(hmda_list)
+#   table_name <- hmda_names[i]
+#   table_comment_source <- "Denied Mortgages out of all Loan Applications"
+#   table_source <- paste0("HMDA https://ffiec.cfpb.gov/data-browser/ downloaded on ", Sys.Date())
+#   table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
+# 
+#   # send table and comment to postgres
+#   dbWriteTable(con2, c(table_schema,hmda_names[i]), hmda_list[[i]], overwrite = FALSE, row.names = FALSE)
+#   dbSendQuery(conn = con2, table_comment)
+# 
+#   # index the table
+#   dbSendQuery(conn = con2, paste0("create index ", hmda_names[i], "_census_tract on ",
+#                      table_schema, ".", hmda_names[i], " (census_tract);"))
+# 
+# }
 
 # Loans Originated
-      # for(i in 1:length(hmda_list2)){
-      #   hmda_names <- names(hmda_list2)
-      #   table_name <- hmda_names[i]
-      #   table_comment_source <- "All Loans Originated (aka loan applications)"
-      #   table_source <- paste0("HMDA https://ffiec.cfpb.gov/data-browser/ downloaded on ", Sys.Date())
-      #   table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
-      # 
-      #   # send table and comment to postgres
-      #   dbWriteTable(con2, c(table_schema,hmda_names[i]), hmda_list2[[i]], overwrite = FALSE, row.names = FALSE)
-      #   dbSendQuery(conn = con2, table_comment)
-      # 
-      #   # index the table
-      #   dbSendQuery(conn = con2, paste0("create index ", hmda_names[i], "_census_tract on ",
-      #                      table_schema, ".", hmda_names[i], " (census_tract);"))
-      # 
-      # }
+# for(i in 1:length(hmda_list2)){
+#   hmda_names <- names(hmda_list2)
+#   table_name <- hmda_names[i]
+#   table_comment_source <- "All Loans Originated (aka loan applications)"
+#   table_source <- paste0("HMDA https://ffiec.cfpb.gov/data-browser/ downloaded on ", Sys.Date())
+#   table_comment <- paste0("COMMENT ON TABLE ", table_schema, ".", table_name, " IS '", table_comment_source, ". ", table_source, ".';")
+# 
+#   # send table and comment to postgres
+#   dbWriteTable(con2, c(table_schema,hmda_names[i]), hmda_list2[[i]], overwrite = FALSE, row.names = FALSE)
+#   dbSendQuery(conn = con2, table_comment)
+# 
+#   # index the table
+#   dbSendQuery(conn = con2, paste0("create index ", hmda_names[i], "_census_tract on ",
+#                      table_schema, ".", hmda_names[i], " (census_tract);"))
+# 
+# }
 
 
 
@@ -133,8 +133,8 @@ loan_tbl_list <- loan_tbl_list[grepl(paste(data_yrs, collapse="|"), loan_tbl_lis
 loan_tbl_list <- as.list(loan_tbl_list[!grepl("2019_20", loan_tbl_list$table), ])         # filter out old multi-yr tables
 
 # Check your lists contain all the required tables
-  #mtg_tbl_list
-  #loan_tbl_list
+#mtg_tbl_list
+#loan_tbl_list
 
 
 # Import data then filter out multifamily housing and subordinate liens. Keep only single family housing and first liens. Replace state_code with FIPS Code.
@@ -145,20 +145,20 @@ loan_tables <- lapply(setNames(paste0("select * from ", table_schema, ".", loan_
 # keep only needed columns and filter
 mtg_data <- lapply(mtg_tables, function(x) {x <- x %>% select(activity_year, state_code, county_code, census_tract, loan_purpose, occupancy_type, derived_loan_product_type, derived_dwelling_category, derived_ethnicity, derived_race)})
 denied_data <- lapply(mtg_data, function(x) {
-                      x <- x %>% filter(derived_dwelling_category != 'Multifamily:Site-Built' & derived_dwelling_category != 'Multifamily:Manufactured' &
-                                        derived_loan_product_type != 'Conventional:Subordinate Lien' & derived_loan_product_type != 'FHA:Subordinate Lien' &
-                                        derived_loan_product_type != 'FSA/RHS:Subordinate Lien' & derived_loan_product_type != 'VA:Subordinate Lien'  & 
-                                        occupancy_type == "1" & str_detect(county_code, "^06")) %>%      # select records where county_code begins with '06'
-                                        mutate(state_code = replace(state_code, str_detect(state_code, "CA"), "06")) %>%  # replace state_code in those records with '06'
-                                        select(state_code, county_code, census_tract, derived_ethnicity, derived_race)})
+  x <- x %>% filter(derived_dwelling_category != 'Multifamily:Site-Built' & derived_dwelling_category != 'Multifamily:Manufactured' &
+                      derived_loan_product_type != 'Conventional:Subordinate Lien' & derived_loan_product_type != 'FHA:Subordinate Lien' &
+                      derived_loan_product_type != 'FSA/RHS:Subordinate Lien' & derived_loan_product_type != 'VA:Subordinate Lien'  & 
+                      occupancy_type == "1" & str_detect(county_code, "^06")) %>%      # select records where county_code begins with '06'
+    mutate(state_code = replace(state_code, str_detect(state_code, "CA"), "06")) %>%  # replace state_code in those records with '06'
+    select(state_code, county_code, census_tract, derived_ethnicity, derived_race)})
 
 loan_data <- lapply(loan_tables, function(x) {x <- x %>% select(activity_year, state_code, county_code, census_tract, loan_purpose, occupancy_type, derived_loan_product_type, derived_dwelling_category, derived_ethnicity, derived_race)})
 loans_data <- lapply(loan_data, function(x) {x <- x %>% filter(derived_dwelling_category != 'Multifamily:Site-Built' & derived_dwelling_category != 'Multifamily:Manufactured' &
-                                                                   derived_loan_product_type != 'Conventional:Subordinate Lien' & derived_loan_product_type != 'FHA:Subordinate Lien' &
-                                                                   derived_loan_product_type != 'FSA/RHS:Subordinate Lien' & derived_loan_product_type != 'VA:Subordinate Lien'  & 
-                                                                   occupancy_type == "1" & str_detect(county_code, "^06")) %>%      # select records where county_code begins with '06'
-                                                                   mutate(state_code = replace(state_code, str_detect(state_code, "CA"), "06")) %>%  # replace state_code in those records with '06'
-                                                                   select(state_code, county_code, census_tract, derived_ethnicity, derived_race)})
+                                                                 derived_loan_product_type != 'Conventional:Subordinate Lien' & derived_loan_product_type != 'FHA:Subordinate Lien' &
+                                                                 derived_loan_product_type != 'FSA/RHS:Subordinate Lien' & derived_loan_product_type != 'VA:Subordinate Lien'  & 
+                                                                 occupancy_type == "1" & str_detect(county_code, "^06")) %>%      # select records where county_code begins with '06'
+  mutate(state_code = replace(state_code, str_detect(state_code, "CA"), "06")) %>%  # replace state_code in those records with '06'
+  select(state_code, county_code, census_tract, derived_ethnicity, derived_race)})
 
 # add data yr to each list element: this will be used for city-level data
 denied_data <- map2(denied_data, names(denied_data), ~ mutate(.x, year = .y))                       # create column with dataset name
@@ -178,13 +178,13 @@ loans_2 <- loans_data[grepl((tract20_yrs), names(loans_data))]
 denied_2 <- denied_data[grepl((tract20_yrs), names(denied_data))]
 
 # Convert 2019-21 data from 2010 CT's to 2020 CT's
-cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
+cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\tract20_tract10\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
   select(GEOID_TRACT_10, NAMELSAD_TRACT_10, AREALAND_TRACT_10, GEOID_TRACT_20, NAMELSAD_TRACT_20, AREALAND_TRACT_20, AREALAND_PART) %>%
   mutate_at(vars(contains("AREALAND")), function(x) as.numeric(x)) %>%
   # calculate overlapping land area of 2010 and 2020 tracts (AREALAND_PART) as a percent of 2020 tract land area (AREALAND_TRACT_20)
   mutate(prc_overlap=AREALAND_PART/AREALAND_TRACT_10, # pct of 2010 tract that is in 2020 tract to ensure 100% of 2010 loans are assigned to 2020 tracts  
          county_id = substr(GEOID_TRACT_20,1,5))
-         
+
 loans_1 <- lapply(loans_1, function(x) 
   x %>% left_join(cb_tract_2010_2020, by = c("census_tract"="GEOID_TRACT_10"), relationship = "many-to-many") %>%
     # Allocate data from 2010 tracts to 2020 using prc_overlap
@@ -197,9 +197,9 @@ loans_nomatch <- lapply(loans_1, function(x) x %>% filter(is.na(county_id)) %>% 
 ## Added manual fix above to assign GEOID_TRACT_20 06037137000 for rows with census_tract 06037137000.
 
 loans_1 <- lapply(loans_1, function(x) x %>% 
-                     mutate(GEOID_TRACT_20 = ifelse(census_tract == '06037137000', '06037137000', GEOID_TRACT_20),
-                            county_id = ifelse(census_tract == '06037137000', '06037', county_id),
-                            wt_val = ifelse(census_tract == '06037137000', 1, wt_val)))
+                    mutate(GEOID_TRACT_20 = ifelse(census_tract == '06037137000', '06037137000', GEOID_TRACT_20),
+                           county_id = ifelse(census_tract == '06037137000', '06037', county_id),
+                           wt_val = ifelse(census_tract == '06037137000', 1, wt_val)))
 
 loans_2 <- lapply(loans_2, function(x) 
   x %>% mutate(wt_val = 1, county_id = county_code, GEOID_TRACT_20 = census_tract))   # 2020 data value set to 1 bc data is already based on 2020 tracts
@@ -219,9 +219,9 @@ denied_nomatch <- lapply(denied_1, function(x) x %>% filter(is.na(county_id)) %>
 
 ## manual fix due to the 2019-21 rows that are assigned to 2020 tracts
 denied_1 <- lapply(denied_1, function(x) x %>% 
-                       mutate(GEOID_TRACT_20 = ifelse(census_tract == '06037137000', '06037137000', GEOID_TRACT_20),
-                              county_id = ifelse(census_tract == '06037137000', '06037', county_id),
-                              wt_val = ifelse(census_tract == '06037137000', 1, wt_val)))
+                     mutate(GEOID_TRACT_20 = ifelse(census_tract == '06037137000', '06037137000', GEOID_TRACT_20),
+                            county_id = ifelse(census_tract == '06037137000', '06037', county_id),
+                            wt_val = ifelse(census_tract == '06037137000', 1, wt_val)))
 
 denied_2 <- lapply(denied_2, function(x) 
   x %>% mutate(wt_val = 1, county_id = county_code, GEOID_TRACT_20 = census_tract))		# 2020 data value set to 1 bc data is already based on 2020 tracts
@@ -234,43 +234,58 @@ denied_all <- c(denied_1, denied_2)
 get_raced_hmda <- function(z, geoid, geolevel, suffix) { # get raced and total loan or denied mtg counts at county level
   
   latino <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Hispanic or Latino") %>% dplyr::group_by({{geoid}}) %>%
-    dplyr::summarise(latino = sum(wt_val, na.rm=TRUE))})
+    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), latino = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
+    select(-n_non_na)})
   
   latino <- latino %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(latino = sum(latino, na.rm=TRUE)) %>% as.data.frame()
   
   #aian alone, latinx inclusive
   aian <- lapply(z, function (x) {x <- x %>% filter(derived_race == "American Indian or Alaska Native") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(aian = sum(wt_val, na.rm=TRUE))})
+    dplyr::group_by({{geoid}}) %>% 
+    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), aian = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
+    select(-n_non_na)})
   
   aian <- aian %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(aian = sum(aian, na.rm=TRUE)) 
   
   #pacisl alone, latinx inclusive
   pacisl <- lapply(z, function (x) {x <- x %>% filter(derived_race == "Native Hawaiian or Other Pacific Islander") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(pacisl = sum(wt_val, na.rm=TRUE))})
+    dplyr::group_by({{geoid}}) %>% 
+    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), pacisl = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
+    select(-n_non_na)})
   
   pacisl <- pacisl %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(pacisl = sum(pacisl, na.rm=TRUE)) 
   
   nh_black <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", derived_race == "Black or African American") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_black = sum(wt_val, na.rm=TRUE))})
+    dplyr::group_by({{geoid}}) %>% 
+    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_black = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
+    select(-n_non_na)})
   
   nh_black <- nh_black %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_black = sum(nh_black, na.rm=TRUE)) 
   
   nh_asian <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", derived_race == "Asian") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_asian = sum(wt_val, na.rm=TRUE))})
+    dplyr::group_by({{geoid}}) %>% 
+    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_asian = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
+    select(-n_non_na)})
   
   nh_asian <- nh_asian %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_asian = sum(nh_asian, na.rm=TRUE)) 
   
   nh_white <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", derived_race == "White") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_white = sum(wt_val, na.rm=TRUE))})
+    dplyr::group_by({{geoid}}) %>% 
+    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_white = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
+    select(-n_non_na)})
   
   nh_white <- nh_white %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_white = sum(nh_white, na.rm=TRUE)) 
   
   nh_twoormor <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", (derived_race == "Joint" | derived_race == "2 or more minority races")) %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_twoormor = sum(wt_val, na.rm=TRUE))})
+    dplyr::group_by({{geoid}}) %>% 
+    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_twoormor = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
+    select(-n_non_na)})
   
   nh_twoormor <- nh_twoormor %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_twoormor = sum(nh_twoormor, na.rm=TRUE)) 
   
-  total <- lapply(z, function (x) {x <- x %>% dplyr::group_by({{geoid}}) %>% dplyr::summarise(total = sum(wt_val, na.rm=TRUE))})
+  total <- lapply(z, function (x) {x <- x %>% dplyr::group_by({{geoid}}) %>% 
+    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), total = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
+    select(-n_non_na)})
   
   total <- total %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(total = sum(total, na.rm=TRUE)) 
   
@@ -279,7 +294,7 @@ get_raced_hmda <- function(z, geoid, geolevel, suffix) { # get raced and total l
   
   # add specified suffix to colnames except place_geoid
   joined <- joined %>% rename_at(vars(-c({{geoid}})), ~paste0(., suffix)) %>% mutate(geolevel = {{geolevel}})
-
+  
   return(joined)
 }
 
@@ -445,34 +460,34 @@ df_combined <- union(df_wide, city_join) %>% union(assm_join) %>% union(sen_join
 
 df_pct <- df_combined %>% 
   mutate(total_pct_denied = ifelse(is.na(total_originated), NA, (total_denied / total_originated)*100),  
-          nh_black_pct_denied = ifelse(is.na(nh_black_originated), NA, (nh_black_denied / nh_black_originated)*100),
-          aian_pct_denied = ifelse(is.na(aian_originated), NA, (aian_denied / aian_originated)*100),
-          nh_asian_pct_denied = ifelse(is.na(nh_asian_originated), NA, (nh_asian_denied / nh_asian_originated)*100),
-          latino_pct_denied = ifelse(is.na(latino_originated), NA, (latino_denied / latino_originated)*100),
-          pacisl_pct_denied = ifelse(is.na(pacisl_originated), NA, (pacisl_denied / pacisl_originated)*100),
-          nh_white_pct_denied = ifelse(is.na(nh_white_originated), NA, (nh_white_denied / nh_white_originated)*100),
-          nh_twoormor_pct_denied = ifelse(is.na(nh_twoormor_originated), NA, (nh_twoormor_denied / nh_twoormor_originated)*100),
-
-          # calculate _raw column if _originated column is > than threshold
-          total_raw = ifelse(total_originated < threshold, NA, total_denied),
-          nh_black_raw = ifelse(nh_black_originated < threshold, NA, nh_black_denied),
-          aian_raw = ifelse(aian_originated < threshold, NA, aian_denied),
-          nh_asian_raw = ifelse(nh_asian_originated < threshold, NA, nh_asian_denied),
-          latino_raw = ifelse(latino_originated < threshold, NA, latino_denied),
-          pacisl_raw = ifelse(pacisl_originated < threshold, NA, pacisl_denied),
-          nh_white_raw = ifelse(nh_white_originated < threshold, NA, nh_white_denied),
-          nh_twoormor_raw = ifelse(nh_twoormor_originated < threshold, NA, nh_twoormor_denied),
-              
-          # calculate _rate column if _rate column is > than threshold
-          total_rate = ifelse(total_originated < threshold, NA, total_pct_denied),
-          nh_black_rate = ifelse(nh_black_originated < threshold, NA, nh_black_pct_denied),
-          aian_rate = ifelse(aian_originated < threshold, NA, aian_pct_denied),
-          nh_asian_rate = ifelse(nh_asian_originated < threshold, NA, nh_asian_pct_denied),
-          latino_rate = ifelse(latino_originated < threshold, NA, latino_pct_denied),
-          pacisl_rate = ifelse(pacisl_originated < threshold, NA, pacisl_pct_denied),
-          nh_white_rate = ifelse(nh_white_originated < threshold, NA, nh_white_pct_denied),
-          nh_twoormor_rate = ifelse(nh_twoormor_originated < threshold, NA, nh_twoormor_pct_denied)
-    )
+         nh_black_pct_denied = ifelse(is.na(nh_black_originated), NA, (nh_black_denied / nh_black_originated)*100),
+         aian_pct_denied = ifelse(is.na(aian_originated), NA, (aian_denied / aian_originated)*100),
+         nh_asian_pct_denied = ifelse(is.na(nh_asian_originated), NA, (nh_asian_denied / nh_asian_originated)*100),
+         latino_pct_denied = ifelse(is.na(latino_originated), NA, (latino_denied / latino_originated)*100),
+         pacisl_pct_denied = ifelse(is.na(pacisl_originated), NA, (pacisl_denied / pacisl_originated)*100),
+         nh_white_pct_denied = ifelse(is.na(nh_white_originated), NA, (nh_white_denied / nh_white_originated)*100),
+         nh_twoormor_pct_denied = ifelse(is.na(nh_twoormor_originated), NA, (nh_twoormor_denied / nh_twoormor_originated)*100),
+         
+         # calculate _raw column if _originated column is > than threshold
+         total_raw = ifelse(total_originated < threshold, NA, total_denied),
+         nh_black_raw = ifelse(nh_black_originated < threshold, NA, nh_black_denied),
+         aian_raw = ifelse(aian_originated < threshold, NA, aian_denied),
+         nh_asian_raw = ifelse(nh_asian_originated < threshold, NA, nh_asian_denied),
+         latino_raw = ifelse(latino_originated < threshold, NA, latino_denied),
+         pacisl_raw = ifelse(pacisl_originated < threshold, NA, pacisl_denied),
+         nh_white_raw = ifelse(nh_white_originated < threshold, NA, nh_white_denied),
+         nh_twoormor_raw = ifelse(nh_twoormor_originated < threshold, NA, nh_twoormor_denied),
+         
+         # calculate _rate column if _rate column is > than threshold
+         total_rate = ifelse(total_originated < threshold, NA, total_pct_denied),
+         nh_black_rate = ifelse(nh_black_originated < threshold, NA, nh_black_pct_denied),
+         aian_rate = ifelse(aian_originated < threshold, NA, aian_pct_denied),
+         nh_asian_rate = ifelse(nh_asian_originated < threshold, NA, nh_asian_pct_denied),
+         latino_rate = ifelse(latino_originated < threshold, NA, latino_pct_denied),
+         pacisl_rate = ifelse(pacisl_originated < threshold, NA, pacisl_pct_denied),
+         nh_white_rate = ifelse(nh_white_originated < threshold, NA, nh_white_pct_denied),
+         nh_twoormor_rate = ifelse(nh_twoormor_originated < threshold, NA, nh_twoormor_pct_denied)
+  )
 
 #View(df_pct)
 
@@ -548,10 +563,10 @@ leg_table <- rename(leg_table, leg_id = geoid, leg_name = geoname)
 
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_hous_denied_mortgages_county_", rc_yr)
-state_table_name <- paste0("arei_hous_denied_mortgages_state_", rc_yr)
-city_table_name <- paste0("arei_hous_denied_mortgages_city_", rc_yr)
-leg_table_name <- paste0("arei_hous_denied_mortgages_leg_", rc_yr)
+county_table_name <- paste0("arei_hous_denied_mortgages_county_", rc_yr, "_v2")
+state_table_name <- paste0("arei_hous_denied_mortgages_state_", rc_yr, "_v2")
+city_table_name <- paste0("arei_hous_denied_mortgages_city_", rc_yr, "_v2")
+leg_table_name <- paste0("arei_hous_denied_mortgages_leg_", rc_yr, "_v2")
 
 indicator <- paste0("Created on ", Sys.Date(), ". Denied Mortgages out of all Loan Applications (%). Subgroups with fewer than ", threshold, " loans originated are excluded. This data is")
 source <- paste0("HMDA (", paste(data_yrs, collapse = ", "), ") https://ffiec.cfpb.gov/data-browser/")
