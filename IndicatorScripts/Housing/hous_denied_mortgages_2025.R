@@ -307,6 +307,81 @@ loans_st <- get_raced_hmda(loans_all, state_code, "state", "_originated")
 denied <- get_raced_hmda(denied_all, county_id, "county", "_denied")
 denied_st <- get_raced_hmda(denied_all, state_code, "state", "_denied")
 
+# 9/9/2026 qa check
+loans %>% select(county_id, total_originated) %>%
+  full_join(denied %>% select(county_id, total_denied), by = "county_id") %>%
+  filter(is.na(total_originated) != is.na(total_denied))
+# no na.rm issue for total but it could happen for the race columns
+races <- c("latino", "aian", "pacisl", "nh_black", "nh_asian", "nh_white", "nh_twoormor")
+
+for (r in races) {
+  orig_col <- paste0(r, "_originated")
+  denied_col <- paste0(r, "_denied")
+  
+  mismatch <- loans %>% select(county_id, !!orig_col) %>%
+    full_join(denied %>% select(county_id, !!denied_col), by = "county_id") %>%
+    filter(is.na(.data[[orig_col]]) != is.na(.data[[denied_col]]))
+  
+  cat(r, "- mismatched counties:", nrow(mismatch), "\n")
+}
+# # output
+# latino - mismatched counties: 1 
+# aian - mismatched counties: 0 
+# pacisl - mismatched counties: 7 
+# nh_black - mismatched counties: 2 
+# nh_asian - mismatched counties: 1 
+# nh_white - mismatched counties: 0 
+# nh_twoormor - mismatched counties: 1 
+# looks like na.rm issue could be a problem for this script too, see which counties come up
+for (r in c("latino", "pacisl", "nh_black", "nh_asian", "nh_twoormor")) {
+  orig_col <- paste0(r, "_originated")
+  denied_col <- paste0(r, "_denied")
+  
+  mismatch <- loans %>% select(county_id, !!orig_col) %>%
+    full_join(denied %>% select(county_id, !!denied_col), by = "county_id") %>%
+    filter(is.na(.data[[orig_col]]) != is.na(.data[[denied_col]]))
+  
+  cat("\n---", r, "---\n")
+  print(mismatch)
+}
+# # output
+# --- latino ---
+#   # A tibble: 1 × 3
+#   county_id latino_originated latino_denied
+# <chr>                 <dbl>         <dbl>
+#   1 06003                     4            NA
+# 
+# --- pacisl ---
+#   # A tibble: 7 × 3
+#   county_id pacisl_originated pacisl_denied
+# <chr>                 <dbl>         <dbl>
+#   1 06003                     1            NA
+# 2 06021                     1            NA
+# 3 06027                     3            NA
+# 4 06043                     2            NA
+# 5 06051                    NA             1
+# 6 06091                     2            NA
+# 7 NA                       NA             0
+# 
+# --- nh_black ---
+#   # A tibble: 2 × 3
+#   county_id nh_black_originated nh_black_denied
+# <chr>                   <dbl>           <dbl>
+#   1 06051                       1              NA
+# 2 06091                       2              NA
+# 
+# --- nh_asian ---
+#   # A tibble: 1 × 3
+#   county_id nh_asian_originated nh_asian_denied
+# <chr>                   <dbl>           <dbl>
+#   1 06049                      NA               1
+# 
+# --- nh_twoormor ---
+#   # A tibble: 1 × 3
+#   county_id nh_twoormor_originated nh_twoormor_denied
+# <chr>                      <dbl>              <dbl>
+#   1 06003                          3                 NA
+# all of them that were issues seem like they come up as na in denied so they weren't denied so it might not actually be impacting the data.
 # merge loan and denied dfs
 county_join <- left_join(loans, denied, by = c("county_id", "geolevel")) %>% 
   rename(geoid = county_id)
