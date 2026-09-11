@@ -333,15 +333,15 @@ for (r in races) {
 # nh_white - mismatched counties: 0 
 # nh_twoormor - mismatched counties: 1 
 # looks like na.rm issue could be a problem for this script too, see which counties come up
-for (r in c("latino", "pacisl", "nh_black", "nh_asian", "nh_twoormor")) {
+for (r in c("latino", "pacisl", "nh_black", "nh_asian", "nh_twoormor")) { # just check the races that have a mismatch
   orig_col <- paste0(r, "_originated")
   denied_col <- paste0(r, "_denied")
   
-  mismatch <- loans %>% select(county_id, !!orig_col) %>%
-    full_join(denied %>% select(county_id, !!denied_col), by = "county_id") %>%
-    filter(is.na(.data[[orig_col]]) != is.na(.data[[denied_col]]))
+  mismatch <- loans %>% select(county_id, !!orig_col) %>% #take loans and only keep two columns countyid and current race originated; !! tells the select to use the actual columns name from the string like pacisl_originated instead of orig_col
+    full_join(denied %>% select(county_id, !!denied_col), by = "county_id") %>% #use full join to keep every county from both tables
+    filter(is.na(.data[[orig_col]]) != is.na(.data[[denied_col]])) # check if the value is missing from each column and assign a TRUE/FALSE; TRUE  when one side is missing and the other is present
   
-  cat("\n---", r, "---\n")
+  cat("\n---", r, "---\n") # easier to see print w/ the small headers from the race in the for loop
   print(mismatch)
 }
 # # output
@@ -382,6 +382,22 @@ for (r in c("latino", "pacisl", "nh_black", "nh_asian", "nh_twoormor")) {
 # <chr>                      <dbl>              <dbl>
 #   1 06003                          3                 NA
 # all of them that were issues seem like they come up as na in denied so they weren't denied so it might not actually be impacting the data.
+# all of the ones are under threshold of 15 so would be suppressed anyways. 
+# only weird part is the two that have a value for denied but not for originated. how could there be denied loans but not a loan application? worth a check.
+# 5  06051                    NA             1     (pacisl)
+# 1  06049                      NA           1     (nh_asian)
+# does county 06051 have ANY nh_pacisl-related rows anywhere in loans_all, before aggregation? maybe its from another loans code or something
+lapply(loans_all, function(x) x %>% 
+         filter(county_id == "06051", derived_race == "Native Hawaiian or Other Pacific Islander")) %>% 
+  bind_rows()
+## output
+# [1] state_code        county_code       census_tract      derived_ethnicity
+# [5] derived_race      year              NAMELSAD_TRACT_10 AREALAND_TRACT_10
+# [9] GEOID_TRACT_20    NAMELSAD_TRACT_20 AREALAND_TRACT_20 AREALAND_PART    
+# [13] wt_val            county_id        
+# <0 rows> (or 0-length row.names)
+# okay so there were no loans so its correct but this might be a data quality issue. 
+####### end of qa check ########
 # merge loan and denied dfs
 county_join <- left_join(loans, denied, by = c("county_id", "geolevel")) %>% 
   rename(geoid = county_id)
