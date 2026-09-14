@@ -107,7 +107,7 @@ cts <- cts %>%
 
 # get median # of non-na filing values grouped by county/year. then calc diff from median #. then calc % diff from median.
 med <- na.omit(df) %>%
-  # dplyr::filter(!is.na(filings)) %>%                          # remove NA filings
+  # dplyr::filter(!is.na(filings)) %>%                        # remove NA filings
   dplyr::group_by(county_id, county_name, year) %>%           # group by all three
   dplyr::summarise(non_na_count = n(), .groups = "drop") %>%  # count rows per group
   dplyr::group_by(county_id, county_name) %>%                 # regroup by county
@@ -125,10 +125,18 @@ med <- med %>%dplyr::mutate_if(is.numeric, ~round(., 1)) %>% left_join(cts, by =
 # 9/8/26 note: counts years with ANY tract data in the county, not per-tract but is later being applied at the tract level which doesn't make sense for sum_eviction
 # tract-level count of non-NA years 
 tract_non_na_yrs <- na.omit(df) %>%
+  filter(!year == 2018) %>% # remove 2018 data since they only report it for 1 county (SF)
   dplyr::group_by(fips) %>%
   dplyr::summarise(tract_non_na_yrs = n_distinct(year), .groups = "drop")
 # View(tract_non_na_yrs)
 # summary(tract_non_na_yrs)
+
+tract_yrs <- df %>% 
+  filter(!year == 2018) %>% # remove 2018 data since they only report it for 1 county (SF)
+  dplyr::group_by(fips) %>%
+  dplyr::summarise(tract_yrs = n_distinct(year), .groups = "drop")
+View(tract_yrs)
+summary(tract_yrs)
 
 # (num_yrs from `data_yrs` still works for the COUNTY-level screening step)
 data_yrs <- filter(med, !year == 2018)  # remove 2018 data since they only report it for 1 county (SF)
@@ -148,15 +156,33 @@ screened <- filter(df_join, num_yrs > 2) # suppress data for counties with fewer
 ##### CONVERT DATA FROM 2010-2020 TRACTS ######
 
 # calc sum and avg # of evictions by tract (2010)
-df_wide <- screened %>% dplyr::left_join(tract_non_na_yrs, by = "fips") %>%
+df_wide <- screened %>%
+  dplyr::left_join(tract_non_na_yrs, by = "fips") %>%
+  dplyr::left_join(tract_yrs, by = "fips") %>%
   dplyr::group_by(fips, county_name) %>%
   dplyr::mutate(sum_eviction = sum(filings, na.rm = TRUE)) %>%  # total number of evictions over all data yrs available
-  dplyr::mutate(avg_eviction = sum_eviction / tract_non_na_yrs) %>%      # avg annual number of evictions using a tract-level denominator
-  distinct(fips, county_id, county_name, sum_eviction, avg_eviction, num_yrs, tract_non_na_yrs, .keep_all = FALSE)
+  dplyr::mutate(avg_eviction_NA = sum_eviction / tract_non_na_yrs) %>%  # avg annual number of evictions using a tract-level denominator treating NA as NA (alt method)
+  dplyr::mutate(avg_eviction = sum_eviction / num_yrs) %>%              # avg annual number of evictions using a county-level denominator treating NA as zero (prev method)
+  dplyr::mutate(avg_eviction_tract = sum_eviction / tract_yrs) %>%      # avg annual number of evictions using a tract-level denominator treating NA as zero (new method)
+  distinct(fips, county_id, county_name, sum_eviction, avg_eviction, num_yrs, avg_eviction_NA, tract_non_na_yrs, avg_eviction_tract, tract_yrs, .keep_all = FALSE)
 
-df_wide <- filter(df_wide, sum_eviction != 0) # screen out tracts (n = 341) where all filings for all data years = NA, since these should be NA not 0's. there are no 0's in orig. data.
+# check changes with tract-level denominator treating NA as zero (new method)
+View(df_wide[df_wide$avg_eviction != df_wide$avg_eviction_tract, ])  # n = 3
+# check changes due with tract-level denominator treating NA as NA (alt method)
+View(df_wide[df_wide$avg_eviction != df_wide$avg_eviction_NA, ])     # n = 3,329
 
-ind_df_2010 <- df_wide %>% dplyr::rename(c("target_id" = "county_id", "target_name" = "county_name", "sub_id" = "fips")) #dplyr::rename fields for WA fx
+
+#View(df_wide %>% filter(sum_eviction==0))  # screen out tracts (n = 341) where all filings for all data years = NA, since these should be NA not 0's. there are no 0's in orig. data.
+# v3
+ind_df_2010 <- df_wide %>%
+  select(-c(avg_eviction, num_yrs, avg_eviction_NA, tract_non_na_yrs)) %>%  # drop unneeded cols
+  dplyr::rename(c("target_id" = "county_id", "target_name" = "county_name", "sub_id" = "fips")) #dplyr::rename fields for WA fx
+View(ind_df_2010)
+
+# updated v2
+ind_df_2010 <- df_wide %>%
+  select(-c(avg_eviction, num_yrs, avg_eviction_tract, tract_yrs)) %>%  # drop unneeded cols
+  dplyr::rename(c("target_id" = "county_id", "target_name" = "county_name", "sub_id" = "fips")) #dplyr::rename fields for WA fx
 View(ind_df_2010)
 
 #convert 2010 tracts to 2020 tracks then use the 2020 tract to leg crosswalk
@@ -174,7 +200,7 @@ ind_2010_2020 <- ind_df_2010 %>%
   # Allocate Evictions from 2010 tracts to 2020 using prc_overlap
   dplyr::mutate(eviction_20=sum_eviction*prc_overlap)
 
-# # check prc_overlaps sums/ note: there will be prc_overlap values > 1 bc some 2010 tracts were split into 2+ 2020 tracts and each 2020 tract comes solely from the 2010 tract 
+# # check prc_overlaps sums/ note: there may be prc_overlap values > 1 bc some 2010 tracts were split into 2+ 2020 tracts and each 2020 tract comes solely from the 2010 tract 
 # check_prc_is_1 <- cb_tract_2010_2020 %>%
 #   dplyr::group_by(GEOID_TRACT_10) %>%
 #   dplyr::summarise(total_prc=sum(prc_overlap))
@@ -183,12 +209,12 @@ ind_2010_2020 <- ind_df_2010 %>%
 ind_2020 <- ind_2010_2020 %>%
   dplyr::group_by(GEOID_TRACT_20) %>%
   # sum weighted evictions by 2020 tract
-  dplyr::summarize(sum_eviction = sum(eviction_20, na.rm=TRUE), #qa note 9/8/26 if the 2010 tract is NA for eviction 20 or prc_overlap is NA then sum() here w/out na.rm=TRUE will be NA for the whole 2020 tract so it would actually be right to include na.rm=TRUE here at this step 
-                   tract_non_na_yrs = weighted.mean(tract_non_na_yrs, w = prc_overlap, na.rm = TRUE)) %>%
+  dplyr::summarize(sum_eviction = sum(eviction_20, na.rm=TRUE), 
+                   tract_yrs = weighted.mean(tract_non_na_yrs, w = prc_overlap, na.rm = TRUE)) %>%
   # clean up names
   dplyr::rename(sub_id = GEOID_TRACT_20) %>%
   # calc 4-yr avg eviction rate (2014-2017)
-  dplyr::mutate(avg_eviction = ifelse(tract_non_na_yrs == 0, NA, sum_eviction / tract_non_na_yrs))
+  dplyr::mutate(avg_eviction = ifelse(tract_yrs == 0, NA, sum_eviction / tract_non_na_yrs))
 
 ind_df <- ind_2020 #dplyr::rename to ind_df for WA fx
 
@@ -409,10 +435,10 @@ wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid) %>%          # mov
 
 
 #### EXTRA SCREENING BC NA'S SHOULD NOT BE TREATED AS ZEROES IN THIS DATASET ####
-library(naniar)
-wa_all <- wa_all %>% 
-  replace_with_na_at(.vars = c("total_rate", "black_rate", "asian_rate", "aian_rate", "pacisl_rate", "other_rate", "twoormor_rate", "nh_white_rate", "latino_rate"),
-                     condition = ~.x == 0.00000000)
+# library(naniar)
+# wa_all <- wa_all %>% 
+#   replace_with_na_at(.vars = c("total_rate", "black_rate", "asian_rate", "aian_rate", "pacisl_rate", "other_rate", "twoormor_rate", "nh_white_rate", "latino_rate"),
+#                      condition = ~.x == 0.00000000)
 
 d <- wa_all
 # View(d)
@@ -499,3 +525,21 @@ to_postgres(county_table, state_table)
 city_to_postgres(city_table)
 leg_to_postgres(leg_table)
 # dbDisconnect(con)
+
+
+### Compare new / old tables
+con_rc <- connect_to_db("racecounts")
+state_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_eviction_filing_rate_state_2025")
+county_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_eviction_filing_rate_county_2025")
+state_v2 <- dbGetQuery(con_rc, "select * from v7.arei_hous_eviction_filing_rate_state_2025_v2")
+county_v2 <- dbGetQuery(con_rc, "select * from v7.arei_hous_eviction_filing_rate_county_2025_v2")
+# county_v3 / state_v3 use tract_yrs method
+
+library(arsenal)
+comparison_s <- comparedf(state_table, state_v1)
+summary(comparison_s)
+
+disprk_report <- inner_join(county_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+  filter(disparity_rank_new != disparity_rank_old) %>%
+  select(county_id, county_name, disparity_rank_new, disparity_rank_old)
+View(disprk_report)  # 33 counties moved ranks, all were +/- 1. El Dorado and Kings switched places, as did Merced and San Bernardino.
