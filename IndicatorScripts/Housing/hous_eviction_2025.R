@@ -518,9 +518,6 @@ state_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_eviction_filing_rate_
 county_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_eviction_filing_rate_county_2025")
 city_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_eviction_filing_rate_city_2025")
 leg_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_eviction_filing_rate_leg_2025")
-state_v2 <- dbGetQuery(con_rc, "select * from v7.arei_hous_eviction_filing_rate_state_2025_v2")
-county_v2 <- dbGetQuery(con_rc, "select * from v7.arei_hous_eviction_filing_rate_county_2025_v2")
-
 
 
 library(arsenal)
