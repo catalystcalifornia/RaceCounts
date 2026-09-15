@@ -87,7 +87,7 @@ print(b25003_curr)
 # dbWriteTable(con, c(table_schema, table_name), foreclosure, overwrite = FALSE, row.names = FALSE)
 
 # Load data and clean-----
-##### 9/1/2026 B QA: seems like maybe this has the same vulnerability but lets check. if it comes back as 20 then fine fore now but could become a problem if we update this dataset. I think its not updateable so it should be fine if this checks out. #####
+##### 9/1/2026 AB QA: seems like maybe this has the same vulnerability but lets check. if it comes back as 20 then fine fore now but could become a problem if we update this dataset. I think its not updateable so it should be fine if this checks out. #####
 foreclosure_raw <- dbGetQuery(con, "SELECT * FROM housing.dataquick_tract_2010_22_foreclosures") %>%
   select(-matches('2010|2011|2012|2013|2014|2015|2016|2022'))
 
@@ -116,6 +116,14 @@ foreclosure_raw %>%
 # 18          17    4
 # 19          18    3
 # 20          19    1
+
+## LF QA: ##
+#### As data comes from public sources, I believe that NAs should be treated as zeroes. Eg: a tract has some non-NA and some NA values.
+#### Any tracts entirely missing from the original data should be treated as NAs. ##
+
+# find rows where all values are NA
+foreclosure_raw %>% filter(if_all(everything(), is.na)) # n = 0
+
 ##### end of qa chunk #####
 
 
