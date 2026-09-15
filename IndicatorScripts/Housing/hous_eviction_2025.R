@@ -86,8 +86,6 @@ df <- df_orig %>% dplyr::filter((state == "California") & grepl(paste(data_yrs, 
 
 ######### County Screening / Data Exploration ##########
 # get count of ct's per county for context
-census_api_key(census_key1, overwrite=FALSE) # In practice, may need to include install=TRUE if switching between census api keys
-# Sys.getenv("CENSUS_API_KEY")
 cts <- get_acs(geography = "tract", 
                variables = c("B19013_001"), 
                state = "CA", 
@@ -105,9 +103,9 @@ cts <- cts %>%
 #   dplyr::select(-c(GEOID, NAME))
 # View(cts)
 
-# get median # of non-na filing values grouped by county/year. then calc diff from median #. then calc % diff from median.
-med <- na.omit(df) %>%
-  # dplyr::filter(!is.na(filings)) %>%                          # remove NA filings
+# get median # of filing values grouped by county/year. then calc diff from median #. then calc % diff from median.
+# the only value that gets used from this df is the row count as the data yrs at county level
+med <- df %>%
   dplyr::group_by(county_id, county_name, year) %>%           # group by all three
   dplyr::summarise(non_na_count = n(), .groups = "drop") %>%  # count rows per group
   dplyr::group_by(county_id, county_name) %>%                 # regroup by county
@@ -118,19 +116,19 @@ med <- na.omit(df) %>%
   ) %>%
   dplyr::ungroup()
 # round numeric values. join total # of cts per county.
-med <- med %>%dplyr::mutate_if(is.numeric, ~round(., 1)) %>% left_join(cts, by = "county_id")
+med <- med %>% dplyr::mutate_if(is.numeric, ~round(., 1)) %>% left_join(cts, by = "county_id")
 # View(med)
 
-# get count of data yrs with non-na filing_rate by county.    
-# 9/8/26 note: counts years with ANY tract data in the county, not per-tract but is later being applied at the tract level which doesn't make sense for sum_eviction
-# tract-level count of non-NA years 
-tract_non_na_yrs <- na.omit(df) %>%
+# Get count of data yrs by tract and county  
+# tract_yrs$tract_yrs used for the tract-level multi-yr avg # evictions calc
+tract_yrs <- df %>% 
+  filter(!year == 2018) %>%  # remove 2018 data since they only report it for 1 county (SF)
   dplyr::group_by(fips) %>%
-  dplyr::summarise(tract_non_na_yrs = n_distinct(year), .groups = "drop")
-# View(tract_non_na_yrs)
-# summary(tract_non_na_yrs)
+  dplyr::summarise(tract_yrs = n_distinct(year), .groups = "drop")
+# View(tract_yrs)
+# summary(tract_yrs)
 
-# (num_yrs from `data_yrs` still works for the COUNTY-level screening step)
+# data_yrs$num_yrs used for COUNTY-level screening
 data_yrs <- filter(med, !year == 2018)  # remove 2018 data since they only report it for 1 county (SF)
 data_yrs <- data_yrs %>% dplyr::group_by(county_id, county_name) %>% 
      dplyr::mutate(num_yrs = n()) %>% 
@@ -139,25 +137,37 @@ data_yrs <- data_yrs %>% dplyr::group_by(county_id, county_name) %>%
  # View(data_yrs)
  # summary(data_yrs)
 
-df_join <- df %>% inner_join(data_yrs, by = c("county_id", "county_name")) # n = 52
+# add num_yrs to data
+df_join <- df %>% inner_join(data_yrs, by = c("county_id", "county_name")) 
 
-screened <- filter(df_join, num_yrs > 2) # suppress data for counties with fewer than 3 years of data, n = 39
+screened <- filter(df_join, num_yrs > 2) # suppress data for counties with fewer than 3 years of data
 # View(screened)
 # unique(screened$county_name)   # 39 counties pass num_yrs screening
 
 ##### CONVERT DATA FROM 2010-2020 TRACTS ######
 
-# calc sum and avg # of evictions by tract (2010)
-df_wide <- screened %>% dplyr::left_join(tract_non_na_yrs, by = "fips") %>%
+# calc sum and avg # of evictions by tract (2010). 
+# Note: This avg does not get used in WA - we first weight the sums here and then calc avgs.
+df_wide <- screened %>%
+  dplyr::left_join(tract_yrs, by = "fips") %>%   # join tract-level data yrs
   dplyr::group_by(fips, county_name) %>%
-  dplyr::mutate(sum_eviction = sum(filings, na.rm = TRUE)) %>%  # total number of evictions over all data yrs available
-  dplyr::mutate(avg_eviction = sum_eviction / tract_non_na_yrs) %>%      # avg annual number of evictions using a tract-level denominator
-  distinct(fips, county_id, county_name, sum_eviction, avg_eviction, num_yrs, tract_non_na_yrs, .keep_all = FALSE)
+  dplyr::mutate(sum_eviction = sum(filings, na.rm = TRUE)) %>%          # total number of evictions over all data yrs available
+  dplyr::mutate(avg_eviction_county = sum_eviction / num_yrs) %>%              # avg annual number of evictions using county-level data yrs, treating NA as zero (prev method)
+  dplyr::mutate(avg_eviction_tract = sum_eviction / tract_yrs) %>%      # avg annual number of evictions using tract-level data yrs, treating NA as zero (new method)
+  distinct(fips, county_id, county_name, sum_eviction, avg_eviction_county, num_yrs, avg_eviction_tract, tract_yrs, .keep_all = FALSE)
 
-df_wide <- filter(df_wide, sum_eviction != 0) # screen out tracts (n = 341) where all filings for all data years = NA, since these should be NA not 0's. there are no 0's in orig. data.
+# check changes with tract-level data yrs (updated method)
+View(df_wide[df_wide$avg_eviction_county != df_wide$avg_eviction_tract, ])  # n = 3 tract values change
 
-ind_df_2010 <- df_wide %>% dplyr::rename(c("target_id" = "county_id", "target_name" = "county_name", "sub_id" = "fips")) #dplyr::rename fields for WA fx
+# Tracts that have all NA values
+# allNA_df <- df_wide %>% filter(sum_eviction==0)  # tracts (n = 341) where all filings for all data years = NA
+
+ind_df_2010 <- df_wide %>%
+  select(-c(avg_eviction_county, num_yrs, avg_eviction_tract)) %>%  # drop unneeded cols
+  dplyr::rename(c("target_id" = "county_id", "target_name" = "county_name", "sub_id" = "fips")) #dplyr::rename fields for WA fx
 View(ind_df_2010)
+
+# length(unique(ind_df_2010$sub_id))  # n = 7,756
 
 #convert 2010 tracts to 2020 tracks then use the 2020 tract to leg crosswalk
 # note: Evictions uses 2010 tract vintage, population estimates use 2020 tract vintage
@@ -167,14 +177,17 @@ cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\tract20_tract
   # calculate overlapping land area of 2010 and 2020 tracts (AREALAND_PART) as a percent of 2010 tract land area (AREALAND_TRACT_10)
   dplyr::mutate(prc_overlap=AREALAND_PART/AREALAND_TRACT_10)
 
+# length(unique(cb_tract_2010_2020$GEOID_TRACT_10))  # n = 8,062
+
 # Because Evictions uses 2010 vintage tracts - need to convert to 2020 vintage and allocate score accordingly
 ind_2010_2020 <- ind_df_2010 %>%
   left_join(cb_tract_2010_2020, by=c("sub_id"="GEOID_TRACT_10")) %>%
-  dplyr::select(sub_id, sum_eviction, tract_non_na_yrs, AREALAND_TRACT_10, GEOID_TRACT_20, AREALAND_TRACT_20, AREALAND_PART, prc_overlap)  %>%
-  # Allocate Evictions from 2010 tracts to 2020 using prc_overlap
-  dplyr::mutate(eviction_20=sum_eviction*prc_overlap)
+  dplyr::select(sub_id, sum_eviction, tract_yrs, AREALAND_TRACT_10, GEOID_TRACT_20, AREALAND_TRACT_20, AREALAND_PART, prc_overlap)  %>%
+  # Allocate evictions from 2010 tracts to 2020 using prc_overlap, then avg those counts using tract_yrs
+  dplyr::mutate(eviction_20 = sum_eviction * prc_overlap,   # count of evictions weighted by 2010-2020 tract overlap
+                avg_eviction_20 = eviction_20 / tract_yrs)  # avg count of weighted evictions
 
-# # check prc_overlaps sums/ note: there will be prc_overlap values > 1 bc some 2010 tracts were split into 2+ 2020 tracts and each 2020 tract comes solely from the 2010 tract 
+# # check prc_overlaps sums/ note: there may be prc_overlap values > 1 bc some 2010 tracts were split into 2+ 2020 tracts and each 2020 tract comes solely from the 2010 tract 
 # check_prc_is_1 <- cb_tract_2010_2020 %>%
 #   dplyr::group_by(GEOID_TRACT_10) %>%
 #   dplyr::summarise(total_prc=sum(prc_overlap))
@@ -182,13 +195,10 @@ ind_2010_2020 <- ind_df_2010 %>%
 # create indicator df (2020 tracts) to be used in WA calcs
 ind_2020 <- ind_2010_2020 %>%
   dplyr::group_by(GEOID_TRACT_20) %>%
-  # sum weighted evictions by 2020 tract
-  dplyr::summarize(sum_eviction = sum(eviction_20, na.rm=TRUE), #qa note 9/8/26 if the 2010 tract is NA for eviction 20 or prc_overlap is NA then sum() here w/out na.rm=TRUE will be NA for the whole 2020 tract so it would actually be right to include na.rm=TRUE here at this step 
-                   tract_non_na_yrs = weighted.mean(tract_non_na_yrs, w = prc_overlap, na.rm = TRUE)) %>%
+  # sum avg counts of evictions by 2020 tract: 4-yr avg eviction rate (2014-2017)
+  dplyr::summarize(avg_eviction = sum(avg_eviction_20, na.rm=TRUE)) %>%
   # clean up names
-  dplyr::rename(sub_id = GEOID_TRACT_20) %>%
-  # calc 4-yr avg eviction rate (2014-2017)
-  dplyr::mutate(avg_eviction = ifelse(tract_non_na_yrs == 0, NA, sum_eviction / tract_non_na_yrs))
+  dplyr::rename(sub_id = GEOID_TRACT_20)
 
 ind_df <- ind_2020 #dplyr::rename to ind_df for WA fx
 
@@ -407,12 +417,13 @@ wa_all <- wa_all %>% dplyr::relocate(geoname, .after = geoid) %>%          # mov
   dplyr::relocate(total_rate, .after = twoormor_rate) %>% 
   dplyr::relocate(total_pop, .after = twoormor_pop)
 
-
-#### EXTRA SCREENING BC NA'S SHOULD NOT BE TREATED AS ZEROES IN THIS DATASET ####
+#### EXTRA SCREENING TO DROP RACED VALUES WHEN ALL RACED VALUES ARE EITHER O OR NA ####
+# These data are not helpful bc there is no disparity only bc there are no evictions
 library(naniar)
 wa_all <- wa_all %>% 
   replace_with_na_at(.vars = c("total_rate", "black_rate", "asian_rate", "aian_rate", "pacisl_rate", "other_rate", "twoormor_rate", "nh_white_rate", "latino_rate"),
                      condition = ~.x == 0.00000000)
+
 
 d <- wa_all
 # View(d)
@@ -486,10 +497,10 @@ city_table <-  dplyr::rename(city_table, city_id = geoid, city_name = geoname)
 leg_table <-  dplyr::rename(leg_table, leg_id = geoid, leg_name = geoname) 
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_hous_eviction_filing_rate_county_", rc_yr, "_v2")
-state_table_name <- paste0("arei_hous_eviction_filing_rate_state_", rc_yr, "_v2")
-city_table_name <- paste0("arei_hous_eviction_filing_rate_city_", rc_yr, "_v2")
-leg_table_name <- paste0("arei_hous_eviction_filing_rate_leg_", rc_yr, "_v2")
+county_table_name <- paste0("arei_hous_eviction_filing_rate_county_", rc_yr)
+state_table_name <- paste0("arei_hous_eviction_filing_rate_state_", rc_yr)
+city_table_name <- paste0("arei_hous_eviction_filing_rate_city_", rc_yr)
+leg_table_name <- paste0("arei_hous_eviction_filing_rate_leg_", rc_yr)
 
 indicator <- "Rate of eviction filings per 100 renter households (weighted average) - annual average from 2014-2017. Data is converted to 2020 tracts, 2020 ACS Table B25003 pop is used as denominator. The data is"
 source <- "the (2000-2017) valid proprietary tract-level data downloaded from the Eviction Lab. https://data-downloads.evictionlab.org/#data-for-analysis/"
@@ -499,3 +510,26 @@ to_postgres(county_table, state_table)
 city_to_postgres(city_table)
 leg_to_postgres(leg_table)
 # dbDisconnect(con)
+
+
+### Compare new / old tables
+con_rc <- connect_to_db("racecounts")
+state_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_eviction_filing_rate_state_2025")
+county_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_eviction_filing_rate_county_2025")
+city_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_eviction_filing_rate_city_2025")
+leg_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_eviction_filing_rate_leg_2025")
+
+
+library(arsenal)
+comparison_s <- comparedf(state_table, state_v1)
+summary(comparison_s)
+
+disprk_report <- inner_join(county_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+  filter(disparity_rank_new != disparity_rank_old) %>%
+  select(county_id, county_name, disparity_rank_new, disparity_rank_old)
+View(disprk_report)  # 0 counties moved ranks
+
+perfrk_report <- inner_join(county_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+  filter(performance_rank_new != performance_rank_old) %>%
+  select(county_id, county_name, performance_rank_new, performance_rank_old)
+View(perfrk_report)  # 0 counties moved ranks
