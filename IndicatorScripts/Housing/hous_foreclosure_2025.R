@@ -87,60 +87,26 @@ print(b25003_curr)
 # dbWriteTable(con, c(table_schema, table_name), foreclosure, overwrite = FALSE, row.names = FALSE)
 
 # Load data and clean-----
-##### 9/1/2026 AB QA: seems like maybe this has the same vulnerability but lets check. if it comes back as 20 then fine fore now but could become a problem if we update this dataset. I think its not updateable so it should be fine if this checks out. #####
-foreclosure_raw <- dbGetQuery(con, "SELECT * FROM housing.dataquick_tract_2010_22_foreclosures") %>%
-  select(-matches('2010|2011|2012|2013|2014|2015|2016|2022'))
+foreclosure <- dbGetQuery(con, "SELECT * FROM housing.dataquick_tract_2010_22_foreclosures") # comment out table creation above after it's done, and instead import data from pgadmin
 
-foreclosure_raw %>%
-  mutate(non_na_qtrs = rowSums(!is.na(across(3:22)))) %>%
-  count(non_na_qtrs)
-# # output #only one quarter w/ the full dataset so its a big problem in this script
-# non_na_qtrs    n
-# 1            0 1223 #in one row every single row is NA. a separate problem but that's weird
-# 2            1 1324
-# 3            2 1156
-# 4            3  972
-# 5            4  737
-# 6            5  578
-# 7            6  441
-# 8            7  373
-# 9            8  255
-# 10           9  210
-# 11          10  150
-# 12          11  146
-# 13          12   93
-# 14          13   74
-# 15          14   48
-# 16          15   33
-# 17          16   13
-# 18          17    4
-# 19          18    3
-# 20          19    1
-
-## LF QA: ##
+## LF NA Check: ##
 #### As data comes from public sources, I believe that NAs should be treated as zeroes. Eg: a tract has some non-NA and some NA values.
 #### Any tracts entirely missing from the original data should be treated as NAs. ##
 
 # find rows where all values are NA
 foreclosure_raw %>% filter(if_all(everything(), is.na)) # n = 0
 
-##### end of qa chunk #####
-
-
-foreclosure <- dbGetQuery(con, "SELECT * FROM housing.dataquick_tract_2010_22_foreclosures") # comment out table creation above after it's done, and instead import data from pgadmin
 
 num_qtrs = 20   # update depending on how many data yrs you are working with
 foreclosure <- foreclosure %>% select(-matches('2010|2011|2012|2013|2014|2015|2016|2022')) %>%
-  mutate(
-    non_na_qtrs = rowSums(!is.na(across(3:22))), #try adding this fix 9/1/2026
-    sum_foreclosure = rowSums(.[3:22], na.rm = TRUE),  # total number of foreclosures over all data quarters
-    avg_foreclosure = ifelse(non_na_qtrs == 0, NA, sum_foreclosure / non_na_qtrs)) %>% 
-  select(-c(3:22))   # remove quarterly foreclosure columns
+  mutate(sum_foreclosure = rowSums(.[3:22], na.rm = TRUE)) %>%  # total number of foreclosures over all data quarters
+  mutate(avg_foreclosure = sum_foreclosure / num_qtrs) %>%  # avg quarterly number of foreclosures
+  select(-matches('Q'))   # remove quarterly foreclosure columns
 
 foreclosure$County = str_to_title(foreclosure$County)
-foreclosure$County <- str_remove(foreclosure$County,  "\\s*\\(.*\\)\\s*")     # remove spaces from col names
-foreclosure$County <- gsub("; California", "", foreclosure$County)
-foreclosure <- rename(foreclosure, "county"="County", "census_tract"="Census Tract")
+ foreclosure$County <- str_remove(foreclosure$County,  "\\s*\\(.*\\)\\s*")     # remove spaces from col names
+ foreclosure$County <- gsub("; California", "", foreclosure$County)
+ foreclosure <- rename(foreclosure, "county"="County", "census_tract"="Census Tract")
 
 # There are 3 tracts in the data that appear in 2020 tract list, but not in 2010 tract list.
 ## We pull those foreclosures out here, and assign them to the 2020 tracts after the 2010-2020 tract conversion process.
@@ -151,14 +117,13 @@ foreclosures_20 <- foreclosure %>% filter(census_tract %in% c('000902', '001003'
 
 View(foreclosure)
 
-
 targetgeolevel <- c('county') # should be a county_names() argument but have to make it a global variable for the fn to work
 targetgeo_names <- county_names(var_list = vars_list_b25003, yr = acs_yr, srvy = "acs5" )
 
 # merge dfs by geoname then paste the county id to the front of the tract IDs to make full CT FIPS codes
 ind_2010 <- left_join(targetgeo_names, foreclosure, by = c("target_name" = "county")) %>% 
   mutate(sub_id = paste0(target_id, census_tract)) %>% 
-  select(target_id, sub_id, target_name, non_na_qtrs, sum_foreclosure, avg_foreclosure) %>% 
+  select(target_id, sub_id, target_name, sum_foreclosure, avg_foreclosure) %>% 
   as.data.frame()
 # View(ind_2010)
 
@@ -174,7 +139,7 @@ cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\tract20_tract
 # Because Foreclosure uses 2010 vintage tracts - need to convert to 2020 vintage and allocate score accordingly
 ind_2010_2020 <- cb_tract_2010_2020 %>%
   right_join(ind_2010, by=c('GEOID_TRACT_10'='sub_id')) %>%
-  select(GEOID_TRACT_10, sum_foreclosure, non_na_qtrs, AREALAND_TRACT_10, AREALAND_PART, GEOID_TRACT_20, AREALAND_TRACT_20, prc_overlap) %>%
+  select(GEOID_TRACT_10, sum_foreclosure, AREALAND_TRACT_10, AREALAND_PART, GEOID_TRACT_20, AREALAND_TRACT_20, prc_overlap) %>%
   # Allocate CES scores from 2010 tracts to 2020 using prc_overlap
   mutate(foreclosure_20=sum_foreclosure*prc_overlap)
 
@@ -187,22 +152,15 @@ ind_2010_2020 <- cb_tract_2010_2020 %>%
 # add back foreclosure data for 2020-only tracts
 ind_2010_2020 <- ind_2010_2020 %>% plyr::rbind.fill(foreclosures_20)
 
-###### qa 9/1/2026 ######### 
-#somewhere here add a check for if a tract that split from 2010 to 2020 vintage. see what happens to one w/ a less than 1 prc_overlap
-ind_2010_2020 %>% filter(GEOID_TRACT_10 == "tract_specific_#") %>%
-  select(GEOID_TRACT_10, GEOID_TRACT_20, prc_overlap, non_na_qtrs)
-#then compare to what happens to it after ind_2020 step. need to wait until we have access to that xwalk again. not in rdashared in geographies_ca or crosswalks schemas
-####resume script  #####
 # create indicator df (2020 tracts) to be used in WA calcs
 ind_2020 <- ind_2010_2020 %>%
   # sum weighted foreclosures by 2020 tract
   group_by(GEOID_TRACT_20) %>%
-  summarize(sum_foreclosure = sum(foreclosure_20, na.rm = TRUE), #9/1/2026 fix attempt
-            non_na_qtrs = weighted.mean(non_na_qtrs, w = prc_overlap, na.rm = TRUE)) %>%   # 9/1/2026 carry non_na_qtrs through the tract-vintage conversion rather than recomputing from scratch
+  summarize(sum_foreclosure = sum(foreclosure_20, na.rm=TRUE)) %>% # added 9/1/26, did not change results
   # clean up names
   rename(sub_id = GEOID_TRACT_20) %>% 
   # calc 5-yr avg foreclosure rate (2017-2021)
-  mutate(avg_foreclosure = ifelse(non_na_qtrs == 0, NA, sum_foreclosure / non_na_qtrs)) #9/1/2026 do the same here as foreclosures df
+  mutate(avg_foreclosure = sum_foreclosure / num_qtrs) 
 
 
 ############# COUNTY CALCS ##################
@@ -512,3 +470,30 @@ source <- paste0("DataQuick (", curr_yr, "), purchased from DQNews and raced via
 # city_to_postgres(city_table)
 # leg_to_postgres(leg_table)
 dbDisconnect(con)
+
+## Compare old/new tables
+con_rc <- connect_to_db("racecounts")
+state_old <- dbGetQuery(con_rc, "select * from v7.arei_hous_foreclosure_state_2025")
+county_old <- dbGetQuery(con_rc, "select * from v7.arei_hous_foreclosure_county_2025")
+leg_old <- dbGetQuery(con_rc, "select * from v7.arei_hous_foreclosure_leg_2025")
+city_old <- dbGetQuery(con_rc, "select * from v7.arei_hous_foreclosure_city_2025")
+
+library(arsenal)
+ comparison_s <- comparedf(state_table, state_old)
+ summary(comparison_s)
+
+ disprk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+   filter(disparity_rank_new != disparity_rank_old) %>%
+   select(county_id, county_name, disparity_rank_new, disparity_rank_old)
+ disprk_report  # 3 counties moved disparity ranks, all were +/- 1 or 2. Mono went down 1, Shasta went down 1, Siskiyou went up 2.
+
+ perfrk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+   filter(performance_rank_new != performance_rank_old) %>%
+   select(county_id, county_name, performance_rank_new, performance_rank_old)
+ perfrk_report  # 0 counties moved outcome ranks.
+
+
+
+
+
+

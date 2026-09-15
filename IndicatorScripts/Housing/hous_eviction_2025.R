@@ -26,7 +26,7 @@ source("W:\\RDA Team\\R\\credentials_source.R")
 con <- connect_to_db("rda_shared_data")
 
 #set source for RC Functions script
-source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")  # temporary re-direct to LF local
+source("W:/RDA Team/R/Github/RDA Functions/main/RDA-Functions/Cnty_St_Wt_Avg_Functions.R")  
 
 #set QA filepath
 qa_filepath <- "W:\\Project\\RACE COUNTS\\2025_v7\\Housing\\QA_Sheet_Eviction.docx"
@@ -86,8 +86,6 @@ df <- df_orig %>% dplyr::filter((state == "California") & grepl(paste(data_yrs, 
 
 ######### County Screening / Data Exploration ##########
 # get count of ct's per county for context
-census_api_key(census_key1, overwrite=FALSE) # In practice, may need to include install=TRUE if switching between census api keys
-# Sys.getenv("CENSUS_API_KEY")
 cts <- get_acs(geography = "tract", 
                variables = c("B19013_001"), 
                state = "CA", 
