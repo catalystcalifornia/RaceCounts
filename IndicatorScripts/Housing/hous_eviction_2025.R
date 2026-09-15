@@ -104,6 +104,7 @@ cts <- cts %>%
 # View(cts)
 
 # get median # of filing values grouped by county/year. then calc diff from median #. then calc % diff from median.
+# the only value that gets used from this df is the row count as the data yrs at county level
 med <- df %>%
   dplyr::group_by(county_id, county_name, year) %>%           # group by all three
   dplyr::summarise(non_na_count = n(), .groups = "drop") %>%  # count rows per group
@@ -496,10 +497,10 @@ city_table <-  dplyr::rename(city_table, city_id = geoid, city_name = geoname)
 leg_table <-  dplyr::rename(leg_table, leg_id = geoid, leg_name = geoname) 
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_hous_eviction_filing_rate_county_", rc_yr, "_v2")
-state_table_name <- paste0("arei_hous_eviction_filing_rate_state_", rc_yr, "_v2")
-city_table_name <- paste0("arei_hous_eviction_filing_rate_city_", rc_yr, "_v2")
-leg_table_name <- paste0("arei_hous_eviction_filing_rate_leg_", rc_yr, "_v2")
+county_table_name <- paste0("arei_hous_eviction_filing_rate_county_", rc_yr)
+state_table_name <- paste0("arei_hous_eviction_filing_rate_state_", rc_yr)
+city_table_name <- paste0("arei_hous_eviction_filing_rate_city_", rc_yr)
+leg_table_name <- paste0("arei_hous_eviction_filing_rate_leg_", rc_yr)
 
 indicator <- "Rate of eviction filings per 100 renter households (weighted average) - annual average from 2014-2017. Data is converted to 2020 tracts, 2020 ACS Table B25003 pop is used as denominator. The data is"
 source <- "the (2000-2017) valid proprietary tract-level data downloaded from the Eviction Lab. https://data-downloads.evictionlab.org/#data-for-analysis/"
