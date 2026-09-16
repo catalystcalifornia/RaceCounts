@@ -234,58 +234,43 @@ denied_all <- c(denied_1, denied_2)
 get_raced_hmda <- function(z, geoid, geolevel, suffix) { # get raced and total loan or denied mtg counts at county level
   
   latino <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Hispanic or Latino") %>% dplyr::group_by({{geoid}}) %>%
-    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), latino = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
-    select(-n_non_na)})
+    dplyr::summarise(latino = sum(wt_val, na.rm=TRUE))})
   
   latino <- latino %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(latino = sum(latino, na.rm=TRUE)) %>% as.data.frame()
   
   #aian alone, latinx inclusive
   aian <- lapply(z, function (x) {x <- x %>% filter(derived_race == "American Indian or Alaska Native") %>%
-    dplyr::group_by({{geoid}}) %>% 
-    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), aian = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
-    select(-n_non_na)})
+    dplyr::group_by({{geoid}}) %>% dplyr::summarise(aian = sum(wt_val, na.rm=TRUE))})
   
   aian <- aian %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(aian = sum(aian, na.rm=TRUE)) 
   
   #pacisl alone, latinx inclusive
   pacisl <- lapply(z, function (x) {x <- x %>% filter(derived_race == "Native Hawaiian or Other Pacific Islander") %>%
-    dplyr::group_by({{geoid}}) %>% 
-    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), pacisl = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
-    select(-n_non_na)})
+    dplyr::group_by({{geoid}}) %>% dplyr::summarise(pacisl = sum(wt_val, na.rm=TRUE))})
   
   pacisl <- pacisl %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(pacisl = sum(pacisl, na.rm=TRUE)) 
   
   nh_black <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", derived_race == "Black or African American") %>%
-    dplyr::group_by({{geoid}}) %>% 
-    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_black = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
-    select(-n_non_na)})
+    dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_black = sum(wt_val, na.rm=TRUE))})
   
   nh_black <- nh_black %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_black = sum(nh_black, na.rm=TRUE)) 
   
   nh_asian <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", derived_race == "Asian") %>%
-    dplyr::group_by({{geoid}}) %>% 
-    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_asian = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
-    select(-n_non_na)})
+    dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_asian = sum(wt_val, na.rm=TRUE))})
   
   nh_asian <- nh_asian %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_asian = sum(nh_asian, na.rm=TRUE)) 
   
   nh_white <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", derived_race == "White") %>%
-    dplyr::group_by({{geoid}}) %>% 
-    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_white = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
-    select(-n_non_na)})
+    dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_white = sum(wt_val, na.rm=TRUE))})
   
   nh_white <- nh_white %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_white = sum(nh_white, na.rm=TRUE)) 
   
   nh_twoormor <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", (derived_race == "Joint" | derived_race == "2 or more minority races")) %>%
-    dplyr::group_by({{geoid}}) %>% 
-    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), nh_twoormor = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
-    select(-n_non_na)})
+    dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_twoormor = sum(wt_val, na.rm=TRUE))})
   
   nh_twoormor <- nh_twoormor %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_twoormor = sum(nh_twoormor, na.rm=TRUE)) 
   
-  total <- lapply(z, function (x) {x <- x %>% dplyr::group_by({{geoid}}) %>% 
-    dplyr::summarise(n_non_na = sum(!is.na(wt_val)), total = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
-    select(-n_non_na)})
+  total <- lapply(z, function (x) {x <- x %>% dplyr::group_by({{geoid}}) %>% dplyr::summarise(total = sum(wt_val, na.rm=TRUE))})
   
   total <- total %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(total = sum(total, na.rm=TRUE)) 
   
@@ -307,8 +292,147 @@ loans_st <- get_raced_hmda(loans_all, state_code, "state", "_originated")
 denied <- get_raced_hmda(denied_all, county_id, "county", "_denied")
 denied_st <- get_raced_hmda(denied_all, state_code, "state", "_denied")
 
-# 9/9/2026 qa check
-loans %>% select(county_id, total_originated) %>%
+# 9/16/26 QA Check - LF
+## check individual years: are there are tracts in denied mtgs that are not in loans data
+# 2023
+all(denied_all[[5]][["census_tract"]] %in% loans_all[[5]][["census_tract"]])
+missing_vals <- denied_all[[5]][["census_tract"]][ !denied_all[[5]][["census_tract"]] %in% loans_all[[5]][["census_tract"]]]
+denied_only <- denied_all[[5]] %>% filter(census_tract %in% missing_vals)
+nrow(denied_all[[5]])
+nrow(loans_all[[5]])
+nrow(denied_only) # There are 39 denied mtgs in tracts in denied data (n=29,789) that are not in loans data (n=267,217).
+
+# 2022
+all(denied_all[[4]][["census_tract"]] %in% loans_all[[4]][["census_tract"]])
+missing_vals <- denied_all[[4]][["census_tract"]][ !denied_all[[4]][["census_tract"]] %in% loans_all[[4]][["census_tract"]]]
+denied_only <- denied_all[[4]] %>% filter(census_tract %in% missing_vals)
+nrow(denied_all[[4]])
+nrow(loans_all[[4]])
+nrow(denied_only) # There are 55 denied mtgs in tracts in denied data (n=122,834) that are not in loans data (n=548,466).
+
+## Given the small % of tract mismatches, I think we are ok to keep these denied mtgs in the data. It could be that the loan apps were submitted in 1 year and then denied in the next.
+
+# check across all years: are there tracts w denied mtgs that are not in loans data
+loans_ct <- get_raced_hmda(loans_all, GEOID_TRACT_20, "tract", "_originated")
+denied_ct <- get_raced_hmda(denied_all, GEOID_TRACT_20, "tract", "_denied")
+join_by_name <- function(list1, list2, join_fx = full_join) {
+  # only keep names present in both lists
+  common_names <- intersect(names(list1), names(list2))
+  
+  result <- map(common_names, function(nm) {
+    join_fx(list1[[nm]], list2[[nm]])
+  })
+  
+  names(result) <- common_names
+  
+  return(result)
+}
+
+# usage:
+joined_list <- join_by_name(loans_ct, denied_ct)
+
+library(purrr)
+library(stringr)
+library(dplyr)
+
+flag_denied_no_originated <- function(qa_check) {
+  
+  # Find all "_originated" columns that have a matching "_denied" column
+  originated_cols <- names(qa_check)[str_detect(names(qa_check), "_originated$")]
+  prefixes <- str_remove(originated_cols, "_originated$")
+  
+  # Keep only prefixes that actually have both columns
+  valid_prefixes <- prefixes[paste0(prefixes, "_denied") %in% names(qa_check)]
+  
+  # If no valid pairs exist, return an empty dataframe with a warning
+  if (length(valid_prefixes) == 0) {
+    warning("No matching _originated/_denied column pairs found.")
+    return(qa_check[0, ])
+  }
+  
+  # Build a logical matrix: TRUE where denied is not NA but originated IS NA
+  flag_matrix <- sapply(valid_prefixes, function(p) {
+    denied_col <- qa_check[[paste0(p, "_denied")]]
+    originated_col <- qa_check[[paste0(p, "_originated")]]
+    !is.na(denied_col) & is.na(originated_col)
+  }, simplify = "matrix")
+  
+  # Force proper matrix dimensions regardless of how many prefixes exist
+  flag_matrix <- matrix(flag_matrix, nrow = nrow(qa_check), ncol = length(valid_prefixes),
+                        dimnames = list(NULL, valid_prefixes))
+  
+  # Row is flagged if ANY pair has the issue
+  qa_check$flagged <- apply(flag_matrix, 1, any)
+  
+  # Which specific prefixes triggered the flag, per row
+  qa_check$flagged_fields <- apply(flag_matrix, 1, function(row) {
+    paste(valid_prefixes[row], collapse = ", ")
+  })
+  
+  # Return only the flagged rows
+  qa_check %>% filter(flagged)
+}
+
+# Apply across every element of joined_list, preserving year names
+flagged_list <- map(joined_list, flag_denied_no_originated)
+
+# flagged_list[["2019"]], flagged_list[["2020"]], etc. now each contain
+# only the problem rows for that year
+  
+  
+  
+  
+  
+
+
+
+
+missing_vals <- denied_ct$GEOID_TRACT_20[ !denied_ct$GEOID_TRACT_20 %in% loans_ct$GEOID_TRACT_20]
+denied_only <- denied_ct %>% filter(GEOID_TRACT_20 %in% missing_vals)
+sum(denied_ct$total_denied, na.rm=TRUE)
+sum(loans_ct$total_originated, na.rm=TRUE)
+nrow(denied_only) # There are 14 denied mtgs in tracts in denied data (n=825,151.1) that are not in loans data (n=5,055,786).
+## 5 are in LAC, 1 in Monterey/Orange, 2 in SD, 4 in SF, 1 in San Mateo. All of these have many tracts, so these few records will not skew results.
+
+# # Check if there are any counties with non-NA _denied value whose corresponding _total value is NA
+# qa_check <- loans %>% full_join(denied)
+# 
+# ## Find all "_originated" columns that have a matching "_denied" column
+# originated_cols <- names(qa_check)[str_detect(names(qa_check), "_originated$")]
+# prefixes <- str_remove(originated_cols, "_originated$")
+# 
+# ## Keep only prefixes that actually have both columns
+# valid_prefixes <- prefixes[paste0(prefixes, "_denied") %in% names(qa_check)]
+# 
+# ## Sanity check - confirm prefixes look right (e.g. "nh_white", "total", "latino")
+# print(valid_prefixes)
+# 
+# ## Build a logical matrix: TRUE where denied is not NA but originated IS NA
+# flag_matrix <- sapply(valid_prefixes, function(p) {
+#   denied_col <- qa_check[[paste0(p, "_denied")]]
+#   originated_col <- qa_check[[paste0(p, "_originated")]]
+#   !is.na(denied_col) & is.na(originated_col)
+# }, simplify = "matrix")
+# 
+# ## Force proper matrix dimensions regardless of how many prefixes exist
+# flag_matrix <- matrix(flag_matrix, nrow = nrow(qa_check), ncol = length(valid_prefixes),
+#                       dimnames = list(NULL, valid_prefixes))
+# 
+# ## Row is flagged if ANY pair has the issue
+# qa_check$flagged <- apply(flag_matrix, 1, any)
+# 
+# ## Which specific prefixes triggered the flag, per row
+# qa_check$flagged_fields <- apply(flag_matrix, 1, function(row) {
+#   paste(valid_prefixes[row], collapse = ", ")
+# })
+# 
+# ## The rows you want:
+# flagged_rows <- qa_check %>% filter(flagged)
+# 
+# View(flagged_rows)
+
+# 9/9/2026 qa check - AB
+qa_check <- loans %>% select(county_id, total_originated) %>%
   full_join(denied %>% select(county_id, total_denied), by = "county_id") %>%
   filter(is.na(total_originated) != is.na(total_denied))
 # no na.rm issue for total but it could happen for the race columns
@@ -398,6 +522,7 @@ lapply(loans_all, function(x) x %>%
 # <0 rows> (or 0-length row.names)
 # okay so there were no loans so its correct but this might be a data quality issue. 
 ####### end of qa check ########
+
 # merge loan and denied dfs
 county_join <- left_join(loans, denied, by = c("county_id", "geolevel")) %>% 
   rename(geoid = county_id)
