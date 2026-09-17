@@ -193,56 +193,56 @@ df_subprime20 <- df_subprime20 %>%
 # data dictionary: https://files.consumerfinance.gov/hmda-historic-data-dictionaries/lar_record_codes.pdf
 calculations <- function(df,geoid,column) {
   ## total 
-  total <- df %>% group_by({{geoid}}) %>% 
+  total <- df %>% group_by({{geoid}}, as_of_year) %>% 
     summarize(n_non_na = sum(!is.na(wt_val)),
               total_observations = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%
     select(-n_non_na)
   
   ## nh white
   nh_white <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "5" & is.na(applicant_race_2)) %>% 
-    group_by({{geoid}}) %>% 
+    group_by({{geoid}}, as_of_year) %>% 
     summarize(n_non_na = sum(!is.na(wt_val)),
               nh_white_observations = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%     
     select(-n_non_na)
   
   ## nh asian
   nh_asian <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "2" & is.na(applicant_race_2)) %>% 
-    group_by({{geoid}}) %>% 
+    group_by({{geoid}}, as_of_year) %>% 
     summarize(n_non_na = sum(!is.na(wt_val)), 
               nh_asian_observations = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%     
     select(-n_non_na)
   
   ## nh black
   nh_black <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "3" & is.na(applicant_race_2)) %>% 
-    group_by({{geoid}}) %>% 
+    group_by({{geoid}}, as_of_year) %>% 
     summarize(n_non_na = sum(!is.na(wt_val)),
               nh_black_observations = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%     
     select(-n_non_na)
   
   ## all pacisl 
   pacisl <- df %>% filter(applicant_race_1 == "4") %>% 
-    group_by({{geoid}}) %>% 
+    group_by({{geoid}}, as_of_year) %>% 
     summarize(n_non_na = sum(!is.na(wt_val)),
               pacisl_observations = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%     
     select(-n_non_na)
   
   ## all aian
   aian <- df %>% filter(applicant_race_1 == "1") %>% 
-    group_by({{geoid}}) %>% 
+    group_by({{geoid}}, as_of_year) %>% 
     summarize(n_non_na = sum(!is.na(wt_val)),
               aian_observations = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%     
     select(-n_non_na)
   
   ## nh two or more
   nh_twoormor <- df %>% filter(applicant_ethnicity == "2" & !is.na(applicant_race_1) & !is.na(applicant_race_2)) %>% 
-    group_by({{geoid}}) %>% 
+    group_by({{geoid}}, as_of_year) %>% 
     summarize(n_non_na = sum(!is.na(wt_val)),
               nh_twoormor_observations = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%     
     select(-n_non_na)
   
   ## latino
   latino <- df %>% filter(applicant_ethnicity == "1") %>% 
-    group_by({{geoid}}) %>% 
+    group_by({{geoid}}, as_of_year) %>% 
     summarize(n_non_na = sum(!is.na(wt_val)),
               latino_observations = ifelse(n_non_na == 0, NA, sum(wt_val, na.rm=TRUE))) %>%     
     select(-n_non_na)
@@ -295,28 +295,28 @@ df_county <- applications_county %>% full_join(subprime_county) %>% rename(geoid
 #### data dictionary: https://files.consumerfinance.gov/hmda-historic-data-dictionaries/lar_record_codes.pdf
 calculations_st <- function(df,geoid,column) {
   ## total 
-  total <- df %>% group_by({{geoid}}) %>% summarize(total_observations = n())
+  total <- df %>% group_by({{geoid}}, as_of_year) %>% summarize(total_observations = n())
   
   ## nh white
-  nh_white <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "5" & is.na(applicant_race_2)) %>% group_by({{geoid}}) %>% summarize(nh_white_observations = n())
+  nh_white <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "5" & is.na(applicant_race_2)) %>% group_by({{geoid}}, as_of_year) %>% summarize(nh_white_observations = n())
   
   ## nh asian
-  nh_asian <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "2" & is.na(applicant_race_2)) %>% group_by({{geoid}}) %>% summarize(nh_asian_observations = n())
+  nh_asian <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "2" & is.na(applicant_race_2)) %>% group_by({{geoid}}, as_of_year) %>% summarize(nh_asian_observations = n())
   
   ## nh black
-  nh_black <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "3" & is.na(applicant_race_2)) %>% group_by({{geoid}}) %>% summarize(nh_black_observations = n())
+  nh_black <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "3" & is.na(applicant_race_2)) %>% group_by({{geoid}}, as_of_year) %>% summarize(nh_black_observations = n())
   
   ## all pacisl 
-  pacisl <- df %>% filter(applicant_race_1 == "4") %>% group_by({{geoid}}) %>% summarize(pacisl_observations = n())
+  pacisl <- df %>% filter(applicant_race_1 == "4") %>% group_by({{geoid}}, as_of_year) %>% summarize(pacisl_observations = n())
   
   ## all aian
-  aian <- df %>% filter(applicant_race_1 == "1") %>% group_by({{geoid}}) %>% summarize(aian_observations = n())
+  aian <- df %>% filter(applicant_race_1 == "1") %>% group_by({{geoid}}, as_of_year) %>% summarize(aian_observations = n())
   
   ## nh two or more
-  nh_twoormor <- df %>% filter(applicant_ethnicity == "2" & !is.na(applicant_race_1) & !is.na(applicant_race_2)) %>% group_by({{geoid}}) %>% summarize(nh_twoormor_observations = n())
+  nh_twoormor <- df %>% filter(applicant_ethnicity == "2" & !is.na(applicant_race_1) & !is.na(applicant_race_2)) %>% group_by({{geoid}}, as_of_year) %>% summarize(nh_twoormor_observations = n())
   
   ## latino
-  latino <- df %>% filter(applicant_ethnicity == "1") %>% group_by({{geoid}}) %>% summarize(latino_observations = n())
+  latino <- df %>% filter(applicant_ethnicity == "1") %>% group_by({{geoid}}, as_of_year) %>% summarize(latino_observations = n())
   
   z <- total %>% full_join(nh_white) %>% full_join(nh_asian) %>% full_join(nh_black) %>% full_join(pacisl) %>% full_join(aian) %>% full_join(nh_twoormor) %>% full_join(latino) %>% rename_all(
     funs(stringr::str_replace_all(., 'observations', column)
