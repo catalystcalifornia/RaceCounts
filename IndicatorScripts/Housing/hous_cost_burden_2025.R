@@ -250,15 +250,16 @@ df$nh_aian_rate <- ifelse(df$nh_aian_rate == 0, 0,
                                  ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_rate)))
 
 
-
-df$total_raw <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_raw))
-df$nh_asian_raw <- ifelse(df$nh_asian_rate_cv > cv_threshold, NA, ifelse(df$nh_asian_pop < pop_threshold, NA, df$nh_asian_raw))
-df$nh_black_raw <- ifelse(df$nh_black_rate_cv > cv_threshold, NA, ifelse(df$nh_black_pop < pop_threshold, NA, df$nh_black_raw))
-df$nh_white_raw <- ifelse(df$nh_white_rate_cv > cv_threshold, NA, ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_raw))
-df$latino_raw <- ifelse(df$latino_rate_cv > cv_threshold, NA, ifelse(df$latino_pop < pop_threshold, NA, df$latino_raw))
-df$nh_other_raw <- ifelse(df$nh_other_rate_cv > cv_threshold, NA, ifelse(df$nh_other_pop < pop_threshold, NA, df$nh_other_raw))
-df$nh_pacisl_raw <- ifelse(df$nh_pacisl_rate_cv > cv_threshold, NA, ifelse(df$nh_pacisl_pop < pop_threshold, NA, df$nh_pacisl_raw))
-df$nh_aian_raw <- ifelse(df$nh_aian_rate_cv > cv_threshold, NA, ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_raw))
+#9/16/26 qa question from CR: I see Anchor Bay (City) having a total rent burden raw of NULL and a total rent burden rate of zero. Shouldn't the rate be NULL if the raw is NULL?
+# there are different screens applied to rate versus raw so the solution should be to apply the same screens that we added to rate to raw
+df$total_raw <- ifelse(df$total_rate == 0, df$total_raw, ifelse(is.na(df$total_rate_cv) | df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_raw)))
+df$nh_asian_raw <- ifelse(df$nh_asian_rate == 0, df$nh_asian_raw, ifelse(is.na(df$nh_asian_rate_cv) | df$nh_asian_rate_cv > cv_threshold, NA, ifelse(df$nh_asian_pop < pop_threshold, NA, df$nh_asian_raw)))
+df$nh_black_raw <- ifelse(df$nh_black_rate == 0, df$nh_black_raw, ifelse(is.na(df$nh_black_rate_cv) | df$nh_black_rate_cv > cv_threshold, NA, ifelse(df$nh_black_pop < pop_threshold, NA, df$nh_black_raw)))
+df$nh_white_raw <- ifelse(df$nh_white_rate == 0, df$nh_white_raw, ifelse(is.na(df$nh_white_rate_cv) | df$nh_white_rate_cv > cv_threshold, NA, ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_raw)))
+df$latino_raw <- ifelse(df$latino_rate == 0, df$latino_raw, ifelse(is.na(df$latino_rate_cv) | df$latino_rate_cv > cv_threshold, NA, ifelse(df$latino_pop < pop_threshold, NA, df$latino_raw)))
+df$nh_other_raw <- ifelse(df$nh_other_rate == 0, df$nh_other_raw, ifelse(is.na(df$nh_other_rate_cv) | df$nh_other_rate_cv > cv_threshold, NA, ifelse(df$nh_other_pop < pop_threshold, NA, df$nh_other_raw)))
+df$nh_pacisl_raw <- ifelse(df$nh_pacisl_rate == 0, df$nh_pacisl_raw, ifelse(is.na(df$nh_pacisl_rate_cv) | df$nh_pacisl_rate_cv > cv_threshold, NA, ifelse(df$nh_pacisl_pop < pop_threshold, NA, df$nh_pacisl_raw)))
+df$nh_aian_raw <- ifelse(df$nh_aian_rate == 0, df$nh_aian_raw, ifelse(is.na(df$nh_aian_rate_cv) | df$nh_aian_rate_cv > cv_threshold, NA, ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_raw)))
 
 df <- df %>% relocate(ends_with("_raw"), .after = ends_with("_pop")) # reorder fields so raw/rate cols are next to each other
 
@@ -464,8 +465,7 @@ indicator <- paste0("The percentage of rented housing units experiencing cost bu
 # send tables to postgres
 to_postgres(county_table, state_table)
 city_to_postgres(city_table)
-leg_to_postgres(leg_table) 
-
+leg_to_postgres(leg_table)
 
 
 # Disconnect db -----------------------------------------------------------
