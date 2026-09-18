@@ -140,17 +140,19 @@ chas_data_ <- filter(chas_data_long, !str_detect(chas_data_long$variable, 'moe')
 ######### Raced Calcs ######################
 
 ## calculate raw counts
-costburden_race <- chas_data_ %>%
+costburden_race_ <- chas_data_ %>%
   group_by(geoid, geoname, race, cost_burdened, tenure, geolevel, variable_generic) %>%  
   summarize(raw = sum(housing_units)) %>%
   left_join(chas_data_) 
 # View(costburden_race)
 
-## calculate den moe
+## calculate den moe -- LF 9/18/26 The moe_sum() fx is return Inf even when there are valid num_moe and raw values. Investigating this...
+###### Example: geoid = 0608954, nh_black renter
 costburden_moe <- costburden_race %>% 
   left_join(moe, by = c("geoid", "geoname", "variable_generic", "race", "tenure")) %>%
   select(-c(variable_generic)) %>%
   group_by(geoid, geoname, race, tenure) %>%
+  filter(geoid == '0608954') %>%
   summarize(pop = sum(raw),
             den_moe = moe_sum(num_moe, raw))
 
@@ -476,6 +478,8 @@ dbDisconnect(con)
 con_rc <- connect_to_db("racecounts")
 state_old <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_renter_state_2025")
 county_old <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_renter_county_2025")
+state_table <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_renter_state_2025_v2")
+county_table <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_renter_county_2025_v2")
 
 ##install.packages("arsenal")
 library(arsenal)
