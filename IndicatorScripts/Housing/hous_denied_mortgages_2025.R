@@ -1,7 +1,7 @@
 ## Denied Mortgages Applications for RC v7 ##
 
 ## install packages if not already installed ------------------------------
-packages <- c("openxlsx","tidyr","dplyr","stringr", "DBI", "RPostgres","data.table", "openxlsx", "tidycensus", "tidyverse", "janitor","httr")
+packages <- c("openxlsx","tidyr","dplyr","stringr", "DBI", "RPostgres","data.table", "openxlsx", "tidycensus", "tidyverse", "janitor","httr","purrr")
 install_packages <- packages[!(packages %in% installed.packages()[,"Package"])] 
 
 if(length(install_packages) > 0) { 
@@ -230,92 +230,76 @@ denied_2 <- lapply(denied_2, function(x)
 denied_all <- c(denied_1, denied_2)
 
 
-#### FX TO GET RACED AND TOTAL COUNTS ----------------------------------------
-get_raced_hmda <- function(z, geoid, geolevel, suffix) { # get raced and total loan or denied mtg counts at county level
+#### FX TO GET RACED AND TOTAL COUNTS BY TRACT ----------------------------------------
+get_raced_hmda <- function(z, geoid, geolevel, suffix) { 
+  # get raced and total loan or denied mtg counts at specified geolevel,
+  # returned as a list of dataframes named by year
   
-  latino <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Hispanic or Latino") %>% dplyr::group_by({{geoid}}) %>%
-    dplyr::summarise(latino = sum(wt_val, na.rm=TRUE))})
+  process_one <- function(x) {
+    
+    latino <- x %>% filter(derived_ethnicity == "Hispanic or Latino") %>%
+      dplyr::group_by({{geoid}}) %>% dplyr::summarise(latino = sum(wt_val, na.rm = TRUE))
+    
+    # aian alone, latinx inclusive
+    aian <- x %>% filter(derived_race == "American Indian or Alaska Native") %>%
+      dplyr::group_by({{geoid}}) %>% dplyr::summarise(aian = sum(wt_val, na.rm = TRUE))
+    
+    # pacisl alone, latinx inclusive
+    pacisl <- x %>% filter(derived_race == "Native Hawaiian or Other Pacific Islander") %>%
+      dplyr::group_by({{geoid}}) %>% dplyr::summarise(pacisl = sum(wt_val, na.rm = TRUE))
+    
+    nh_black <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", derived_race == "Black or African American") %>%
+      dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_black = sum(wt_val, na.rm = TRUE))
+    
+    nh_asian <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", derived_race == "Asian") %>%
+      dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_asian = sum(wt_val, na.rm = TRUE))
+    
+    nh_white <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", derived_race == "White") %>%
+      dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_white = sum(wt_val, na.rm = TRUE))
+    
+    nh_twoormor <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino",
+                                (derived_race == "Joint" | derived_race == "2 or more minority races")) %>%
+      dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_twoormor = sum(wt_val, na.rm = TRUE))
+    
+    total <- x %>% dplyr::group_by({{geoid}}) %>% dplyr::summarise(total = sum(wt_val, na.rm = TRUE))
+    
+    # merge all race/ethnicity summaries for this single year
+    joined <- total %>%
+      full_join(latino) %>%
+      full_join(aian) %>%
+      full_join(pacisl) %>%
+      full_join(nh_black) %>%
+      full_join(nh_asian) %>%
+      full_join(nh_white) %>%
+      full_join(nh_twoormor)
+    
+    # add specified suffix to colnames except geoid
+    joined <- joined %>%
+      rename_at(vars(-c({{geoid}})), ~paste0(., suffix)) %>%
+      mutate(geolevel = {{geolevel}})
+    
+    return(joined)
+  }
   
-  latino <- latino %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(latino = sum(latino, na.rm=TRUE)) %>% as.data.frame()
+  # run the summary pipeline independently on each element of z
+  result_list <- lapply(z, process_one)
   
-  #aian alone, latinx inclusive
-  aian <- lapply(z, function (x) {x <- x %>% filter(derived_race == "American Indian or Alaska Native") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(aian = sum(wt_val, na.rm=TRUE))})
+  # name each list element using the 'year' column found in that element of z
+  names(result_list) <- sapply(z, function(x) as.character(unique(x$year)[1]))
   
-  aian <- aian %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(aian = sum(aian, na.rm=TRUE)) 
-  
-  #pacisl alone, latinx inclusive
-  pacisl <- lapply(z, function (x) {x <- x %>% filter(derived_race == "Native Hawaiian or Other Pacific Islander") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(pacisl = sum(wt_val, na.rm=TRUE))})
-  
-  pacisl <- pacisl %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(pacisl = sum(pacisl, na.rm=TRUE)) 
-  
-  nh_black <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", derived_race == "Black or African American") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_black = sum(wt_val, na.rm=TRUE))})
-  
-  nh_black <- nh_black %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_black = sum(nh_black, na.rm=TRUE)) 
-  
-  nh_asian <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", derived_race == "Asian") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_asian = sum(wt_val, na.rm=TRUE))})
-  
-  nh_asian <- nh_asian %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_asian = sum(nh_asian, na.rm=TRUE)) 
-  
-  nh_white <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", derived_race == "White") %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_white = sum(wt_val, na.rm=TRUE))})
-  
-  nh_white <- nh_white %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_white = sum(nh_white, na.rm=TRUE)) 
-  
-  nh_twoormor <- lapply(z, function (x) {x <- x %>% filter(derived_ethnicity == "Not Hispanic or Latino", (derived_race == "Joint" | derived_race == "2 or more minority races")) %>%
-    dplyr::group_by({{geoid}}) %>% dplyr::summarise(nh_twoormor = sum(wt_val, na.rm=TRUE))})
-  
-  nh_twoormor <- nh_twoormor %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(nh_twoormor = sum(nh_twoormor, na.rm=TRUE)) 
-  
-  total <- lapply(z, function (x) {x <- x %>% dplyr::group_by({{geoid}}) %>% dplyr::summarise(total = sum(wt_val, na.rm=TRUE))})
-  
-  total <- total %>% reduce(full_join) %>% group_by({{geoid}}) %>% summarise(total = sum(total, na.rm=TRUE)) 
-  
-  # merge all loan city lists
-  joined <- total %>% full_join(latino) %>% full_join(aian) %>% full_join(pacisl) %>% full_join(nh_black) %>% full_join(nh_asian) %>% full_join(nh_white) %>% full_join(nh_twoormor)
-  
-  # add specified suffix to colnames except place_geoid
-  joined <- joined %>% rename_at(vars(-c({{geoid}})), ~paste0(., suffix)) %>% mutate(geolevel = {{geolevel}})
-  
-  return(joined)
+  return(result_list)
 }
 
-
-############## County / State Counts #############
+############## TRACT Counts #############
 # get raced data and add column suffixes
-loans <- get_raced_hmda(loans_all, county_id, "county", "_originated")
-loans_st <- get_raced_hmda(loans_all, state_code, "state", "_originated")
+loans <- get_raced_hmda(loans_all, GEOID_TRACT_20, "tract", "_originated")
 
-denied <- get_raced_hmda(denied_all, county_id, "county", "_denied")
-denied_st <- get_raced_hmda(denied_all, state_code, "state", "_denied")
+denied <- get_raced_hmda(denied_all, GEOID_TRACT_20, "tract", "_denied")
 
-# 9/16/26 QA Check - LF
-## check individual years: are there are tracts in denied mtgs that are not in loans data
-# 2023
-all(denied_all[[5]][["census_tract"]] %in% loans_all[[5]][["census_tract"]])
-missing_vals <- denied_all[[5]][["census_tract"]][ !denied_all[[5]][["census_tract"]] %in% loans_all[[5]][["census_tract"]]]
-denied_only <- denied_all[[5]] %>% filter(census_tract %in% missing_vals)
-nrow(denied_all[[5]])
-nrow(loans_all[[5]])
-nrow(denied_only) # There are 39 denied mtgs in tracts in denied data (n=29,789) that are not in loans data (n=267,217).
 
-# 2022
-all(denied_all[[4]][["census_tract"]] %in% loans_all[[4]][["census_tract"]])
-missing_vals <- denied_all[[4]][["census_tract"]][ !denied_all[[4]][["census_tract"]] %in% loans_all[[4]][["census_tract"]]]
-denied_only <- denied_all[[4]] %>% filter(census_tract %in% missing_vals)
-nrow(denied_all[[4]])
-nrow(loans_all[[4]])
-nrow(denied_only) # There are 55 denied mtgs in tracts in denied data (n=122,834) that are not in loans data (n=548,466).
-
-## Given the small % of tract mismatches, I think we are ok to keep these denied mtgs in the data. It could be that the loan apps were submitted in 1 year and then denied in the next.
-
-# check across all years: are there tracts w denied mtgs that are not in loans data
-loans_ct <- get_raced_hmda(loans_all, GEOID_TRACT_20, "tract", "_originated")
-denied_ct <- get_raced_hmda(denied_all, GEOID_TRACT_20, "tract", "_denied")
+#### FX TO JOIN LOANS AND DENIED MTG DATA BY YEAR ####
 join_by_name <- function(list1, list2, join_fx = full_join) {
+  
   # only keep names present in both lists
   common_names <- intersect(names(list1), names(list2))
   
@@ -328,209 +312,56 @@ join_by_name <- function(list1, list2, join_fx = full_join) {
   return(result)
 }
 
-# usage:
-joined_list <- join_by_name(loans_ct, denied_ct)
-
-library(purrr)
-library(stringr)
-library(dplyr)
-
-flag_denied_no_originated <- function(qa_check) {
-  
-  # Find all "_originated" columns that have a matching "_denied" column
-  originated_cols <- names(qa_check)[str_detect(names(qa_check), "_originated$")]
-  prefixes <- str_remove(originated_cols, "_originated$")
-  
-  # Keep only prefixes that actually have both columns
-  valid_prefixes <- prefixes[paste0(prefixes, "_denied") %in% names(qa_check)]
-  
-  # If no valid pairs exist, return an empty dataframe with a warning
-  if (length(valid_prefixes) == 0) {
-    warning("No matching _originated/_denied column pairs found.")
-    return(qa_check[0, ])
-  }
-  
-  # Build a logical matrix: TRUE where denied is not NA but originated IS NA
-  flag_matrix <- sapply(valid_prefixes, function(p) {
-    denied_col <- qa_check[[paste0(p, "_denied")]]
-    originated_col <- qa_check[[paste0(p, "_originated")]]
-    !is.na(denied_col) & is.na(originated_col)
-  }, simplify = "matrix")
-  
-  # Force proper matrix dimensions regardless of how many prefixes exist
-  flag_matrix <- matrix(flag_matrix, nrow = nrow(qa_check), ncol = length(valid_prefixes),
-                        dimnames = list(NULL, valid_prefixes))
-  
-  # Row is flagged if ANY pair has the issue
-  qa_check$flagged <- apply(flag_matrix, 1, any)
-  
-  # Which specific prefixes triggered the flag, per row
-  qa_check$flagged_fields <- apply(flag_matrix, 1, function(row) {
-    paste(valid_prefixes[row], collapse = ", ")
+joined_list <- join_by_name(loans, denied) %>%
+  # add county_id col back
+  map(function(x) {
+    x %>% mutate(county_id = substr(GEOID_TRACT_20, 1, 5))
   })
-  
-  # Return only the flagged rows
-  qa_check %>% filter(flagged)
+
+
+#### FX TO SYNC DENIED MTG NA'S TO LOAN NA'S ####
+# Make denied values NA when loan is NA, based on sync_voted_vap_na{} from ./Functions/democracy_functions.R
+sync_na <- function(df, race_groups) {
+  for (r in race_groups) { # for each group in the race_groups list loop through this process
+    # safety check that the columns exist
+    raw_col <- paste0(r, "_denied")
+    pop_col   <- paste0(r, "_originated")
+    
+    if (raw_col %in% names(df) && pop_col %in% names(df)) {
+      na_mask <- is.na(df[[raw_col]]) | # find the row that needs to be fixed
+        is.na(df[[pop_col]])  # and creates a TRUE/FALSE flag for every row. Its TRUE if either raw or pop is NA
+      # force raw to match pop so if na_mask is TRUE for pop then it makes race_raw NA
+      df[[raw_col]][na_mask] <- NA 
+    }
+  }
+  df # return the fixed df
 }
 
-# Apply across every element of joined_list, preserving year names
-flagged_list <- map(joined_list, flag_denied_no_originated)
+# variables for the new sync_na function
+race_groups <- c("total", "latino", "nh_white", "nh_black", "aian", "nh_asian", "pacisl", "nh_twoormor")
+joined_sync <- lapply(joined_list, sync_na, race_groups = race_groups)
 
-# flagged_list[["2019"]], flagged_list[["2020"]], etc. now each contain
-# only the problem rows for that year
-  
-  
-  
-  
-  
+# Calc County and State
+# Identify grouping column(s) - everything that ISN'T a _denied/_originated/year/geolevel column
+# Adjust this if your geoid column has a specific name, e.g. "county_geoid"
+id_cols <- names(joined_sync)[!str_detect(names(joined_sync), "_originated$|_denied$") & 
+                             !names(joined_sync) %in% c("year")]
 
+# Sum all _originated and _denied columns across years by tract: use combined_sync to calc all geolevels
+## Note: There are rows where GEOID_TRACT_20 is NA, these were assigned to state_id 06, so we can include in state totals
+combined_sync <- bind_rows(joined_sync, .id = "year")
 
-
-
-missing_vals <- denied_ct$GEOID_TRACT_20[ !denied_ct$GEOID_TRACT_20 %in% loans_ct$GEOID_TRACT_20]
-denied_only <- denied_ct %>% filter(GEOID_TRACT_20 %in% missing_vals)
-sum(denied_ct$total_denied, na.rm=TRUE)
-sum(loans_ct$total_originated, na.rm=TRUE)
-nrow(denied_only) # There are 14 denied mtgs in tracts in denied data (n=825,151.1) that are not in loans data (n=5,055,786).
-## 5 are in LAC, 1 in Monterey/Orange, 2 in SD, 4 in SF, 1 in San Mateo. All of these have many tracts, so these few records will not skew results.
-
-# # Check if there are any counties with non-NA _denied value whose corresponding _total value is NA
-# qa_check <- loans %>% full_join(denied)
-# 
-# ## Find all "_originated" columns that have a matching "_denied" column
-# originated_cols <- names(qa_check)[str_detect(names(qa_check), "_originated$")]
-# prefixes <- str_remove(originated_cols, "_originated$")
-# 
-# ## Keep only prefixes that actually have both columns
-# valid_prefixes <- prefixes[paste0(prefixes, "_denied") %in% names(qa_check)]
-# 
-# ## Sanity check - confirm prefixes look right (e.g. "nh_white", "total", "latino")
-# print(valid_prefixes)
-# 
-# ## Build a logical matrix: TRUE where denied is not NA but originated IS NA
-# flag_matrix <- sapply(valid_prefixes, function(p) {
-#   denied_col <- qa_check[[paste0(p, "_denied")]]
-#   originated_col <- qa_check[[paste0(p, "_originated")]]
-#   !is.na(denied_col) & is.na(originated_col)
-# }, simplify = "matrix")
-# 
-# ## Force proper matrix dimensions regardless of how many prefixes exist
-# flag_matrix <- matrix(flag_matrix, nrow = nrow(qa_check), ncol = length(valid_prefixes),
-#                       dimnames = list(NULL, valid_prefixes))
-# 
-# ## Row is flagged if ANY pair has the issue
-# qa_check$flagged <- apply(flag_matrix, 1, any)
-# 
-# ## Which specific prefixes triggered the flag, per row
-# qa_check$flagged_fields <- apply(flag_matrix, 1, function(row) {
-#   paste(valid_prefixes[row], collapse = ", ")
-# })
-# 
-# ## The rows you want:
-# flagged_rows <- qa_check %>% filter(flagged)
-# 
-# View(flagged_rows)
-
-# 9/9/2026 qa check - AB
-qa_check <- loans %>% select(county_id, total_originated) %>%
-  full_join(denied %>% select(county_id, total_denied), by = "county_id") %>%
-  filter(is.na(total_originated) != is.na(total_denied))
-# no na.rm issue for total but it could happen for the race columns
-races <- c("latino", "aian", "pacisl", "nh_black", "nh_asian", "nh_white", "nh_twoormor")
-
-for (r in races) {
-  orig_col <- paste0(r, "_originated")
-  denied_col <- paste0(r, "_denied")
-  
-  mismatch <- loans %>% select(county_id, !!orig_col) %>%
-    full_join(denied %>% select(county_id, !!denied_col), by = "county_id") %>%
-    filter(is.na(.data[[orig_col]]) != is.na(.data[[denied_col]]))
-  
-  cat(r, "- mismatched counties:", nrow(mismatch), "\n")
-}
-# # output
-# latino - mismatched counties: 1 
-# aian - mismatched counties: 0 
-# pacisl - mismatched counties: 7 
-# nh_black - mismatched counties: 2 
-# nh_asian - mismatched counties: 1 
-# nh_white - mismatched counties: 0 
-# nh_twoormor - mismatched counties: 1 
-# looks like na.rm issue could be a problem for this script too, see which counties come up
-for (r in c("latino", "pacisl", "nh_black", "nh_asian", "nh_twoormor")) { # just check the races that have a mismatch
-  orig_col <- paste0(r, "_originated")
-  denied_col <- paste0(r, "_denied")
-  
-  mismatch <- loans %>% select(county_id, !!orig_col) %>% #take loans and only keep two columns countyid and current race originated; !! tells the select to use the actual columns name from the string like pacisl_originated instead of orig_col
-    full_join(denied %>% select(county_id, !!denied_col), by = "county_id") %>% #use full join to keep every county from both tables
-    filter(is.na(.data[[orig_col]]) != is.na(.data[[denied_col]])) # check if the value is missing from each column and assign a TRUE/FALSE; TRUE  when one side is missing and the other is present
-  
-  cat("\n---", r, "---\n") # easier to see print w/ the small headers from the race in the for loop
-  print(mismatch)
-}
-# # output
-# --- latino ---
-#   # A tibble: 1 × 3
-#   county_id latino_originated latino_denied
-# <chr>                 <dbl>         <dbl>
-#   1 06003                     4            NA
-# 
-# --- pacisl ---
-#   # A tibble: 7 × 3
-#   county_id pacisl_originated pacisl_denied
-# <chr>                 <dbl>         <dbl>
-#   1 06003                     1            NA
-# 2 06021                     1            NA
-# 3 06027                     3            NA
-# 4 06043                     2            NA
-# 5 06051                    NA             1
-# 6 06091                     2            NA
-# 7 NA                       NA             0
-# 
-# --- nh_black ---
-#   # A tibble: 2 × 3
-#   county_id nh_black_originated nh_black_denied
-# <chr>                   <dbl>           <dbl>
-#   1 06051                       1              NA
-# 2 06091                       2              NA
-# 
-# --- nh_asian ---
-#   # A tibble: 1 × 3
-#   county_id nh_asian_originated nh_asian_denied
-# <chr>                   <dbl>           <dbl>
-#   1 06049                      NA               1
-# 
-# --- nh_twoormor ---
-#   # A tibble: 1 × 3
-#   county_id nh_twoormor_originated nh_twoormor_denied
-# <chr>                      <dbl>              <dbl>
-#   1 06003                          3                 NA
-# all of them that were issues seem like they come up as na in denied so they weren't denied so it might not actually be impacting the data.
-# all of the ones are under threshold of 15 so would be suppressed anyways. 
-# only weird part is the two that have a value for denied but not for originated. how could there be denied loans but not a loan application? worth a check.
-# 5  06051                    NA             1     (pacisl)
-# 1  06049                      NA           1     (nh_asian)
-# does county 06051 have ANY nh_pacisl-related rows anywhere in loans_all, before aggregation? maybe its from another loans code or something
-lapply(loans_all, function(x) x %>% 
-         filter(county_id == "06051", derived_race == "Native Hawaiian or Other Pacific Islander")) %>% 
-  bind_rows()
-## output
-# [1] state_code        county_code       census_tract      derived_ethnicity
-# [5] derived_race      year              NAMELSAD_TRACT_10 AREALAND_TRACT_10
-# [9] GEOID_TRACT_20    NAMELSAD_TRACT_20 AREALAND_TRACT_20 AREALAND_PART    
-# [13] wt_val            county_id        
-# <0 rows> (or 0-length row.names)
-# okay so there were no loans so its correct but this might be a data quality issue. 
-####### end of qa check ########
-
-# merge loan and denied dfs
-county_join <- left_join(loans, denied, by = c("county_id", "geolevel")) %>% 
-  rename(geoid = county_id)
-state_join <- left_join(loans_st, denied_st, by = c("state_code", "geolevel")) %>% 
-  rename(geoid = state_code)
+## CALC COUNTY & STATE ####
+county_totals <- combined_sync %>%
+  group_by(county_id) %>%
+  summarise(across(matches("_originated$|_denied$"), ~sum(.x, na.rm = TRUE)), 
+            .groups = "drop") %>%  # summarise county data across all years
+  adorn_totals(where = "row") %>%  # summarise county data to get state data
+  rename(geoid = county_id) %>%    # rename county_id to geoid
+  mutate(geoid = ifelse(geoid == 'Total', '06', geoid),  # add correct state geoid
+         geolevel = ifelse(geoid == '06', 'state', 'county')) 
 
 ## Add census geonames
-census_api_key(census_key1, overwrite=TRUE)
 ca <- get_acs(geography = "county", 
               variables = c("B01001_001"), 
               state = "CA", 
@@ -543,8 +374,7 @@ names(ca) <- c("geoid", "geoname")
 
 
 #add geonames and state row
-df_join <- rbind(county_join, state_join)
-df_wide <- merge(x=ca,y=df_join,by="geoid", all=T)
+df_wide <- merge(x=ca,y=county_totals,by="geoid", all=T)
 df_wide$geoname[df_wide$geoid == '06'] <- 'California'
 df_wide <- df_wide %>% filter(!is.na(geoid))
 #View(df_wide)
@@ -556,17 +386,16 @@ source("./Functions/RC_CT_Place_Xwalk.R")
 xwalk_city <- make_ct_place_xwalk(acs_yr) # must specify which data year
 
 # Join 2020 tract level data to City-Tract Xwalk. Note: many tracts will not match bc Census Places do NOT cover the entire state.
-loans_all_city <- lapply(loans_all, function(x) x %>% right_join(select(xwalk_city, c(ct_geoid, place_geoid)), by = c("GEOID_TRACT_20" = "ct_geoid"), relationship = "many-to-many"))
-denied_all_city <- lapply(denied_all, function(x) x %>% right_join(select(xwalk_city, c(ct_geoid, place_geoid)), by = c("GEOID_TRACT_20" = "ct_geoid"), relationship = "many-to-many"))
+city_join <- combined_sync %>% right_join(select(xwalk_city, c(ct_geoid, place_geoid)), by = c("GEOID_TRACT_20" = "ct_geoid"), relationship = "many-to-many")
 
-# get raced data and add column suffixes
-loans_city <- get_raced_hmda(loans_all_city, place_geoid, "city", "_originated")
-denied_city <- get_raced_hmda(denied_all_city, place_geoid, "city", "_denied")
 
-# merge loan and denied dfs
-city_join <- left_join(loans_city, denied_city, by = c("place_geoid", "geolevel")) %>% 
-  rename(geoid = place_geoid)
-
+## CALC CITY ####
+city_totals <- city_join %>%
+  group_by(place_geoid) %>%
+  summarise(across(matches("_originated$|_denied$"), ~sum(.x, na.rm = TRUE)), 
+            .groups = "drop") %>%    # summarise county data across all years
+  rename(geoid = place_geoid) %>%    # rename place_geoid to geoid
+  mutate(geolevel = 'city')
 
 ## Add census geonames
 census_api_key(census_key1, overwrite=TRUE)
@@ -585,7 +414,7 @@ names(ca) <- c("geoid", "geoname")
 
 
 #add geonames
-city_join <- merge(x=ca,y=city_join,by="geoid", all=T)
+city_totals <- merge(x=ca,y=city_totals,by="geoid", all=T)
 
 
 ############## Assembly Counts #############
@@ -594,20 +423,18 @@ xwalk_assm <- dbGetQuery(con2, paste0("SELECT * FROM crosswalks.", assm_xwalk)) 
   rename("assm_geoid" = {assm_geoid}, "geoid" = "geo_id")
 
 # Join 2020 tract level data to Assm-Tract Xwalk.
-loans_all_assm <- lapply(loans_all, function(x) x %>% right_join(select(xwalk_assm, c(assm_geoid, geoid)), by = c("GEOID_TRACT_20" = "geoid"), relationship = "many-to-many"))
-denied_all_assm <- lapply(denied_all, function(x) x %>% right_join(select(xwalk_assm, c(assm_geoid, geoid)), by = c("GEOID_TRACT_20" = "geoid"), relationship = "many-to-many"))
+assm_join <- combined_sync %>% right_join(select(xwalk_assm, c(assm_geoid, geoid)), by = c("GEOID_TRACT_20" = "geoid"), relationship = "many-to-many")
 
-# check for loans that do not match to Leg Dist. All records matched to Leg Dist.
-#loans_nomatch_assm <- lapply(loans_all_assm, function(x) x %>% filter(is.na({assm_geoid})) %>% group_by(GEOID_TRACT_20) %>% summarise(count = n()))
+# check all tracts joined to districts
+# assm_join %>% filter(is.na(assm_geoid))
 
-# get raced data and add column suffixes
-loans_assm <- get_raced_hmda(loans_all_assm, assm_geoid, "sldl", "_originated")
-denied_assm <- get_raced_hmda(denied_all_assm, assm_geoid, "sldl", "_denied")
-
-
-# merge loan and denied dfs
-assm_join <- left_join(loans_assm, denied_assm, by = c("assm_geoid", "geolevel")) %>%
-  rename("geoid" = "assm_geoid")
+## CALC ASSM ####
+assm_totals <- assm_join %>%
+  group_by(assm_geoid) %>%
+  summarise(across(matches("_originated$|_denied$"), ~sum(.x, na.rm = TRUE)), 
+            .groups = "drop") %>%    # summarise leg data across all years
+  rename(geoid = assm_geoid) %>%     # rename assm_geoid to geoid
+  mutate(geolevel = 'sldl')
 
 
 ## Add census geonames
@@ -625,7 +452,7 @@ names(assm_name) <- c("geoid", "geoname")
 
 
 #add geonames
-assm_join <- merge(x=assm_name,y=assm_join,by="geoid", all=T)
+assm_totals <- merge(x=assm_name,y=assm_totals,by="geoid", all=T)
 
 
 ############## State Senate Counts #############
@@ -633,20 +460,19 @@ assm_join <- merge(x=assm_name,y=assm_join,by="geoid", all=T)
 xwalk_sen <- dbGetQuery(con2, paste0("SELECT * FROM crosswalks.", sen_xwalk)) %>%
   rename("sen_geoid" = {sen_geoid}, "geoid" = "geo_id")
 
-# Join 2020 tract level data to Assm-Tract Xwalk.
-loans_all_sen <- lapply(loans_all, function(x) x %>% right_join(select(xwalk_sen, c(sen_geoid, geoid)), by = c("GEOID_TRACT_20" = "geoid"), relationship = "many-to-many"))
-denied_all_sen <- lapply(denied_all, function(x) x %>% right_join(select(xwalk_sen, c(sen_geoid, geoid)), by = c("GEOID_TRACT_20" = "geoid"), relationship = "many-to-many"))
+# Join 2020 tract level data to Sen-Tract Xwalk.
+sen_join <- combined_sync %>% right_join(select(xwalk_sen, c(sen_geoid, geoid)), by = c("GEOID_TRACT_20" = "geoid"), relationship = "many-to-many")
 
-# check for loans that do not match to Leg Dist. All records matched to Leg Dist.
-#loans_nomatch_sen <- lapply(loans_all_sen, function(x) x %>% filter(is.na({sen_geoid})) %>% group_by(GEOID_TRACT_20) %>% summarise(count = n()))
+# check all tracts joined to districts
+# sen_join %>% filter(is.na(sen_geoid))
 
-# get raced data and add column suffixes
-loans_sen <- get_raced_hmda(loans_all_sen, sen_geoid, "sldu", "_originated")
-denied_sen <- get_raced_hmda(denied_all_sen, sen_geoid, "sldu", "_denied")
-
-# merge loan and denied dfs
-sen_join <- left_join(loans_sen, denied_sen, by = c("sen_geoid", "geolevel")) %>%
-  rename("geoid" = "sen_geoid")
+## CALC SEN ####
+sen_totals <- sen_join %>%
+  group_by(sen_geoid) %>%
+  summarise(across(matches("_originated$|_denied$"), ~sum(.x, na.rm = TRUE)), 
+            .groups = "drop") %>%    # summarise leg data across all years
+  rename(geoid = sen_geoid) %>%      # rename sen_geoid to geoid
+  mutate(geolevel = 'sldu')
 
 
 ## Add census geonames
@@ -664,12 +490,12 @@ names(sen_name) <- c("geoid", "geoname")
 
 
 #add geonames
-sen_join <- merge(x=sen_name,y=sen_join,by="geoid", all=T)
+sen_totals <- merge(x=sen_name,y=sen_totals,by="geoid", all=T)
 
 
 
 # Combine all geolevel counts --------------------------------------------------
-df_combined <- union(df_wide, city_join) %>% union(assm_join) %>% union(sen_join)
+df_combined <- union(df_wide, city_totals) %>% union(assm_totals) %>% union(sen_totals)  
 
 
 ## SCREEN DATA: using originated loan (application) threshold defined at top of script --------------
@@ -794,3 +620,27 @@ source <- paste0("HMDA (", paste(data_yrs, collapse = ", "), ") https://ffiec.cf
 # leg_to_postgres(leg_table)
 
 dbDisconnect(con2)
+
+
+### Check changes ####
+con_rc <- connect_to_db("racecounts")
+
+state_old <- dbGetQuery(con_rc, "Select * from v7.arei_hous_denied_mortgages_state_2025_v2")
+county_old <- dbGetQuery(con_rc, "Select * from v7.arei_hous_denied_mortgages_county_2025_v2")
+
+# ##install.packages("arsenal")
+# library(arsenal)
+# comparison_s <- comparedf(state_table, state_old)
+# summary(comparison_s)
+# 
+ disprk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+   filter(disparity_rank_new != disparity_rank_old) %>%
+   select(county_id, county_name, disparity_rank_new, disparity_rank_old)
+ disprk_report  # 4 counties moved ranks, all were +/- 1. El Dorado and Kings switched places, as did Merced and San Bernardino.
+
+ perfrk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+   filter(performance_rank_new != performance_rank_old) %>%
+   select(county_id, county_name, performance_rank_new, performance_rank_old)
+ perfrk_report  # 0 counties moved ranks.
+
+
