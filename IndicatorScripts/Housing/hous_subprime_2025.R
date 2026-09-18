@@ -151,7 +151,6 @@ df_subprime <- dbGetQuery(con2, "SELECT * FROM housing.hmda_tract_subprime_mortg
 # Filter for home purchases, first lien, one-to-four family home, owner-occupied, Loan originated 
 df_subprime <- df_subprime %>% filter(lien_status == "1" & property_type == "1" & loan_purpose == "1" & owner_occupancy == "1" & action_taken %in% c("1"))
 
-
 ### Convert data from 2010 CT's to 2020 CT's #### 
 cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\tract20_tract10\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
   select(GEOID_TRACT_10, NAMELSAD_TRACT_10, AREALAND_TRACT_10, GEOID_TRACT_20, NAMELSAD_TRACT_20, AREALAND_TRACT_20, AREALAND_PART) %>%
@@ -191,6 +190,92 @@ df_subprime20 <- df_subprime20 %>%
 
 ### Function to aggregate data for total and by race: county, city, assm, sen  -----------------------
 # data dictionary: https://files.consumerfinance.gov/hmda-historic-data-dictionaries/lar_record_codes.pdf
+## QA to check NA Sync: LF 9/18/26 ####
+tract_calcs <- function(df, geoid, column) {
+  
+  ## total 
+  total <- df %>% group_by({{geoid}}, as_of_year) %>% summarize(total_observations = sum(wt_val, na.rm=TRUE))
+  
+  ## nh white
+  nh_white <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "5" & is.na(applicant_race_2)) %>% 
+    group_by({{geoid}}, as_of_year) %>% summarize(nh_white_observations = sum(wt_val, na.rm=TRUE))
+  
+  ## nh asian
+  nh_asian <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "2" & is.na(applicant_race_2)) %>% 
+    group_by({{geoid}}, as_of_year) %>% summarize(nh_asian_observations = sum(wt_val, na.rm=TRUE))
+  
+  ## nh black
+  nh_black <- df %>% filter(applicant_ethnicity == "2" & applicant_race_1 == "3" & is.na(applicant_race_2)) %>% 
+    group_by({{geoid}}, as_of_year) %>% summarize(nh_black_observations = sum(wt_val, na.rm=TRUE))
+  
+  ## all pacisl 
+  pacisl <- df %>% filter(applicant_race_1 == "4") %>% 
+    group_by({{geoid}}, as_of_year) %>% summarize(pacisl_observations = sum(wt_val, na.rm=TRUE))
+  
+  ## all aian
+  aian <- df %>% filter(applicant_race_1 == "1") %>% 
+    group_by({{geoid}}, as_of_year) %>% summarize(aian_observations = sum(wt_val, na.rm=TRUE))
+  
+  ## nh two or more
+  nh_twoormor <- df %>% filter(applicant_ethnicity == "2" & !is.na(applicant_race_1) & !is.na(applicant_race_2)) %>% 
+    group_by({{geoid}}, as_of_year) %>% summarize(nh_twoormor_observations = sum(wt_val, na.rm=TRUE))
+  
+  ## latino
+  latino <- df %>% filter(applicant_ethnicity == "1") %>% 
+    group_by({{geoid}}, as_of_year) %>% summarize(latino_observations = sum(wt_val, na.rm=TRUE))
+  
+  #z <- list(nh_white, nh_asian, nh_black, pacisl, aian, nh_twoormor, latino)
+  
+  z <- total %>% 
+    full_join(nh_white, by = c("GEOID_TRACT_20", "as_of_year")) %>% 
+    full_join(nh_asian, by = c("GEOID_TRACT_20", "as_of_year")) %>% 
+    full_join(nh_black, by = c("GEOID_TRACT_20", "as_of_year")) %>% 
+    full_join(pacisl, by = c("GEOID_TRACT_20", "as_of_year")) %>% 
+    full_join(aian, by = c("GEOID_TRACT_20", "as_of_year")) %>% 
+    full_join(nh_twoormor, by = c("GEOID_TRACT_20", "as_of_year")) %>% 
+    full_join(latino, by = c("GEOID_TRACT_20", "as_of_year")) %>% 
+    rename_all(~stringr::str_replace_all(., 'observations', column))
+   
+  return(z)
+}
+
+# calc tract data by year:
+subprime_tract <- tract_calcs(df = df_subprime20, geoid = GEOID_TRACT_20, column = 'subprime')
+applications_tract <- tract_calcs(df = df_applications20, geoid = GEOID_TRACT_20, column = 'applications') %>%
+  mutate(as_of_year = as.character(as_of_year))
+
+# combine subprime and application data
+all_tract <- full_join(subprime_tract, applications_tract)
+
+# sync NAs: make _subprime NA when _applications is NA
+# based on sync_voted_vap_na{} from ./Functions/democracy_functions.R
+sync_na <- function(df, race_groups) {
+  for (r in race_groups) { # for each group in the race_groups list loop through this process
+    # safety check that the columns exist
+    raw_col <- paste0(r, "_subprime")
+    pop_col   <- paste0(r, "_applications")
+    
+    if (raw_col %in% names(df) && pop_col %in% names(df)) {
+      na_mask <- is.na(df[[raw_col]]) | # find the row that needs to be fixed
+        is.na(df[[pop_col]])  # and creates a TRUE/FALSE flag for every row. Its TRUE if either raw or pop is NA
+      # force raw to match pop so if na_mask is TRUE for pop then it makes race_raw NA
+      df[[raw_col]][na_mask] <- NA 
+    }
+  }
+  df # return the fixed df
+}
+
+race_groups <- c("total", "latino", "nh_white", "nh_black", "aian", "nh_asian", "pacisl", "nh_twoormor")
+all_tract_sync <- sync_na(all_tract, race_groups)
+
+# check what changed after sync
+# qa_check <- anti_join(all_tract, all_tract_sync)
+# qa_check1 <- anti_join(all_tract_sync, all_tract) 
+### 3 tract+yr rows were changed, values went from 0 to NA. No real impact here bc we treat NA and zero the same way.
+### Could have impact in future if values changed to NA were ever >0. We can update this script in v8.
+
+
+
 calculations <- function(df,geoid,column) {
   ## total 
   total <- df %>% group_by({{geoid}}) %>% 
@@ -544,10 +629,10 @@ colnames(leg_table)[1:2] <- c("leg_id", "leg_name")
 ############### COUNTY, STATE, CITY, LEG METADATA  ##############
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_hous_subprime_county_", rc_yr, "_v2")
-state_table_name <- paste0("arei_hous_subprime_state_", rc_yr, "_v2")
-city_table_name <- paste0("arei_hous_subprime_city_", rc_yr, "_v2")
-leg_table_name <- paste0("arei_hous_subprime_leg_", rc_yr, "_v2")          
+county_table_name <- paste0("arei_hous_subprime_county_", rc_yr)
+state_table_name <- paste0("arei_hous_subprime_state_", rc_yr)
+city_table_name <- paste0("arei_hous_subprime_city_", rc_yr)
+leg_table_name <- paste0("arei_hous_subprime_leg_", rc_yr)          
 
 indicator <- paste0(" Number of higher priced Loans Per 100 Loans Originated. Subgroups with fewer than ", threshold, " loans originated are excluded")                   
 source <- paste0("HMDA historic Data (", hmda_yr, "): https://www.consumerfinance.gov/data-research/hmda/historic-data/, however Subprime data is not available here.")   
@@ -559,3 +644,25 @@ source <- paste0("HMDA historic Data (", hmda_yr, "): https://www.consumerfinanc
 # 
 # dbDisconnect(con)
 # dbDisconnect(con2)
+
+
+# LF 9/18/26 QA: Check AB v2 tables against existing tables. No changes, so we do not need to merge v2 changes.
+# con_rc <- connect_to_db("racecounts")
+# state <- dbGetQuery(con_rc, "Select * from v7.arei_hous_subprime_state_2025")
+# state_v2 <- dbGetQuery(con_rc, "Select * from v7.arei_hous_subprime_state_2025_v2")
+# county <- dbGetQuery(con_rc, "Select * from v7.arei_hous_subprime_county_2025")
+# county_v2 <- dbGetQuery(con_rc, "Select * from v7.arei_hous_subprime_county_2025_v2")
+# 
+# library(arsenal)
+# comparison_s <- comparedf(state, state_v2)
+# summary(comparison_s)  # no differences
+# 
+#  disprk_report <- inner_join(county_v2, county, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+#    filter(disparity_rank_new != disparity_rank_old) %>%
+#    select(county_id, county_name, disparity_rank_new, disparity_rank_old)
+#  disprk_report  # 0 counties moved ranks.
+# 
+#  perfrk_report <- inner_join(county_v2, county, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+#    filter(performance_rank_new != performance_rank_old) %>%
+#    select(county_id, county_name, performance_rank_new, performance_rank_old)
+#  perfrk_report  # 0 counties moved ranks.
