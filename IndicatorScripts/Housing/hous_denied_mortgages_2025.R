@@ -623,24 +623,24 @@ dbDisconnect(con2)
 
 
 ### Check changes ####
-con_rc <- connect_to_db("racecounts")
-
-state_old <- dbGetQuery(con_rc, "Select * from v7.arei_hous_denied_mortgages_state_2025_v2")
-county_old <- dbGetQuery(con_rc, "Select * from v7.arei_hous_denied_mortgages_county_2025_v2")
+# con_rc <- connect_to_db("racecounts")
+# 
+# state_old <- dbGetQuery(con_rc, "Select * from v7.arei_hous_denied_mortgages_state_2025")
+# county_old <- dbGetQuery(con_rc, "Select * from v7.arei_hous_denied_mortgages_county_2025")
 
 # ##install.packages("arsenal")
 # library(arsenal)
 # comparison_s <- comparedf(state_table, state_old)
 # summary(comparison_s)
 # 
- disprk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
-   filter(disparity_rank_new != disparity_rank_old) %>%
-   select(county_id, county_name, disparity_rank_new, disparity_rank_old)
- disprk_report  # 4 counties moved ranks, all were +/- 1. El Dorado and Kings switched places, as did Merced and San Bernardino.
-
- perfrk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
-   filter(performance_rank_new != performance_rank_old) %>%
-   select(county_id, county_name, performance_rank_new, performance_rank_old)
- perfrk_report  # 0 counties moved ranks.
+#  disprk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+#    filter(disparity_rank_new != disparity_rank_old) %>%
+#    select(county_id, county_name, disparity_rank_new, disparity_rank_old)
+#  disprk_report  # 54 counties moved ranks.
+# 
+#  perfrk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+#    filter(performance_rank_new != performance_rank_old) %>%
+#    select(county_id, county_name, performance_rank_new, performance_rank_old)
+#  perfrk_report  # 28 counties moved ranks.
 
 
