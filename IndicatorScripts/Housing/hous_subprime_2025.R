@@ -272,7 +272,8 @@ all_tract_sync <- sync_na(all_tract, race_groups)
 # qa_check <- anti_join(all_tract, all_tract_sync)
 # qa_check1 <- anti_join(all_tract_sync, all_tract) 
 ### 3 tract+yr rows were changed, values went from 0 to NA. No real impact here bc we treat NA and zero the same way.
-### Could have impact in future if values changed to NA were ever >0. We can update this script in v8.
+### Could have impact in future if values changed to NA were ever >0. We can update this script in v8. However, this data
+### no longer published. Will commit changes and a PR for documentation purposes.
 
 
 
