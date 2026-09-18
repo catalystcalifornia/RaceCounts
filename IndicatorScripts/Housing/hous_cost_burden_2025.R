@@ -140,7 +140,7 @@ chas_data_ <- filter(chas_data_long, !str_detect(chas_data_long$variable, 'moe')
 ######### Raced Calcs ######################
 
 ## calculate raw counts
-costburden_race_ <- chas_data_ %>%
+costburden_race <- chas_data_ %>%
   group_by(geoid, geoname, race, cost_burdened, tenure, geolevel, variable_generic) %>%  
   summarize(raw = sum(housing_units)) %>%
   left_join(chas_data_) 
@@ -152,7 +152,6 @@ costburden_moe <- costburden_race %>%
   left_join(moe, by = c("geoid", "geoname", "variable_generic", "race", "tenure")) %>%
   select(-c(variable_generic)) %>%
   group_by(geoid, geoname, race, tenure) %>%
-  filter(geoid == '0608954') %>%
   summarize(pop = sum(raw),
             den_moe = moe_sum(num_moe, raw))
 
@@ -225,7 +224,7 @@ df$geoname <- gsub(" City", "", df$geoname)
 df[sapply(df, is.nan)] <- NA
 df[sapply(df, is.infinite)] <- NA
 
-#Screen data: Convert rate to NA if its CV greater than the cv_threshold or its pop is less than the pop_threshold
+#Screen data: Keep zero rates. Convert rate to NA if its CV is NA or greater than the cv_threshold or its pop is less than the pop_threshold
 df$total_rate <- ifelse(df$total_rate == 0, 0,
                         ifelse(is.na(df$total_rate_cv) | df$total_rate_cv > cv_threshold, NA,
                                ifelse(df$total_pop < pop_threshold, NA, df$total_rate)))
@@ -251,9 +250,6 @@ df$nh_aian_rate <- ifelse(df$nh_aian_rate == 0, 0,
                           ifelse(is.na(df$nh_aian_rate_cv) | df$nh_aian_rate_cv > cv_threshold, NA,
                                  ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_rate)))
 
-
-#9/16/26 qa question from CR: I see Anchor Bay (City) having a total rent burden raw of NULL and a total rent burden rate of zero. Shouldn't the rate be NULL if the raw is NULL?
-# there are different screens applied to rate versus raw so the solution should be to apply the same screens that we added to rate to raw
 df$total_raw <- ifelse(df$total_rate == 0, df$total_raw, ifelse(is.na(df$total_rate_cv) | df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_raw)))
 df$nh_asian_raw <- ifelse(df$nh_asian_rate == 0, df$nh_asian_raw, ifelse(is.na(df$nh_asian_rate_cv) | df$nh_asian_rate_cv > cv_threshold, NA, ifelse(df$nh_asian_pop < pop_threshold, NA, df$nh_asian_raw)))
 df$nh_black_raw <- ifelse(df$nh_black_rate == 0, df$nh_black_raw, ifelse(is.na(df$nh_black_rate_cv) | df$nh_black_rate_cv > cv_threshold, NA, ifelse(df$nh_black_pop < pop_threshold, NA, df$nh_black_raw)))
@@ -265,50 +261,6 @@ df$nh_aian_raw <- ifelse(df$nh_aian_rate == 0, df$nh_aian_raw, ifelse(is.na(df$n
 
 df <- df %>% relocate(ends_with("_raw"), .after = ends_with("_pop")) # reorder fields so raw/rate cols are next to each other
 
-
-#### 9/2/2026 QA check #########
-# I don't see that na.rm =TRUE issue here but there might be a screening issue that is completely different
-# see if there is any row that is being made NA when it was a true zero
-# this check is checking if each county's/tenure's original from the screened rate to see if true zeros are 
-# getting turned into NA when they shouldn't be with the added guard that I added to try to prevent that.
-
-cost_burden_calcs_rc %>%
-  filter(total_rate == 0, total_pop >= pop_threshold) %>%
-  select(geoid, geoname, tenure, total_rate, total_pop, total_rate_cv) %>%
-  left_join(df %>% dplyr::select(geoid, tenure, screened_rate = total_rate), by = c("geoid", "tenure"))
-class(cost_burden_calcs_rc)
-class(df)
-# # output
-# geoid                           geoname tenure total_rate total_pop total_rate_cv screened_rate
-# 1  0602028                    Anchor Bay CDP renter          0       110            NA             0
-# 2  0604470 Bayview CDP (Contra Costa County) renter          0       230            NA             0
-# 3  0609834              California Pines CDP  owner          0       120            NA             0
-# 4  0618982                 Desert Center CDP  owner          0       109            NA             0
-# 5  0621894                      Eldridge CDP renter          0       220            NA             0
-# 6  0622146                        Elmira CDP renter          0       130            NA             0
-# 7  0625300               Fort Washington CDP  owner          0       100            NA             0
-# 8  0630686                   Grangeville CDP  owner          0       114            NA             0
-# 9  0630882                       Grayson CDP renter          0       110            NA             0
-# 10 0631288                        Grimes CDP  owner          0       100            NA             0
-# 11 0636735                    Iron Horse CDP  owner          0       165            NA             0
-# 12 0637022                       Jacumba CDP renter          0       120            NA             0
-# 13 0640116                        Lanare CDP renter          0       100            NA             0
-# 14 0643252                    Los Alamos CDP renter          0       115            NA             0
-# 15 0645512                        Manton CDP  owner          0       125            NA             0
-# 16 0648760                       Montara CDP renter          0       130            NA             0
-# 17 0649628                Mountain Ranch CDP  owner          0       125            NA             0
-# 18 0649796                  Mount Hermon CDP renter          0       110            NA             0
-# 19 0658226                    Port Costa CDP renter          0       115            NA             0
-# 20 0660088                        Redway CDP renter          0       165            NA             0
-# 21 0669182               Santa Margarita CDP  owner          0       200            NA             0
-# 22 0672954               South Dos Palos CDP  owner          0       115            NA             0
-# 23 0679030                         Topaz CDP  owner          0       105            NA             0
-# 24 0680266                  Tranquillity CDP  owner          0       135            NA             0
-# 25 0686720                         Yermo CDP  owner          0       130            NA             0
-# 26 0686720                         Yermo CDP renter          0       315            NA             0
-
-# seems like its not happening anymore so I think we can repush this data w/ a v2 version
-######## end of qa check
 
 #Create an owners dataframe so that it creates two sets of graphs for the RC_Functions for each owners and renters
 owners <- filter(df, tenure == "owner")
