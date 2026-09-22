@@ -331,10 +331,10 @@ lower_leg_table <- lower_leg_table
 leg_table <- rbind(upper_leg_table, lower_leg_table) %>% dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname")
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_hous_cost_burden_owner_county_", rc_yr, "_v2")
-state_table_name <- paste0("arei_hous_cost_burden_owner_state_", rc_yr, "_v2")
-city_table_name <- paste0("arei_hous_cost_burden_owner_city_", rc_yr, "_v2")
-leg_table_name <- paste0("arei_hous_cost_burden_owner_leg_", rc_yr, "_v2")
+county_table_name <- paste0("arei_hous_cost_burden_owner_county_", rc_yr)
+state_table_name <- paste0("arei_hous_cost_burden_owner_state_", rc_yr)
+city_table_name <- paste0("arei_hous_cost_burden_owner_city_", rc_yr)
+leg_table_name <- paste0("arei_hous_cost_burden_owner_leg_", rc_yr)
 
 indicator <- paste0("The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. QA doc: ", qa_filepath, ". This data is")
 
@@ -409,10 +409,10 @@ lower_leg_table <- lower_leg_table
 leg_table <- rbind(upper_leg_table, lower_leg_table) %>% dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname")
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_hous_cost_burden_renter_county_", rc_yr, "_v2")
-state_table_name <- paste0("arei_hous_cost_burden_renter_state_", rc_yr, "_v2")
-city_table_name <- paste0("arei_hous_cost_burden_renter_city_", rc_yr, "_v2")
-leg_table_name <- paste0("arei_hous_cost_burden_renter_leg_", rc_yr, "_v2")
+county_table_name <- paste0("arei_hous_cost_burden_renter_county_", rc_yr)
+state_table_name <- paste0("arei_hous_cost_burden_renter_state_", rc_yr)
+city_table_name <- paste0("arei_hous_cost_burden_renter_city_", rc_yr)
+leg_table_name <- paste0("arei_hous_cost_burden_renter_leg_", rc_yr)
 
 indicator <- paste0("The percentage of rented housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Another includes another race and multiracial, and is Latinx-exclusive. QA doc: ", qa_filepath, ". This data is")
 
@@ -502,8 +502,11 @@ perfrk_report  # 0 counties moved ranks.
 ## Renter ####
 state_old <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_renter_state_2025")
 county_old <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_renter_county_2025")
+city_old <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_renter_city_2025")
+leg_old <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_renter_leg_2025")
 state_table <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_renter_state_2025_v2")
 county_table <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_renter_county_2025_v2")
+leg_table <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_renter_leg_2025_v2")
 
 comparison_s <- comparedf(state_table, state_old)
 summary(comparison_s) # No changes.
