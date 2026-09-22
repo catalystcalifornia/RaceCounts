@@ -428,22 +428,92 @@ dbDisconnect(con)
 ## 9/11/26 check
 # # check results using new FX against old table
 con_rc <- connect_to_db("racecounts")
+
+## Owner ####
+state_old <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_owner_state_2025")
+county_old <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_owner_county_2025")
+state_table <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_owner_state_2025_v2")
+county_table <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_owner_county_2025_v2")
+
+##install.packages("arsenal")
+library(arsenal)
+comparison_s <- comparedf(state_table, state_old)
+summary(comparison_s) # No changes.
+
+disprk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+  filter(disparity_rank_new != disparity_rank_old) %>%
+  select(county_id, county_name, disparity_rank_new, disparity_rank_old)
+disprk_report  ## Most counties changed ranks.
+
+# county_id     county_name disparity_rank_new disparity_rank_old ####
+# 1      06001         Alameda                 31                 25
+# 2      06005          Amador                 50                 47
+# 3      06007           Butte                 28                 22
+# 4      06009       Calaveras                 16                 15
+# 5      06011          Colusa                  8                  7
+# 6      06013    Contra Costa                 51                 48
+# 7      06015       Del Norte                 15                 13
+# 8      06017       El Dorado                 29                 23
+# 9      06019          Fresno                 42                 38
+# 10     06023        Humboldt                 21                 31
+# 11     06029            Kern                 41                 37
+# 12     06031           Kings                 25                 39
+# 13     06033            Lake                  9                  5
+# 14     06037     Los Angeles                 26                 19
+# 15     06039          Madera                 23                 17
+# 16     06041           Marin                 53                 50
+# 17     06045       Mendocino                  7                  4
+# 18     06047          Merced                 24                 18
+# 19     06053        Monterey                 37                 32
+# 20     06055            Napa                 22                 16
+# 21     06057          Nevada                 46                 43
+# 22     06059          Orange                 39                 35
+# 23     06061          Placer                 38                 34
+# 24     06065       Riverside                 45                 42
+# 25     06067      Sacramento                 27                 21
+# 26     06069      San Benito                 17                 33
+# 27     06071  San Bernardino                 34                 28
+# 28     06073       San Diego                 14                 10
+# 29     06075   San Francisco                 49                 46
+# 30     06077     San Joaquin                 44                 41
+# 31     06079 San Luis Obispo                 35                 29
+# 32     06081       San Mateo                 30                 24
+# 33     06083   Santa Barbara                 52                 49
+# 34     06085     Santa Clara                 32                 26
+# 35     06087      Santa Cruz                 33                 27
+# 36     06089          Shasta                 19                 20
+# 37     06093        Siskiyou                 10                  6
+# 38     06095          Solano                 54                 51
+# 39     06097          Sonoma                 48                 45
+# 40     06099      Stanislaus                 47                 44
+# 41     06101          Sutter                 40                 36
+# 42     06103          Tehama                 36                 30
+# 43     06107          Tulare                 13                  9
+# 44     06109        Tuolumne                 12                  8
+# 45     06111         Ventura                 43                 40
+# 46     06113            Yolo                 18                 12
+# 47     06115            Yuba                 20                 14
+
+perfrk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+  filter(performance_rank_new != performance_rank_old) %>%
+  select(county_id, county_name, performance_rank_new, performance_rank_old)
+perfrk_report  # 0 counties moved ranks.
+
+## Renter ####
 state_old <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_renter_state_2025")
 county_old <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_renter_county_2025")
 state_table <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_renter_state_2025_v2")
 county_table <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_renter_county_2025_v2")
 
-##install.packages("arsenal")
-library(arsenal)
 comparison_s <- comparedf(state_table, state_old)
-summary(comparison_s)
+summary(comparison_s) # No changes.
 
 disprk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
   filter(disparity_rank_new != disparity_rank_old) %>%
   select(county_id, county_name, disparity_rank_new, disparity_rank_old)
-disprk_report  
-# #output: changed almost all of them
-# county_id     county_name disparity_rank_new disparity_rank_old
+disprk_report  # Most counties changed.
+
+# county_id     county_name disparity_rank_new disparity_rank_old  ####
 # 1      06001         Alameda                 39                 36
 # 2      06005          Amador                 38                 33
 # 3      06007           Butte                 32                 27
