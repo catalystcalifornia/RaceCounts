@@ -146,7 +146,8 @@ costburden_race <- chas_data_ %>%
   left_join(chas_data_) 
 # View(costburden_race)
 
-## calculate den moe
+## calculate den moe -- LF 9/18/26 The moe_sum() fx is return Inf even when there are valid num_moe and raw values. Investigating this...
+###### Example: geoid = 0608954, nh_black renter
 costburden_moe <- costburden_race %>% 
   left_join(moe, by = c("geoid", "geoname", "variable_generic", "race", "tenure")) %>%
   select(-c(variable_generic)) %>%
@@ -223,7 +224,7 @@ df$geoname <- gsub(" City", "", df$geoname)
 df[sapply(df, is.nan)] <- NA
 df[sapply(df, is.infinite)] <- NA
 
-#Screen data: Convert rate to NA if its CV greater than the cv_threshold or its pop is less than the pop_threshold
+#Screen data: Keep zero rates. Convert rate to NA if its CV is NA or greater than the cv_threshold or its pop is less than the pop_threshold
 df$total_rate <- ifelse(df$total_rate == 0, 0,
                         ifelse(is.na(df$total_rate_cv) | df$total_rate_cv > cv_threshold, NA,
                                ifelse(df$total_pop < pop_threshold, NA, df$total_rate)))
@@ -249,9 +250,6 @@ df$nh_aian_rate <- ifelse(df$nh_aian_rate == 0, 0,
                           ifelse(is.na(df$nh_aian_rate_cv) | df$nh_aian_rate_cv > cv_threshold, NA,
                                  ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_rate)))
 
-
-#9/16/26 qa question from CR: I see Anchor Bay (City) having a total rent burden raw of NULL and a total rent burden rate of zero. Shouldn't the rate be NULL if the raw is NULL?
-# there are different screens applied to rate versus raw so the solution should be to apply the same screens that we added to rate to raw
 df$total_raw <- ifelse(df$total_rate == 0, df$total_raw, ifelse(is.na(df$total_rate_cv) | df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_raw)))
 df$nh_asian_raw <- ifelse(df$nh_asian_rate == 0, df$nh_asian_raw, ifelse(is.na(df$nh_asian_rate_cv) | df$nh_asian_rate_cv > cv_threshold, NA, ifelse(df$nh_asian_pop < pop_threshold, NA, df$nh_asian_raw)))
 df$nh_black_raw <- ifelse(df$nh_black_rate == 0, df$nh_black_raw, ifelse(is.na(df$nh_black_rate_cv) | df$nh_black_rate_cv > cv_threshold, NA, ifelse(df$nh_black_pop < pop_threshold, NA, df$nh_black_raw)))
@@ -263,50 +261,6 @@ df$nh_aian_raw <- ifelse(df$nh_aian_rate == 0, df$nh_aian_raw, ifelse(is.na(df$n
 
 df <- df %>% relocate(ends_with("_raw"), .after = ends_with("_pop")) # reorder fields so raw/rate cols are next to each other
 
-
-#### 9/2/2026 QA check #########
-# I don't see that na.rm =TRUE issue here but there might be a screening issue that is completely different
-# see if there is any row that is being made NA when it was a true zero
-# this check is checking if each county's/tenure's original from the screened rate to see if true zeros are 
-# getting turned into NA when they shouldn't be with the added guard that I added to try to prevent that.
-
-cost_burden_calcs_rc %>%
-  filter(total_rate == 0, total_pop >= pop_threshold) %>%
-  select(geoid, geoname, tenure, total_rate, total_pop, total_rate_cv) %>%
-  left_join(df %>% dplyr::select(geoid, tenure, screened_rate = total_rate), by = c("geoid", "tenure"))
-class(cost_burden_calcs_rc)
-class(df)
-# # output
-# geoid                           geoname tenure total_rate total_pop total_rate_cv screened_rate
-# 1  0602028                    Anchor Bay CDP renter          0       110            NA             0
-# 2  0604470 Bayview CDP (Contra Costa County) renter          0       230            NA             0
-# 3  0609834              California Pines CDP  owner          0       120            NA             0
-# 4  0618982                 Desert Center CDP  owner          0       109            NA             0
-# 5  0621894                      Eldridge CDP renter          0       220            NA             0
-# 6  0622146                        Elmira CDP renter          0       130            NA             0
-# 7  0625300               Fort Washington CDP  owner          0       100            NA             0
-# 8  0630686                   Grangeville CDP  owner          0       114            NA             0
-# 9  0630882                       Grayson CDP renter          0       110            NA             0
-# 10 0631288                        Grimes CDP  owner          0       100            NA             0
-# 11 0636735                    Iron Horse CDP  owner          0       165            NA             0
-# 12 0637022                       Jacumba CDP renter          0       120            NA             0
-# 13 0640116                        Lanare CDP renter          0       100            NA             0
-# 14 0643252                    Los Alamos CDP renter          0       115            NA             0
-# 15 0645512                        Manton CDP  owner          0       125            NA             0
-# 16 0648760                       Montara CDP renter          0       130            NA             0
-# 17 0649628                Mountain Ranch CDP  owner          0       125            NA             0
-# 18 0649796                  Mount Hermon CDP renter          0       110            NA             0
-# 19 0658226                    Port Costa CDP renter          0       115            NA             0
-# 20 0660088                        Redway CDP renter          0       165            NA             0
-# 21 0669182               Santa Margarita CDP  owner          0       200            NA             0
-# 22 0672954               South Dos Palos CDP  owner          0       115            NA             0
-# 23 0679030                         Topaz CDP  owner          0       105            NA             0
-# 24 0680266                  Tranquillity CDP  owner          0       135            NA             0
-# 25 0686720                         Yermo CDP  owner          0       130            NA             0
-# 26 0686720                         Yermo CDP renter          0       315            NA             0
-
-# seems like its not happening anymore so I think we can repush this data w/ a v2 version
-######## end of qa check
 
 #Create an owners dataframe so that it creates two sets of graphs for the RC_Functions for each owners and renters
 owners <- filter(df, tenure == "owner")
@@ -377,10 +331,10 @@ lower_leg_table <- lower_leg_table
 leg_table <- rbind(upper_leg_table, lower_leg_table) %>% dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname")
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_hous_cost_burden_owner_county_", rc_yr, "_v2")
-state_table_name <- paste0("arei_hous_cost_burden_owner_state_", rc_yr, "_v2")
-city_table_name <- paste0("arei_hous_cost_burden_owner_city_", rc_yr, "_v2")
-leg_table_name <- paste0("arei_hous_cost_burden_owner_leg_", rc_yr, "_v2")
+county_table_name <- paste0("arei_hous_cost_burden_owner_county_", rc_yr)
+state_table_name <- paste0("arei_hous_cost_burden_owner_state_", rc_yr)
+city_table_name <- paste0("arei_hous_cost_burden_owner_city_", rc_yr)
+leg_table_name <- paste0("arei_hous_cost_burden_owner_leg_", rc_yr)
 
 indicator <- paste0("The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. QA doc: ", qa_filepath, ". This data is")
 
@@ -455,10 +409,10 @@ lower_leg_table <- lower_leg_table
 leg_table <- rbind(upper_leg_table, lower_leg_table) %>% dplyr::rename("leg_id" = "geoid", "leg_name" = "geoname")
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_hous_cost_burden_renter_county_", rc_yr, "_v2")
-state_table_name <- paste0("arei_hous_cost_burden_renter_state_", rc_yr, "_v2")
-city_table_name <- paste0("arei_hous_cost_burden_renter_city_", rc_yr, "_v2")
-leg_table_name <- paste0("arei_hous_cost_burden_renter_leg_", rc_yr, "_v2")
+county_table_name <- paste0("arei_hous_cost_burden_renter_county_", rc_yr)
+state_table_name <- paste0("arei_hous_cost_burden_renter_state_", rc_yr)
+city_table_name <- paste0("arei_hous_cost_burden_renter_city_", rc_yr)
+leg_table_name <- paste0("arei_hous_cost_burden_renter_leg_", rc_yr)
 
 indicator <- paste0("The percentage of rented housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Another includes another race and multiracial, and is Latinx-exclusive. QA doc: ", qa_filepath, ". This data is")
 
@@ -471,79 +425,3 @@ leg_to_postgres(leg_table)
 # Disconnect db -----------------------------------------------------------
 dbDisconnect(con)
 
-## 9/11/26 check
-# # check results using new FX against old table
-con_rc <- connect_to_db("racecounts")
-state_old <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_renter_state_2025")
-county_old <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_hous_cost_burden_renter_county_2025")
-
-##install.packages("arsenal")
-library(arsenal)
-comparison_s <- comparedf(state_table, state_old)
-summary(comparison_s)
-
-disprk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
-  filter(disparity_rank_new != disparity_rank_old) %>%
-  select(county_id, county_name, disparity_rank_new, disparity_rank_old)
-disprk_report  
-# #output: changed almost all of them
-# county_id     county_name disparity_rank_new disparity_rank_old
-# 1      06001         Alameda                 39                 36
-# 2      06005          Amador                 38                 33
-# 3      06007           Butte                 32                 27
-# 4      06009       Calaveras                 22                 17
-# 5      06011          Colusa                 51                 48
-# 6      06015       Del Norte                 28                 23
-# 7      06017       El Dorado                 15                 10
-# 8      06019          Fresno                 29                 24
-# 9      06021           Glenn                 11                 51
-# 10     06023        Humboldt                 31                 26
-# 11     06025        Imperial                  8                  6
-# 12     06029            Kern                 16                 11
-# 13     06031           Kings                 40                 37
-# 14     06033            Lake                 17                 12
-# 15     06037     Los Angeles                 26                 20
-# 16     06039          Madera                 27                 21
-# 17     06041           Marin                 20                 15
-# 18     06043        Mariposa                 13                 53
-# 19     06047          Merced                 49                 46
-# 20     06053        Monterey                 10                  7
-# 21     06055            Napa                 12                  8
-# 22     06057          Nevada                  7                 34
-# 23     06059          Orange                 45                 42
-# 24     06061          Placer                 21                 16
-# 25     06063          Plumas                 53                 52
-# 26     06065       Riverside                 48                 45
-# 27     06067      Sacramento                 46                 43
-# 28     06069      San Benito                  9                 50
-# 29     06071  San Bernardino                 30                 25
-# 30     06073       San Diego                 42                 39
-# 31     06075   San Francisco                 37                 32
-# 32     06077     San Joaquin                 43                 40
-# 33     06079 San Luis Obispo                 50                 47
-# 34     06081       San Mateo                 18                 13
-# 35     06083   Santa Barbara                 44                 41
-# 36     06085     Santa Clara                 14                  9
-# 37     06087      Santa Cruz                 52                 49
-# 38     06089          Shasta                 24                 35
-# 39     06093        Siskiyou                 47                 44
-# 40     06095          Solano                 35                 30
-# 41     06097          Sonoma                 36                 31
-# 42     06099      Stanislaus                 34                 29
-# 43     06101          Sutter                 41                 38
-# 44     06103          Tehama                 19                 14
-# 45     06107          Tulare                 23                 18
-# 46     06109        Tuolumne                  6                 22
-# 47     06113            Yolo                 33                 28
-# 48     06115            Yuba                 25                 19
-
-perfrk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
-  filter(performance_rank_new != performance_rank_old) %>%
-  select(county_id, county_name, performance_rank_new, performance_rank_old)
-perfrk_report  # 0 counties moved ranks.
-#output
-# [1] county_id            county_name          performance_rank_new performance_rank_old
-# <0 rows> (or 0-length row.names)
-
-# no changes at the state level so we can delete v2 table for that one.
-# a lot of changes at the county and lower levels so keep those for comparison
