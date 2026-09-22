@@ -36,7 +36,7 @@ assm_xwalk <- "tract_2020_state_assembly_2024"
 assm_geoid <- "sldl24"
 sen_xwalk <- "tract_2020_state_senate_2024"
 sen_geoid <- "sldu24"
-  
+
 # set screening thresholds: suppress values with high CVs and small populations. generally does not need update.
 cv_threshold <- 35    # data for geo+race combos with CV > threshold are suppressed
 pop_threshold <- 100  # data for geo+race combos with pop < threshold are suppressed
@@ -81,7 +81,7 @@ chas_data_leg_assm <- chas_data %>%
 
 chas_data_all <- bind_rows(chas_data, chas_data_leg_senate, chas_data_leg_assm) %>%
   filter(geolevel != 'census tract')
-  
+
 
 ######### Clean and reformat raw data ######################
 # data cleaning
@@ -100,30 +100,30 @@ chas_data_all <- chas_data_all %>%
 chas_data_long <- pivot_longer(chas_data_all, cols = starts_with("t9"), 
                                names_to = "variable", 
                                values_to = "housing_units") %>%
-                  mutate(variable_generic = as.numeric(gsub("\\D", "", variable))) # add 'generic' variable field where est and moe have the same value
+  mutate(variable_generic = as.numeric(gsub("\\D", "", variable))) # add 'generic' variable field where est and moe have the same value
 
 # join race and cost burden information from data dictionary and recode
 chas_data_long <- chas_data_long %>% 
   left_join(dict[,c(1,3:5)], by = c( "variable" = "column_name")) %>%
   mutate(race_ethnicity = recode(race_ethnicity, 
-                                   "Black or African-American alone, non-Hispanic" = "nh_black",
-                                   "Asian alone, non-Hispanic" = "nh_asian",
-                                   "American Indian or Alaska Native alone, non-Hispanic" = "nh_aian",
-                                   "Pacific Islander alone, non-Hispanic" = "nh_pacisl",
-                                   "Hispanic, any race" = "latino",
-                                   "White alone, non-Hispanic" = "nh_white",
-                                   "other (including multiple races, non-Hispanic)" = "nh_other"),
+                                 "Black or African-American alone, non-Hispanic" = "nh_black",
+                                 "Asian alone, non-Hispanic" = "nh_asian",
+                                 "American Indian or Alaska Native alone, non-Hispanic" = "nh_aian",
+                                 "Pacific Islander alone, non-Hispanic" = "nh_pacisl",
+                                 "Hispanic, any race" = "latino",
+                                 "White alone, non-Hispanic" = "nh_white",
+                                 "other (including multiple races, non-Hispanic)" = "nh_other"),
          cost_burden = recode(cost_burden,
-                                "greater than 30% but less than or equal to 50%" = "30.50", 
-                                "greater than 50%" = "50.100",
-                                "not computed (no/negative income)" = "not_computed",
-                                "less than or equal to 30%" = "0.30")) %>%
+                              "greater than 30% but less than or equal to 50%" = "30.50", 
+                              "greater than 50%" = "50.100",
+                              "not computed (no/negative income)" = "not_computed",
+                              "less than or equal to 30%" = "0.30")) %>%
   rename(race = race_ethnicity, burden = cost_burden)
 
 
 # drop rows with missing cost burden, cost burden and race 'universe' rows
 chas_data_long <- filter(chas_data_long, !(burden %in% c('not_computed','All')), 
-                                         !(race %in% c("All"))) 
+                         !(race %in% c("All"))) 
 
 # set definition of cost burden at >30%
 chas_data_long$cost_burdened <- ifelse(chas_data_long$burden == "0.30", 0, 1) 
@@ -146,14 +146,15 @@ costburden_race <- chas_data_ %>%
   left_join(chas_data_) 
 # View(costburden_race)
 
-## calculate den moe
+## calculate den moe -- LF 9/18/26 The moe_sum() fx is return Inf even when there are valid num_moe and raw values. Investigating this...
+###### Example: geoid = 0608954, nh_black renter
 costburden_moe <- costburden_race %>% 
   left_join(moe, by = c("geoid", "geoname", "variable_generic", "race", "tenure")) %>%
   select(-c(variable_generic)) %>%
   group_by(geoid, geoname, race, tenure) %>%
   summarize(pop = sum(raw),
             den_moe = moe_sum(num_moe, raw))
-  
+
 ## put it all together
 costburden_race_ <- costburden_race %>% 
   left_join(moe, by = c("geoid", "geoname", "variable_generic", "race", "tenure", "cost_burdened", "geolevel")) %>%
@@ -223,26 +224,43 @@ df$geoname <- gsub(" City", "", df$geoname)
 df[sapply(df, is.nan)] <- NA
 df[sapply(df, is.infinite)] <- NA
 
-#Screen data: Convert rate to NA if its CV greater than the cv_threshold or its pop is less than the pop_threshold
-df$total_rate <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_rate))
-df$nh_asian_rate <- ifelse(df$nh_asian_rate_cv > cv_threshold, NA, ifelse(df$nh_asian_pop < pop_threshold, NA, df$nh_asian_rate))
-df$nh_black_rate <- ifelse(df$nh_black_rate_cv > cv_threshold, NA, ifelse(df$nh_black_pop < pop_threshold, NA, df$nh_black_rate))
-df$nh_white_rate <- ifelse(df$nh_white_rate_cv > cv_threshold, NA, ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_rate))
-df$latino_rate <- ifelse(df$latino_rate_cv > cv_threshold, NA, ifelse(df$latino_pop < pop_threshold, NA, df$latino_rate))
-df$nh_other_rate <- ifelse(df$nh_other_rate_cv > cv_threshold, NA, ifelse(df$nh_other_pop < pop_threshold, NA, df$nh_other_rate))
-df$nh_pacisl_rate <- ifelse(df$nh_pacisl_rate_cv > cv_threshold, NA, ifelse(df$nh_pacisl_pop < pop_threshold, NA, df$nh_pacisl_rate))
-df$nh_aian_rate <- ifelse(df$nh_aian_rate_cv > cv_threshold, NA, ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_rate))
+#Screen data: Keep zero rates. Convert rate to NA if its CV is NA or greater than the cv_threshold or its pop is less than the pop_threshold
+df$total_rate <- ifelse(df$total_rate == 0, 0,
+                        ifelse(is.na(df$total_rate_cv) | df$total_rate_cv > cv_threshold, NA,
+                               ifelse(df$total_pop < pop_threshold, NA, df$total_rate)))
+df$nh_asian_rate <- ifelse(df$nh_asian_rate == 0, 0,
+                           ifelse(is.na(df$nh_asian_rate_cv) | df$nh_asian_rate_cv > cv_threshold, NA,
+                                  ifelse(df$nh_asian_pop < pop_threshold, NA, df$nh_asian_rate)))
+df$nh_black_rate <- ifelse(df$nh_black_rate == 0, 0,
+                           ifelse(is.na(df$nh_black_rate_cv) | df$nh_black_rate_cv > cv_threshold, NA,
+                                  ifelse(df$nh_black_pop < pop_threshold, NA, df$nh_black_rate)))
+df$nh_white_rate <- ifelse(df$nh_white_rate == 0, 0,
+                           ifelse(is.na(df$nh_white_rate_cv) | df$nh_white_rate_cv > cv_threshold, NA,
+                                  ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_rate)))
+df$latino_rate <- ifelse(df$latino_rate == 0, 0,
+                         ifelse(is.na(df$latino_rate_cv) | df$latino_rate_cv > cv_threshold, NA,
+                                ifelse(df$latino_pop < pop_threshold, NA, df$latino_rate)))
+df$nh_other_rate <- ifelse(df$nh_other_rate == 0, 0,
+                           ifelse(is.na(df$nh_other_rate_cv) | df$nh_other_rate_cv > cv_threshold, NA,
+                                  ifelse(df$nh_other_pop < pop_threshold, NA, df$nh_other_rate)))
+df$nh_pacisl_rate <- ifelse(df$nh_pacisl_rate == 0, 0,
+                            ifelse(is.na(df$nh_pacisl_rate_cv) | df$nh_pacisl_rate_cv > cv_threshold, NA,
+                                   ifelse(df$nh_pacisl_pop < pop_threshold, NA, df$nh_pacisl_rate)))
+df$nh_aian_rate <- ifelse(df$nh_aian_rate == 0, 0,
+                          ifelse(is.na(df$nh_aian_rate_cv) | df$nh_aian_rate_cv > cv_threshold, NA,
+                                 ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_rate)))
 
-df$total_raw <- ifelse(df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_raw))
-df$nh_asian_raw <- ifelse(df$nh_asian_rate_cv > cv_threshold, NA, ifelse(df$nh_asian_pop < pop_threshold, NA, df$nh_asian_raw))
-df$nh_black_raw <- ifelse(df$nh_black_rate_cv > cv_threshold, NA, ifelse(df$nh_black_pop < pop_threshold, NA, df$nh_black_raw))
-df$nh_white_raw <- ifelse(df$nh_white_rate_cv > cv_threshold, NA, ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_raw))
-df$latino_raw <- ifelse(df$latino_rate_cv > cv_threshold, NA, ifelse(df$latino_pop < pop_threshold, NA, df$latino_raw))
-df$nh_other_raw <- ifelse(df$nh_other_rate_cv > cv_threshold, NA, ifelse(df$nh_other_pop < pop_threshold, NA, df$nh_other_raw))
-df$nh_pacisl_raw <- ifelse(df$nh_pacisl_rate_cv > cv_threshold, NA, ifelse(df$nh_pacisl_pop < pop_threshold, NA, df$nh_pacisl_raw))
-df$nh_aian_raw <- ifelse(df$nh_aian_rate_cv > cv_threshold, NA, ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_raw))
+df$total_raw <- ifelse(df$total_rate == 0, df$total_raw, ifelse(is.na(df$total_rate_cv) | df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_raw)))
+df$nh_asian_raw <- ifelse(df$nh_asian_rate == 0, df$nh_asian_raw, ifelse(is.na(df$nh_asian_rate_cv) | df$nh_asian_rate_cv > cv_threshold, NA, ifelse(df$nh_asian_pop < pop_threshold, NA, df$nh_asian_raw)))
+df$nh_black_raw <- ifelse(df$nh_black_rate == 0, df$nh_black_raw, ifelse(is.na(df$nh_black_rate_cv) | df$nh_black_rate_cv > cv_threshold, NA, ifelse(df$nh_black_pop < pop_threshold, NA, df$nh_black_raw)))
+df$nh_white_raw <- ifelse(df$nh_white_rate == 0, df$nh_white_raw, ifelse(is.na(df$nh_white_rate_cv) | df$nh_white_rate_cv > cv_threshold, NA, ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_raw)))
+df$latino_raw <- ifelse(df$latino_rate == 0, df$latino_raw, ifelse(is.na(df$latino_rate_cv) | df$latino_rate_cv > cv_threshold, NA, ifelse(df$latino_pop < pop_threshold, NA, df$latino_raw)))
+df$nh_other_raw <- ifelse(df$nh_other_rate == 0, df$nh_other_raw, ifelse(is.na(df$nh_other_rate_cv) | df$nh_other_rate_cv > cv_threshold, NA, ifelse(df$nh_other_pop < pop_threshold, NA, df$nh_other_raw)))
+df$nh_pacisl_raw <- ifelse(df$nh_pacisl_rate == 0, df$nh_pacisl_raw, ifelse(is.na(df$nh_pacisl_rate_cv) | df$nh_pacisl_rate_cv > cv_threshold, NA, ifelse(df$nh_pacisl_pop < pop_threshold, NA, df$nh_pacisl_raw)))
+df$nh_aian_raw <- ifelse(df$nh_aian_rate == 0, df$nh_aian_raw, ifelse(is.na(df$nh_aian_rate_cv) | df$nh_aian_rate_cv > cv_threshold, NA, ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_raw)))
 
 df <- df %>% relocate(ends_with("_raw"), .after = ends_with("_pop")) # reorder fields so raw/rate cols are next to each other
+
 
 #Create an owners dataframe so that it creates two sets of graphs for the RC_Functions for each owners and renters
 owners <- filter(df, tenure == "owner")
@@ -401,9 +419,9 @@ indicator <- paste0("The percentage of rented housing units experiencing cost bu
 # send tables to postgres
 to_postgres(county_table, state_table)
 city_to_postgres(city_table)
-leg_to_postgres(leg_table) 
-
+leg_to_postgres(leg_table)
 
 
 # Disconnect db -----------------------------------------------------------
 dbDisconnect(con)
+
