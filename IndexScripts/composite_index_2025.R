@@ -127,11 +127,11 @@ summary(comparison_c)
 disprk_report <- inner_join(index_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
   filter(disparity_rank_new != disparity_rank_old) %>%
   select(county_id, county_name, disparity_rank_new, disparity_rank_old)
-View(disprk_report)  # 524,324 counties moved ranks
+View(disprk_report)  # 37 counties moved ranks
 
 perfrk_report <- inner_join(index_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
   filter(performance_rank_new != performance_rank_old) %>%
   select(county_id, county_name, performance_rank_new, performance_rank_old)
-View(perfrk_report)  # 655,396 counties moved ranks so keep the new one
+View(perfrk_report)  # 0 counties moved ranks so keep the new one
 
 dbDisconnect(con_rc)
