@@ -121,7 +121,27 @@ View(index_table)
 index_table_name <- paste0("arei_demo_index_", rc_yr)
 index <- paste0("QA doc: ", qa_filepath, ". Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is")
 
-index_to_postgres(index_table, rc_schema)
+# index_to_postgres(index_table, rc_schema)
 dbDisconnect(con)
 
 
+
+### Compare new / old tables
+con_rc <- connect_to_db("racecounts")
+county_v1 <- dbGetQuery(con_rc, "select * from v7.arei_demo_index_2025_old")
+
+library(arsenal)
+comparison_c <- comparedf(index_table, county_v1)
+summary(comparison_c)
+
+disprk_report <- inner_join(index_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+  filter(democracy_disparity_rank_new != democracy_disparity_rank_old) %>%
+  select(county_id, county_name, democracy_disparity_rank_new, democracy_disparity_rank_old)
+View(disprk_report)  # 35 counties moved ranks so the new table should be kept over the old one
+
+perfrk_report <- inner_join(index_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+  filter(democracy_performance_rank_new != democracy_performance_rank_old) %>%
+  select(county_id, county_name, democracy_performance_rank_new, democracy_performance_rank_old)
+View(perfrk_report)  # 0 counties moved ranks 
+
+dbDisconnect(con_rc)

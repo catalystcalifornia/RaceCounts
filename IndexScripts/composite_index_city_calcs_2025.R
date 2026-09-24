@@ -64,7 +64,7 @@ city_tables_updated <-
 # only select columns we want
 city_tables_updated <- lapply(city_tables_updated, function(x) x %>% select(city_id, ends_with("disp_z"), ends_with("perf_z")))
 city_tables_updated <- city_tables_updated %>% reduce(full_join) # convert list to df
-names(city_tables_updated)[-1] <- gsub(x = names(city_tables_updated)[-1], pattern = paste0("_city_",rc_yr), replacement = "", names) # clean colnames
+names(city_tables_updated)[-1] <- gsub(x = names(city_tables_updated)[-1], pattern = paste0("_city_",rc_yr), replacement = "") # clean colnames #remove trailing names , names
 
 # merge to get city names and education table
 city_tables_df <- city_tables_updated %>% arrange(city_id) %>%

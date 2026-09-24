@@ -654,10 +654,10 @@ leg_table <- rename(leg_table, leg_id = geoid, leg_name = geoname)
 
 
 ###update info for postgres tables###
-county_table_name <- paste0("arei_hous_denied_mortgages_county_", rc_yr, "_v2")
-state_table_name <- paste0("arei_hous_denied_mortgages_state_", rc_yr, "_v2")
-city_table_name <- paste0("arei_hous_denied_mortgages_city_", rc_yr, "_v2")
-leg_table_name <- paste0("arei_hous_denied_mortgages_leg_", rc_yr, "_v2")
+county_table_name <- paste0("arei_hous_denied_mortgages_county_", rc_yr)
+state_table_name <- paste0("arei_hous_denied_mortgages_state_", rc_yr)
+city_table_name <- paste0("arei_hous_denied_mortgages_city_", rc_yr)
+leg_table_name <- paste0("arei_hous_denied_mortgages_leg_", rc_yr)
 
 indicator <- paste0("Created on ", Sys.Date(), ". Denied Mortgages out of all Loan Applications (%). Subgroups with fewer than ", threshold, " loans originated are excluded. This data is")
 source <- paste0("HMDA (", paste(data_yrs, collapse = ", "), ") https://ffiec.cfpb.gov/data-browser/")

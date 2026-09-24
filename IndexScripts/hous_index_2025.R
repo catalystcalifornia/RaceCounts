@@ -143,7 +143,27 @@ View(index_table)
 index_table_name <- paste0("arei_hous_index_", rc_yr)
 index <- paste0("QA doc: ", qa_filepath, ". Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is")
 
-index_to_postgres(index_table, rc_schema)
+# index_to_postgres(index_table, rc_schema)
 dbDisconnect(con)
 
 
+
+### Compare new / old tables
+con_rc <- connect_to_db("racecounts")
+county_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_index_2025_old")
+
+library(arsenal)
+comparison_c <- comparedf(index_table, county_v1)
+summary(comparison_c)
+
+disprk_report <- inner_join(index_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+  filter(housing_disparity_rank_new != housing_disparity_rank_old) %>%
+  select(county_id, county_name, housing_disparity_rank_new, housing_disparity_rank_old)
+View(disprk_report)  # 171 counties moved ranks
+
+perfrk_report <- inner_join(index_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+  filter(housing_performance_rank_new != housing_performance_rank_old) %>%
+  select(county_id, county_name, housing_performance_rank_new, housing_performance_rank_old)
+View(perfrk_report)  # 192 counties moved ranks so the new table should be kept over the old one
+
+dbDisconnect(con_rc)

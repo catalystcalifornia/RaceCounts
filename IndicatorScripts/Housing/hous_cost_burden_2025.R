@@ -417,9 +417,9 @@ leg_table_name <- paste0("arei_hous_cost_burden_renter_leg_", rc_yr)
 indicator <- paste0("The percentage of rented housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Another includes another race and multiracial, and is Latinx-exclusive. QA doc: ", qa_filepath, ". This data is")
 
 # send tables to postgres
-to_postgres(county_table, state_table)
-city_to_postgres(city_table)
-leg_to_postgres(leg_table)
+# to_postgres(county_table, state_table)
+# city_to_postgres(city_table)
+# leg_to_postgres(leg_table)
 
 
 # Disconnect db -----------------------------------------------------------

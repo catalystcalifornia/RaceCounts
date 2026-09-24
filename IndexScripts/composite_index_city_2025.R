@@ -82,7 +82,27 @@ table_comment_source <- case_when (index_type == 'arei_' ~ paste0("This is the U
 
 
 # send city index and comment to postgres
-#city_index_to_postgres(city_index)
+city_index_to_postgres(city_index)
 
 
 dbDisconnect(con)  
+
+### Compare new / old tables
+con_rc <- connect_to_db("racecounts")
+city_v1 <- dbGetQuery(con_rc, "select * from v7.arei_composite_index_city_2025_old")
+
+library(arsenal)
+comparison_c <- comparedf(city_index, city_v1)
+summary(comparison_c)
+
+disprk_report <- inner_join(city_index, city_v1, by = c("city_id","city_name"), suffix = c("_new", "_old")) %>%
+  filter(disparity_rank_new != disparity_rank_old) %>%
+  select(city_id, city_name, disparity_rank_new, disparity_rank_old)
+View(disprk_report)  # no cities moved ranks
+
+perfrk_report <- inner_join(city_index, city_v1, by = c("city_id","city_name"), suffix = c("_new", "_old")) %>%
+  filter(performance_rank_new != performance_rank_old) %>%
+  select(city_id, city_name, performance_rank_new, performance_rank_old)
+View(perfrk_report)  # no cities moved ranks so no need to replace the tables, after qa I'll go ahead and revert the _old table and delete the new one
+
+dbDisconnect(con_rc)

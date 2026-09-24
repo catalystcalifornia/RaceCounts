@@ -136,7 +136,27 @@ View(index_table)
 index_table_name <- paste0("arei_hous_index_leg_", rc_yr)
 index <- paste0("QA doc: ", qa_filepath, ". Includes all issue indicators. Issue area z-scores are the average z-scores for performance and disparity across all issue indicators. This data is")
 
-index_to_postgres(index_table, rc_schema)
+# index_to_postgres(index_table, rc_schema)
 dbDisconnect(con)
 
 
+
+### Compare new / old tables
+con_rc <- connect_to_db("racecounts")
+leg_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_index_leg_2025_old")
+
+library(arsenal)
+comparison_c <- comparedf(index_table, leg_v1)
+summary(comparison_c)
+
+disprk_report <- inner_join(index_table, leg_v1, by = c("leg_id","leg_name"), suffix = c("_new", "_old")) %>%
+  filter(housing_disparity_rank_new != housing_disparity_rank_old) %>%
+  select(leg_id, leg_name, housing_disparity_rank_new, housing_disparity_rank_old)
+View(disprk_report)  # 43 leg districts moved ranks to it makes sense to keep the new table
+
+perfrk_report <- inner_join(index_table, leg_v1, by = c("leg_id","leg_name"), suffix = c("_new", "_old")) %>%
+  filter(housing_performance_rank_new != housing_performance_rank_old) %>%
+  select(leg_id, leg_name, housing_performance_rank_new, housing_performance_rank_old)
+View(perfrk_report)  # no leg districts moved ranks 
+
+dbDisconnect(con_rc)

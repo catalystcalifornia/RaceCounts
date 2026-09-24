@@ -112,6 +112,26 @@ index_table_name <- paste0("arei_composite_index_", rc_yr)
 index <- paste0("QA doc: ", qa_filepath, ". Includes all indicators. Index z-scores are the average z-scores for performance and disparity across all indicators. This data is") 
 source <- "various sources"
 
-index_to_postgres(index_table, rc_schema)
+# index_to_postgres(index_table, rc_schema)
 dbDisconnect(con)
 
+
+### Compare new / old tables
+con_rc <- connect_to_db("racecounts")
+county_v1 <- dbGetQuery(con_rc, "select * from v7.arei_composite_index_2025_old")
+
+library(arsenal)
+comparison_c <- comparedf(index_table, county_v1)
+summary(comparison_c)
+
+disprk_report <- inner_join(index_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+  filter(disparity_rank_new != disparity_rank_old) %>%
+  select(county_id, county_name, disparity_rank_new, disparity_rank_old)
+View(disprk_report)  # 524,324 counties moved ranks
+
+perfrk_report <- inner_join(index_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+  filter(performance_rank_new != performance_rank_old) %>%
+  select(county_id, county_name, performance_rank_new, performance_rank_old)
+View(perfrk_report)  # 655,396 counties moved ranks so keep the new one
+
+dbDisconnect(con_rc)
