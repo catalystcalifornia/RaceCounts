@@ -132,12 +132,16 @@ comparison_c <- comparedf(index_table, leg_v1)
 summary(comparison_c)
 
 disprk_report <- inner_join(index_table, leg_v1, by = c("leg_id","leg_name"), suffix = c("_new", "_old")) %>%
-  filter(disparity_rank_new != disparity_rank_old) %>%
+  filter(disparity_rank_new != disparity_rank_old | 
+           (is.na(disparity_rank_old) & !is.na(disparity_rank_new)) |
+           (!is.na(disparity_rank_old) & is.na(disparity_rank_new))) %>%
   select(leg_id, leg_name, disparity_rank_new, disparity_rank_old)
 View(disprk_report)  # 15 leg districts moved ranks so better to keep the new one
 
 perfrk_report <- inner_join(index_table, leg_v1, by = c("leg_id","leg_name"), suffix = c("_new", "_old")) %>%
-  filter(performance_rank_new != performance_rank_old) %>%
+  filter(performance_rank_new != performance_rank_old | 
+           (is.na(performance_rank_old) & !is.na(performance_rank_new)) |
+           (!is.na(performance_rank_old) & is.na(performance_rank_new))) %>%
   select(leg_id, leg_name, performance_rank_new, performance_rank_old)
 View(perfrk_report)  # no leg districts moved ranks
 

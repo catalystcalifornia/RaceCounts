@@ -150,12 +150,16 @@ comparison_c <- comparedf(index_table, leg_v1)
 summary(comparison_c)
 
 disprk_report <- inner_join(index_table, leg_v1, by = c("leg_id","leg_name"), suffix = c("_new", "_old")) %>%
-  filter(housing_disparity_rank_new != housing_disparity_rank_old) %>%
+  filter(housing_disparity_rank_new != housing_disparity_rank_old | 
+           (is.na(housing_disparity_rank_old) & !is.na(housing_disparity_rank_new)) |
+           (!is.na(housing_disparity_rank_old) & is.na(housing_disparity_rank_new))) %>%
   select(leg_id, leg_name, housing_disparity_rank_new, housing_disparity_rank_old)
 View(disprk_report)  # 43 leg districts moved ranks to it makes sense to keep the new table
 
 perfrk_report <- inner_join(index_table, leg_v1, by = c("leg_id","leg_name"), suffix = c("_new", "_old")) %>%
-  filter(housing_performance_rank_new != housing_performance_rank_old) %>%
+  filter(housing_performance_rank_new != housing_performance_rank_old | 
+           (is.na(housing_performance_rank_old) & !is.na(housing_performance_rank_new)) |
+           (!is.na(housing_performance_rank_old) & is.na(housing_performance_rank_new))) %>%
   select(leg_id, leg_name, housing_performance_rank_new, housing_performance_rank_old)
 View(perfrk_report)  # no leg districts moved ranks 
 
