@@ -119,6 +119,30 @@ index_table_name <- paste0("arei_composite_index_leg_", rc_yr)
 index <- paste0("QA doc: ", qa_filepath, ". Includes all indicators. Index z-scores are the average z-scores for performance and disparity across all indicators. This data is") 
 source <- "various sources"
 
-index_to_postgres(index_table, rc_schema)
+# index_to_postgres(index_table, rc_schema)
 dbDisconnect(con)
 
+
+### Compare new / old tables
+con_rc <- connect_to_db("racecounts")
+leg_v1 <- dbGetQuery(con_rc, "select * from v7.arei_composite_index_leg_2025_old")
+
+library(arsenal)
+comparison_c <- comparedf(index_table, leg_v1)
+summary(comparison_c)
+
+disprk_report <- inner_join(index_table, leg_v1, by = c("leg_id","leg_name"), suffix = c("_new", "_old")) %>%
+  filter(disparity_rank_new != disparity_rank_old | 
+           (is.na(disparity_rank_old) & !is.na(disparity_rank_new)) |
+           (!is.na(disparity_rank_old) & is.na(disparity_rank_new))) %>%
+  select(leg_id, leg_name, disparity_rank_new, disparity_rank_old)
+View(disprk_report)  # 15 leg districts moved ranks so better to keep the new one
+
+perfrk_report <- inner_join(index_table, leg_v1, by = c("leg_id","leg_name"), suffix = c("_new", "_old")) %>%
+  filter(performance_rank_new != performance_rank_old | 
+           (is.na(performance_rank_old) & !is.na(performance_rank_new)) |
+           (!is.na(performance_rank_old) & is.na(performance_rank_new))) %>%
+  select(leg_id, leg_name, performance_rank_new, performance_rank_old)
+View(perfrk_report)  # no leg districts moved ranks
+
+dbDisconnect(con_rc)

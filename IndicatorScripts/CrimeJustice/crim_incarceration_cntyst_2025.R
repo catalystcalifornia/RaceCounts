@@ -239,23 +239,3 @@ source <- paste0("Vera Institute (", curr_yr, ")", ". QA doc: ", qa_filepath)
 
 dbDisconnect(con_rc)
 dbDisconnect(con_shared)
-
-
-# check results using new FX against old table
-# state_old <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_crim_incarceration_state_2025")
-# county_old <- dbGetQuery(con_rc, "SELECT * FROM v7.arei_crim_incarceration_county_2025")
-# 
-# ##install.packages("arsenal")
-# library(arsenal)
-# comparison_s <- comparedf(state_table, state_old)
-# summary(comparison_s)
-# 
-# disprk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
-#   filter(disparity_rank_new != disparity_rank_old) %>%
-#   select(county_id, county_name, disparity_rank_new, disparity_rank_old)
-# disprk_report  # 4 counties moved ranks, all were +/- 1. El Dorado and Kings switched places, as did Merced and San Bernardino.
-
-# perfrk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
-#   filter(performance_rank_new != performance_rank_old) %>%
-#   select(county_id, county_name, performance_rank_new, performance_rank_old)
-# perfrk_report  # 0 counties moved ranks.
