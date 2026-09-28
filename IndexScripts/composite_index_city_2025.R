@@ -82,7 +82,7 @@ table_comment_source <- case_when (index_type == 'arei_' ~ paste0("This is the U
 
 
 # send city index and comment to postgres
-#city_index_to_postgres(city_index)
+# city_index_to_postgres(city_index)
 
 
 dbDisconnect(con)  
