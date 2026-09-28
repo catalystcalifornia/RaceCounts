@@ -224,40 +224,78 @@ df$geoname <- gsub(" City", "", df$geoname)
 df[sapply(df, is.nan)] <- NA
 df[sapply(df, is.infinite)] <- NA
 
-#Screen data: Keep zero rates. Convert rate to NA if its CV is NA or greater than the cv_threshold or its pop is less than the pop_threshold
-df$total_rate <- ifelse(df$total_rate == 0, 0,
-                        ifelse(is.na(df$total_rate_cv) | df$total_rate_cv > cv_threshold, NA,
-                               ifelse(df$total_pop < pop_threshold, NA, df$total_rate)))
-df$nh_asian_rate <- ifelse(df$nh_asian_rate == 0, 0,
-                           ifelse(is.na(df$nh_asian_rate_cv) | df$nh_asian_rate_cv > cv_threshold, NA,
-                                  ifelse(df$nh_asian_pop < pop_threshold, NA, df$nh_asian_rate)))
-df$nh_black_rate <- ifelse(df$nh_black_rate == 0, 0,
-                           ifelse(is.na(df$nh_black_rate_cv) | df$nh_black_rate_cv > cv_threshold, NA,
-                                  ifelse(df$nh_black_pop < pop_threshold, NA, df$nh_black_rate)))
-df$nh_white_rate <- ifelse(df$nh_white_rate == 0, 0,
-                           ifelse(is.na(df$nh_white_rate_cv) | df$nh_white_rate_cv > cv_threshold, NA,
-                                  ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_rate)))
-df$latino_rate <- ifelse(df$latino_rate == 0, 0,
-                         ifelse(is.na(df$latino_rate_cv) | df$latino_rate_cv > cv_threshold, NA,
-                                ifelse(df$latino_pop < pop_threshold, NA, df$latino_rate)))
-df$nh_other_rate <- ifelse(df$nh_other_rate == 0, 0,
-                           ifelse(is.na(df$nh_other_rate_cv) | df$nh_other_rate_cv > cv_threshold, NA,
-                                  ifelse(df$nh_other_pop < pop_threshold, NA, df$nh_other_rate)))
-df$nh_pacisl_rate <- ifelse(df$nh_pacisl_rate == 0, 0,
-                            ifelse(is.na(df$nh_pacisl_rate_cv) | df$nh_pacisl_rate_cv > cv_threshold, NA,
-                                   ifelse(df$nh_pacisl_pop < pop_threshold, NA, df$nh_pacisl_rate)))
-df$nh_aian_rate <- ifelse(df$nh_aian_rate == 0, 0,
-                          ifelse(is.na(df$nh_aian_rate_cv) | df$nh_aian_rate_cv > cv_threshold, NA,
-                                 ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_rate)))
+qa_check <- df
+qa_check <- qa_check %>%
+  mutate(
+    total_rate_cv_flag = ifelse((is.na(total_rate_cv)) | (total_rate_cv > cv_threshold), 1, 0),
+    total_rate_pop_flag = ifelse(total_pop < pop_threshold, 1, 0),
+    
+    nh_asian_rate_cv_flag = ifelse((is.na(nh_asian_rate_cv)) | (nh_asian_rate_cv > cv_threshold), 1, 0),
+    nh_asian_rate_pop_flag = ifelse(nh_asian_pop < pop_threshold, 1, 0),
+    
+    nh_black_rate_cv_flag = ifelse((is.na(nh_black_rate_cv)) | (nh_black_rate_cv > cv_threshold), 1, 0),
+    nh_black_rate_pop_flag = ifelse(nh_black_pop < pop_threshold, 1, 0),
+    
+    nh_white_rate_cv_flag = ifelse((is.na(nh_white_rate_cv)) | (nh_white_rate_cv > cv_threshold), 1, 0),
+    nh_white_rate_pop_flag = ifelse(nh_white_pop < pop_threshold, 1, 0),
+    
+    latino_rate_cv_flag = ifelse((is.na(latino_rate_cv)) | (latino_rate_cv > cv_threshold), 1, 0),
+    latino_rate_pop_flag = ifelse(latino_pop < pop_threshold, 1, 0),
+    
+    nh_other_rate_cv_flag = ifelse((is.na(nh_other_rate_cv)) | (nh_other_rate_cv > cv_threshold), 1, 0),
+    nh_other_rate_pop_flag = ifelse(nh_other_pop < pop_threshold, 1, 0),
+    
+    nh_pacisl_rate_cv_flag = ifelse((is.na(nh_pacisl_rate_cv)) | (nh_pacisl_rate_cv > cv_threshold), 1, 0),
+    nh_pacisl_rate_pop_flag = ifelse(nh_pacisl_pop < pop_threshold, 1, 0),
+    
+    nh_aian_rate_cv_flag = ifelse((is.na(nh_aian_rate_cv)) | (nh_aian_rate_cv > cv_threshold), 1, 0),
+    nh_aian_rate_pop_flag = ifelse(nh_aian_pop < pop_threshold, 1, 0),
+  ) %>% 
+  mutate(
+    total_rate_final_flag = ifelse(total_rate_cv_flag + total_rate_pop_flag > 0, NA, total_rate),
+    nh_asian_rate_final_flag = ifelse(nh_asian_rate_cv_flag + nh_asian_rate_pop_flag > 0, NA, nh_asian_rate),
+    nh_black_rate_final_flag = ifelse(nh_black_rate_cv_flag + nh_black_rate_pop_flag > 0, NA, nh_black_rate),
+    nh_white_rate_final_flag = ifelse(nh_white_rate_cv_flag + nh_white_rate_pop_flag > 0, NA, nh_white_rate),
+    latino_rate_final_flag = ifelse(latino_rate_cv_flag + latino_rate_pop_flag > 0, NA, latino_rate),
+    nh_other_rate_final_flag = ifelse(nh_other_rate_cv_flag + nh_other_rate_pop_flag > 0, NA, nh_other_rate),
+    nh_pacisl_rate_final_flag = ifelse(nh_pacisl_rate_cv_flag + nh_pacisl_rate_pop_flag > 0, NA, nh_pacisl_rate),
+    nh_aian_rate_final_flag = ifelse(nh_aian_rate_cv_flag + nh_aian_rate_pop_flag > 0, NA, nh_aian_rate)
+    
+  )
 
-df$total_raw <- ifelse(df$total_rate == 0, df$total_raw, ifelse(is.na(df$total_rate_cv) | df$total_rate_cv > cv_threshold, NA, ifelse(df$total_pop < pop_threshold, NA, df$total_raw)))
-df$nh_asian_raw <- ifelse(df$nh_asian_rate == 0, df$nh_asian_raw, ifelse(is.na(df$nh_asian_rate_cv) | df$nh_asian_rate_cv > cv_threshold, NA, ifelse(df$nh_asian_pop < pop_threshold, NA, df$nh_asian_raw)))
-df$nh_black_raw <- ifelse(df$nh_black_rate == 0, df$nh_black_raw, ifelse(is.na(df$nh_black_rate_cv) | df$nh_black_rate_cv > cv_threshold, NA, ifelse(df$nh_black_pop < pop_threshold, NA, df$nh_black_raw)))
-df$nh_white_raw <- ifelse(df$nh_white_rate == 0, df$nh_white_raw, ifelse(is.na(df$nh_white_rate_cv) | df$nh_white_rate_cv > cv_threshold, NA, ifelse(df$nh_white_pop < pop_threshold, NA, df$nh_white_raw)))
-df$latino_raw <- ifelse(df$latino_rate == 0, df$latino_raw, ifelse(is.na(df$latino_rate_cv) | df$latino_rate_cv > cv_threshold, NA, ifelse(df$latino_pop < pop_threshold, NA, df$latino_raw)))
-df$nh_other_raw <- ifelse(df$nh_other_rate == 0, df$nh_other_raw, ifelse(is.na(df$nh_other_rate_cv) | df$nh_other_rate_cv > cv_threshold, NA, ifelse(df$nh_other_pop < pop_threshold, NA, df$nh_other_raw)))
-df$nh_pacisl_raw <- ifelse(df$nh_pacisl_rate == 0, df$nh_pacisl_raw, ifelse(is.na(df$nh_pacisl_rate_cv) | df$nh_pacisl_rate_cv > cv_threshold, NA, ifelse(df$nh_pacisl_pop < pop_threshold, NA, df$nh_pacisl_raw)))
-df$nh_aian_raw <- ifelse(df$nh_aian_rate == 0, df$nh_aian_raw, ifelse(is.na(df$nh_aian_rate_cv) | df$nh_aian_rate_cv > cv_threshold, NA, ifelse(df$nh_aian_pop < pop_threshold, NA, df$nh_aian_raw)))
+#Screen data: Keep zero rates. Convert rate to NA if its CV is NA or greater than the cv_threshold or its pop is less than the pop_threshold
+qa_check$total_rate_final <- ifelse(qa_check$total_rate_cv > cv_threshold, NA, ifelse(qa_check$total_pop < pop_threshold, NA, qa_check$total_rate))
+qa_check$nh_asian_rate_final <- ifelse(qa_check$nh_asian_rate_cv > cv_threshold, NA, ifelse(qa_check$nh_asian_pop < pop_threshold, NA, qa_check$nh_asian_rate))
+qa_check$nh_black_rate_final <- ifelse(qa_check$nh_black_rate_cv > cv_threshold, NA, ifelse(qa_check$nh_black_pop < pop_threshold, NA, qa_check$nh_black_rate))
+qa_check$nh_white_rate_final <- ifelse(qa_check$nh_white_rate_cv > cv_threshold, NA, ifelse(qa_check$nh_white_pop < pop_threshold, NA, qa_check$nh_white_rate))
+qa_check$latino_rate_final <- ifelse(qa_check$latino_rate_cv > cv_threshold, NA, ifelse(qa_check$latino_pop < pop_threshold, NA, qa_check$latino_rate))
+qa_check$nh_other_rate_final <- ifelse(qa_check$nh_other_rate_cv > cv_threshold, NA, ifelse(qa_check$nh_other_pop < pop_threshold, NA, qa_check$nh_other_rate))
+qa_check$nh_pacisl_rate_final <- ifelse(qa_check$nh_pacisl_rate_cv > cv_threshold, NA, ifelse(qa_check$nh_pacisl_pop < pop_threshold, NA, qa_check$nh_pacisl_rate))
+qa_check$nh_aian_rate_final <- ifelse(qa_check$nh_aian_rate_cv > cv_threshold, NA, ifelse(qa_check$nh_aian_pop < pop_threshold, NA, qa_check$nh_aian_rate))
+
+
+qa_check <- qa_check %>%
+  select(ends_with("final"), ends_with("flag"), ends_with("rate"), ends_with("cv"), ends_with("pop"), geoid, geolevel, geoname, tenure)
+
+quick <- qa_check %>% select(geoid, geolevel, geoname, tenure,
+       ends_with("rate"), ends_with("cv"), ends_with("pop"),
+       ends_with("final"), ends_with("flag")) %>%
+  pivot_longer(
+    cols = -c(geoid, geolevel, geoname, tenure),
+    names_to = c("group", ".value"),
+    names_pattern = "^(.*?)_(rate_final_flag|rate_final|rate_cv_flag|rate_pop_flag|rate_cv|rate|pop)$"
+  ) %>% 
+  select(geoid, geolevel, geoname, tenure, group, rate_cv, pop, rate_cv_flag, rate_pop_flag, rate, rate_final, rate_final_flag)
+
+diff <- quick %>% filter(rate_final != rate_final_flag)
+# qa_check$total_raw <- ifelse(qa_check$total_rate_cv > cv_threshold, NA, ifelse(qa_check$total_pop < pop_threshold, NA, qa_check$total_raw))
+# qa_check$nh_asian_raw <- ifelse(qa_check$nh_asian_rate_cv > cv_threshold, NA, ifelse(qa_check$nh_asian_pop < pop_threshold, NA, qa_check$nh_asian_raw))
+# qa_check$nh_black_raw <- ifelse(qa_check$nh_black_rate_cv > cv_threshold, NA, ifelse(qa_check$nh_black_pop < pop_threshold, NA, qa_check$nh_black_raw))
+# qa_check$nh_white_raw <- ifelse(qa_check$nh_white_rate_cv > cv_threshold, NA, ifelse(qa_check$nh_white_pop < pop_threshold, NA, qa_check$nh_white_raw))
+# qa_check$latino_raw <- ifelse(qa_check$latino_rate_cv > cv_threshold, NA, ifelse(qa_check$latino_pop < pop_threshold, NA, qa_check$latino_raw))
+# qa_check$nh_other_raw <- ifelse(qa_check$nh_other_rate_cv > cv_threshold, NA, ifelse(qa_check$nh_other_pop < pop_threshold, NA, qa_check$nh_other_raw))
+# qa_check$nh_pacisl_raw <- ifelse(qa_check$nh_pacisl_rate_cv > cv_threshold, NA, ifelse(qa_check$nh_pacisl_pop < pop_threshold, NA, qa_check$nh_pacisl_raw))
+# qa_check$nh_aian_raw <- ifelse(qa_check$nh_aian_rate_cv > cv_threshold, NA, ifelse(qa_check$nh_aian_pop < pop_threshold, NA, qa_check$nh_aian_raw))
 
 df <- df %>% relocate(ends_with("_raw"), .after = ends_with("_pop")) # reorder fields so raw/rate cols are next to each other
 
