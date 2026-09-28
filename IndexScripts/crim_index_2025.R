@@ -110,26 +110,26 @@ index <- paste0("QA doc: ", qa_filepath, ". Includes all issue indicators. Issue
 dbDisconnect(con)
 	
 
-### Compare new / old tables
-con_rc <- connect_to_db("racecounts")
-county_v1 <- dbGetQuery(con_rc, "select * from v7.arei_crim_index_2025")
-
-library(arsenal)
-comparison_c <- comparedf(index_table, county_v1)
-summary(comparison_c)
-
-disprk_report <- inner_join(index_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
-  filter(crime_and_justice_disparity_rank_new != crime_and_justice_disparity_rank_old | 
-           (is.na(crime_and_justice_disparity_rank_old) & !is.na(crime_and_justice_disparity_rank_new)) |
-           (!is.na(crime_and_justice_disparity_rank_old) & is.na(crime_and_justice_disparity_rank_new))) %>%
-  select(county_id, county_name, crime_and_justice_disparity_rank_new, crime_and_justice_disparity_rank_old)
-View(disprk_report)  # 0 counties moved ranks
-
-perfrk_report <- inner_join(index_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
-  filter(crime_and_justice_performance_rank_new != crime_and_justice_performance_rank_old | 
-           (is.na(crime_and_justice_performance_rank_old) & !is.na(crime_and_justice_performance_rank_new)) |
-           (!is.na(crime_and_justice_performance_rank_old) & is.na(crime_and_justice_performance_rank_new))) %>%
-  select(county_id, county_name, crime_and_justice_performance_rank_new, crime_and_justice_performance_rank_old)
-View(perfrk_report)  # 0 counties moved ranks so delete the new table
-
-dbDisconnect(con_rc)
+# ### Compare new / old tables - QA
+# con_rc <- connect_to_db("racecounts")
+# county_v1 <- dbGetQuery(con_rc, "select * from v7.arei_crim_index_2025")
+# 
+# library(arsenal)
+# comparison_c <- comparedf(index_table, county_v1)
+# summary(comparison_c)
+# 
+# disprk_report <- inner_join(index_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+#   filter(crime_and_justice_disparity_rank_new != crime_and_justice_disparity_rank_old | 
+#            (is.na(crime_and_justice_disparity_rank_old) & !is.na(crime_and_justice_disparity_rank_new)) |
+#            (!is.na(crime_and_justice_disparity_rank_old) & is.na(crime_and_justice_disparity_rank_new))) %>%
+#   select(county_id, county_name, crime_and_justice_disparity_rank_new, crime_and_justice_disparity_rank_old)
+# View(disprk_report)  # 0 counties moved ranks
+# 
+# perfrk_report <- inner_join(index_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+#   filter(crime_and_justice_performance_rank_new != crime_and_justice_performance_rank_old | 
+#            (is.na(crime_and_justice_performance_rank_old) & !is.na(crime_and_justice_performance_rank_new)) |
+#            (!is.na(crime_and_justice_performance_rank_old) & is.na(crime_and_justice_performance_rank_new))) %>%
+#   select(county_id, county_name, crime_and_justice_performance_rank_new, crime_and_justice_performance_rank_old)
+# View(perfrk_report)  # 0 counties moved ranks so delete the new table
+# 
+# dbDisconnect(con_rc)

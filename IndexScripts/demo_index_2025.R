@@ -126,26 +126,26 @@ dbDisconnect(con)
 
 
 
-### Compare new / old tables
-con_rc <- connect_to_db("racecounts")
-county_v1 <- dbGetQuery(con_rc, "select * from v7.arei_demo_index_2025_old")
-
-library(arsenal)
-comparison_c <- comparedf(index_table, county_v1)
-summary(comparison_c)
-
-disprk_report <- inner_join(index_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
-  filter(democracy_disparity_rank_new != democracy_disparity_rank_old | 
-           (is.na(democracy_disparity_rank_old) & !is.na(democracy_disparity_rank_new)) |
-           (!is.na(democracy_disparity_rank_old) & is.na(democracy_disparity_rank_new))) %>%
-  select(county_id, county_name, democracy_disparity_rank_new, democracy_disparity_rank_old)
-View(disprk_report)  # 35 counties moved ranks so the new table should be kept over the old one
-
-perfrk_report <- inner_join(index_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
-  filter(democracy_performance_rank_new != democracy_performance_rank_old | 
-           (is.na(democracy_performance_rank_old) & !is.na(democracy_performance_rank_new)) |
-           (!is.na(democracy_performance_rank_old) & is.na(democracy_performance_rank_new))) %>%
-  select(county_id, county_name, democracy_performance_rank_new, democracy_performance_rank_old)
-View(perfrk_report)  # 0 counties moved ranks 
-
-dbDisconnect(con_rc)
+# ### Compare new / old tables - QA
+# con_rc <- connect_to_db("racecounts")
+# county_v1 <- dbGetQuery(con_rc, "select * from v7.arei_demo_index_2025_old")
+# 
+# library(arsenal)
+# comparison_c <- comparedf(index_table, county_v1)
+# summary(comparison_c)
+# 
+# disprk_report <- inner_join(index_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+#   filter(democracy_disparity_rank_new != democracy_disparity_rank_old | 
+#            (is.na(democracy_disparity_rank_old) & !is.na(democracy_disparity_rank_new)) |
+#            (!is.na(democracy_disparity_rank_old) & is.na(democracy_disparity_rank_new))) %>%
+#   select(county_id, county_name, democracy_disparity_rank_new, democracy_disparity_rank_old)
+# View(disprk_report)  # 35 counties moved ranks so the new table should be kept over the old one
+# 
+# perfrk_report <- inner_join(index_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+#   filter(democracy_performance_rank_new != democracy_performance_rank_old | 
+#            (is.na(democracy_performance_rank_old) & !is.na(democracy_performance_rank_new)) |
+#            (!is.na(democracy_performance_rank_old) & is.na(democracy_performance_rank_new))) %>%
+#   select(county_id, county_name, democracy_performance_rank_new, democracy_performance_rank_old)
+# View(perfrk_report)  # 0 counties moved ranks 
+# 
+# dbDisconnect(con_rc)

@@ -148,7 +148,7 @@ dbDisconnect(con)
 
 
 
-# ### Compare new / old tables
+# ### Compare new / old tables - QA
 # 
 # library(arsenal)
 # con_rc <- connect_to_db("racecounts")

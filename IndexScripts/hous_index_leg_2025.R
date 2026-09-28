@@ -141,26 +141,26 @@ dbDisconnect(con)
 
 
 
-### Compare new / old tables
-con_rc <- connect_to_db("racecounts")
-leg_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_index_leg_2025_old")
-
-library(arsenal)
-comparison_c <- comparedf(index_table, leg_v1)
-summary(comparison_c)
-
-disprk_report <- inner_join(index_table, leg_v1, by = c("leg_id","leg_name"), suffix = c("_new", "_old")) %>%
-  filter(housing_disparity_rank_new != housing_disparity_rank_old | 
-           (is.na(housing_disparity_rank_old) & !is.na(housing_disparity_rank_new)) |
-           (!is.na(housing_disparity_rank_old) & is.na(housing_disparity_rank_new))) %>%
-  select(leg_id, leg_name, housing_disparity_rank_new, housing_disparity_rank_old)
-View(disprk_report)  # 43 leg districts moved ranks to it makes sense to keep the new table
-
-perfrk_report <- inner_join(index_table, leg_v1, by = c("leg_id","leg_name"), suffix = c("_new", "_old")) %>%
-  filter(housing_performance_rank_new != housing_performance_rank_old | 
-           (is.na(housing_performance_rank_old) & !is.na(housing_performance_rank_new)) |
-           (!is.na(housing_performance_rank_old) & is.na(housing_performance_rank_new))) %>%
-  select(leg_id, leg_name, housing_performance_rank_new, housing_performance_rank_old)
-View(perfrk_report)  # no leg districts moved ranks 
-
-dbDisconnect(con_rc)
+# ### Compare new / old tables - QA
+# con_rc <- connect_to_db("racecounts")
+# leg_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_index_leg_2025_old")
+# 
+# library(arsenal)
+# comparison_c <- comparedf(index_table, leg_v1)
+# summary(comparison_c)
+# 
+# disprk_report <- inner_join(index_table, leg_v1, by = c("leg_id","leg_name"), suffix = c("_new", "_old")) %>%
+#   filter(housing_disparity_rank_new != housing_disparity_rank_old | 
+#            (is.na(housing_disparity_rank_old) & !is.na(housing_disparity_rank_new)) |
+#            (!is.na(housing_disparity_rank_old) & is.na(housing_disparity_rank_new))) %>%
+#   select(leg_id, leg_name, housing_disparity_rank_new, housing_disparity_rank_old)
+# View(disprk_report)  # 43 leg districts moved ranks to it makes sense to keep the new table
+# 
+# perfrk_report <- inner_join(index_table, leg_v1, by = c("leg_id","leg_name"), suffix = c("_new", "_old")) %>%
+#   filter(housing_performance_rank_new != housing_performance_rank_old | 
+#            (is.na(housing_performance_rank_old) & !is.na(housing_performance_rank_new)) |
+#            (!is.na(housing_performance_rank_old) & is.na(housing_performance_rank_new))) %>%
+#   select(leg_id, leg_name, housing_performance_rank_new, housing_performance_rank_old)
+# View(perfrk_report)  # no leg districts moved ranks 
+# 
+# dbDisconnect(con_rc)
