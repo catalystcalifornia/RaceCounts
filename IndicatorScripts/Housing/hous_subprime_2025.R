@@ -153,7 +153,7 @@ df_subprime <- df_subprime %>% filter(lien_status == "1" & property_type == "1" 
 
 
 ### Convert data from 2010 CT's to 2020 CT's ####
-cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
+cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\tract20_tract10\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
   select(GEOID_TRACT_10, NAMELSAD_TRACT_10, AREALAND_TRACT_10, GEOID_TRACT_20, NAMELSAD_TRACT_20, AREALAND_TRACT_20, AREALAND_PART) %>%
   mutate_at(vars(contains("AREALAND")), function(x) as.numeric(x)) %>%
   # calculate overlapping land area of 2010 and 2020 tracts (AREALAND_PART) as a percent of 2020 tract land area (AREALAND_TRACT_20)
@@ -516,5 +516,29 @@ source <- paste0("HMDA historic Data (", hmda_yr, "): https://www.consumerfinanc
 # city_to_postgres(city_table)
 # leg_to_postgres(leg_table)
 # 
-# dbDisconnect(con)
-# dbDisconnect(con2)
+dbDisconnect(con)
+dbDisconnect(con2)
+
+### Compare new / old tables
+con_rc <- connect_to_db("racecounts")
+county_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_subprime_county_2025")
+
+library(arsenal)
+comparison_c <- comparedf(county_table, county_v1)
+summary(comparison_c)
+
+disprk_report <- inner_join(county_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+  filter(disparity_rank_new != disparity_rank_old | 
+           (is.na(disparity_rank_old) & !is.na(disparity_rank_new)) |
+           (!is.na(disparity_rank_old) & is.na(disparity_rank_new))) %>%
+  select(county_id, county_name, disparity_rank_new, disparity_rank_old)
+View(disprk_report)  # 0 counties moved ranks so keep the new one
+
+perfrk_report <- inner_join(county_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+  filter(performance_rank_new != performance_rank_old | 
+           (is.na(performance_rank_old) & !is.na(performance_rank_new)) |
+           (!is.na(performance_rank_old) & is.na(performance_rank_new))) %>%
+  select(county_id, county_name, performance_rank_new, performance_rank_old)
+View(perfrk_report)  # 0 counties moved ranks
+
+dbDisconnect(con_rc)

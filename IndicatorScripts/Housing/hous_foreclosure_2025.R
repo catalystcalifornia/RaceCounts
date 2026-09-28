@@ -458,3 +458,28 @@ source <- paste0("DataQuick (", curr_yr, "), purchased from DQNews and raced via
 # city_to_postgres(city_table)
 # leg_to_postgres(leg_table)
 dbDisconnect(con)
+
+
+### Compare new / old tables
+con_rc <- connect_to_db("racecounts")
+county_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_foreclosure_county_2025")
+
+library(arsenal)
+comparison_c <- comparedf(county_table, county_v1)
+summary(comparison_c)
+
+disprk_report <- inner_join(county_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+  filter(disparity_rank_new != disparity_rank_old | 
+           (is.na(disparity_rank_old) & !is.na(disparity_rank_new)) |
+           (!is.na(disparity_rank_old) & is.na(disparity_rank_new))) %>%
+  select(county_id, county_name, disparity_rank_new, disparity_rank_old)
+View(disprk_report)  # 38 counties moved ranks so keep the new one
+
+perfrk_report <- inner_join(county_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
+  filter(performance_rank_new != performance_rank_old | 
+           (is.na(performance_rank_old) & !is.na(performance_rank_new)) |
+           (!is.na(performance_rank_old) & is.na(performance_rank_new))) %>%
+  select(county_id, county_name, performance_rank_new, performance_rank_old)
+View(perfrk_report)  # 0 counties moved ranks
+
+dbDisconnect(con_rc)

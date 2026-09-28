@@ -290,7 +290,7 @@ source <- paste0("CPS (", paste(cps_yr, collapse = ", "), ") average https://www
 
 
 #send tables to postgres
-to_postgres(county_table, state_table)
+# to_postgres(county_table, state_table)
 
 dbDisconnect(con)
 dbDisconnect(con2)

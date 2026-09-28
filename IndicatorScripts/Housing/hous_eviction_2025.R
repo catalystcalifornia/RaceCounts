@@ -506,30 +506,31 @@ indicator <- "Rate of eviction filings per 100 renter households (weighted avera
 source <- "the (2000-2017) valid proprietary tract-level data downloaded from the Eviction Lab. https://data-downloads.evictionlab.org/#data-for-analysis/"
 
 #send tables to postgres
-to_postgres(county_table, state_table)
-city_to_postgres(city_table)
-leg_to_postgres(leg_table)
-# dbDisconnect(con)
-
+# to_postgres(county_table, state_table)
+# city_to_postgres(city_table)
+# leg_to_postgres(leg_table)
+dbDisconnect(con)
 
 ### Compare new / old tables
 con_rc <- connect_to_db("racecounts")
-state_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_eviction_filing_rate_state_2025")
 county_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_eviction_filing_rate_county_2025")
-city_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_eviction_filing_rate_city_2025")
-leg_v1 <- dbGetQuery(con_rc, "select * from v7.arei_hous_eviction_filing_rate_leg_2025")
-
 
 library(arsenal)
-comparison_s <- comparedf(state_table, state_v1)
-summary(comparison_s)
+comparison_c <- comparedf(county_table, county_v1)
+summary(comparison_c)
 
 disprk_report <- inner_join(county_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
-  filter(disparity_rank_new != disparity_rank_old) %>%
+  filter(disparity_rank_new != disparity_rank_old | 
+           (is.na(disparity_rank_old) & !is.na(disparity_rank_new)) |
+           (!is.na(disparity_rank_old) & is.na(disparity_rank_new))) %>%
   select(county_id, county_name, disparity_rank_new, disparity_rank_old)
-View(disprk_report)  # 0 counties moved ranks
+View(disprk_report)  # 0 counties moved ranks so keep the new one
 
 perfrk_report <- inner_join(county_table, county_v1, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
-  filter(performance_rank_new != performance_rank_old) %>%
+  filter(performance_rank_new != performance_rank_old | 
+           (is.na(performance_rank_old) & !is.na(performance_rank_new)) |
+           (!is.na(performance_rank_old) & is.na(performance_rank_new))) %>%
   select(county_id, county_name, performance_rank_new, performance_rank_old)
 View(perfrk_report)  # 0 counties moved ranks
+
+dbDisconnect(con_rc)
