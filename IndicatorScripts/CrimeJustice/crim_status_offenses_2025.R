@@ -193,21 +193,3 @@ source <- paste0("CADOJ ", curr_yr, " and ACS ", acs_yr, " 5y Table B01001 data.
 
 dbDisconnect(con)
 dbDisconnect(con2)
-
-## Check Changes 9/22/26 ####
-con <- connect_to_db("racecounts")
-
-state_old <- dbGetQuery(con, "select * from v7.arei_crim_status_offenses_state_2025")
-comparison_s <- comparedf(county_table, county_old)
-summary(comparison_s) # No changes.
-
-county_old <- dbGetQuery(con, "select * from v7.arei_crim_status_offenses_county_2025")
-disprk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
-  filter(disparity_rank_new != disparity_rank_old) %>%
-  select(county_id, county_name, disparity_rank_new, disparity_rank_old)
-disprk_report  # 0 counties moved ranks.
-
-perfrk_report <- inner_join(county_table, county_old, by = c("county_id","county_name"), suffix = c("_new", "_old")) %>%
-  filter(performance_rank_new != performance_rank_old) %>%
-  select(county_id, county_name, performance_rank_new, performance_rank_old)
-perfrk_report  # 0 counties moved ranks.

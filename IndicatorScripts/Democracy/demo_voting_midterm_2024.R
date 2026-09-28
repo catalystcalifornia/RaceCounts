@@ -282,7 +282,7 @@ state_table_name <- paste0("arei_demo_voting_midterm_state_", rc_yr)
 indicator <- paste0("Created on ", Sys.Date(), ". Annual average percent of voters voting in midterm elections among eligible voting age population. This data is")
 source <- paste0("CPS (", paste(cps_yr, collapse = ", "), ") average https://www.census.gov/topics/public-sector/voting/data.html")
 
-to_postgres(county_table, state_table)
+# to_postgres(county_table, state_table)
 
 
 dbDisconnect(con)

@@ -153,7 +153,7 @@ df_subprime <- df_subprime %>% filter(lien_status == "1" & property_type == "1" 
 
 
 ### Convert data from 2010 CT's to 2020 CT's ####
-cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
+cb_tract_2010_2020 <- fread("W:\\Data\\Geographies\\Relationships\\tract20_tract10\\cb_tract2020_tract2010_st06.txt", sep="|", colClasses = 'character', data.table = FALSE) %>%
   select(GEOID_TRACT_10, NAMELSAD_TRACT_10, AREALAND_TRACT_10, GEOID_TRACT_20, NAMELSAD_TRACT_20, AREALAND_TRACT_20, AREALAND_PART) %>%
   mutate_at(vars(contains("AREALAND")), function(x) as.numeric(x)) %>%
   # calculate overlapping land area of 2010 and 2020 tracts (AREALAND_PART) as a percent of 2020 tract land area (AREALAND_TRACT_20)
@@ -516,5 +516,5 @@ source <- paste0("HMDA historic Data (", hmda_yr, "): https://www.consumerfinanc
 # city_to_postgres(city_table)
 # leg_to_postgres(leg_table)
 # 
-# dbDisconnect(con)
-# dbDisconnect(con2)
+dbDisconnect(con)
+dbDisconnect(con2)
