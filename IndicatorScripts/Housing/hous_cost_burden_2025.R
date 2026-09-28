@@ -36,7 +36,7 @@ assm_xwalk <- "tract_2020_state_assembly_2024"
 assm_geoid <- "sldl24"
 sen_xwalk <- "tract_2020_state_senate_2024"
 sen_geoid <- "sldu24"
-  
+
 # set screening thresholds: suppress values with high CVs and small populations. generally does not need update.
 cv_threshold <- 35    # data for geo+race combos with CV > threshold are suppressed
 pop_threshold <- 100  # data for geo+race combos with pop < threshold are suppressed
@@ -81,7 +81,7 @@ chas_data_leg_assm <- chas_data %>%
 
 chas_data_all <- bind_rows(chas_data, chas_data_leg_senate, chas_data_leg_assm) %>%
   filter(geolevel != 'census tract')
-  
+
 
 ######### Clean and reformat raw data ######################
 # data cleaning
@@ -100,30 +100,30 @@ chas_data_all <- chas_data_all %>%
 chas_data_long <- pivot_longer(chas_data_all, cols = starts_with("t9"), 
                                names_to = "variable", 
                                values_to = "housing_units") %>%
-                  mutate(variable_generic = as.numeric(gsub("\\D", "", variable))) # add 'generic' variable field where est and moe have the same value
+  mutate(variable_generic = as.numeric(gsub("\\D", "", variable))) # add 'generic' variable field where est and moe have the same value
 
 # join race and cost burden information from data dictionary and recode
 chas_data_long <- chas_data_long %>% 
   left_join(dict[,c(1,3:5)], by = c( "variable" = "column_name")) %>%
   mutate(race_ethnicity = recode(race_ethnicity, 
-                                   "Black or African-American alone, non-Hispanic" = "nh_black",
-                                   "Asian alone, non-Hispanic" = "nh_asian",
-                                   "American Indian or Alaska Native alone, non-Hispanic" = "nh_aian",
-                                   "Pacific Islander alone, non-Hispanic" = "nh_pacisl",
-                                   "Hispanic, any race" = "latino",
-                                   "White alone, non-Hispanic" = "nh_white",
-                                   "other (including multiple races, non-Hispanic)" = "nh_other"),
+                                 "Black or African-American alone, non-Hispanic" = "nh_black",
+                                 "Asian alone, non-Hispanic" = "nh_asian",
+                                 "American Indian or Alaska Native alone, non-Hispanic" = "nh_aian",
+                                 "Pacific Islander alone, non-Hispanic" = "nh_pacisl",
+                                 "Hispanic, any race" = "latino",
+                                 "White alone, non-Hispanic" = "nh_white",
+                                 "other (including multiple races, non-Hispanic)" = "nh_other"),
          cost_burden = recode(cost_burden,
-                                "greater than 30% but less than or equal to 50%" = "30.50", 
-                                "greater than 50%" = "50.100",
-                                "not computed (no/negative income)" = "not_computed",
-                                "less than or equal to 30%" = "0.30")) %>%
+                              "greater than 30% but less than or equal to 50%" = "30.50", 
+                              "greater than 50%" = "50.100",
+                              "not computed (no/negative income)" = "not_computed",
+                              "less than or equal to 30%" = "0.30")) %>%
   rename(race = race_ethnicity, burden = cost_burden)
 
 
 # drop rows with missing cost burden, cost burden and race 'universe' rows
 chas_data_long <- filter(chas_data_long, !(burden %in% c('not_computed','All')), 
-                                         !(race %in% c("All"))) 
+                         !(race %in% c("All"))) 
 
 # set definition of cost burden at >30%
 chas_data_long$cost_burdened <- ifelse(chas_data_long$burden == "0.30", 0, 1) 
@@ -153,7 +153,7 @@ costburden_moe <- costburden_race %>%
   group_by(geoid, geoname, race, tenure) %>%
   summarize(pop = sum(raw),
             den_moe = moe_sum(num_moe, raw))
-  
+
 ## put it all together
 costburden_race_ <- costburden_race %>% 
   left_join(moe, by = c("geoid", "geoname", "variable_generic", "race", "tenure", "cost_burdened", "geolevel")) %>%
@@ -321,9 +321,9 @@ leg_table_name <- paste0("arei_hous_cost_burden_owner_leg_", rc_yr)
 indicator <- paste0("The percentage of owner-occupied housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Other includes other race and two or more races, and is Latinx-exclusive. QA doc: ", qa_filepath, ". This data is")
 
 # send tables to postgres
-to_postgres(county_table, state_table)
-city_to_postgres(city_table)
-leg_to_postgres(leg_table) 
+# to_postgres(county_table, state_table)
+# city_to_postgres(city_table)
+# leg_to_postgres(leg_table) 
 
 #### RC CALCS: RENTERS ################################################################
 #Create a renters dataframe by filtering out owners so that it creates two sets of graphs for the RC_Functions for each owners and renters
@@ -399,9 +399,12 @@ leg_table_name <- paste0("arei_hous_cost_burden_renter_leg_", rc_yr)
 indicator <- paste0("The percentage of rented housing units experiencing cost burden (Monthly housing costs, including utilities, exceeding 30% of monthly income. White, Black, Asian, AIAN, and PacIsl one race alone and Latinx-exclusive. Another includes another race and multiracial, and is Latinx-exclusive. QA doc: ", qa_filepath, ". This data is")
 
 # send tables to postgres
-to_postgres(county_table, state_table)
-city_to_postgres(city_table)
-leg_to_postgres(leg_table) 
+
+# to_postgres(county_table, state_table)
+# city_to_postgres(city_table)
+# leg_to_postgres(leg_table)
+
+
 
 
 

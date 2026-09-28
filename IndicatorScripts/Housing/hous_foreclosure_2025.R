@@ -458,3 +458,4 @@ source <- paste0("DataQuick (", curr_yr, "), purchased from DQNews and raced via
 # city_to_postgres(city_table)
 # leg_to_postgres(leg_table)
 dbDisconnect(con)
+
