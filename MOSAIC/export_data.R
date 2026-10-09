@@ -113,12 +113,17 @@ pop_vars <- acs_var %>%
 asian_pop_ <- asian_pop %>%
   rename_with(~deframe(pop_vars[, c("name", "label")])[.x], 
               .cols = intersect(pop_vars$name, names(.))) %>%
-  select(-ends_with("m"))
+  select(-ends_with("m")) %>%
+
+colnames(asian_pop_) <- gsub("Total Groups Tallied:!!", "", colnames(asian_pop_))
 
 nhpi_pop_ <- nhpi_pop %>%
   rename_with(~deframe(pop_vars[, c("name", "label")])[.x], 
               .cols = intersect(pop_vars$name, names(.))) %>%
   select(-ends_with("m"))
+
+colnames(nhpi_pop_) <- gsub("Total Groups Tallied:!!", "", colnames(nhpi_pop_))
+
 
 # Load indicator tables ----------------------------------------------------
 rc_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", curr_schema, "' AND table_name LIKE '%_", curr_yr, "';")
