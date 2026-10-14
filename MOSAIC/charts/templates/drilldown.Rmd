@@ -360,8 +360,8 @@ hc <- hchart(
     align = "center" ) %>% 
   hc_subtitle(
     text = case_when(
-      race_grp == 'asian' ~ "Click the Asian or Total bar below to disaggregate data",
-      race_grp == 'nhpi' ~ "Click the Pacific Islander or Total bar below to disaggregate data",
+      race_grp == 'asian' ~ "↓ Click the Asian or Total bar below to see disaggregated data",
+      race_grp == 'nhpi' ~ "↓ Click the Pacific Islander or Total bar below to see disaggregated data",
       .default = 'XXXXXXXXX'),
     align = "center") %>%
   hc_plotOptions(

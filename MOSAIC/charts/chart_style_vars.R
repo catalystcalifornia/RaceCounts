@@ -48,8 +48,17 @@ custom_theme <- hc_theme(
       fontSize ="1.2em",
       fontWeight="bold")),
   subtitle = list(
+    useHTML = TRUE,
     style = list(
-      color = rc_black)),
+      color = "#9A3412",
+      fontWeight = "600",
+      backgroundColor = "#FFF1E6",
+      padding = "2px 8px",
+      borderRadius = "4px"
+    )),
+  # subtitle = list(
+  #   style = list(
+  #     color = rc_black)),
   caption = list(
     style = list(
       color = rc_black,
