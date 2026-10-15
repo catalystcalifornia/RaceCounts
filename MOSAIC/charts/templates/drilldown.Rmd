@@ -389,12 +389,6 @@ hc <- hchart(
   hc_title(
     text = chart_title,
     align = "center" ) %>% 
-  # hc_subtitle(
-  #   text = case_when(
-  #     race_grp == 'asian' ~ "↓ Click the Asian or Total bar below to see disaggregated data",
-  #     race_grp == 'nhpi' ~ "↓ Click the Pacific Islander or Total bar below to see disaggregated data",
-  #     .default = 'XXXXXXXXX'),
-  #   align = "center") %>%
   hc_plotOptions(
     bar = list(
       dataLabels = list(
@@ -441,52 +435,6 @@ htmltools::tagList(
   htmltools::tags$div(
     class = "chart-wrapper",
     style = "max-width: 1200px; width: 100%; margin: 0 auto; position: relative;",
-    
-
-  # htmltools::tags$button(
-  #   id = "hc-back-btn",
-  #   htmltools::HTML("\u25C1 Back to Overview"),
-  #   style = paste(
-  #     "display: none;",
-  #     "position: absolute;",
-  #     "right: 10px;",
-  #     "top: calc(50% - 60px);",   # above toggle button
-  #     "width: 106px;",
-  #     "white-space: normal;",
-  #     "text-align: center;",
-  #     paste0("background-color: ", rc_grey, ";"),
-  #     "color: #333333;",
-  #     "border: 1px solid #cccccc;",
-  #     "border-radius: 3px;",
-  #     "padding: 6px 8px;",
-  #     "cursor: pointer;",
-  #     "z-index: 10;",
-  #     "line-height: 1.3;",
-  #     sep = " "
-  #   )
-  # ),
-  # 
-  # htmltools::tags$button(
-  #   id = "hc-toggle-btn",
-  #   "Show Counts",
-  #   style = paste(
-  #     "display: none;",
-  #     "position: absolute;",
-  #     "right: 10px;",
-  #     "top: calc(50% - 0px);",   # below back button
-  #     "width: 106px;",
-  #     "text-align: center;",
-  #     paste0("background-color: ", rc_blue, ";"),
-  #     paste0("color: ", rc_white, ";"),
-  #     paste0("border: 1px solid ", rc_blue, ";"),
-  #     "border-radius: 3px;",
-  #     "padding: 6px 8px;",
-  #     "cursor: pointer;",
-  #     "z-index: 10;",
-  #     "line-height: 1.3;",
-  #     sep = " "
-  #   )
-  # ),
 
   htmltools::tags$button(
   id = "hc-back-btn",
