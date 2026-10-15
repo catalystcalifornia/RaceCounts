@@ -84,7 +84,8 @@ custom_theme <- hc_theme(
       style=list(
         color = rc_black,
         fontSize="0.9em",
-        fontWeight="bold"))),
+        fontWeight="bold")))
+  ,
   plotOptions = list(
     bar = list(
       dataLabels = list(
@@ -95,5 +96,8 @@ custom_theme <- hc_theme(
         style = list(
           color = rc_black,
           textOutline = "1px contrast",
-          fontWeight = "bold"))))
+          fontSize="0.9em",
+          fontWeight = "bold")
+        ))
+    )
 )

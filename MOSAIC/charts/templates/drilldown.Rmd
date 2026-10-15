@@ -311,11 +311,42 @@ drillup_js <- paste0("function() {
 ```{r}
 ##### Chart: Highcharts drilldown (don't change) #####
 hc <- hchart(
-  base_df,
-  "bar",
-  hcaes(x = label, y = rate, drilldown = group, y2 = raw, color=color),
-  name = "Overview",
-  colorByPoint = FALSE) %>%
+    base_df,
+    "bar",
+    hcaes(x = label, y = rate, drilldown = group, y2 = raw, color=color),
+    name = "Overview",
+    colorByPoint = FALSE,
+    # Can apply multiple labels to same bar if labels are provided as array/list (see below)
+    dataLabels = list(
+    # 1) "Click here" label, centered in the bar
+    list(
+      enabled = TRUE,
+      inside = TRUE,
+      align = "center",
+      verticalAlign = "middle",
+      format = "Click here to disaggregate",
+      # must style here instead of in hc theme
+      style = list(
+        color = rc_black,
+        fontSize = "0.9em",
+        fontWeight = "bold",     
+        fontStyle="italic",
+        textOutline = "1px contrast")),
+    # 2) value label, right side of the bar
+    list(
+      enabled = TRUE,
+      inside = TRUE,
+      align = "right",
+      verticalAlign = "middle",
+      # must style here instead of in hc theme
+      style = list(
+        color = rc_black,
+        fontSize = "0.9em",
+        fontWeight = "bold",
+        textOutline = "1px contrast"
+    )
+    )
+  )) %>% 
   hc_chart(
     height = 400, 
     scrollablePlotArea = list(minHeight = 500, opacity = 0.9),
@@ -329,7 +360,7 @@ hc <- hchart(
     activeDataLabelStyle = list(
       color = rc_black,
       textDecoration = "none",
-      fontWeight = "normal"
+      fontWeight = "bold"
       ),
     activeAxisLabelStyle = list(
       color = rc_black,
@@ -358,12 +389,12 @@ hc <- hchart(
   hc_title(
     text = chart_title,
     align = "center" ) %>% 
-  hc_subtitle(
-    text = case_when(
-      race_grp == 'asian' ~ "↓ Click the Asian or Total bar below to see disaggregated data",
-      race_grp == 'nhpi' ~ "↓ Click the Pacific Islander or Total bar below to see disaggregated data",
-      .default = 'XXXXXXXXX'),
-    align = "center") %>%
+  # hc_subtitle(
+  #   text = case_when(
+  #     race_grp == 'asian' ~ "↓ Click the Asian or Total bar below to see disaggregated data",
+  #     race_grp == 'nhpi' ~ "↓ Click the Pacific Islander or Total bar below to see disaggregated data",
+  #     .default = 'XXXXXXXXX'),
+  #   align = "center") %>%
   hc_plotOptions(
     bar = list(
       dataLabels = list(
