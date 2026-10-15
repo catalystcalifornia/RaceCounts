@@ -349,7 +349,10 @@ hc <- hchart(
   )) %>% 
   hc_chart(
     height = 400, 
-    scrollablePlotArea = list(minHeight = 500, opacity = 0.9),
+    spacingTop = 35,
+    scrollablePlotArea = list(
+      minHeight = 500, 
+      opacity = 0.9),
     events = list(
       drilldown = JS(drilldown_js),
       drillup = JS(drillup_js))) %>%
