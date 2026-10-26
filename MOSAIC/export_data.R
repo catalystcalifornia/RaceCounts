@@ -113,7 +113,7 @@ pop_vars <- acs_var %>%
 asian_pop_ <- asian_pop %>%
   rename_with(~deframe(pop_vars[, c("name", "label")])[.x], 
               .cols = intersect(pop_vars$name, names(.))) %>%
-  select(-ends_with("m")) %>%
+  select(-ends_with("m"))
 
 colnames(asian_pop_) <- gsub("Total Groups Tallied:!!", "", colnames(asian_pop_))
 
