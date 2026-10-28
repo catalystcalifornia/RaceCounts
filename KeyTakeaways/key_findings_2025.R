@@ -385,8 +385,8 @@ final_df <- bind_rows(df_city, df_county, df_state, df_leg) %>%
 
 ######## NOTE: You MUST re-run the whole script and update the RData file if underlying data changes ###########
 ### save df as .RData file, so don't have to re-run each time we update findings text, logic etc.
-# saveRDS(final_df, file = paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/final_df_", Sys.Date(), ".RData")) 
-# saveRDS(df_education_district, file = paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/df_education_district_", Sys.Date(), ".RData")) 
+# saveRDS(final_df, file = paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/final_df_", Sys.Date(), ".RData"))
+# saveRDS(df_education_district, file = paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/df_education_district_", Sys.Date(), ".RData"))
 
 ######## LOAD ALL DATA FROM RDATA FILE (as needed) ###### ---------------
 #file_date <- '2025-10-08'  #### You must update the date to the file you want here: W:\Project\RACE COUNTS\[rc_yr_rc_version]\RC_Github
@@ -1008,4 +1008,43 @@ column_comments <- c(
 # add_table_comments(con, curr_schema, place_table, ind, source, qa_filepath, column_names, column_comments)
 
 # dbDisconnect(con)  
+
+####### Check Changes 10/28/26 #######
+old_place <- dbGetQuery(con, "select * from v7.arei_findings_places_multigeo_todelete")
+old_race <- dbGetQuery(con, "select * from v7.arei_findings_races_multigeo_todelete")
+
+# sync up geo names in findings
+findings_places_multigeo_ <- findings_places_multigeo
+paren_txt <- regmatches(
+  findings_places_multigeo_$geo_name,
+  regexpr("\\s*\\([^)]*\\)", findings_places_multigeo_$geo_name)
+)
+idx <- grepl("\\([^)]*\\)", findings_places_multigeo_$geo_name)
+
+findings_places_multigeo_$finding[idx] <- mapply(
+  function(x, p) sub(p, "", x, fixed = TRUE),
+  findings_places_multigeo_$finding[idx],
+  paren_txt,
+  USE.NAMES = FALSE
+)
+
+# id changes in arei_findings_places_multigeo
+place_findings_chg <- setdiff(findings_places_multigeo_, old_place) %>%
+  filter(geo_level != 'state') %>%  # filter out state bc finding_type is not unique
+  left_join(old_place %>% select(geoid, geo_level, finding_type, finding), by = c("geoid", "geo_level", "finding_type")) %>%
+  select(geo_name, finding_type, finding.x, finding.y, everything()) %>%
+  arrange(geoid, geo_level, finding_type)
+
+library("writexl")
+write_xlsx(place_findings_chg, paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/place_findings_chg_", Sys.Date(),".xlsx"))
+
+
+# id changes in arei_findings_places_multigeo
+race_findings_chg <- setdiff(rda_race_findings, old_race) %>%
+  filter(geo_level != 'state') %>%  # filter out state bc finding_type is not unique
+  left_join(old_race %>% select(geoid, geo_level, finding_type, race, finding), by = c("geoid", "geo_level", "race", "finding_type")) %>%
+  select(geo_name, finding_type, race, finding.x, finding.y, everything()) %>%
+  arrange(geoid, geo_level, finding_type, race)
+
+write_xlsx(race_findings_chg, paste0("W:/Project/RACE COUNTS/", curr_yr, "_", curr_schema, "/RC_Github/race_findings_chg_", Sys.Date(),".xlsx"))
 
