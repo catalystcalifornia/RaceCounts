@@ -42,6 +42,11 @@ rc_schema <- 'v7'
 
 #########################
 
+# Race Findings Table -------------------------------------------------------------------
+# adapted from: W:\Project\RACE COUNTS\2025_v7\Archive_Annual_Report\ann_report_findings_queries.sql
+findings_rc <- dbGetQuery(con, "SELECT geo_name, finding_type, race, finding FROM v7.arei_findings_races_multigeo WHERE geo_level = 'state' AND finding_type IN ('worst count', 'best count')")
+
+
 # State Data Tables -------------------------------------------------------------------
 rc_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%_", rc_yr, "';")
 
@@ -150,6 +155,11 @@ View(disp_indicator_rks)
 
 ## export data to excel
 wb <- loadWorkbook("W:\\Project\\RACE COUNTS\\2025_v7\\MOSAIC\\race_brief_findings.xlsx")
+
+# export RC race findings 
+addWorksheet(wb, sheetName = "findings_1")
+writeData(wb, sheet = "findings_1", x = findings_rc)
+
 
 # export issue area disparity findings 
 addWorksheet(wb, sheetName = "findings_2")
