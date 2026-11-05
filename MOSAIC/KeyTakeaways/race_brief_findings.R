@@ -1,5 +1,7 @@
-## QA Filepath: W:\Project\RACE COUNTS\2025_v7\Annual_Report\QA_Sheet_Ann_Report_Findings.docx
-## Output saved: W:\Project\RACE COUNTS\2025_v7\Annual_Report\statewide_findings.xlsx
+# MOSAIC Race Brief Findings - formerly Annual Report Findings #
+
+## QA Filepath: W:\Project\RACE COUNTS\2025_v7\MOSAIC\QA_Sheet_Ann_Report_Findings.docx
+## Output saved: W:\Project\RACE COUNTS\2025_v7\MOSAIC\race_brief_findings.xlsx
 
 ##### Findings #2 & 3: Rank issues and indicators by disparity by race
 #### PULLED & ADAPTED FROM key_findings_2025.R and W:/Project/RACE COUNTS/2025_v7/RC_Github/LF/RaceCounts/KeyTakeaways/most_disp_issue.R
@@ -39,6 +41,11 @@ rc_yr <- '2025'
 rc_schema <- 'v7'
 
 #########################
+
+# Race Findings Table -------------------------------------------------------------------
+# adapted from: W:\Project\RACE COUNTS\2025_v7\Archive_Annual_Report\ann_report_findings_queries.sql
+findings_rc <- dbGetQuery(con, "SELECT geo_name, finding_type, race, finding FROM v7.arei_findings_races_multigeo WHERE geo_level = 'state' AND finding_type IN ('worst count', 'best count')")
+
 
 # State Data Tables -------------------------------------------------------------------
 rc_list_query <- paste0("SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='", rc_schema, "' AND table_name LIKE '%_", rc_yr, "';")
@@ -147,7 +154,12 @@ disp_indicator_rks <- disp_indicator_rks %>%
 View(disp_indicator_rks)
 
 ## export data to excel
-wb <- loadWorkbook("W:\\Project\\RACE COUNTS\\2025_v7\\Annual_Report\\ann_report_findings.xlsx")
+wb <- loadWorkbook("W:\\Project\\RACE COUNTS\\2025_v7\\MOSAIC\\race_brief_findings.xlsx")
+
+# export RC race findings 
+addWorksheet(wb, sheetName = "findings_1")
+writeData(wb, sheet = "findings_1", x = findings_rc)
+
 
 # export issue area disparity findings 
 addWorksheet(wb, sheetName = "findings_2")
@@ -163,4 +175,4 @@ export_date <- paste0("R export date: ", Sys.Date())
 writeData(wb, sheet = "export_date", x = export_date)
 
 # save modified workbook
-saveWorkbook(wb, file = "W:\\Project\\RACE COUNTS\\2025_v7\\Annual_Report\\ann_report_findings.xlsx", overwrite = TRUE)
+saveWorkbook(wb, file = "W:\\Project\\RACE COUNTS\\2025_v7\\MOSAIC\\race_brief_findings.xlsx", overwrite = TRUE)
