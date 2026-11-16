@@ -176,3 +176,44 @@ writeData(wb, sheet = "export_date", x = export_date)
 
 # save modified workbook
 saveWorkbook(wb, file = "W:\\Project\\RACE COUNTS\\2025_v7\\MOSAIC\\race_brief_findings.xlsx", overwrite = TRUE)
+
+############# Top SD and AD by Race ##############
+race_pop <- dbGetQuery(con, "SELECT * FROM v7.arei_race_multigeo") %>%
+  select(geoid, name, geolevel, (!starts_with("pct_") & ends_with("_pop") & !contains("swanasa") & !contains("total"))) %>%
+  filter(geolevel %in% c("sldu", "sldl"))
+
+top3 <- race_pop %>%
+  pivot_longer(
+    cols = ends_with("_pop"),
+    names_to = "pop_group",
+    values_to = "pop"
+  ) %>%
+  group_by(geolevel, pop_group) %>%
+  slice_max(pop, n = 3, with_ties = FALSE) %>%
+  mutate(rank = row_number()) %>%
+  ungroup() %>%
+  arrange(geolevel, pop_group, rank)
+
+race_pct <- dbGetQuery(con, "SELECT * FROM v7.arei_race_multigeo") %>%
+  select(geoid, name, geolevel, (starts_with("pct_") & !contains("swanasa"))) %>%
+  filter(geolevel %in% c("sldu", "sldl"))
+
+pop_pct <- race_pct %>%
+  pivot_longer(
+    cols = ends_with("_pop"),
+    names_to = "pop_group",
+    values_to = "pct_pop"
+  ) %>%
+  mutate(pop_group = gsub("pct_", "", pop_group))
+
+top3_pct <- pop_pct %>%
+  group_by(geolevel, pop_group) %>%
+  slice_max(pct_pop, n = 3, with_ties = FALSE) %>%
+  mutate(rank = row_number()) %>%
+  ungroup() %>%
+  arrange(geolevel, pop_group, rank)
+
+top3 <- top3 %>%
+  left_join(pop_pct %>% select(geoid, geolevel, pop_group, pct_pop), by =c("geoid", "geolevel", "pop_group"))
+
+View(top3)
