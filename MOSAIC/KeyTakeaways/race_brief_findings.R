@@ -182,7 +182,7 @@ race_pop <- dbGetQuery(con, "SELECT * FROM v7.arei_race_multigeo") %>%
   select(geoid, name, geolevel, (!starts_with("pct_") & ends_with("_pop") & !contains("swanasa") & !contains("total"))) %>%
   filter(geolevel %in% c("sldu", "sldl"))
 
-top3 <- race_pop %>%
+top3_dist <- race_pop %>%
   pivot_longer(
     cols = ends_with("_pop"),
     names_to = "pop_group",
@@ -213,7 +213,8 @@ top3_pct <- pop_pct %>%
   ungroup() %>%
   arrange(geolevel, pop_group, rank)
 
-top3 <- top3 %>%
-  left_join(pop_pct %>% select(geoid, geolevel, pop_group, pct_pop), by =c("geoid", "geolevel", "pop_group"))
+top3_dist <- top3 %>%
+  left_join(pop_pct %>% select(geoid, geolevel, pop_group, pct_pop), by =c("geoid", "geolevel", "pop_group")) %>%
+  select(-geolevel, -geoid)
 
 View(top3)
