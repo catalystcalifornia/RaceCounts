@@ -218,6 +218,10 @@ writeData(wb, sheet = "findings_2", x = disp_issue_rks)
 addWorksheet(wb, sheetName = "findings_3")
 writeData(wb, sheet = "findings_3", x = disp_indicator_rks)
 
+# export indicator outcome findings 
+addWorksheet(wb, sheetName = "findings_4")
+writeData(wb, sheet = "findings_4", x = best_worst_issue)
+
 # export 'date of export' 
 addWorksheet(wb, sheetName = "export_date")
 export_date <- paste0("R export date: ", Sys.Date())
