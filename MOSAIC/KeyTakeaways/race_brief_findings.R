@@ -123,8 +123,9 @@ df_3 <- final_df %>%
 
 # race_generic == api records are duplicated, then race_generic is renamed as "asian" and "pacisl"
 df_3 <- api_split(df_3) %>%
-  left_join(indicator, by = "indicator") # add issue names
-  
+  left_join(indicator, by = "indicator") %>% # add issue names
+  mutate(is_api_split = race == "nh_api" & race_generic %in% c("asian", "pacisl"))
+
 ######################################
 
 #rank issue areas by disparity for each race
@@ -152,6 +153,54 @@ disp_indicator_rks <- disp_indicator_rks %>%
   select(long_name, race_generic, indicator_long, indicator, most_disp_rk, least_disp_rk, disparity_z_score) %>%
   arrange(race_generic, most_disp_rk) # sort from most disparate to least disparate indicator
 View(disp_indicator_rks)
+
+# rank outcomes
+# 1. rank with the API value counted once (drop the duplicated pacisl copy)
+ranked <- df_3 %>%
+  filter(!(is_api_split & race_generic == "pacisl")) %>%
+  mutate(rate_adj = if_else(asbest == "max", rate, -rate)) %>%  # higher = better outcome
+  group_by(indicator, geoid, geo_name) %>%
+  mutate(values_count = n(),                 # recalculated: API counted once
+         worst_rk = min_rank(rate_adj),      # 1 = worst outcome
+         best_rk  = min_rank(-rate_adj)) %>% # 1 = best outcome
+  ungroup()
+
+# 2. give the dropped pacisl rows the same rank/count as their asian twin
+api_ranks <- ranked %>%
+  filter(is_api_split) %>%
+  select(indicator, geoid, geo_name, values_count, worst_rk, best_rk)
+
+pacisl_rows <- df_3 %>%
+  filter(is_api_split, race_generic == "pacisl") %>%
+  select(-any_of("values_count")) %>%
+  inner_join(api_ranks, by = c("indicator", "geoid", "geo_name"))
+
+race_rks <- bind_rows(ranked, pacisl_rows) %>%
+  select(indicator, indicator_long, arei_issue_area, geoid, geo_name, geo_level,
+         race_generic, rate, values_count, asbest, worst_rk, best_rk) %>%
+  arrange(indicator, geoid, worst_rk)
+
+race_issue <- race_rks %>%
+  filter(!is.na(rate), values_count > 1) %>%
+  mutate(best_pct  = (best_rk  - 1) / (values_count - 1),     # 0 = best, 1 = worst
+         worst_pct = (worst_rk - 1) / (values_count - 1)) %>% # 0 = worst, 1 = best
+  group_by(arei_issue_area, race_generic) %>%
+  summarise(avg_best_pct  = mean(best_pct),   # lower = better outcomes overall
+            avg_worst_pct = mean(worst_pct),  # lower = worse outcomes overall
+            n_total       = n(),
+            .groups = "drop") %>%
+  group_by(race_generic) %>%
+  mutate(best_issue_rk  = dense_rank(avg_best_pct),    # 1 = issue area with best outcomes
+         worst_issue_rk = dense_rank(avg_worst_pct)) %>% # 1 = issue area with worst outcomes
+  ungroup()
+
+best_worst_issue <- bind_rows(
+  race_issue3 %>% filter(best_issue_rk == 1)  %>% mutate(outcome = "best"),
+  race_issue3 %>% filter(worst_issue_rk == 1) %>% mutate(outcome = "worst")
+) %>%
+  select(race_generic, outcome, arei_issue_area, avg_best_pct, avg_worst_pct, n_total) %>%
+  arrange(race_generic, outcome) %>%
+  filter(!race_generic %in% c("filipino", "other", "twoormor", "white"))
 
 ## export data to excel
 wb <- loadWorkbook("W:\\Project\\RACE COUNTS\\2025_v7\\MOSAIC\\race_brief_findings.xlsx")
