@@ -144,8 +144,23 @@ regions <- dbGetQuery(con2, paste0("SELECT county_id AS county_geoid, region FRO
 dist_enr <- read_delim(file = filepath, delim = "\t", na = c("*", "")) %>% filter(rtype == 'D') %>% select(c(cds, totalenrollment)) %>% distinct()
 
 # get ids from city map layer
-city_map_geojson <- fromJSON("https://www.healthycity.org/maps/geojson/shape/12/?topojson&cached")
+con <- url("https://www.healthycity.org/maps/geojson/shape/12/?topojson&cached", encoding = "UTF-8")
+txt <- paste(readLines(con, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+city_map_geojson <- fromJSON(txt)
+
 geometries <- city_map_geojson$objects$geo$geometries
+
+# check if UTF-8 coding worked, meaning ~n is correct for all place names, eg: Pi~non Hills (0657302)
+nm <- geometries$properties$name
+nm[grepl("[^ -~]", nm)]   # anything with non-ASCII characters
+# still not correct
+
+# replace mangled character manually since it's not a recoding issue
+geometries$properties$name <- gsub("\u00b1", "\u00f1", geometries$properties$name, fixed = TRUE)
+
+# Confirm replacement
+geometries$properties$name[grepl("[^ -~]", geometries$properties$name)]
+# should now show "La Cañada Flintridge" and "Piñon Hills"
 
 city_map_ids <- geometries %>%
   select(id, properties) %>%
