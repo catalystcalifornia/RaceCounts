@@ -7,7 +7,7 @@ library(stringr)
 library(scales)
 
 source("W:\\RDA Team\\R\\credentials_source.R")
-source("./BriefScripts/ca_legislative_profiles_2025/leg_brief_fx.R")
+source(here("BriefScripts", "ca_legislative_profiles_2025", "leg_brief_fx.R"))
 
 conn <- connect_to_db("racecounts")
 conn_mosaic <- connect_to_db("mosaic")

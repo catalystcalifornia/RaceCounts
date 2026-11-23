@@ -13,11 +13,31 @@ geometry:
   - right=0.25in
 header-includes:
   - \usepackage{fontspec}
+  - \newcommand{\rubikdir}{W:/Project/RACE COUNTS/Style Guide/Fonts/Rubik/static/}
   - \setmainfont{Libre Baskerville}    # Body text (serif)
-  - \setsansfont{Rubik}                # Headers/accents (sans-serif)
-  - \setmonofont{Space Mono}  
-  - \newfontfamily\headingfont{Rubik}  # Custom heading command
-  - \newfontfamily\datafont{Space Mono}
+  - |
+    \setsansfont{Rubik-Regular.ttf}[
+      Path=\rubikdir,
+      BoldFont=Rubik-Bold.ttf,
+      ItalicFont=Rubik-Italic.ttf,
+      BoldItalicFont=Rubik-BoldItalic.ttf]
+    \newfontfamily\headingfont{Rubik-Regular.ttf}[
+      Path=\rubikdir,
+      BoldFont=Rubik-Bold.ttf,
+      ItalicFont=Rubik-Italic.ttf,
+      BoldItalicFont=Rubik-BoldItalic.ttf]
+  - \newcommand{\monodir}{W:/Project/RACE COUNTS/Style Guide/Fonts/Space_Mono/}
+  - |
+    \setmonofont{SpaceMono-Regular.ttf}[
+      Path=\monodir,
+      BoldFont=SpaceMono-Bold.ttf,
+      ItalicFont=SpaceMono-Italic.ttf,
+      BoldItalicFont=SpaceMono-BoldItalic.ttf]
+    \newfontfamily\datafont{SpaceMono-Regular.ttf}[
+      Path=\monodir,
+      BoldFont=SpaceMono-Bold.ttf,
+      ItalicFont=SpaceMono-Italic.ttf,
+      BoldItalicFont=SpaceMono-BoldItalic.ttf]
   - \usepackage{xcolor}
   - \definecolor{headerorange}{RGB}{253,108,0}
   - \definecolor{linkblue}{RGB}{0,0,255}
